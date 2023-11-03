@@ -1,0 +1,13 @@
+{
+    "name": "examples",
+    "type": "module",
+    "dependencies": {
+        "playwright": "^1.39.0",
+        "webforai": "link:../"
+    },
+    "devDependencies": {
+        "@tsconfig/recommended": "^1.0.3",
+        "tsx": "^3.14.0",
+        "typescript": "^5.2.2"
+    }
+}
