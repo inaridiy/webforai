@@ -2,7 +2,14 @@
   "name": "webforai",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "files": [
+    "dist",
+    "!dist/**/*.tsbuildinfo",
+    "src/**/*.ts",
+    "!src/**/*.test.ts",
+    "!src/**/*.test-d.ts",
+    "!src/**/*.bench.ts"
+  ],
   "scripts": {
     "clean": "rimraf dist",
     "build": "pnpm run clean && tsc ",
@@ -12,7 +19,17 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "default": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./loaders/playwright": {
+      "default": "./dist/loaders/playwright.js",
+      "types": "./dist/loaders/playwright.d.ts"
+    }
+  },
   "peerDependencies": {
     "playwright": "^1.39.0"
   },
