@@ -1,0 +1,33 @@
+{
+  "name": "webforai",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "format": "biome format . --write",
+    "lint": "biome check ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "hast-util-from-html": "^2.0.1",
+    "hast-util-select": "^6.0.1",
+    "hast-util-to-html": "^9.0.0",
+    "hast-util-to-mdast": "^10.1.0",
+    "hast-util-to-text": "^4.0.0",
+    "mathjax": "^3.2.2",
+    "mathml-to-latex": "^1.3.0",
+    "mdast-util-gfm": "^3.0.0",
+    "mdast-util-math": "^3.0.0",
+    "mdast-util-to-markdown": "^2.1.0",
+    "trim-trailing-lines": "^2.1.0",
+    "unist-util-remove": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/hast": "^3.0.2",
+    "@biomejs/biome": "1.3.3",
+    "@types/mdast": "^4.0.2"
+  }
+}
