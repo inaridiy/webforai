@@ -1,7 +1,12 @@
 {
   "name": "webforai",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/inaridiy/webforai.git"
+  },
+  "homepage": "https://github.com/inaridiy/webforai.git",
   "files": [
     "dist",
     "!dist/**/*.tsbuildinfo",
@@ -18,7 +23,7 @@
     "lint": "biome check ."
   },
   "keywords": [],
-  "author": "",
+  "author": "inaridiy",
   "license": "MIT",
   "exports": {
     ".": {
