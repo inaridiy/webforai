@@ -1,0 +1,41 @@
+# Web for AI
+
+A library that provides a web interface for AI
+
+## Features
+
+- Ultra-precise HTML2Markdown conversion
+- Ultra-precise Markdown segmentation based on AST
+- Ultra-precise HTML retrieval functions using headless browsers
+- The core functionality is edge-native (runs on Cloudflare Workers!!!)
+
+## Quick Start
+
+Just install and execute scripts
+
+```bash
+pnpm i webforai playwright
+```
+
+```js
+import { promises as fs } from "fs";
+import { htmlToMarkdown, htmlToMdast } from "webforai";
+import { loadHtml } from "webforai/loaders/playwright";
+
+const url = "https://www.npmjs.com/package/webforai";
+const html = await loadHtml(url);
+
+const markdown = htmlToMarkdown(html, { solveLinks: url });
+
+await fs.writeFile("output.md", markdown);
+```
+
+## Usage
+
+### htmlToMarkdown
+
+**`htmlToMarkdown(html: string, options?: HtmlToMarkdownOptions): string`**
+
+### htmlToMdast
+
+**`htmlToMdast = (html: string, options?: HtmlToMdastOptions): Mdast`**
