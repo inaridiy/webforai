@@ -8,11 +8,11 @@ import { extractHast } from "./extract-hast";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
 import { mathHandler } from "./mdast-handlers/math-handler";
 
-export type HtmlToMarkdownOptions = {
+export type HtmlToMdastOptions = {
 	extractHast?: false | ((hast: Hast) => Hast);
 };
 
-export const htmlToMdast = (html: string, options?: HtmlToMarkdownOptions): Mdast => {
+export const htmlToMdast = (html: string, options?: HtmlToMdastOptions): Mdast => {
 	const hast = fromHtml(html, { fragment: true });
 	const extractedHast = options?.extractHast ? options.extractHast(hast) : extractHast(hast);
 	const mdast = toMdast(extractedHast, {
