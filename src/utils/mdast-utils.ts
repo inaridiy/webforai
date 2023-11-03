@@ -5,8 +5,9 @@ export const unwarpRoot = (mdast: Mdast): RootContent[] => {
 	return [mdast];
 };
 
-export const warpRoot = (mdast: RootContent[]): Mdast => {
-	return { type: "root", children: mdast };
+export const warpRoot = (mdast: RootContent[] | Mdast): Mdast => {
+	if (Array.isArray(mdast)) return { type: "root", children: mdast };
+	return mdast;
 };
 
 export const internalType = (content: RootContent): string => {
