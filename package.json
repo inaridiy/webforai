@@ -1,7 +1,6 @@
 {
   "name": "webforai",
-  "version": "0.0.1",
-  "type": "module",
+  "version": "0.0.4",
   "description": "",
   "repository": {
     "type": "git",
@@ -26,6 +25,8 @@
   "keywords": [],
   "author": "inaridiy",
   "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "default": "./dist/index.js",
