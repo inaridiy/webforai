@@ -1,6 +1,6 @@
 # Web for AI
 
-![LOGO](./images/logo.webp)
+![LOGO](https://github.com/inaridiy/webforai/blob/main/images/logo.webp)
 
 A library that provides a web interface for AI
 
@@ -66,7 +66,7 @@ Load HTML from the specified URL. This function uses Playwright internally.
 
 ### Voice Genius - Explanatory video generation by AI
 
-<img src="./images/voice-genius.png" width="300px">
+<img src="https://github.com/inaridiy/webforai/blob/main/images/voice-genius.png" width="300px">
 
 by [@moons14](https://twitter.com/moons_dev)
 
