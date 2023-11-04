@@ -1,12 +1,30 @@
 {
   "name": "webforai",
-  "version": "0.0.8",
-  "description": "",
+  "version": "0.0.10",
+  "description": "A library that provides a web interface for AI",
+  "author": "inaridiy",
+  "license": "MIT",
+  "keywords": [
+    "web",
+    "ai",
+    "html",
+    "html2md",
+    "markdown",
+    "mdast",
+    "hast"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/inaridiy/webforai.git"
   },
   "homepage": "https://github.com/inaridiy/webforai.git",
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "pnpm run clean && tsc ",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "format": "biome format . --write",
+    "lint": "biome check ."
+  },
   "files": [
     "dist",
     "!dist/**/*.tsbuildinfo",
@@ -15,16 +33,6 @@
     "!src/**/*.test-d.ts",
     "!src/**/*.bench.ts"
   ],
-  "scripts": {
-    "clean": "rimraf dist",
-    "build": "pnpm run clean && tsc ",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "format": "biome format . --write",
-    "lint": "biome check ."
-  },
-  "keywords": [],
-  "author": "inaridiy",
-  "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
