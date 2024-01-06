@@ -1,4 +1,4 @@
-import playwright from "playwright";
+import * as playwright from "playwright";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

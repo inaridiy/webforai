@@ -1,14 +1,14 @@
 {
-    "name": "examples",
-    "type": "module",
-    "dependencies": {
-        "playwright": "^1.39.0",
-        "webforai": "0.0.7"
-    },
-    "devDependencies": {
-        "@tsconfig/recommended": "^1.0.3",
-        "@types/node": "^20.8.10",
-        "tsx": "^3.14.0",
-        "typescript": "^5.2.2"
-    }
+  "name": "examples",
+  "type": "module",
+  "dependencies": {
+    "playwright": "^1.39.0",
+    "webforai": "0.0.1"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.3",
+    "@types/node": "^20.8.10",
+    "tsx": "^3.14.0",
+    "typescript": "^5.2.2"
+  }
 }

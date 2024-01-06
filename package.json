@@ -1,9 +1,10 @@
 {
   "name": "webforai",
-  "version": "0.0.11",
+  "version": "0.0.15",
   "description": "A library that provides a web interface for AI",
   "author": "inaridiy",
   "license": "MIT",
+  "type": "module",
   "keywords": [
     "web",
     "ai",
@@ -20,7 +21,7 @@
   "homepage": "https://github.com/inaridiy/webforai.git",
   "scripts": {
     "clean": "rimraf dist",
-    "build": "pnpm run clean && tsc ",
+    "build": "pnpm run clean && tsc --module es2015",
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "biome format . --write",
     "lint": "biome check ."
@@ -37,12 +38,13 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "default": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./loaders/playwright": {
-      "default": "./dist/loaders/playwright.js",
-      "types": "./dist/loaders/playwright.d.ts"
+      
+      "types": "./dist/loaders/playwright.d.ts",
+      "default": "./dist/loaders/playwright.js"
     }
   },
   "peerDependencies": {

@@ -9,8 +9,8 @@ dependencies:
     specifier: ^1.39.0
     version: 1.39.0
   webforai:
-    specifier: 0.0.7
-    version: 0.0.7(playwright@1.39.0)
+    specifier: 0.0.11
+    version: 0.0.11(playwright@1.39.0)
 
 devDependencies:
   '@tsconfig/recommended':
@@ -1120,8 +1120,8 @@ packages:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
     dev: false
 
-  /webforai@0.0.7(playwright@1.39.0):
-    resolution: {integrity: sha512-mnktW6WaVzi4obRj8jv8pvXDuUqkArsPn8dACcHFSxEE4Ye0wGNQetDlbmIuXznBhVRUVc675eASjp7Drl0PjA==}
+  /webforai@0.0.11(playwright@1.39.0):
+    resolution: {integrity: sha512-Ikn2BSoU3fV7bJcqPhr7Sqv7LG0gwqje1Rlxt95645O3hBQpdscmlf18n/4iwVKL4roSiaM3X2wRkaDLj5OKXw==}
     peerDependencies:
       playwright: ^1.39.0
     peerDependenciesMeta:
