@@ -1,8 +1,8 @@
 import { promises as fs } from "fs";
-import { htmlToMarkdown } from "webforai";
+import { htmlToMarkdown, htmlToMdast, mdastSplitter, mdastToMarkdown } from "webforai";
 import { loadHtml } from "webforai/loaders/playwright";
 
-const url = "https://www.npmjs.com/package/webforai";
+const url = "https://medium.com/@alcueca/how-to-design-a-lending-protocol-on-ethereum-18ba5849aaf0";
 const html = await loadHtml(url);
 
 const markdown = htmlToMarkdown(html, { solveLinks: url });

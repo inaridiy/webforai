@@ -33,7 +33,9 @@ const addExtension = (extension = ".js", fileExtension = ".ts"): Plugin => ({
 				let tsPath = `${p}${fileExtension}`;
 
 				let importPath = "";
-				if (fs.existsSync(tsPath)) {
+				if (path.basename(args.importer).split(".")[0] === args.path) {
+					importPath = args.path;
+				} else if (fs.existsSync(tsPath)) {
 					importPath = args.path + extension;
 				} else {
 					tsPath = path.join(args.resolveDir, args.path, `index${fileExtension}`);
@@ -41,6 +43,7 @@ const addExtension = (extension = ".js", fileExtension = ".ts"): Plugin => ({
 						importPath = `${args.path}/index${extension}`;
 					}
 				}
+
 				return { path: importPath, external: true };
 			}
 		});

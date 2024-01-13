@@ -1,9 +1,12 @@
 {
   "name": "examples",
   "type": "module",
+  "scripts": {
+    "start": "pnpm tsx ./src/index.ts"
+  },
   "dependencies": {
     "playwright": "^1.39.0",
-    "webforai": "0.0.17"
+    "webforai": "0.0.19"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",
