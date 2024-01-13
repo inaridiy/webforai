@@ -54,6 +54,7 @@ const commonOptions: BuildOptions = {
 	entryPoints,
 	logLevel: "info",
 	platform: "node",
+	sourcemap: true,
 };
 
 const cjsBuild = () =>
@@ -78,4 +79,4 @@ const [esmCtx, cjsCtx] = await Promise.all([esmBuild(), cjsBuild()]);
 if (isWatch) Promise.all([esmCtx.watch(), cjsCtx.watch()]);
 else Promise.all([esmCtx.rebuild(), cjsCtx.rebuild()]).then(() => Promise.all([esmCtx.dispose(), cjsCtx.dispose()]));
 
-exec(`tsc ${isWatch ? "-w" : ""} --emitDeclarationOnly --declaration --project tsconfig.build.json`);
+exec(`tsc ${isWatch ? "-w" : ""} --declaration --project tsconfig.build.json`);
