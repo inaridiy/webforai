@@ -9,6 +9,7 @@ const markdown = htmlToMarkdown(html, { solveLinks: url });
 
 await fs.writeFile("output.md", markdown);
 
+console.log("Done!");
 const mdast = htmlToMdast(html);
 const splittedMdast = await mdastSplitter(mdast, async (md) => 1000 > md.length);
 const splittedMds = splittedMdast.map((mdast) => mdastToMarkdown(mdast));

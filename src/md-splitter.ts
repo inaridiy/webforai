@@ -14,10 +14,9 @@ const _mdastSplitter = async (
 	checker: (markdown: string) => Promise<boolean>,
 	splitterGenerator: SplitterGenerator,
 ): Promise<RootContent[][]> => {
-	const markdown = mdastToMarkdown(warpRoot(contents));
-	if ((await checker(markdown)) || 3 > contents.length) return [contents];
 	const splitter = splitterGenerator.next().value;
-
+	const markdown = mdastToMarkdown(warpRoot(contents));
+	if ((await checker(markdown)) || contents.length === 1) return [contents];
 	const chunked = splitter
 		? contents.reduce<RootContent[][]>((acc, content) => {
 				if (internalType(content) === splitter || acc.length === 0) {
@@ -27,7 +26,7 @@ const _mdastSplitter = async (
 				acc[acc.length - 1].push(content);
 				return acc;
 		  }, [])
-		: chunk(contents, 3);
+		: chunk(contents, Math.ceil(contents.length / 2));
 
 	const splitting = chunked.map((chunk) => _mdastSplitter(chunk, checker, splitterGenerator));
 

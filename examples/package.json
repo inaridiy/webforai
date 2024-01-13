@@ -5,7 +5,7 @@
     "start": "pnpm tsx ./src/index.ts"
   },
   "dependencies": {
-    "webforai": "0.0.22"
+    "webforai": "0.0.23"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",
