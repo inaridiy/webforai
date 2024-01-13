@@ -5,12 +5,12 @@
     "start": "pnpm tsx ./src/index.ts"
   },
   "dependencies": {
-    "playwright": "^1.39.0",
-    "webforai": "0.0.21"
+    "webforai": "0.0.22"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",
     "@types/node": "^20.8.10",
+    "playwright": "^1.39.0",
     "tsx": "^3.14.0",
     "typescript": "^5.2.2"
   }

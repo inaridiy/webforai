@@ -5,12 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
-  playwright:
-    specifier: ^1.39.0
-    version: 1.39.0
   webforai:
-    specifier: 0.0.21
-    version: 0.0.21(playwright@1.39.0)
+    specifier: 0.0.22
+    version: 0.0.22(playwright@1.39.0)
 
 devDependencies:
   '@tsconfig/recommended':
@@ -19,6 +16,9 @@ devDependencies:
   '@types/node':
     specifier: ^20.8.10
     version: 20.8.10
+  playwright:
+    specifier: ^1.39.0
+    version: 1.39.0
   tsx:
     specifier: ^3.14.0
     version: 3.14.0
@@ -386,7 +386,6 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
     requiresBuild: true
-    dev: false
     optional: true
 
   /fsevents@2.3.3:
@@ -957,7 +956,6 @@ packages:
     resolution: {integrity: sha512-+k4pdZgs1qiM+OUkSjx96YiKsXsmb59evFoqv8SKO067qBA+Z2s/dCzJij/ZhdQcs2zlTAgRKfeiiLm8PQ2qvw==}
     engines: {node: '>=16'}
     hasBin: true
-    dev: false
 
   /playwright@1.39.0:
     resolution: {integrity: sha512-naE5QT11uC/Oiq0BwZ50gDmy8c8WLPRTEWuSSFVG2egBka/1qMoSqYQcROMT9zLwJ86oPofcTH2jBY/5wWOgIw==}
@@ -967,7 +965,6 @@ packages:
       playwright-core: 1.39.0
     optionalDependencies:
       fsevents: 2.3.2
-    dev: false
 
   /property-information@6.4.0:
     resolution: {integrity: sha512-9t5qARVofg2xQqKtytzt+lZ4d1Qvj8t5B8fEwXK6qOfgRLgH/b13QlgEyDh033NOS31nXeFbYv7CLUDG1CeifQ==}
@@ -1120,8 +1117,8 @@ packages:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
     dev: false
 
-  /webforai@0.0.21(playwright@1.39.0):
-    resolution: {integrity: sha512-ZlG1ioGk8KLQ+ivjJbIQjfyBliJ02WrVsRbk1SzfykOs3FPd/mug1/6GaWROZPJF2f/qaymYFGsvJuXohhb6/A==}
+  /webforai@0.0.22(playwright@1.39.0):
+    resolution: {integrity: sha512-6liuyPlxK8o1/88B7bQdqo+mkoq98JHFftQ1TXKECkl2Xhyumaes1T3PXwvpuKJYajvVvr++01qV4JWmMlC6dA==}
     peerDependencies:
       playwright: ^1.39.0
     peerDependenciesMeta:
