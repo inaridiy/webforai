@@ -3,7 +3,7 @@
   "type": "module",
   "dependencies": {
     "playwright": "^1.39.0",
-    "webforai": "0.0.1"
+    "webforai": "0.0.17"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",

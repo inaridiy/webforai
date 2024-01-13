@@ -4,7 +4,7 @@ import { select, selectAll } from "hast-util-select";
 import { remove } from "unist-util-remove";
 
 export const extractHast = (hast: Hast) => {
-	const removeSelectors = ["header", "footer", "nav"];
+	const removeSelectors = ["header", "footer", "nav", "speechify-ignore"];
 
 	for (const selector of removeSelectors) {
 		const matchedNodes = selectAll(selector, hast);

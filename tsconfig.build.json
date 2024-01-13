@@ -1,0 +1,24 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "module": "ES2020",
+        "rootDir": "./src/",
+        "outDir": "./dist/types/",
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "sourceMap": true,
+    },
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.mts"
+    ],
+    "exclude": [
+        "src/mod.ts",
+        "src/helper.ts",
+        "src/middleware.ts",
+        "src/deno/**/*.ts",
+        "src/test-utils/*.ts",
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx"
+    ]
+}

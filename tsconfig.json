@@ -1,31 +1,24 @@
 {
-  "extends": "@tsconfig/recommended/tsconfig.json",
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "src/**/*.test.ts",
-    "src/**/*.test-d.ts",
-    "src/**/*.bench.ts",
-    "src/_test"
-  ],
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
-    "esModuleInterop": false,
-    "allowSyntheticDefaultImports": false,
-    "forceConsistentCasingInFileNames": true,
-    "verbatimModuleSyntax": true,
-    "importHelpers": true,
-    "moduleResolution": "Node",
-    "sourceMap": true,
+    "target": "ES2020",
     "declaration": true,
-    "module": "ESNext",
-    "target": "ES2021",
-    "lib": [
-      "ES2022",
-      "DOM"
+    "moduleResolution": "Bundler",
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "types": [
+      "node",
     ],
-    "skipLibCheck": true
-  }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.mts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ],
 }
