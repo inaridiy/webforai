@@ -22,7 +22,7 @@
     "copy:package.cjs.json": "pnpm ncp ./package.cjs.json ./dist/cjs/package.json && pnpm ncp ./package.cjs.json ./dist/types/package.json ",
     "clean": "rimraf dist",
     "build": "pnpm clean && tsx ./build.ts && pnpm copy:package.cjs.json",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"Error: no test specified\"",
     "format": "biome format . --write",
     "lint": "biome check .",
     "prerelease": "pnpm build",
