@@ -29,7 +29,8 @@
     "release": "np"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/types/**/*.js"
   ],
   "main": "dist/cjs/index.js",
   "type": "module",

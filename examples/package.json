@@ -6,7 +6,7 @@
   },
   "dependencies": {
     "playwright": "^1.39.0",
-    "webforai": "0.0.19"
+    "webforai": "0.0.21"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",

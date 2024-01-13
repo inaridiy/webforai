@@ -54,7 +54,6 @@ const commonOptions: BuildOptions = {
 	entryPoints,
 	logLevel: "info",
 	platform: "node",
-	sourcemap: true,
 };
 
 const cjsBuild = () =>
