@@ -5,6 +5,7 @@ import { fromHtml } from "hast-util-from-html";
 import { toMdast } from "hast-util-to-mdast";
 
 import { extractHast } from "./extract-hast";
+import { customAHandler } from "./mdast-handlers/custom-a-handler";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
 import { mathHandler } from "./mdast-handlers/math-handler";
 
@@ -16,7 +17,7 @@ export const htmlToMdast = (html: string, options?: HtmlToMdastOptions): Mdast =
 	const hast = fromHtml(html, { fragment: true });
 	const extractedHast = options?.extractHast ? options.extractHast(hast) : extractHast(hast);
 	const mdast = toMdast(extractedHast, {
-		handlers: { div: customDivHandler, math: mathHandler, br: () => {} },
+		handlers: { div: customDivHandler, math: mathHandler, a: customAHandler, br: () => {} },
 	});
 
 	return mdast;
