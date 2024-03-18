@@ -43,7 +43,7 @@ ${markdown}
 		response_format: { type: "json_object" },
 		messages: [{ role: "user", content: prompt }],
 	});
-	const json = JSON.parse(response.choices[0].message.content);
+	const json = JSON.parse(response.choices[0].message.content ?? "");
 	scrapedPackages.push(json);
 }
 
