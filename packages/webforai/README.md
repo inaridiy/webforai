@@ -15,8 +15,8 @@ A library that provides a web interface for AI
 
 There is a demo API for Html2Markdown deployed on CloudflareWorker. Please access the following link
 
-- [https://site-reader-api.inaridiy.workers.dev/?url=https://www.npmjs.com/package/webforai](https://site-reader-api.inaridiy.workers.dev/?url=https://www.npmjs.com/package/webforai)
-- [https://site-reader-api.inaridiy.workers.dev/?html=%3Ch1%3EHello%20World%3C/h1%3E](https://site-reader-api.inaridiy.workers.dev/?html=%3Ch1%3EHello%20World%3C/h1%3E)
+- [https://webforai.inaridiy.workers.dev/?url=https://www.npmjs.com/package/webforai](https://webforai.inaridiy.workers.dev/?url=https://www.npmjs.com/package/webforai)
+- [https://webforai.inaridiy.workers.dev/?html=%3Ch1%3EHello%20World%3C/h1%3E](https://webforai.inaridiy.workers.dev/?html=%3Ch1%3EHello%20World%3C/h1%3E)
 
 ## Quick Start
 
@@ -39,27 +39,27 @@ const markdown = htmlToMarkdown(html, { solveLinks: url });
 await fs.writeFile("output.md", markdown);
 ```
 
-other examples are in [examples](./examples/src/index.ts)
+other examples are in [examples](./examples/simple/src/index.ts)
 
 ## Usage
 
 ### Main Functions
 
-**`htmlToMarkdown(html: string, options?: HtmlToMarkdownOptions): string`**
+**`htmlToMarkdown(html: string, options?: HtmlToMarkdownOptions): string`**  
 Convert HTML to Markdown. By default, unnecessary HTML is excluded and processed.
 If `solveLinks` is specified, the relative links in the Mdast will be resolved.
 This function just calls htmlToMdast and mdastToMarkdown in that order internally.
 
-**`htmlToMdast(html: string, options?: HtmlToMdastOptions): Mdast`**
+**`htmlToMdast(html: string, options?: HtmlToMdastOptions): Mdast`**  
 This project uses Hast and Mdast as defined by syntax-tree internally.
 This function converts HTML to Mdast, an intermediate representation, which is required when using `mdastSplitter`, etc.
 
-**`mdastToMarkdown(mdast: Mdast | RootContent[], options?: { solveLinks?: string }): string`**
+**`mdastToMarkdown(mdast: Mdast | RootContent[], options?: { solveLinks?: string }): string`**  
 Convert Mdast to Markdown. If `solveLinks` is specified, the relative links in the Mdast will be resolved.
 
 ### Loader Functions
 
-**`loadHtml(url: string, options?: LoadHtmlOptions): Promise<string>`**
+**`loadHtml(url: string, options?: LoadHtmlOptions): Promise<string>`**  
 Load HTML from the specified URL. This function uses Playwright internally.
 
 ## Early Users

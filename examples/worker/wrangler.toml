@@ -1,0 +1,5 @@
+name = "webforai"
+main = "src/index.ts"
+compatibility_date = "2024-03-14"
+compatibility_flags = ["nodejs_compat"]
+
