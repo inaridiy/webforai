@@ -4,7 +4,7 @@ import { mdastToMarkdown } from "./mdast-to-markdown";
 
 export interface HtmlToMarkdownOptions {
 	extractHast?: false | ((hast: Hast) => Hast);
-	solveLinks?: string;
+	url?: string;
 }
 
 export const htmlToMarkdown = (html: string, options?: HtmlToMarkdownOptions): string => {

@@ -7,12 +7,12 @@ import { toMarkdown } from "mdast-util-to-markdown";
 import { linkReplacer } from "./link-replacer";
 import { warpRoot } from "./utils/mdast-utils";
 
-export const mdastToMarkdown = (mdast: Mdast | RootContent[], options?: { solveLinks?: string }): string => {
+export const mdastToMarkdown = (mdast: Mdast | RootContent[], options?: { url?: string }): string => {
 	let markdown = toMarkdown(warpRoot(mdast), {
 		extensions: [gfmToMarkdown(), mathToMarkdown()],
 	});
 
-	if (options?.solveLinks) markdown = linkReplacer(markdown, options.solveLinks);
+	if (options?.url) markdown = linkReplacer(markdown, options.url);
 
 	return markdown;
 };

@@ -10,6 +10,6 @@ const args = arg({ "--url": String });
 const url = args["--url"] || "https://www.npmjs.com/package/webforai";
 
 const html = await loadHtml(url);
-const markdown = htmlToMarkdown(html);
+const markdown = htmlToMarkdown(html, { url });
 
 await fs.writeFile(".output/output.md", markdown);

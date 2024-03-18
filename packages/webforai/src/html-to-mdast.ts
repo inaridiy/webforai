@@ -4,18 +4,26 @@ import type { Nodes as Mdast } from "mdast";
 import { fromHtml } from "hast-util-from-html";
 import { toMdast } from "hast-util-to-mdast";
 
-import { extractHast } from "./extract-hast";
+import { stronglyExtractHast } from "./extract-hast";
 import { customAHandler } from "./mdast-handlers/custom-a-handler";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
 import { mathHandler } from "./mdast-handlers/math-handler";
 
 export type HtmlToMdastOptions = {
-	extractHast?: false | ((hast: Hast) => Hast);
+	extractHast?: false | ((hast: Hast) => Hast) | "strongly";
 };
 
 export const htmlToMdast = (html: string, options?: HtmlToMdastOptions): Mdast => {
+	const { extractHast = "strongly" } = options || {};
+
 	const hast = fromHtml(html, { fragment: true });
-	const extractedHast = options?.extractHast ? options.extractHast(hast) : extractHast(hast);
+	const extractedHast =
+		extractHast === "strongly"
+			? stronglyExtractHast(hast)
+			: typeof extractHast === "function"
+			  ? extractHast(hast)
+			  : hast;
+
 	const mdast = toMdast(extractedHast, {
 		handlers: { div: customDivHandler, math: mathHandler, a: customAHandler, br: () => {} },
 	});
