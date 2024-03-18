@@ -16,7 +16,7 @@ export const loadHtml = async (url: string, context?: playwright.BrowserContext)
 	await page.goto(url);
 	await Promise.race([page.waitForLoadState("networkidle"), sleep(10000)]);
 	const html = await page.content();
-	//await page.close();
-	//if (_browser) await _browser.close();
+	await page.close();
+	if (_browser) await _browser.close();
 	return html;
 };
