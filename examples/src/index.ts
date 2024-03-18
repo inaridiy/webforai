@@ -1,8 +1,8 @@
 import { promises as fs } from "fs";
-import { htmlToMarkdown, htmlToMdast, mdastSplitter, mdastToMarkdown } from "webforai";
-import { loadHtml } from "webforai/loaders/playwright";
+import { htmlToMarkdown, htmlToMdast, mdastSplitter, mdastToMarkdown } from "../../src/index.js";
+import { loadHtml } from "../../src/loaders/playwright.js";
 
-const url = "https://medium.com/@alcueca/how-to-design-a-lending-protocol-on-ethereum-18ba5849aaf0";
+const url = "https://news.ycombinator.com/item?id=25976439";
 const html = await loadHtml(url);
 
 const markdown = htmlToMarkdown(html, { solveLinks: url });
