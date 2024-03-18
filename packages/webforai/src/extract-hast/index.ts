@@ -5,7 +5,7 @@ import { filter } from "unist-util-filter";
 const REMOVE_REGEX =
 	/header|nav|speechify-ignore|assist|-ad-|hidden|^hid$| hid$| hid |^hid |banner|combx|comment|com-|contact|foot|footer|footnote|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|assist|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|tool|widget/i;
 
-export const extractHast = (hast: Hast) => {
+export const extractHast = (hast: Hast): Hast => {
 	const selectors = ["article", "div#article", "main", "div.container"];
 	let selectedElement = hast;
 	for (const selector of selectors) {
@@ -23,5 +23,5 @@ export const extractHast = (hast: Hast) => {
 		return !REMOVE_REGEX.test(elementName);
 	});
 
-	return removedElements;
+	return removedElements as Hast;
 };

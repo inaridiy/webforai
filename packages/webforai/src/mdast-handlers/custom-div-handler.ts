@@ -11,13 +11,16 @@ export const customDivHandler: Handle = (state, node) => {
 		if (String(className) === "highlight-text-html-basic") {
 			highlightLanguage = "html";
 			break;
-		} else if (String(className).includes("highlight-source-")) {
+		}
+		if (String(className).includes("highlight-source-")) {
 			highlightLanguage = String(className).slice("highlight-source-".length);
 			break;
-		} else if (String(className).includes("language-")) {
+		}
+		if (String(className).includes("language-")) {
 			highlightLanguage = String(className).slice("language-".length);
 			break;
-		} else if (String(className).includes("code-block_wrapper")) {
+		}
+		if (String(className).includes("code-block_wrapper")) {
 			const text = toText(node);
 			if (!text.includes(".")) break;
 			const lang = toText(node).split("\n")[0].split(".").slice(-1)[0];
