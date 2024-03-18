@@ -13,7 +13,7 @@ const fetchOptions = {
 app.get("/", async (c) => {
 	const { html, url } = c.req.query();
 	const _html = html ?? (await fetch(url, fetchOptions).then((res) => res.text()));
-	const markdown = htmlToMarkdown(_html);
+	const markdown = htmlToMarkdown(_html, { url });
 	return c.text(markdown);
 });
 
