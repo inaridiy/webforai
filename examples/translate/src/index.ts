@@ -26,6 +26,8 @@ const mdast = htmlToMdast(html);
 const splitted = await mdastSplitter(mdast, async (md) => 1000 > md.length);
 
 for (const mdast of splitted) {
+	const baseMd = mdastToMarkdown(mdast);
+	if (baseMd.length < 10) continue;
 	const prompt = `次のWebサイトをMarkdownに変換したドキュメントを、日本語に翻訳してください。
 
 <instruction>
@@ -35,7 +37,7 @@ for (const mdast of splitted) {
 </instruction>
 
 <markdown>
-${mdastToMarkdown(mdast)}
+${baseMd}
 </markdown>`;
 	const translatedRes = await anthropic.messages.create({
 		model: "claude-3-haiku-20240307",
