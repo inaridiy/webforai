@@ -28,12 +28,13 @@ const splitted = await mdastSplitter(mdast, async (md) => 1000 > md.length);
 for (const mdast of splitted) {
 	const baseMd = mdastToMarkdown(mdast);
 	if (baseMd.length < 10) continue;
-	const prompt = `次のWebサイトをMarkdownに変換したドキュメントを、日本語に翻訳してください。
+	const prompt = `あなたは、Markdownドキュメント翻訳のスペシャリストです。次のWebサイトをMarkdownに変換したドキュメントを、日本語に翻訳してください。
 
 <instruction>
-1. 翻訳する際は、原文のニュアンスをできるだけ損なわないようにしてください。
-2. 翻訳する過程で、変換されたドキュメントを変形して、読みやすくしてください。
-3. 翻訳されたMarkdownのみを出力してください。
+1. 翻訳する際は、推敲を重ね、あたかも最初から日本語の文章であるかのように翻訳してください。
+2. 専門分野の翻訳では、その分野の用語を正しく理解し、適切な訳語をあててください。
+3. ドキュメントは機械的に変換したものであるため、不整合や誤り、本文以外の不要な情報が含まれている可能性があります。それらの誤りを修正して読みやすい形にしてください。
+4. 翻訳したMarkdownのみを出力してください。
 </instruction>
 
 <markdown>
