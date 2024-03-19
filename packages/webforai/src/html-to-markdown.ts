@@ -1,9 +1,7 @@
-import type { Root as Hast } from "hast";
-import { htmlToMdast } from "./html-to-mdast";
+import { HtmlToMdastOptions, htmlToMdast } from "./html-to-mdast";
 import { mdastToMarkdown } from "./mdast-to-markdown";
 
-export interface HtmlToMarkdownOptions {
-	extractHast?: false | ((hast: Hast) => Hast);
+export interface HtmlToMarkdownOptions extends HtmlToMdastOptions {
 	url?: string;
 }
 

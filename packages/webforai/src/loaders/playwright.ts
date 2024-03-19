@@ -6,11 +6,9 @@ export const loadHtml = async (url: string, context?: playwright.BrowserContext)
 	let _browser: playwright.Browser | null = null;
 	let _context: playwright.BrowserContext;
 	if (!context) {
-		_browser = await playwright.chromium.launch({ headless: false });
+		_browser = await playwright.chromium.launch({ headless: true });
 		_context = await _browser.newContext();
-	} else {
-		_context = context;
-	}
+	} else _context = context;
 
 	const page = await _context.newPage();
 	await page.goto(url);
