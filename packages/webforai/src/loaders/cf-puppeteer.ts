@@ -7,5 +7,7 @@ export const loadHtml = async (url: string, ctx: puppeteer.BrowserWorker) => {
 
 	const html = await page.content();
 
+	await page.close();
+
 	return html;
 };
