@@ -26,7 +26,7 @@ const evaluateTextComplexity = (text: string) => {
 };
 
 const REMOVE_REGEX =
-	/icon|header|nav|speechify-ignore|assist|-ad-|banner|combx|comment|com-|contact|foot|footer|footnote|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|assist|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|tool|widget/i;
+	/fallback|icon|header|nav|speechify-ignore|assist|-ad-|banner|combx|comment|com-|contact|foot|footer|footnote|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|assist|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|tool|widget/i;
 const HIDDEN_REGEX = /hidden|^hid$| hid$| hid |^hid /i;
 
 export const stronglyExtractHast = (hast: Hast): Hast => {
