@@ -49,6 +49,11 @@
       "types": "./dist/types/loaders/playwright.d.ts",
       "import": "./dist/loaders/playwright.js",
       "require": "./dist/cjs/loaders/playwright.js"
+    },
+    "./loaders/cf-puppeteer": {
+      "types": "./dist/types/loaders/cf-puppeteer.d.ts",
+      "import": "./dist/loaders/cf-puppeteer.js",
+      "require": "./dist/cjs/loaders/cf-puppeteer.js"
     }
   },
   "typesVersions": {
@@ -58,14 +63,21 @@
       ],
       "loaders/playwright": [
         "./dist/types/loaders/playwright.d.ts"
+      ],
+      "loaders/cf-puppeteer": [
+        "./dist/types/loaders/cf-puppeteer.d.ts"
       ]
     }
   },
   "peerDependencies": {
-    "playwright": "^1.0.0"
+    "playwright": "^1.0.0",
+    "@cloudflare/puppeteer": "^0.0.6"
   },
   "peerDependenciesMeta": {
     "playwright": {
+      "optional": true
+    },
+    "@cloudflare/puppeteer": {
       "optional": true
     }
   },
@@ -85,6 +97,7 @@
     "unist-util-remove": "^4.0.0"
   },
   "devDependencies": {
+    "@cloudflare/puppeteer": "^0.0.6",
     "@tsconfig/recommended": "^1.0.3",
     "@types/hast": "^3.0.2",
     "@types/mdast": "^4.0.2",

@@ -12,6 +12,7 @@
     "noUnusedParameters": false,
     "types": [
       "node",
+      "@cloudflare/workers-types",
     ],
   },
   "include": [
