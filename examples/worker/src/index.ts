@@ -1,7 +1,13 @@
+import { BrowserWorker } from "@cloudflare/puppeteer";
 import { Hono } from "hono";
 import { htmlToMarkdown } from "webforai";
+import { loadHtml } from "webforai/loaders/cf-puppeteer";
 
-const app = new Hono();
+const app = new Hono<{
+	Bindings: {
+		MYBROWSER: BrowserWorker;
+	};
+}>();
 
 const fetchOptions = {
 	headers: {
@@ -14,6 +20,15 @@ app.get("/", async (c) => {
 	const { html, url } = c.req.query();
 	const _html = html ?? (await fetch(url, fetchOptions).then((res) => res.text()));
 	const markdown = htmlToMarkdown(_html, { url });
+	return c.text(markdown);
+});
+
+app.get("/browser-rendering", async (c) => {
+	const { url } = c.req.query();
+
+	const html = await loadHtml(url, c.env.MYBROWSER);
+
+	const markdown = htmlToMarkdown(html, { url });
 	return c.text(markdown);
 });
 
