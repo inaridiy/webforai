@@ -17,18 +17,18 @@ const fetchOptions = {
 };
 
 app.get("/", async (c) => {
-	const { html, url } = c.req.query();
+	const { html, url, mode = "reading" } = c.req.query();
 	const _html = html ?? (await fetch(url, fetchOptions).then((res) => res.text()));
-	const markdown = htmlToMarkdown(_html, { url });
+	const aiOptions = mode === "ai" ? { linkAsText: true, hideImage: true } : {};
+	const markdown = htmlToMarkdown(_html, { url, ...aiOptions });
 	return c.text(markdown);
 });
 
 app.get("/browser-rendering", async (c) => {
-	const { url } = c.req.query();
-
+	const { url, mode = "reading" } = c.req.query();
 	const html = await loadHtml(url, c.env.MYBROWSER);
-
-	const markdown = htmlToMarkdown(html, { url });
+	const aiOptions = mode === "ai" ? { linkAsText: true, hideImage: true } : {};
+	const markdown = htmlToMarkdown(html, { url, ...aiOptions });
 	return c.text(markdown);
 });
 
