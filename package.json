@@ -7,7 +7,14 @@
     "type": "git",
     "url": "https://github.com/inaridiy/webforai.git"
   },
-  "homepage": "https://github.com/inaridiy/webforai.git",
+  "homepage": "https://github.com/inaridiy/webforai",
+  "bugs": "https://github.com/inaridiy/webforai/issues",
+  "repository": "github:inaridiy/webforai",
+  "keywords": [
+    "ai",
+    "web",
+    "scraping"
+  ],
   "scripts": {
     "build": "pnpm -r --filter \"./packages/**\" run build",
     "format": "biome format . --write",
