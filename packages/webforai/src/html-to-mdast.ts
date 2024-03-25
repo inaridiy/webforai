@@ -19,6 +19,8 @@ const DEFAULT_EXTRACT_HAST: ExtractHast[] = ["strongly"];
 
 export type HtmlToMdastOptions = {
 	extractHast?: ExtractHast | ExtractHast[];
+	linkAsText?: boolean;
+	hideImage?: boolean;
 };
 
 export const htmlToMdast = (html: string, options?: HtmlToMdastOptions): Mdast => {
@@ -36,7 +38,13 @@ export const htmlToMdast = (html: string, options?: HtmlToMdastOptions): Mdast =
 		}, hast) || hast;
 
 	const mdast = toMdast(extractedHast, {
-		handlers: { div: customDivHandler, math: mathHandler, a: customAHandler, br: () => {} },
+		handlers: {
+			div: customDivHandler,
+			math: mathHandler,
+			a: customAHandler({ asText: options?.linkAsText }),
+			br: () => {},
+			...(options?.hideImage ? { img: () => {} } : {}),
+		},
 	});
 
 	return mdast;
