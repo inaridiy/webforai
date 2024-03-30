@@ -5,14 +5,16 @@ import { fromHtml } from "hast-util-from-html";
 import { toMdast } from "hast-util-to-mdast";
 
 import { stronglyExtractHast } from "./extract-hast";
+import { readabilityExtractHast } from "./extract-hast/readability";
 import { customAHandler } from "./mdast-handlers/custom-a-handler";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
 import { mathHandler } from "./mdast-handlers/math-handler";
 
-type ExtractHast = ((hast: Hast) => Hast) | false | "strongly";
+type ExtractHast = ((hast: Hast) => Hast) | false | "strongly" | "readability";
 
 const PRESET_EXTRACT_HAST = {
 	strongly: stronglyExtractHast,
+	readability: readabilityExtractHast,
 };
 
 const DEFAULT_EXTRACT_HAST: ExtractHast[] = ["strongly"];
