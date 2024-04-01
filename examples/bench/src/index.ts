@@ -20,7 +20,7 @@ for (const url of targets) {
 	const html = await loadHtml(url);
 	await fs.writeFile(`.output/${id}/${url.split("/").slice(-1)[0]}.html`, html);
 
-	const markdown = htmlToMarkdown(html, { url, linkAsText: true, hideImage: true, extractHast: "strongly" });
+	const markdown = htmlToMarkdown(html, { url, linkAsText: true, hideImage: true, extractHast: "readabily" });
 
 	await fs.writeFile(`.output/${id}/${url.split("/").slice(-1)[0]}.md`, markdown);
 }
