@@ -8,12 +8,13 @@ const id = Date.now();
 await fs.mkdir(`.output/${id}`, { recursive: true });
 
 const targets = [
-	"https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts",
-	"https://ja.wikipedia.org/wiki/%E6%9C%A8%E6%9D%91%E6%8B%93%E5%93%89",
+	//"https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts",
+	// "https://ja.wikipedia.org/wiki/%E6%9C%A8%E6%9D%91%E6%8B%93%E5%93%89",
 	"https://zenn.dev/frontendflat/articles/9d15b1b7abd524",
-	"https://www3.nhk.or.jp/news/html/20240329/k10014405791000.html",
-	"https://www.bbc.com/news/world-europe-68679483",
-	"https://news.livedoor.com/topics/detail/26152830",
+	// "https://www3.nhk.or.jp/news/html/20240329/k10014405791000.html",
+	// "https://www.bbc.com/news/world-europe-68679483",
+	// "https://news.livedoor.com/topics/detail/26152830",
+	"https://viem.sh/docs/actions/public/getLogs.html",
 ];
 
 for (const url of targets) {
@@ -23,8 +24,8 @@ for (const url of targets) {
 	const markdown = htmlToMarkdown(html, {
 		url,
 		linkAsText: true,
-		hideImage: true,
 		tableAsText: true,
+		hideImage: true,
 		extractHast: "readability",
 	});
 

@@ -20,7 +20,7 @@ const REGEXPS = {
 	byline: /byline|author|dateline|writtenby|p-author/i,
 	unlikelyCandidates:
 		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore/i,
-	okMaybeItsACandidate: /and|article|body|column|content|main|shadow/i,
+	okMaybeItsACandidate: /and|article|body|column|content|main|shadow|code/i,
 };
 
 const BODY_SELECTORS = ["article", "#article", ".article_body", ".article-body", "#content", ".entry", "main"];
