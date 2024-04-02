@@ -1,5 +1,4 @@
 import { promises as fs } from "fs";
-import arg from "arg";
 import { htmlToMarkdown } from "webforai";
 import { loadHtml } from "webforai/loaders/playwright";
 
@@ -14,13 +13,20 @@ const targets = [
 	"https://zenn.dev/frontendflat/articles/9d15b1b7abd524",
 	"https://www3.nhk.or.jp/news/html/20240329/k10014405791000.html",
 	"https://www.bbc.com/news/world-europe-68679483",
+	"https://news.livedoor.com/topics/detail/26152830",
 ];
 
 for (const url of targets) {
 	const html = await loadHtml(url);
 	await fs.writeFile(`.output/${id}/${url.split("/").slice(-1)[0]}.html`, html);
 
-	const markdown = htmlToMarkdown(html, { url, linkAsText: true, hideImage: true, extractHast: "readabily" });
+	const markdown = htmlToMarkdown(html, {
+		url,
+		linkAsText: true,
+		hideImage: true,
+		tableAsText: true,
+		extractHast: "readability",
+	});
 
 	await fs.writeFile(`.output/${id}/${url.split("/").slice(-1)[0]}.md`, markdown);
 }

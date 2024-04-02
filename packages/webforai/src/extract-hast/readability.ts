@@ -1,6 +1,6 @@
 import type { Element, Nodes as Hast } from "hast";
-import { selectAll } from "hast-util-select";
-import { toText } from "hast-util-to-text";
+import { select, selectAll } from "hast-util-select";
+import { toString } from "hast-util-to-string";
 import { filter } from "unist-util-filter";
 import { parents } from "unist-util-parents";
 import { classnames, hasAncestors, isStrInclude, matchString } from "./utils";
@@ -24,6 +24,22 @@ const REGEXPS = {
 };
 
 const BODY_SELECTORS = ["article", "#article", ".article_body", ".article-body", "#content", ".entry", "main"];
+
+const PARAGRAPH_TAGS = ["p", "div", "section", "article", "main", "aside", "header", "footer", "nav", "ul", "ol", "li"];
+
+const BASE_MINIMAL_LENGTH = {
+	ja: 200,
+	en: 500,
+};
+
+const tryGetLang = (node: Hast) => {
+	if (node.type !== "element") return;
+	const element = node as Element;
+	if (element.tagName !== "html") return;
+
+	const langAttr = element.properties.lang || element.properties["xml:lang"];
+	if (langAttr) return langAttr as string;
+};
 
 const metadataFilter = (node: Hast) => !["comment", "doctype"].includes(node.type);
 
@@ -67,32 +83,48 @@ const unlikelyElementFilter = (node: Hast) => {
 	return true;
 };
 
+const removeEmptyFilter = (node: Hast) => {
+	if (node.type !== "element") return true;
+	const element = node as Element;
+	if (!PARAGRAPH_TAGS.includes(element.tagName)) return true;
+
+	const text = toString(element);
+	if (text.length < 10) return false;
+	return true;
+};
+
 export const readabilityExtractHast = (hast: Hast): Hast => {
-	const proxiedHast = parents(hast) as unknown as ProxiedHast;
+	const lang = String(select("html", hast)?.properties.lang || tryGetLang(hast) || "en");
+	const body = select("body", hast) ?? hast;
+
+	const proxiedHast = parents(body) as unknown as ProxiedHast;
 	let baseFilterd = filter(proxiedHast, (node) => {
 		if (!metadataFilter(node as Hast)) return false;
 		if (!universalElementFilter(node as Hast)) return false;
 		return true;
-	}) as Hast;
+	});
 
-	const baseText = toText(baseFilterd);
-	let minimalLength = 500;
-	if (baseText.length > 500) {
-		baseFilterd = filter(baseFilterd, (node) => {
+	if (!baseFilterd) return { type: "root", children: [] };
+
+	const baseText = toString(baseFilterd);
+	let minimalLength = lang in BASE_MINIMAL_LENGTH ? BASE_MINIMAL_LENGTH[lang as keyof typeof BASE_MINIMAL_LENGTH] : 500;
+	if (baseText.length > minimalLength) {
+		const filterd = filter(baseFilterd, (node) => {
 			if (!unlikelyElementFilter(node as Hast)) return false;
 			return true;
-		}) as Hast;
+		});
+		if (filterd) baseFilterd = filterd;
 	} else minimalLength = Math.max(0, baseText.length - 200);
 
-	let bodyTree = baseFilterd;
+	let bodyTree: Hast = baseFilterd;
 	for (const selector of BODY_SELECTORS) {
 		const body = { type: "root" as const, children: selectAll(selector, baseFilterd) };
-		const bodyText = toText(body);
+		const bodyText = toString(body);
 
 		if (bodyText.length < 25) continue;
 
 		const links = selectAll("a", body);
-		const linkText = links.map((link) => toText(link)).join("");
+		const linkText = links.map((link) => toString(link)).join("");
 
 		const linkDensity = linkText.length / bodyText.length;
 		if (linkDensity > 0.4) continue;
@@ -103,5 +135,10 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 		}
 	}
 
-	return bodyTree;
+	const finalTree = filter(bodyTree, (node) => {
+		if (!removeEmptyFilter(node as Hast)) return false;
+		return true;
+	}) as Hast;
+
+	return finalTree;
 };
