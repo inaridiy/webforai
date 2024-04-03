@@ -11,10 +11,17 @@ const CODE_BLOCK_REGEX = /highlight-source|language-|codegroup|codeblock|code-bl
 const CODE_FILENAME_SELECTORS = "[class*='fileName'],[class*='fileName'],[class*='title'],[class*='Title']";
 
 export const customDivHandler: Handle = (state, node) => {
+	const randomAnchor = Math.random().toString(36).substring(7);
+	node.properties["data-anchor"] = randomAnchor;
 	const classNames = Array.isArray(node.properties.className) ? (node.properties.className as string[]) : [];
-	const codeBlock = select("pre", node);
+	const codeBlock = select(
+		`[data-anchor="${randomAnchor}"] > pre, [data-anchor="${randomAnchor}"] > * > pre, [data-anchor="${randomAnchor}"] > * > * > pre`,
+		node,
+	);
 
 	if (codeBlock && classNames.some((className) => CODE_BLOCK_REGEX.test(className))) {
+		console.log("codeBlock", classNames);
+
 		const codeValue = trimTrailingLines(toText(codeBlock)).trim();
 
 		const filenameElement = select(CODE_FILENAME_SELECTORS, node);

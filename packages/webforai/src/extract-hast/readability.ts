@@ -25,7 +25,7 @@ const REGEXPS = {
 
 const BODY_SELECTORS = ["article", "#article", ".article_body", ".article-body", "#content", ".entry", "main"];
 
-const PARAGRAPH_TAGS = ["p", "div", "section", "article", "main", "aside", "header", "footer", "nav", "ul", "ol", "li"];
+const PARAGRAPH_TAGS = ["p", "div", "section", "article", "main", "ul", "ol", "li"];
 
 const BASE_MINIMAL_LENGTH = {
 	ja: 200,
