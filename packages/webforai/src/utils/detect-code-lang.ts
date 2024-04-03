@@ -4,22 +4,25 @@ which is licensed under the CC0 1.0 Universal License.
 It was a very good simple code language selection algorithm and will be used. Thank you!
 */
 
+//TODO: Add more languages and improve the algorithm
 const languages = [
 	["bash", [/#!(\/usr)?\/bin\/bash/g, 500], [/\b(if|elif|then|fi|echo)\b|\$/g, 10]],
 	["html", [/<\/?[a-z-]+[^\n>]*>/g, 10], [/^\s+<!DOCTYPE\s+html/g, 500]],
 	["http", [/^(GET|HEAD|POST|PUT|DELETE|PATCH|HTTP)\b/g, 500]],
 	[
 		"ts",
+		[/(import .* from|export \*|export const|const .* = await)/g, 400],
 		[
-			/\b(console|await|async|function|export|import|this|class|for|let|const|map|join|require|implements|interface|namespace)\b/g,
+			/\b(console|await|async|function|undefined|export|import|this|class|for|let|const|map|join|require|implements|interface|namespace)\b/g,
 			10,
 		],
 	],
 	[
 		"tsx",
-		[/\b(react)\b/g, 200],
+		[/(import .* from|export \*|export const)/g, 400],
+		[/\b(react|next|FC)\b/g, 200],
 		[
-			/\b(console|await|async|function|export|import|this|class|for|let|const|map|join|require|implements|interface)\b/g,
+			/\b(console|await|async|function|export|undefined|import|this|class|for|let|const|map|join|require|implements|interface)\b/g,
 			10,
 		],
 	],
