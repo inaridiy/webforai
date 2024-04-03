@@ -19,7 +19,7 @@ const PRESET_EXTRACT_HAST = {
 	readability: readabilityExtractHast,
 };
 
-const DEFAULT_EXTRACT_HAST: ExtractHast[] = ["strongly"];
+const DEFAULT_EXTRACT_HAST: ExtractHast[] = ["readability"];
 
 export type HtmlToMdastOptions = {
 	extractHast?: ExtractHast | ExtractHast[];
