@@ -13,7 +13,7 @@ const targets = [
 	// "https://zenn.dev/frontendflat/articles/9d15b1b7abd524",
 	// "https://zenn.dev/dmmdata/articles/694e32c34dbd4c",
 	// "https://www3.nhk.or.jp/news/html/20240329/k10014405791000.html",
-	"https://gigazine.net/",
+	//"https://gigazine.net/",
 	"https://www.npmjs.com/package/webforai",
 	// "https://news.livedoor.com/topics/detail/26152830",
 	// "https://viem.sh/docs/actions/public/getLogs.html",
