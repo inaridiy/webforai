@@ -15,8 +15,8 @@ A library that provides a web interface for AI
 
 There is a demo API for Html2Markdown deployed on CloudflareWorker. Please access the following link
 
-- [https://webforai.inaridiy.workers.dev/?url=https://www.npmjs.com/package/webforai](https://webforai.inaridiy.workers.dev/?url=https://www.npmjs.com/package/webforai)
-- [https://webforai.inaridiy.workers.dev/?html=%3Ch1%3EHello%20World%3C/h1%3E](https://webforai.inaridiy.workers.dev/?html=%3Ch1%3EHello%20World%3C/h1%3E)
+- [NPM Package page](https://webforai.inaridiy.workers.dev/?url=https://www.npmjs.com/package/webforai)
+- [Wikipedia of Cloudflare (AI Mode)](https://webforai.inaridiy.workers.dev/?url=https://en.wikipedia.org/wiki/Cloudflare&mode=ai)
 
 ## Quick Start
 
@@ -40,6 +40,13 @@ await fs.writeFile("output.md", markdown);
 ```
 
 other examples are in [examples](./examples/simple/src/index.ts)
+
+## Examples
+
+- [Simple Example](./examples/simple/src/index.ts)
+- [Scraping With ChatGPT API](./examples/scraping/src/index.ts)
+- [Translate Markdown with Splitter](./examples/translate/src/index.ts)
+- [Cloudflare Worker with puppeteer & DO](./examples/worker/src/index.ts)
 
 ## Usage
 
