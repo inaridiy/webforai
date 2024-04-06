@@ -10,7 +10,7 @@ const CODE_BLOCK_REGEX = /highlight-source|language-|codegroup|codeblock|code-bl
 
 const CODE_FILENAME_SELECTORS = "[class*='fileName'],[class*='fileName'],[class*='title'],[class*='Title']";
 
-const LANGUAGE_MATCH_REGEX = /language-(\w+)|highlight-source-(\w+)/;
+const LANGUAGE_MATCH_REGEX = [/language-(\w+)/, /highlight-source-(\w+)/, /CodeBlock--language-(\w+)/];
 
 const findRecursive = <T>(array: T[], condition: (value: T) => boolean | T[], maxDepth = 3): T | null => {
 	if (maxDepth <= 0) return null;
@@ -38,8 +38,8 @@ export const customDivHandler: Handle = (state, node) => {
 
 		const classLang = classNames
 			.map((className) => {
-				const match = className.match(LANGUAGE_MATCH_REGEX);
-				return match?.[1] || match?.[2];
+				const match = LANGUAGE_MATCH_REGEX.map((regex) => className.match(regex)).find((match) => match);
+				return match?.[1];
 			})
 			.find((className) => className);
 
