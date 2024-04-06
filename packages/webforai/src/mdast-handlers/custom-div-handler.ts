@@ -31,14 +31,16 @@ export const customDivHandler: Handle = (state, node) => {
 	});
 
 	if (codeBlock && classNames.some((className) => CODE_BLOCK_REGEX.test(className))) {
+		const codeBlockClassNames = codeBlock.type === "element" ? (codeBlock.properties.className as string[]) ?? [] : [];
 		const codeValue = trimTrailingLines(toText(codeBlock)).trim();
 
 		const filenameElement = select(CODE_FILENAME_SELECTORS, node);
 		const fileLang = filenameElement ? toString(filenameElement).match(/\.(\w+)$/)?.[1] : null;
 
-		const classLang = classNames
+		const classLang = [...classNames, ...codeBlockClassNames]
 			.map((className) => {
 				const match = LANGUAGE_MATCH_REGEX.map((regex) => className.match(regex)).find((match) => match);
+
 				return match?.[1];
 			})
 			.find((className) => className);
