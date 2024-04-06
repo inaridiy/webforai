@@ -34,7 +34,7 @@ import { loadHtml } from "webforai/loaders/playwright";
 const url = "https://www.npmjs.com/package/webforai";
 const html = await loadHtml(url);
 
-const markdown = htmlToMarkdown(html, { solveLinks: url });
+const markdown = htmlToMarkdown(html, { url });
 
 await fs.writeFile("output.md", markdown);
 ```
