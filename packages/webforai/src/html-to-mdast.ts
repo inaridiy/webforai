@@ -7,6 +7,7 @@ import { toMdast } from "hast-util-to-mdast";
 import { stronglyExtractHast } from "./extract-hast";
 import { readabilityExtractHast } from "./extract-hast/readability";
 import { customAHandler } from "./mdast-handlers/custom-a-handler";
+import { customCodeHandler } from "./mdast-handlers/custom-code-handler";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
 import { customImgHandler } from "./mdast-handlers/custom-img-handler";
 import { customTableHandler } from "./mdast-handlers/custom-table-handler";
@@ -47,6 +48,7 @@ export const htmlToMdast = (html: string, options?: HtmlToMdastOptions): Mdast =
 		handlers: {
 			math: mathHandler,
 			div: customDivHandler,
+			pre: customCodeHandler,
 			a: customAHandler({ asText: options?.linkAsText }),
 			img: customImgHandler({ hideImage: options?.hideImage }),
 			table: customTableHandler({ asText: options?.tableAsText }),

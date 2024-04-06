@@ -15,6 +15,7 @@ const targets = [
 	// "https://www3.nhk.or.jp/news/html/20240329/k10014405791000.html",
 	//"https://gigazine.net/",
 	"https://www.npmjs.com/package/webforai",
+	"https://developers.cloudflare.com/browser-rendering/get-started/reuse-sessions/",
 	// "https://news.livedoor.com/topics/detail/26152830",
 	// "https://viem.sh/docs/actions/public/getLogs.html",
 	// "https://www.google.com/search?q=%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF&oq=%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIGCAEQLhhA0gEIMTM0OGowajSoAgCwAgE&sourceid=chrome&ie=UTF-8",
