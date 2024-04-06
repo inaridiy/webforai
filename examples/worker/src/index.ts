@@ -17,20 +17,25 @@ const schema = object({
 	mode: optional(union([literal("readability"), literal("ai")])),
 });
 
-app.get("/", cache({ cacheName: "html-to-markdown" }), vValidator("query", schema), async (c) => {
-	const { url, mode } = c.req.valid("query");
+app.get(
+	"/",
+	cache({ cacheName: "html-to-markdown", cacheControl: "max-age=3600" }),
+	vValidator("query", schema),
+	async (c) => {
+		const { url, mode } = c.req.valid("query");
 
-	const pickedKey = BROWSER_KEYS[Math.floor(Math.random() * BROWSER_KEYS.length)];
-	const browser = c.env.BROWSER.get(c.env.BROWSER.idFromName(pickedKey));
-	const result = await browser.renderUrl(url);
+		const pickedKey = BROWSER_KEYS[Math.floor(Math.random() * BROWSER_KEYS.length)];
+		const browser = c.env.BROWSER.get(c.env.BROWSER.idFromName(pickedKey));
+		const result = await browser.renderUrl(url);
 
-	if (!result.success) return c.text(result.error, 500);
+		if (!result.success) return c.text(result.error, 500);
 
-	const aiModeOptions = { linkAsText: true, tableAsText: true, hideImage: true };
-	const readabilityModeOptions = { linkAsText: false, tableAsText: false, hideImage: false };
-	const markdown = htmlToMarkdown(result.html, { url, ...(mode === "ai" ? aiModeOptions : readabilityModeOptions) });
-	return c.text(markdown);
-});
+		const aiModeOptions = { linkAsText: true, tableAsText: true, hideImage: true };
+		const readabilityModeOptions = { linkAsText: false, tableAsText: false, hideImage: false };
+		const markdown = htmlToMarkdown(result.html, { url, ...(mode === "ai" ? aiModeOptions : readabilityModeOptions) });
+		return c.text(markdown);
+	},
+);
 
 export default app;
 
@@ -57,7 +62,7 @@ export class BrowserDO extends DurableObject<Bindings> {
 
 		this.keptAliveInSeconds = 0;
 		const page = await this.browser.newPage();
-		await page.goto(normalizedUrl, { waitUntil: "domcontentloaded" });
+		await page.goto(normalizedUrl, { waitUntil: "networkidle0" });
 
 		//scriptタグを削除
 		await page.evaluate(() => {
