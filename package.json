@@ -9,7 +9,11 @@
 	},
 	"homepage": "https://github.com/inaridiy/webforai",
 	"bugs": "https://github.com/inaridiy/webforai/issues",
-	"keywords": ["ai", "web", "scraping"],
+	"keywords": [
+		"ai",
+		"web",
+		"scraping"
+	],
 	"private": true,
 	"packageManager": "pnpm@9.1.4",
 	"engines": {
@@ -27,6 +31,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.7.3",
+		"@changesets/cli": "^2.27.5",
 		"sherif": "^0.8.4",
 		"simple-git-hooks": "^2.11.1"
 	},
