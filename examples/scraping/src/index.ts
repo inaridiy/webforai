@@ -21,7 +21,7 @@ const packages = [
 const scrapedPackages = [];
 for (const packageUrl of packages) {
 	const html = await loadHtml(packageUrl);
-	const markdown = htmlToMarkdown(html, { url: packageUrl });
+	const markdown = htmlToMarkdown(html, { baseUrl: packageUrl });
 
 	const prompt = `Extract the JSON information from the package's Markdown documentation according to the schema below.
 

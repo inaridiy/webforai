@@ -21,7 +21,7 @@ export const extractHast = (hast: Hast, extractors: Extracotrs = DEFAULT_EXTRACT
 			if (extractor === false) {
 				return acc;
 			}
-			if (typeof extractor === "string" && extractor in DEFAULT_EXTRACT_HAST) {
+			if (typeof extractor === "string" && extractor in PRESET_EXTRACT_HAST) {
 				return PRESET_EXTRACT_HAST[extractor](acc);
 			}
 			if (typeof extractor === "function") {

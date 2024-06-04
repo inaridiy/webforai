@@ -27,11 +27,11 @@ for (const url of targets) {
 	await fs.writeFile(`.output/${id}/${url.split("/").slice(-1)[0]}.html`, html);
 
 	const markdown = htmlToMarkdown(html, {
-		url,
+		baseUrl: url,
+		extractors: "readability",
 		linkAsText: true,
 		tableAsText: true,
 		hideImage: true,
-		extractHast: "readability",
 	});
 
 	await fs.writeFile(`.output/${id}/${url.split("/").slice(-1)[0]}.md`, markdown);

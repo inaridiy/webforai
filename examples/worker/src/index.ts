@@ -34,7 +34,10 @@ app.get(
 
 		const aiModeOptions = { linkAsText: true, tableAsText: true, hideImage: true };
 		const readabilityModeOptions = { linkAsText: false, tableAsText: false, hideImage: false };
-		const markdown = htmlToMarkdown(result.html, { url, ...(mode === "ai" ? aiModeOptions : readabilityModeOptions) });
+		const markdown = htmlToMarkdown(result.html, {
+			baseUrl: url,
+			...(mode === "ai" ? aiModeOptions : readabilityModeOptions),
+		});
 		return c.text(markdown);
 	},
 );
