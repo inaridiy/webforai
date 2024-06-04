@@ -24,6 +24,8 @@ jobs:
         with:
           version: 9.1.4
           run_install: true
+      - name: Setup npmrc
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
       - name: create and publish versions
         uses: changesets/action@v1
         with:
