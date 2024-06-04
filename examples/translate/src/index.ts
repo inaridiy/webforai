@@ -28,7 +28,7 @@ const splitted = await mdastSplitter(mdast, async (md) => 2000 > md.length);
 for (const mdast of splitted) {
 	let linkIndex = 0;
 	const links: string[] = [];
-	const baseMd = mdastToMarkdown(mdast, { url }).replace(/!?\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+	const baseMd = mdastToMarkdown(mdast, { baseUrl: url }).replace(/!?\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
 		const placeholder = `URL_${linkIndex++}`;
 		links.push(url);
 		return match.startsWith("!") ? `![${text}](${placeholder})` : `[${text}](${placeholder})`;
