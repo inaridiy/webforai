@@ -1,10 +1,10 @@
+import { DurableObject } from "cloudflare:workers";
 import puppeteer from "@cloudflare/puppeteer";
 import { vValidator } from "@hono/valibot-validator";
 import { Hono } from "hono";
 import { cache } from "hono/cache";
 import { url, literal, object, optional, string, union } from "valibot";
 import { htmlToMarkdown } from "webforai";
-import { DurableObject } from "cloudflare:workers";
 
 type Bindings = { MYBROWSER: puppeteer.BrowserWorker; BROWSER: DurableObjectNamespace<BrowserDO> };
 
@@ -28,7 +28,9 @@ app.get(
 		const browser = c.env.BROWSER.get(c.env.BROWSER.idFromName(pickedKey));
 		const result = await browser.renderUrl(url);
 
-		if (!result.success) return c.text(result.error, 500);
+		if (!result.success) {
+			return c.text(result.error, 500);
+		}
 
 		const aiModeOptions = { linkAsText: true, tableAsText: true, hideImage: true };
 		const readabilityModeOptions = { linkAsText: false, tableAsText: false, hideImage: false };
@@ -37,6 +39,7 @@ app.get(
 	},
 );
 
+// biome-ignore lint/style/noDefaultExport: This is the default export for the worker script
 export default app;
 
 const KEEP_BROWSER_ALIVE_IN_SECONDS = 60;
@@ -49,11 +52,14 @@ export class BrowserDO extends DurableObject<Bindings> {
 		const normalizedUrl = new URL(url).toString();
 
 		try {
-			if (!this.browser || !this.browser.isConnected()) {
+			if (!this.browser?.isConnected()) {
 				const sessions = await puppeteer.sessions(this.env.MYBROWSER);
 				const freeSession = sessions.find((s) => !s.connectionId);
-				if (freeSession) this.browser = await puppeteer.connect(this.env.MYBROWSER, freeSession.sessionId);
-				else this.browser = await puppeteer.launch(this.env.MYBROWSER);
+				if (freeSession) {
+					this.browser = await puppeteer.connect(this.env.MYBROWSER, freeSession.sessionId);
+				} else {
+					this.browser = await puppeteer.launch(this.env.MYBROWSER);
+				}
 			}
 		} catch (e) {
 			console.error(e);
@@ -67,7 +73,9 @@ export class BrowserDO extends DurableObject<Bindings> {
 		//scriptタグを削除
 		await page.evaluate(() => {
 			const scripts = document.querySelectorAll("script");
-			for (const script of Array.from(scripts)) script.remove();
+			for (const script of Array.from(scripts)) {
+				script.remove();
+			}
 		});
 
 		const html = await page.content();
@@ -76,9 +84,11 @@ export class BrowserDO extends DurableObject<Bindings> {
 			await page.close();
 			this.keptAliveInSeconds = 0;
 			const currentAlarm = await this.ctx.storage.getAlarm();
-			if (currentAlarm) return;
-			const TEN_SECONDS = 10 * 1000;
-			await this.ctx.storage.setAlarm(Date.now() + TEN_SECONDS);
+			if (currentAlarm) {
+				return;
+			}
+			const tenSeconds = 10 * 1000;
+			await this.ctx.storage.setAlarm(Date.now() + tenSeconds);
 		};
 		this.ctx.waitUntil(cleanup());
 
@@ -89,7 +99,9 @@ export class BrowserDO extends DurableObject<Bindings> {
 		this.keptAliveInSeconds += 10;
 		if (this.keptAliveInSeconds < KEEP_BROWSER_ALIVE_IN_SECONDS) {
 			await this.ctx.storage.setAlarm(Date.now() + 10 * 1000);
-			if (this.browser?.isConnected()) await this.browser.version();
+			if (this.browser?.isConnected()) {
+				await this.browser.version();
+			}
 		} else {
 			await this.browser?.close();
 			this.browser = null;

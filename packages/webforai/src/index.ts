@@ -1,4 +1,5 @@
-export * from "./html-to-markdown";
-export * from "./md-splitter";
-export * from "./html-to-mdast";
-export * from "./mdast-to-markdown";
+// biome-ignore lint/performance/noBarrelFile: module index
+export { htmlToMarkdown, type HtmlToMarkdownOptions } from "./html-to-markdown";
+export { mdastSplitter } from "./md-splitter";
+export { htmlToMdast, type HtmlToMdastOptions } from "./html-to-mdast";
+export { mdastToMarkdown } from "./mdast-to-markdown";

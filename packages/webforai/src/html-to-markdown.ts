@@ -1,4 +1,4 @@
-import { HtmlToMdastOptions, htmlToMdast } from "./html-to-mdast";
+import { type HtmlToMdastOptions, htmlToMdast } from "./html-to-mdast";
 import { mdastToMarkdown } from "./mdast-to-markdown";
 
 export interface HtmlToMarkdownOptions extends HtmlToMdastOptions {

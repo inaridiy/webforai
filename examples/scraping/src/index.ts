@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+import { promises as fs } from "node:fs";
 import dotenv from "dotenv";
 import { OpenAI } from "openai";
 import { htmlToMarkdown } from "webforai";

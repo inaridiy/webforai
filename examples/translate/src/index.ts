@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+import { promises as fs } from "node:fs";
 import Anthropic from "@anthropic-ai/sdk";
 import arg from "arg";
 import dotenv from "dotenv";
@@ -33,7 +33,9 @@ for (const mdast of splitted) {
 		links.push(url);
 		return match.startsWith("!") ? `![${text}](${placeholder})` : `[${text}](${placeholder})`;
 	});
-	if (baseMd.length < 10) continue;
+	if (baseMd.length < 10) {
+		continue;
+	}
 	const prompt = `あなたは、Markdownドキュメントを翻訳するスペシャリストです。次のWebサイトをMarkdownに変換したドキュメントを、日本語に翻訳してください。
 
 <instruction>

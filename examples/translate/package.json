@@ -1,26 +1,26 @@
 {
-  "name": "translate",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.18.0",
-    "arg": "^5.0.2",
-    "dotenv": "^16.4.5",
-    "playwright": "^1.40.1",
-    "webforai": "workspace:^"
-  },
-  "devDependencies": {
-    "@tsconfig/recommended": "^1.0.3",
-    "@types/node": "^20.11.0",
-    "tsx": "^4.7.0",
-    "typescript": "^5.2.2"
-  }
+	"name": "translate",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"type": "module",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"@anthropic-ai/sdk": "^0.18.0",
+		"arg": "^5.0.2",
+		"dotenv": "^16.4.5",
+		"playwright": "^1.40.1",
+		"webforai": "workspace:^"
+	},
+	"devDependencies": {
+		"@tsconfig/recommended": "^1.0.3",
+		"@types/node": "^20.11.0",
+		"tsx": "^4.7.0",
+		"typescript": "^5.2.2"
+	}
 }

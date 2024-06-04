@@ -1,26 +1,31 @@
 {
-  "name": "webforai",
-  "version": "0.0.0",
-  "description": "A library that provides a web interface for AI",
-  "author": "inaridiy",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/inaridiy/webforai.git"
-  },
-  "homepage": "https://github.com/inaridiy/webforai",
-  "bugs": "https://github.com/inaridiy/webforai/issues",
-  "keywords": [
-    "ai",
-    "web",
-    "scraping"
-  ],
-  "scripts": {
-    "postinstall": "pnpm -w build",
-    "build": "pnpm -r --filter \"./packages/**\" run build",
-    "format": "biome format . --write",
-    "lint": "biome check ."
-  },
-  "devDependencies": {
-    "@biomejs/biome": "1.5.3"
-  }
+	"name": "webforai",
+	"version": "0.0.0",
+	"description": "A library that provides a web interface for AI",
+	"author": "inaridiy",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/inaridiy/webforai.git"
+	},
+	"homepage": "https://github.com/inaridiy/webforai",
+	"bugs": "https://github.com/inaridiy/webforai/issues",
+	"keywords": ["ai", "web", "scraping"],
+	"scripts": {
+		"build": "pnpm run --r --filter \"./packages/**\" build",
+		"format": "biome format . --write",
+		"lint": "biome check .",
+		"lint:fix": "pnpm lint --apply",
+		"lint:repo": "sherif",
+		"preinstall": "npx only-allow pnpm",
+		"prepare": "pnpm simple-git-hooks",
+		"postinstall": "pnpm -w build"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.7.3",
+		"sherif": "^0.8.4",
+		"simple-git-hooks": "^2.11.1"
+	},
+	"simple-git-hooks": {
+		"pre-commit": "pnpm format && pnpm lint:fix && pnpm lint:repo"
+	}
 }

@@ -6,9 +6,9 @@
   Copyright (c) 2024 inaridiy
 */
 
-import { exec } from "child_process";
-import fs from "fs";
-import path from "path";
+import { exec } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import arg from "arg";
 import { context } from "esbuild";
 import type { BuildOptions, Plugin, PluginBuild } from "esbuild";
@@ -18,7 +18,7 @@ const args = arg({
 	"--watch": Boolean,
 });
 
-const isWatch = args["--watch"] || false;
+const isWatch = args["--watch"];
 
 const entryPoints = glob.sync("./src/**/*.ts", {
 	ignore: ["./src/**/*.test.ts"],
@@ -75,7 +75,10 @@ const esmBuild = () =>
 	});
 
 const [esmCtx, cjsCtx] = await Promise.all([esmBuild(), cjsBuild()]);
-if (isWatch) Promise.all([esmCtx.watch(), cjsCtx.watch()]);
-else Promise.all([esmCtx.rebuild(), cjsCtx.rebuild()]).then(() => Promise.all([esmCtx.dispose(), cjsCtx.dispose()]));
+if (isWatch) {
+	Promise.all([esmCtx.watch(), cjsCtx.watch()]);
+} else {
+	Promise.all([esmCtx.rebuild(), cjsCtx.rebuild()]).then(() => Promise.all([esmCtx.dispose(), cjsCtx.dispose()]));
+}
 
 exec(`tsc ${isWatch ? "-w" : ""} --declaration --project tsconfig.build.json`);

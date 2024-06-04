@@ -1,6 +1,6 @@
 import type { Handle } from "hast-util-to-mdast";
 import { toText } from "hast-util-to-text";
-import { Code } from "mdast";
+import type { Code } from "mdast";
 import { trimTrailingLines } from "trim-trailing-lines";
 import { detectLanguage } from "../utils/detect-code-lang";
 
