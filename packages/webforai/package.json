@@ -1,6 +1,6 @@
 {
 	"name": "webforai",
-	"version": "1.2.3",
+	"version": "1.3.0",
 	"description": "A library that provides a web interface for AI",
 	"author": "inaridiy",
 	"license": "MIT",

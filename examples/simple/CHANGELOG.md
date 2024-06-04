@@ -1,5 +1,14 @@
 # simple
 
+## 1.0.4
+
+### Patch Changes
+
+- [#12](https://github.com/inaridiy/webforai/pull/12) [`5e188a7`](https://github.com/inaridiy/webforai/commit/5e188a7c4d386e6351a5120213f18948ec5ec6f7) Thanks [@inaridiy](https://github.com/inaridiy)! - Minor interface improvements.
+
+- Updated dependencies [[`5e188a7`](https://github.com/inaridiy/webforai/commit/5e188a7c4d386e6351a5120213f18948ec5ec6f7)]:
+  - webforai@1.3.0
+
 ## 1.0.3
 
 ### Patch Changes
