@@ -7,4 +7,4 @@
 "bench": patch
 ---
 
-Update Linter and Workflows
+Update Workflows
