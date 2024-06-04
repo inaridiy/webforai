@@ -12,5 +12,8 @@
 	"markdown.preview.breaks": true,
 	"[markdown]": {
 		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "biomejs.biome"
 	}
 }
