@@ -10,6 +10,11 @@
 	"homepage": "https://github.com/inaridiy/webforai",
 	"bugs": "https://github.com/inaridiy/webforai/issues",
 	"keywords": ["ai", "web", "scraping"],
+	"private": true,
+	"packageManager": "pnpm@9.1.4",
+	"engines": {
+		"node": ">=18.0.0"
+	},
 	"scripts": {
 		"build": "pnpm run --r --filter \"./packages/**\" build",
 		"format": "biome format . --write",
