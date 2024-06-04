@@ -16,6 +16,7 @@
 		"node": ">=18.0.0"
 	},
 	"scripts": {
+		"test": "vitest",
 		"build": "pnpm run --r --filter \"./packages/**\" build",
 		"format": "biome format . --write",
 		"lint": "biome check .",
