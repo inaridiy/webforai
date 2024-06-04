@@ -1,6 +1,6 @@
 import type { Element, Nodes as Hast } from "hast";
 import { select, selectAll } from "hast-util-select";
-import { toString } from "hast-util-to-string";
+import { toString as hastToString } from "hast-util-to-string";
 import { filter } from "unist-util-filter";
 import { parents } from "unist-util-parents";
 import { classnames, hasAncestors, isStrInclude, matchString } from "./utils";
@@ -20,7 +20,7 @@ const REGEXPS = {
 	byline: /byline|author|dateline|writtenby|p-author/i,
 	unlikelyCandidates:
 		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore/i,
-	okMaybeItsACandidate: /and|article|body|column|content|main|shadow|code/i,
+	okMaybeItsaCandidate: /and|article|body|column|content|main|shadow|code/i,
 };
 
 const BODY_SELECTORS = ["article", "#article", ".article_body", ".article-body", "#content", ".entry", "main"];
@@ -33,63 +33,101 @@ const BASE_MINIMAL_LENGTH = {
 };
 
 const tryGetLang = (node: Hast) => {
-	if (node.type !== "element") return;
+	if (node.type !== "element") {
+		return;
+	}
 	const element = node as Element;
-	if (element.tagName !== "html") return;
+	if (element.tagName !== "html") {
+		return;
+	}
 
 	const langAttr = element.properties.lang || element.properties["xml:lang"];
-	if (langAttr) return langAttr as string;
+	if (langAttr) {
+		return langAttr as string;
+	}
 };
 
 const metadataFilter = (node: Hast) => !["comment", "doctype"].includes(node.type);
 
 const universalElementFilter = (node: Hast) => {
-	if (node.type !== "element") return true;
+	if (node.type !== "element") {
+		return true;
+	}
 	const element = node as Element;
 
 	// Remove blacklisted elements
-	if (["script", "aside"].includes(element.tagName)) return false;
+	if (["script", "aside"].includes(element.tagName)) {
+		return false;
+	}
 
 	// Remove elements with hidden properties
-	if (["hidden", "aria-hidden"].some((key) => element.properties[key])) return false;
-	if (classnames(element).some((classname) => REGEXPS.hidden.test(classname))) return false;
+	if (["hidden", "aria-hidden"].some((key) => element.properties[key])) {
+		return false;
+	}
+	if (classnames(element).some((classname) => REGEXPS.hidden.test(classname))) {
+		return false;
+	}
 
 	// Remove dialog elements
-	if (element.tagName === "dialog") return false;
-	if (element.properties.role === "dialog" && element.properties["aria-modal"]) return false;
+	if (element.tagName === "dialog") {
+		return false;
+	}
+	if (element.properties.role === "dialog" && element.properties["aria-modal"]) {
+		return false;
+	}
 
 	// Remove byline elements
-	if (element.properties.rel === "author" && isStrInclude(element.properties.itemprop, "author")) return false;
-	if (REGEXPS.byline.test(matchString(element))) return false;
+	if (element.properties.rel === "author" && isStrInclude(element.properties.itemprop, "author")) {
+		return false;
+	}
+	if (REGEXPS.byline.test(matchString(element))) {
+		return false;
+	}
 
 	// Remove unlikely roles
-	if (element.properties.role && UNLIKELY_ROLES.includes(element.properties.role as string)) return false;
+	if (element.properties.role && UNLIKELY_ROLES.includes(element.properties.role as string)) {
+		return false;
+	}
 
 	return true;
 };
 
 const unlikelyElementFilter = (node: Hast) => {
-	if (node.type !== "element") return true;
+	if (node.type !== "element") {
+		return true;
+	}
 	const element = node as Element;
 	const match = matchString(element);
 
 	// Skip main content elements
-	if (["body", "article", "main", "section", "a"].includes(element.tagName)) return true;
-	if (hasAncestors(element, ["table", "code"], 3)) return true;
+	if (["body", "article", "main", "section", "a"].includes(element.tagName)) {
+		return true;
+	}
+	if (hasAncestors(element, ["table", "code"], 3)) {
+		return true;
+	}
 
 	// Remove unlikely candidates
-	if (REGEXPS.unlikelyCandidates.test(match) && !REGEXPS.okMaybeItsACandidate.test(match)) return false;
+	if (REGEXPS.unlikelyCandidates.test(match) && !REGEXPS.okMaybeItsaCandidate.test(match)) {
+		return false;
+	}
 
 	return true;
 };
 
 const removeEmptyFilter = (node: Hast) => {
-	if (node.type !== "element") return true;
+	if (node.type !== "element") {
+		return true;
+	}
 	const element = node as Element;
-	if (!PARAGRAPH_TAGS.includes(element.tagName)) return true;
+	if (!PARAGRAPH_TAGS.includes(element.tagName)) {
+		return true;
+	}
 
-	const text = toString(element);
-	if (text.length < 10) return false;
+	const text = hastToString(element);
+	if (text.length < 10) {
+		return false;
+	}
 	return true;
 };
 
@@ -99,35 +137,51 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 
 	const proxiedHast = parents(body) as unknown as ProxiedHast;
 	let baseFilterd = filter(proxiedHast, (node) => {
-		if (!metadataFilter(node as Hast)) return false;
-		if (!universalElementFilter(node as Hast)) return false;
+		if (!metadataFilter(node as Hast)) {
+			return false;
+		}
+		if (!universalElementFilter(node as Hast)) {
+			return false;
+		}
 		return true;
 	});
 
-	if (!baseFilterd) return { type: "root", children: [] };
+	if (!baseFilterd) {
+		return { type: "root", children: [] };
+	}
 
-	const baseText = toString(baseFilterd);
+	const baseText = hastToString(baseFilterd);
 	let minimalLength = lang in BASE_MINIMAL_LENGTH ? BASE_MINIMAL_LENGTH[lang as keyof typeof BASE_MINIMAL_LENGTH] : 500;
 	if (baseText.length > minimalLength) {
 		const filterd = filter(baseFilterd, (node) => {
-			if (!unlikelyElementFilter(node as Hast)) return false;
+			if (!unlikelyElementFilter(node as Hast)) {
+				return false;
+			}
 			return true;
 		});
-		if (filterd) baseFilterd = filterd;
-	} else minimalLength = Math.max(0, baseText.length - 200);
+		if (filterd) {
+			baseFilterd = filterd;
+		}
+	} else {
+		minimalLength = Math.max(0, baseText.length - 200);
+	}
 
 	let bodyTree: Hast = baseFilterd;
 	for (const selector of BODY_SELECTORS) {
 		const body = { type: "root" as const, children: selectAll(selector, baseFilterd) };
-		const bodyText = toString(body);
+		const bodyText = hastToString(body);
 
-		if (bodyText.length < 25) continue;
+		if (bodyText.length < 25) {
+			continue;
+		}
 
 		const links = selectAll("a", body);
-		const linkText = links.map((link) => toString(link)).join("");
+		const linkText = links.map((link) => hastToString(link)).join("");
 
 		const linkDensity = linkText.length / bodyText.length;
-		if (linkDensity > 0.4) continue;
+		if (linkDensity > 0.4) {
+			continue;
+		}
 
 		if (bodyText.length > minimalLength) {
 			bodyTree = body;
@@ -136,7 +190,9 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 	}
 
 	const finalTree = filter(bodyTree, (node) => {
-		if (!removeEmptyFilter(node as Hast)) return false;
+		if (!removeEmptyFilter(node as Hast)) {
+			return false;
+		}
 		return true;
 	}) as Hast;
 

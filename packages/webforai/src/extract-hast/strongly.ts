@@ -1,6 +1,5 @@
 import type { Element, Nodes as Hast } from "hast";
 import { select } from "hast-util-select";
-import { toText } from "hast-util-to-text";
 import { filter } from "unist-util-filter";
 
 const REMOVE_REGEX =
@@ -18,11 +17,17 @@ export const stronglyExtractHast = (hast: Hast): Hast => {
 	}
 
 	const removedElements = filter(selectedElement, (node) => {
-		if (node.type === "comment") return false;
-		if (node.type !== "element") return true;
+		if (node.type === "comment") {
+			return false;
+		}
+		if (node.type !== "element") {
+			return true;
+		}
 		const element = node as Element;
 		const elementName = `${element.tagName} ${element.properties.id} ${element.properties.className}`;
-		if (REMOVE_REGEX.test(elementName)) return false;
+		if (REMOVE_REGEX.test(elementName)) {
+			return false;
+		}
 		return true;
 	});
 

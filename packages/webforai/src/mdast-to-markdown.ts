@@ -12,7 +12,9 @@ export const mdastToMarkdown = (mdast: Mdast | RootContent[], options?: { url?: 
 		extensions: [gfmToMarkdown(), mathToMarkdown()],
 	});
 
-	if (options?.url) markdown = linkReplacer(markdown, options.url);
+	if (options?.url) {
+		markdown = linkReplacer(markdown, options.url);
+	}
 
 	return markdown;
 };
