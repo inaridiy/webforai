@@ -23,7 +23,7 @@
 		"lint:repo": "sherif",
 		"ci:prepublish": "pnpm run build",
 		"ci:version": "changeset version",
-		"ci:publish": "changeset publish",
+		"ci:publish": "pnpm ci:prepublish && changeset publish",
 		"preinstall": "npx only-allow pnpm",
 		"prepare": "pnpm simple-git-hooks",
 		"postinstall": "pnpm -w build"

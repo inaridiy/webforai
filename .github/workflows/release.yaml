@@ -3,9 +3,11 @@ on:
   push:
     branches:
       - main
-env:
-  CI: true
-  PNPM_CACHE_FOLDER: .pnpm-store
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   version:
     timeout-minutes: 15
@@ -22,10 +24,6 @@ jobs:
         with:
           version: 9.1.4
           run_install: true
-      - name: Setup npmrc
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
-      - name: Prepublish
-        run: pnpm ci:prepublish
       - name: create and publish versions
         uses: changesets/action@v1
         with:
@@ -35,3 +33,4 @@ jobs:
           commit: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
