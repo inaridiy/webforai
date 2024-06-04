@@ -1,5 +1,11 @@
 # simple
 
+## 1.0.3
+
+### Patch Changes
+
+- [`64b3a07`](https://github.com/inaridiy/webforai/commit/64b3a07304d364320364b499ca73df24cd312afd) Thanks [@inaridiy](https://github.com/inaridiy)! - Update
+
 ## 1.0.2
 
 ### Patch Changes
