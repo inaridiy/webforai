@@ -1,3 +1,4 @@
+import type { Nodes as Hast } from "hast";
 import type { Nodes as Mdast } from "mdast";
 
 import { fromHtml } from "hast-util-from-html";
@@ -13,18 +14,42 @@ import { emptyHandler } from "./mdast-handlers/empty-handler";
 import { mathHandler } from "./mdast-handlers/math-handler";
 
 export type HtmlToMdastOptions = {
-	extractHast?: Extracotrs;
+	/**
+	 * An array of extractors to extract specific elements from the HTML.
+	 * You can define your own functions in addition to the Extractor provided as a preset.
+	 */
+	extractors?: Extracotrs;
+	/** Whether to convert links to plain text. */
 	linkAsText?: boolean;
+	/** Whether to convert tables to plain text. */
 	tableAsText?: boolean;
+	/** Whether to hide images. */
 	hideImage?: boolean;
 };
 
-export const htmlToMdast = (html: string, options?: HtmlToMdastOptions): Mdast => {
-	const { extractHast: _extractHast } = options || {};
+/**
+ * Converts an HTML string or HAST tree to an MDAST tree.
+ *
+ * @param htmlOrHast - The HTML string or HAST tree to convert.
+ * @param options - {@link HtmlToMdastOptions} to customize the conversion.
+ * @returns The MDAST tree.
+ *
+ * @example
+ * ```ts
+ * import { htmlToMdast } from 'webforai';
+ *
+ * const html = '<h1>Hello, world!</h1>';
+ * const mdast = htmlToMdast(html);
+ *
+ * console.log(mdast); // Output: { type: 'root', children: [ { type: 'heading', depth: 1, children: [ { type: 'text', value: 'Hello, world!' } ] } ] }
+ * ```
+ */
+export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOptions): Mdast => {
+	const { extractors } = options || {};
 
-	const hast = fromHtml(html, { fragment: true });
+	const hast = typeof htmlOrHast === "string" ? fromHtml(htmlOrHast, { fragment: true }) : htmlOrHast;
 
-	const extractedHast = extractHast(hast, _extractHast);
+	const extractedHast = extractHast(hast, extractors);
 
 	const mdast = toMdast(extractedHast, {
 		handlers: {
