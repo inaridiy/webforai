@@ -9,11 +9,7 @@
 	},
 	"homepage": "https://github.com/inaridiy/webforai",
 	"bugs": "https://github.com/inaridiy/webforai/issues",
-	"keywords": [
-		"ai",
-		"web",
-		"scraping"
-	],
+	"keywords": ["ai", "web", "scraping"],
 	"private": true,
 	"packageManager": "pnpm@9.1.4",
 	"engines": {
@@ -26,7 +22,8 @@
 		"lint:fix": "pnpm lint --apply",
 		"lint:repo": "sherif",
 		"ci:prepublish": "pnpm run build",
-		"ci:publish": "pnpm publish -r",
+		"ci:version": "changeset version",
+		"ci:publish": "changeset publish",
 		"preinstall": "npx only-allow pnpm",
 		"prepare": "pnpm simple-git-hooks",
 		"postinstall": "pnpm -w build"
