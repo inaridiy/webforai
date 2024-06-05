@@ -15,8 +15,8 @@ A library that provides a web interface for AI
 
 There is a demo API for Html2Markdown deployed on CloudflareWorker. Please access the following link
 
-- [https://webforai.inaridiy.workers.dev/?url=https://www.npmjs.com/package/webforai](https://webforai.inaridiy.workers.dev/?url=https://www.npmjs.com/package/webforai)
-- [https://webforai.inaridiy.workers.dev/?html=%3Ch1%3EHello%20World%3C/h1%3E](https://webforai.inaridiy.workers.dev/?html=%3Ch1%3EHello%20World%3C/h1%3E)
+- [NPM Package page](https://webforai.inaridiy.workers.dev/?url=https://www.npmjs.com/package/webforai)
+- [Wikipedia of Cloudflare (AI Mode)](https://webforai.inaridiy.workers.dev/?url=https://en.wikipedia.org/wiki/Cloudflare&mode=ai)
 
 ## Quick Start
 
@@ -34,12 +34,19 @@ import { loadHtml } from "webforai/loaders/playwright";
 const url = "https://www.npmjs.com/package/webforai";
 const html = await loadHtml(url);
 
-const markdown = htmlToMarkdown(html, { solveLinks: url });
+const markdown = htmlToMarkdown(html, { baseUrl: url });
 
 await fs.writeFile("output.md", markdown);
 ```
 
 other examples are in [examples](./examples/simple/src/index.ts)
+
+## Examples
+
+- [Simple Example](https://github.com/inaridiy/webforai/tree/main/examples/simple/src/index.ts)
+- [Scraping With ChatGPT API](https://github.com/inaridiy/webforai/blob/main/examples/scraping/src/index.ts)
+- [Translate Markdown with Splitter](https://github.com/inaridiy/webforai/tree/main/examples/translate)
+- [Cloudflare Worker with puppeteer & DO](https://github.com/inaridiy/webforai/tree/main/examples/worker)
 
 ## Usage
 
@@ -61,14 +68,3 @@ Convert Mdast to Markdown. If `solveLinks` is specified, the relative links in t
 
 **`loadHtml(url: string, options?: LoadHtmlOptions): Promise<string>`**  
 Load HTML from the specified URL. This function uses Playwright internally.
-
-## Early Users
-
-### Voice Genius - Explanatory video generation by AI
-
-<img src="https://github.com/inaridiy/webforai/blob/main/images/voice-genius.png" width="300px">
-
-by [@moons14](https://twitter.com/moons_dev)
-
-AI can be used to automatically generate highly accurate commentary videos.
-Supports conversations and presentations using synthesized voice, embedding of images in videos, etc.
