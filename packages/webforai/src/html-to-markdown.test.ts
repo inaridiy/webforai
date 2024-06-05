@@ -118,3 +118,15 @@ describe("htmlToMarkdown", () => {
 		expect(d).lte(10); // Allow a higher distance due to the difference in formatting
 	});
 });
+
+describe("htmlToMarkdown E2E", () => {
+	it("should convert npm README to Markdown ", async () => {
+		const html = await fetch("https://www.npmjs.com/package/webforai").then((res) => res.text());
+		const markdown = htmlToMarkdown(html, { baseUrl: "https://www.npmjs.com/package/webforai" });
+
+		// @ts-ignore
+		const original = await import("../README.md?raw");
+		const d = distance(markdown, original.default);
+		expect(d).lte(1000); // I'd like to optimise more!
+	});
+});
