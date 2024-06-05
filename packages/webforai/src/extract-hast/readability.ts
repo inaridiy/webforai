@@ -18,8 +18,9 @@ const UNLIKELY_ROLES = ["menu", "menubar", "complementary", "navigation", "alert
 const REGEXPS = {
 	hidden: /hidden|invisible|fallback-image/i,
 	byline: /byline|author|dateline|writtenby|p-author/i,
+	specialUnlikelyCandidates: /frb-|uls-menu|language-link/i,
 	unlikelyCandidates:
-		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore|uls-language-block/i,
+		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore/i,
 	okMaybeItsaCandidate: /and|article|body|column|content|main|shadow|code/i,
 };
 
@@ -106,6 +107,10 @@ const unlikelyElementFilter = (node: Hast) => {
 		return true;
 	}
 	const match = matchString(element);
+
+	if (REGEXPS.specialUnlikelyCandidates.test(match)) {
+		return false;
+	}
 
 	// Remove unlikely candidates
 	if (REGEXPS.unlikelyCandidates.test(match) && !REGEXPS.okMaybeItsaCandidate.test(match)) {
