@@ -1,6 +1,7 @@
 import { distance } from "fastest-levenshtein";
 import { describe, expect, it } from "vitest";
 import { htmlToMarkdown } from "./html-to-markdown";
+import { loadHtml } from "./loaders/fetch";
 
 const html = `
 <h1>Hello, world!</h1>
@@ -121,7 +122,7 @@ describe("htmlToMarkdown", () => {
 
 describe("htmlToMarkdown E2E", () => {
 	it("should convert npm README to Markdown ", async () => {
-		const html = await fetch("https://www.npmjs.com/package/webforai").then((res) => res.text());
+		const html = await loadHtml("https://www.npmjs.com/package/webforai");
 		const markdown = htmlToMarkdown(html, { baseUrl: "https://www.npmjs.com/package/webforai" });
 
 		// @ts-ignore
@@ -131,7 +132,7 @@ describe("htmlToMarkdown E2E", () => {
 	});
 
 	it("should convert GitHub README to Markdown ", async () => {
-		const html = await fetch("https://github.com/inaridiy/webforai").then((res) => res.text());
+		const html = await loadHtml("https://github.com/inaridiy/webforai");
 		const markdown = htmlToMarkdown(html, { baseUrl: "https://www.npmjs.com/package/webforai" });
 
 		// @ts-ignore
