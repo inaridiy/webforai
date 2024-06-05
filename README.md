@@ -34,7 +34,7 @@ import { loadHtml } from "webforai/loaders/playwright";
 const url = "https://www.npmjs.com/package/webforai";
 const html = await loadHtml(url);
 
-const markdown = htmlToMarkdown(html, { url });
+const markdown = htmlToMarkdown(html, { baseUrl: url });
 
 await fs.writeFile("output.md", markdown);
 ```
@@ -43,10 +43,10 @@ other examples are in [examples](./examples/simple/src/index.ts)
 
 ## Examples
 
-- [Simple Example](./examples/simple/src/index.ts)
-- [Scraping With ChatGPT API](./examples/scraping/src/index.ts)
-- [Translate Markdown with Splitter](./examples/translate/src/index.ts)
-- [Cloudflare Worker with puppeteer & DO](./examples/worker/src/index.ts)
+- [Simple Example](https://github.com/inaridiy/webforai/tree/main/examples/simple/src/index.ts)
+- [Scraping With ChatGPT API](https://github.com/inaridiy/webforai/blob/main/examples/scraping/src/index.ts)
+- [Translate Markdown with Splitter](https://github.com/inaridiy/webforai/tree/main/examples/translate)
+- [Cloudflare Worker with puppeteer & DO](https://github.com/inaridiy/webforai/tree/main/examples/worker)
 
 ## Usage
 
