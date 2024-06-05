@@ -38,4 +38,10 @@ jobs:
         with:
           version: 9.1.4
           run_install: true
-      - run: pnpm test
+      - name: Install Playwright Browsers
+        run: |
+          pnpm install -w playwright
+          pnpm exec playwright install chromium
+          pnpm exec playwright install-deps
+      - name: Run tests
+        run: pnpm test

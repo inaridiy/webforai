@@ -39,6 +39,11 @@
 			"import": "./dist/loaders/playwright.js",
 			"require": "./dist/cjs/loaders/playwright.js"
 		},
+		"./loaders/fetch": {
+			"types": "./dist/types/loaders/fetch.d.ts",
+			"import": "./dist/loaders/fetch.js",
+			"require": "./dist/cjs/loaders/fetch.js"
+		},
 		"./loaders/cf-puppeteer": {
 			"types": "./dist/types/loaders/cf-puppeteer.d.ts",
 			"import": "./dist/loaders/cf-puppeteer.js",
