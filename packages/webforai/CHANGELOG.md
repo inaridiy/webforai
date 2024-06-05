@@ -1,5 +1,11 @@
 # webforai
 
+## 1.3.1
+
+### Patch Changes
+
+- [#15](https://github.com/inaridiy/webforai/pull/15) [`680a226`](https://github.com/inaridiy/webforai/commit/680a22638409517658c3918d90d070b1fa53cc3f) Thanks [@inaridiy](https://github.com/inaridiy)! - Update Document
+
 ## 1.3.0
 
 ### Minor Changes
