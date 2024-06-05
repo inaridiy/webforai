@@ -97,7 +97,6 @@ const unlikelyElementFilter = (node: Hast) => {
 		return true;
 	}
 	const element = node as Element;
-	const match = matchString(element);
 
 	// Skip main content elements
 	if (["body", "article", "main", "section", "a"].includes(element.tagName)) {
@@ -106,6 +105,7 @@ const unlikelyElementFilter = (node: Hast) => {
 	if (hasAncestors(element, ["table", "code"], 3)) {
 		return true;
 	}
+	const match = matchString(element);
 
 	// Remove unlikely candidates
 	if (REGEXPS.unlikelyCandidates.test(match) && !REGEXPS.okMaybeItsaCandidate.test(match)) {
@@ -136,7 +136,7 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 	const body = select("body", hast) ?? hast;
 
 	const proxiedHast = parents(body) as unknown as ProxiedHast;
-	let baseFilterd = filter(proxiedHast, (node) => {
+	const baseFilterd = filter(proxiedHast, (node) => {
 		if (!metadataFilter(node as Hast)) {
 			return false;
 		}
@@ -152,17 +152,7 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 
 	const baseText = hastToString(baseFilterd);
 	let minimalLength = lang in BASE_MINIMAL_LENGTH ? BASE_MINIMAL_LENGTH[lang as keyof typeof BASE_MINIMAL_LENGTH] : 500;
-	if (baseText.length > minimalLength) {
-		const filterd = filter(baseFilterd, (node) => {
-			if (!unlikelyElementFilter(node as Hast)) {
-				return false;
-			}
-			return true;
-		});
-		if (filterd) {
-			baseFilterd = filterd;
-		}
-	} else {
+	if (baseText.length < minimalLength) {
 		minimalLength = Math.max(0, baseText.length - 200);
 	}
 
@@ -193,6 +183,10 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 		if (!removeEmptyFilter(node as Hast)) {
 			return false;
 		}
+		if (!unlikelyElementFilter(node as Hast)) {
+			return false;
+		}
+
 		return true;
 	}) as Hast;
 

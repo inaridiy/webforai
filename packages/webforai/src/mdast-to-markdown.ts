@@ -22,6 +22,7 @@ export interface MdastToMarkdownOptions extends ToMarkdownOptions {
  */
 export const DEFAULT_MDAST_TO_MARKDOWN_OPTIONS: MdastToMarkdownOptions = {
 	extensions: [gfmToMarkdown(), mathToMarkdown()],
+	bullet: "-",
 };
 
 /**
