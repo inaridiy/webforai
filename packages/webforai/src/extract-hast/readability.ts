@@ -19,7 +19,7 @@ const REGEXPS = {
 	hidden: /hidden|invisible|fallback-image/i,
 	byline: /byline|author|dateline|writtenby|p-author/i,
 	unlikelyCandidates:
-		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore/i,
+		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore|uls-language-block/i,
 	okMaybeItsaCandidate: /and|article|body|column|content|main|shadow|code/i,
 };
 
