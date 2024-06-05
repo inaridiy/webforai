@@ -12,8 +12,8 @@ on:
       - 'LICENSE'
 
 jobs:
-  main:
-    name: 'Main'
+  lint:
+    name: 'Lint'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,3 +27,15 @@ jobs:
       - run: pnpm lint
       - run: pnpm lint:repo
       - run: pnpm build
+  test:
+    name: 'Test'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 9.1.4
+          run_install: true
+      - run: pnpm test
