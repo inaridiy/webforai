@@ -1,0 +1,5 @@
+---
+"webforai": patch
+---
+
+accuracy improvement

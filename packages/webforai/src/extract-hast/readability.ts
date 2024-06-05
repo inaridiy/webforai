@@ -19,7 +19,7 @@ const REGEXPS = {
 	hidden: /hidden|invisible|fallback-image/i,
 	byline: /byline|author|dateline|writtenby|p-author/i,
 	unlikelyCandidates:
-		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore/i,
+		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore|uls-language-block/i,
 	okMaybeItsaCandidate: /and|article|body|column|content|main|shadow|code/i,
 };
 
@@ -97,7 +97,6 @@ const unlikelyElementFilter = (node: Hast) => {
 		return true;
 	}
 	const element = node as Element;
-	const match = matchString(element);
 
 	// Skip main content elements
 	if (["body", "article", "main", "section", "a"].includes(element.tagName)) {
@@ -106,6 +105,7 @@ const unlikelyElementFilter = (node: Hast) => {
 	if (hasAncestors(element, ["table", "code"], 3)) {
 		return true;
 	}
+	const match = matchString(element);
 
 	// Remove unlikely candidates
 	if (REGEXPS.unlikelyCandidates.test(match) && !REGEXPS.okMaybeItsaCandidate.test(match)) {
@@ -115,12 +115,31 @@ const unlikelyElementFilter = (node: Hast) => {
 	return true;
 };
 
+const isImageLink = (element: Element) => {
+	const a = select("a", element);
+	const img = select("img", a);
+
+	if (!(a && img)) {
+		return false;
+	}
+
+	const imgFilename = img.properties.src?.toString().split("/").pop();
+	const hrefFilename = a.properties.href?.toString().split("/").pop();
+
+	return imgFilename === hrefFilename && imgFilename;
+};
+
 const removeEmptyFilter = (node: Hast) => {
 	if (node.type !== "element") {
 		return true;
 	}
 	const element = node as Element;
+
 	if (!PARAGRAPH_TAGS.includes(element.tagName)) {
+		return true;
+	}
+
+	if (isImageLink(element)) {
 		return true;
 	}
 
@@ -128,6 +147,7 @@ const removeEmptyFilter = (node: Hast) => {
 	if (text.length < 10) {
 		return false;
 	}
+
 	return true;
 };
 
@@ -136,7 +156,7 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 	const body = select("body", hast) ?? hast;
 
 	const proxiedHast = parents(body) as unknown as ProxiedHast;
-	let baseFilterd = filter(proxiedHast, (node) => {
+	const baseFilterd = filter(proxiedHast, (node) => {
 		if (!metadataFilter(node as Hast)) {
 			return false;
 		}
@@ -152,17 +172,7 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 
 	const baseText = hastToString(baseFilterd);
 	let minimalLength = lang in BASE_MINIMAL_LENGTH ? BASE_MINIMAL_LENGTH[lang as keyof typeof BASE_MINIMAL_LENGTH] : 500;
-	if (baseText.length > minimalLength) {
-		const filterd = filter(baseFilterd, (node) => {
-			if (!unlikelyElementFilter(node as Hast)) {
-				return false;
-			}
-			return true;
-		});
-		if (filterd) {
-			baseFilterd = filterd;
-		}
-	} else {
+	if (baseText.length < minimalLength) {
 		minimalLength = Math.max(0, baseText.length - 200);
 	}
 
@@ -193,6 +203,10 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 		if (!removeEmptyFilter(node as Hast)) {
 			return false;
 		}
+		if (!unlikelyElementFilter(node as Hast)) {
+			return false;
+		}
+
 		return true;
 	}) as Hast;
 

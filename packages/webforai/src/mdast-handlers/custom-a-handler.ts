@@ -5,7 +5,12 @@ export const customAHandler =
 	(options?: { asText?: boolean }): Handle =>
 	(state, node) => {
 		if (options?.asText) {
-			const link = { type: "text", value: hastToString(node) } as const;
+			const text = hastToString(node);
+			if (3 >= text.length) {
+				return undefined;
+			}
+
+			const link = { type: "text", value: text } as const;
 			state.patch(node, link);
 			return link;
 		}

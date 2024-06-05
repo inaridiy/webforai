@@ -1,10 +1,10 @@
 import type { Nodes as Hast } from "hast";
-import type { Nodes as Mdast } from "mdast";
-
 import { fromHtml } from "hast-util-from-html";
 import { toMdast } from "hast-util-to-mdast";
+import type { Nodes as Mdast } from "mdast";
 
 import { type Extracotrs, extractHast } from "./extract-hast";
+import { extractMdast } from "./extract-mdast";
 import { customAHandler } from "./mdast-handlers/custom-a-handler";
 import { customCodeHandler } from "./mdast-handlers/custom-code-handler";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
@@ -63,5 +63,7 @@ export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOpti
 		},
 	});
 
-	return mdast;
+	const extractedMdast = extractMdast(mdast);
+
+	return extractedMdast;
 };

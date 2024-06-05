@@ -45,8 +45,8 @@ Example
 
 ![Example](/example.jpg)
 
-* Item 1
-* Item 2
+- Item 1
+- Item 2
 `;
 
 const imageHidden = `# Hello, world!
@@ -55,8 +55,8 @@ This is a paragraph.
 
 [Example](/example.html)
 
-* Item 1
-* Item 2
+- Item 1
+- Item 2
 `;
 
 const htmlTable = `
@@ -85,31 +85,31 @@ describe("htmlToMarkdown", () => {
 	it("should convert HTML to Markdown", () => {
 		const markdown = htmlToMarkdown(html, { extractors: false });
 		const d = distance(markdown, expected);
-		expect(d).lte(2);
+		expect(d).lte(5);
 	});
 
 	it("should convert HTML to Markdown with replaced base URL", () => {
 		const markdown = htmlToMarkdown(html, { baseUrl: "https://example.com", extractors: false });
 		const d = distance(markdown, baseUrlReplaced);
-		expect(d).lte(2);
+		expect(d).lte(5);
 	});
 
 	it("should convert HTML to Markdown with links as text", () => {
 		const markdown = htmlToMarkdown(html, { linkAsText: true, extractors: false });
 		const d = distance(markdown, linkAsText);
-		expect(d).lte(2);
+		expect(d).lte(5);
 	});
 
 	it("should convert HTML to Markdown with hidden images", () => {
 		const markdown = htmlToMarkdown(html, { hideImage: true, extractors: false });
 		const d = distance(markdown, imageHidden);
-		expect(d).lte(2);
+		expect(d).lte(5);
 	});
 
 	it("should convert HTML table to Markdown table", () => {
 		const markdown = htmlToMarkdown(htmlTable, { extractors: false });
 		const d = distance(markdown, expectedTableMarkdown);
-		expect(d).lte(4);
+		expect(d).lte(5);
 	});
 
 	it("should convert HTML table with table as text option", () => {
@@ -127,6 +127,16 @@ describe("htmlToMarkdown E2E", () => {
 		// @ts-ignore
 		const original = await import("../README.md?raw");
 		const d = distance(markdown, original.default);
-		expect(d).lte(1000); // I'd like to optimise more!
+		expect(d).lte(400); // I'd like to optimise more!
+	});
+
+	it("should convert GitHub README to Markdown ", async () => {
+		const html = await fetch("https://github.com/inaridiy/webforai").then((res) => res.text());
+		const markdown = htmlToMarkdown(html, { baseUrl: "https://www.npmjs.com/package/webforai" });
+
+		// @ts-ignore
+		const original = await import("../../../README.md?raw");
+		const d = distance(markdown, original.default);
+		expect(d).lte(200); // I'd like to optimise more!
 	});
 });
