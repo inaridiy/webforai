@@ -12,7 +12,6 @@ import { customImgHandler } from "./mdast-handlers/custom-img-handler";
 import { customTableHandler } from "./mdast-handlers/custom-table-handler";
 import { emptyHandler } from "./mdast-handlers/empty-handler";
 import { mathHandler } from "./mdast-handlers/math-handler";
-import { warpRoot } from "./utils/mdast-utils";
 
 export type HtmlToMdastOptions = {
 	/**
