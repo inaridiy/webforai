@@ -68,14 +68,3 @@ Convert Mdast to Markdown. If `solveLinks` is specified, the relative links in t
 
 **`loadHtml(url: string, options?: LoadHtmlOptions): Promise<string>`**  
 Load HTML from the specified URL. This function uses Playwright internally.
-
-## Early Users
-
-### Voice Genius - Explanatory video generation by AI
-
-<img src="https://github.com/inaridiy/webforai/blob/main/images/voice-genius.png" width="300px">
-
-by [@moons14](https://twitter.com/moons_dev)
-
-AI can be used to automatically generate highly accurate commentary videos.
-Supports conversations and presentations using synthesized voice, embedding of images in videos, etc.
