@@ -115,12 +115,31 @@ const unlikelyElementFilter = (node: Hast) => {
 	return true;
 };
 
+const isImageLink = (element: Element) => {
+	const a = select("a", element);
+	const img = select("img", a);
+
+	if (!(a && img)) {
+		return false;
+	}
+
+	const imgFilename = img.properties.src?.toString().split("/").pop();
+	const hrefFilename = a.properties.href?.toString().split("/").pop();
+
+	return imgFilename === hrefFilename && imgFilename;
+};
+
 const removeEmptyFilter = (node: Hast) => {
 	if (node.type !== "element") {
 		return true;
 	}
 	const element = node as Element;
+
 	if (!PARAGRAPH_TAGS.includes(element.tagName)) {
+		return true;
+	}
+
+	if (isImageLink(element)) {
 		return true;
 	}
 
@@ -128,6 +147,7 @@ const removeEmptyFilter = (node: Hast) => {
 	if (text.length < 10) {
 		return false;
 	}
+
 	return true;
 };
 

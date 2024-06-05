@@ -137,6 +137,6 @@ describe("htmlToMarkdown E2E", () => {
 		// @ts-ignore
 		const original = await import("../../../README.md?raw");
 		const d = distance(markdown, original.default);
-		expect(d).lte(400); // I'd like to optimise more!
+		expect(d).lte(200); // I'd like to optimise more!
 	});
 });
