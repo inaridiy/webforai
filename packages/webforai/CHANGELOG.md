@@ -1,5 +1,15 @@
 # webforai
 
+## 1.3.2
+
+### Patch Changes
+
+- [#18](https://github.com/inaridiy/webforai/pull/18) [`3c6da39`](https://github.com/inaridiy/webforai/commit/3c6da3952f176769cf8aa899f6c7207c231d806a) Thanks [@inaridiy](https://github.com/inaridiy)! - Improve
+
+- [#18](https://github.com/inaridiy/webforai/pull/18) [`4437e28`](https://github.com/inaridiy/webforai/commit/4437e28e1e7807fd061aee99510ea2d3f71a2a78) Thanks [@inaridiy](https://github.com/inaridiy)! - accuracy improvement
+
+- [#18](https://github.com/inaridiy/webforai/pull/18) [`4764767`](https://github.com/inaridiy/webforai/commit/47647676a838b922e2cf32b1d3637c8153b996dd) Thanks [@inaridiy](https://github.com/inaridiy)! - Minor performance improvements
+
 ## 1.3.1
 
 ### Patch Changes
