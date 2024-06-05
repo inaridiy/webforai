@@ -1,5 +1,13 @@
 # webforai
 
+## 1.3.3
+
+### Patch Changes
+
+- [#20](https://github.com/inaridiy/webforai/pull/20) [`c5e8416`](https://github.com/inaridiy/webforai/commit/c5e841610360346fcba388c777869706dcd5997d) Thanks [@inaridiy](https://github.com/inaridiy)! - Minimal Param update
+
+- [#22](https://github.com/inaridiy/webforai/pull/22) [`97863ea`](https://github.com/inaridiy/webforai/commit/97863ea7f9f4837b96f376bd33371c6ed756d791) Thanks [@inaridiy](https://github.com/inaridiy)! - Add fetch loader and improve playwright loader
+
 ## 1.3.2
 
 ### Patch Changes
