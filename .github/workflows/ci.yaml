@@ -39,5 +39,5 @@ jobs:
           version: 9.1.4
           run_install: true
       - name: Install Playwright Browsers
-        run: pnpx playwright install --with-deps
+        run: pnpm exec playwright install    --with-deps
       - run: pnpm test
