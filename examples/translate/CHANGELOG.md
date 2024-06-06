@@ -1,5 +1,11 @@
 # translate
 
+## 1.0.8
+
+### Patch Changes
+
+- [#23](https://github.com/inaridiy/webforai/pull/23) [`2513931`](https://github.com/inaridiy/webforai/commit/25139317b242a28df6c2833646a43b42c633e681) Thanks [@inaridiy](https://github.com/inaridiy)! - Add Gemini Translate example
+
 ## 1.0.7
 
 ### Patch Changes
