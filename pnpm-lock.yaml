@@ -113,6 +113,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.18.0
         version: 0.18.0
+      '@google/generative-ai':
+        specifier: ^0.12.0
+        version: 0.12.0
       arg:
         specifier: ^5.0.2
         version: 5.0.2
@@ -772,6 +775,10 @@ packages:
   '@fastify/busboy@2.1.1':
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
+
+  '@google/generative-ai@0.12.0':
+    resolution: {integrity: sha512-krWjurjEUHSFhCX4lGHMOhbnpBfYZGU31mpHpPBQwcfWm0T+/+wxC4UCAJfkxxc3/HvGJVG8r4AqrffaeDHDlA==}
+    engines: {node: '>=18.0.0'}
 
   '@hono/valibot-validator@0.2.2':
     resolution: {integrity: sha512-1IfIi4JDztOeL3ciVbDoN5uJS9nSRfJv2az8VIn/m7CcVca2uF48Hw7v5ZShO/ESTP2SxtT8ozMZkQE1hi+kiw==}
@@ -4454,6 +4461,8 @@ snapshots:
     optional: true
 
   '@fastify/busboy@2.1.1': {}
+
+  '@google/generative-ai@0.12.0': {}
 
   '@hono/valibot-validator@0.2.2(hono@4.1.1)(valibot@0.30.0)':
     dependencies:
