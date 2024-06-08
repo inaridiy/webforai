@@ -1,5 +1,9 @@
+import type { LinksFunction } from "@remix-run/cloudflare";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
 import type { ReactNode } from "react";
+import stylesheet from "~/tailwind.css?url";
+
+export const links: LinksFunction = () => [{ rel: "stylesheet", href: stylesheet }];
 
 export function Layout({ children }: { children: ReactNode }) {
 	return (
