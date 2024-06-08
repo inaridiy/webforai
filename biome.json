@@ -33,7 +33,8 @@
 					}
 				}
 			}
-		}
+		},
+		"ignore": ["**/vite.config.ts"]
 	},
 
 	"overrides": [
@@ -48,6 +49,19 @@
 					},
 					"correctness": {
 						"noUndeclaredVariables": "off"
+					}
+				}
+			}
+		},
+		{
+			"include": ["apps/**"],
+			"ignore": ["**/*.json"],
+			"linter": {
+				"rules": {
+					"all": true,
+					"style": {
+						"noDefaultExport": "off",
+						"useFilenamingConvention": "off"
 					}
 				}
 			}
