@@ -48,24 +48,35 @@
 			"types": "./dist/types/loaders/cf-puppeteer.d.ts",
 			"import": "./dist/loaders/cf-puppeteer.js",
 			"require": "./dist/cjs/loaders/cf-puppeteer.js"
+		},
+		"./loaders/puppeteer": {
+			"types": "./dist/types/loaders/puppeteer.d.ts",
+			"import": "./dist/loaders/puppeteer.js",
+			"require": "./dist/cjs/loaders/puppeteer.js"
 		}
 	},
 	"typesVersions": {
 		"*": {
 			"types": ["./dist/types/index.d.ts"],
 			"loaders/playwright": ["./dist/types/loaders/playwright.d.ts"],
-			"loaders/cf-puppeteer": ["./dist/types/loaders/cf-puppeteer.d.ts"]
+			"loaders/cf-puppeteer": ["./dist/types/loaders/cf-puppeteer.d.ts"],
+			"loaders/fetch": ["./dist/types/loaders/fetch.d.ts"],
+			"loaders/puppeteer": ["./dist/types/loaders/puppeteer.d.ts"]
 		}
 	},
 	"peerDependencies": {
 		"@cloudflare/puppeteer": "^0.0.6",
-		"playwright": "^1.0.0"
+		"playwright": "^1.0.0",
+		"puppeteer": "^22.10.0"
 	},
 	"peerDependenciesMeta": {
 		"playwright": {
 			"optional": true
 		},
 		"@cloudflare/puppeteer": {
+			"optional": true
+		},
+		"puppeteer": {
 			"optional": true
 		}
 	},
