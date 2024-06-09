@@ -4,15 +4,7 @@
 	"description": "A library that provides a web interface for AI",
 	"author": "inaridiy",
 	"license": "MIT",
-	"keywords": [
-		"web",
-		"ai",
-		"html",
-		"html2md",
-		"markdown",
-		"mdast",
-		"hast"
-	],
+	"keywords": ["web", "ai", "html", "html2md", "markdown", "mdast", "hast"],
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/inaridiy/webforai.git"
@@ -26,10 +18,7 @@
 		"prerelease": "pnpm build",
 		"release": "np"
 	},
-	"files": [
-		"dist",
-		"!dist/types/**/*.js"
-	],
+	"files": ["dist", "!dist/types/**/*.js"],
 	"main": "dist/cjs/index.js",
 	"type": "module",
 	"module": "dist/index.js",
@@ -63,15 +52,9 @@
 	},
 	"typesVersions": {
 		"*": {
-			"types": [
-				"./dist/types/index.d.ts"
-			],
-			"loaders/playwright": [
-				"./dist/types/loaders/playwright.d.ts"
-			],
-			"loaders/cf-puppeteer": [
-				"./dist/types/loaders/cf-puppeteer.d.ts"
-			]
+			"types": ["./dist/types/index.d.ts"],
+			"loaders/playwright": ["./dist/types/loaders/playwright.d.ts"],
+			"loaders/cf-puppeteer": ["./dist/types/loaders/cf-puppeteer.d.ts"]
 		}
 	},
 	"peerDependencies": {
