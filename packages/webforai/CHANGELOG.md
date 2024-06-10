@@ -1,5 +1,11 @@
 # webforai
 
+## 1.4.1
+
+### Patch Changes
+
+- [#27](https://github.com/inaridiy/webforai/pull/27) [`fd7348f`](https://github.com/inaridiy/webforai/commit/fd7348f59a19a027b9bdf012b11d40c38d56cf61) Thanks [@inaridiy](https://github.com/inaridiy)! - Improve extract algorithm
+
 ## 1.4.0
 
 ### Minor Changes
