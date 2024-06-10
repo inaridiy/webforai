@@ -123,17 +123,17 @@ describe("htmlToMarkdown", () => {
 describe("htmlToMarkdown E2E", () => {
 	it("should convert npm README to Markdown ", async () => {
 		const html = await loadHtml("https://www.npmjs.com/package/webforai");
-		const markdown = htmlToMarkdown(html, { baseUrl: "https://www.npmjs.com/package/webforai" });
+		const markdown = htmlToMarkdown(html);
 
 		// @ts-ignore
 		const original = await import("../README.md?raw");
 		const d = distance(markdown, original.default);
-		expect(d).lte(400); // I'd like to optimise more!
+		expect(d).lte(200); // I'd like to optimise more!
 	});
 
 	it("should convert GitHub README to Markdown ", async () => {
 		const html = await loadHtml("https://github.com/inaridiy/webforai");
-		const markdown = htmlToMarkdown(html, { baseUrl: "https://www.npmjs.com/package/webforai" });
+		const markdown = htmlToMarkdown(html);
 
 		// @ts-ignore
 		const original = await import("../../../README.md?raw");

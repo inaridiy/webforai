@@ -2,16 +2,7 @@ import type { Element, Nodes as Hast } from "hast";
 import { select, selectAll } from "hast-util-select";
 import { toString as hastToString } from "hast-util-to-string";
 import { filter } from "unist-util-filter";
-import { parents } from "unist-util-parents";
 import { classnames, hasAncestors, isStrInclude, matchString } from "./utils";
-
-type ProxiedHast = Hast & { parent: ProxiedHast | null };
-
-declare module "hast" {
-	interface Element {
-		parent: ProxiedHast | null;
-	}
-}
 
 const UNLIKELY_ROLES = ["menu", "menubar", "complementary", "navigation", "alert", "alertdialog", "dialog"];
 
@@ -159,9 +150,9 @@ const removeEmptyFilter = (node: Hast) => {
 export const readabilityExtractHast = (hast: Hast): Hast => {
 	const lang = String(select("html", hast)?.properties.lang || tryGetLang(hast) || "en");
 	const body = select("body", hast) ?? hast;
+	const bodyText = hastToString(body);
 
-	const proxiedHast = parents(body) as unknown as ProxiedHast;
-	const baseFilterd = filter(proxiedHast, (node) => {
+	const baseFilterd = filter(body, (node) => {
 		if (!metadataFilter(node as Hast)) {
 			return false;
 		}
@@ -175,22 +166,26 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 		return { type: "root", children: [] };
 	}
 
-	const baseText = hastToString(baseFilterd);
+	const baseFilterdText = hastToString(baseFilterd);
+	let [baseTree, baseText] =
+		baseFilterdText.length > bodyText.length / 3 || baseFilterdText.length > 5000
+			? ([baseFilterd as Hast, baseFilterdText] as const)
+			: ([body as Hast, bodyText] as const);
+
 	let minimalLength = lang in BASE_MINIMAL_LENGTH ? BASE_MINIMAL_LENGTH[lang as keyof typeof BASE_MINIMAL_LENGTH] : 500;
 	if (baseText.length < minimalLength) {
 		minimalLength = Math.max(0, baseText.length - 200);
 	}
 
-	let bodyTree: Hast = baseFilterd;
 	for (const selector of BODY_SELECTORS) {
-		const body = { type: "root" as const, children: selectAll(selector, baseFilterd) };
-		const bodyText = hastToString(body);
+		const content = { type: "root" as const, children: selectAll(selector, baseFilterd) };
+		const contentText = hastToString(content);
 
-		if (bodyText.length < 25) {
+		if (contentText.length < 25) {
 			continue;
 		}
 
-		const links = selectAll("a", body);
+		const links = selectAll("a", content);
 		const linkText = links.map((link) => hastToString(link)).join("");
 
 		const linkDensity = linkText.length / bodyText.length;
@@ -198,13 +193,14 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 			continue;
 		}
 
-		if (bodyText.length > minimalLength) {
-			bodyTree = body;
+		if (contentText.length > minimalLength) {
+			baseTree = content;
+			baseText = contentText;
 			break;
 		}
 	}
 
-	const finalTree = filter(bodyTree, (node) => {
+	const finalFilteredTree = filter(baseTree, (node) => {
 		if (!removeEmptyFilter(node as Hast)) {
 			return false;
 		}
@@ -215,5 +211,6 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 		return true;
 	}) as Hast;
 
+	const finalTree = hastToString(finalFilteredTree).length > baseText.length / 3 ? finalFilteredTree : baseTree;
 	return finalTree;
 };
