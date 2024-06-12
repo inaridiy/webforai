@@ -1,6 +1,6 @@
 {
 	"name": "translate",
-	"version": "1.0.7",
+	"version": "1.0.9",
 	"description": "",
 	"main": "index.js",
 	"type": "module",
@@ -13,6 +13,7 @@
 	"license": "ISC",
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.18.0",
+		"@google/generative-ai": "^0.12.0",
 		"arg": "^5.0.2",
 		"dotenv": "^16.4.5",
 		"playwright": "^1.40.1",

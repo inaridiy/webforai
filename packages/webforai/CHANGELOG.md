@@ -1,5 +1,11 @@
 # webforai
 
+## 1.4.0
+
+### Minor Changes
+
+- [#25](https://github.com/inaridiy/webforai/pull/25) [`5bdea98`](https://github.com/inaridiy/webforai/commit/5bdea98cc7cafd79020123260db721fc6ffefd87) Thanks [@moons-14](https://github.com/moons-14)! - Add loader using puppeteer
+
 ## 1.3.3
 
 ### Patch Changes

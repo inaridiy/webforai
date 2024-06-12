@@ -1,5 +1,12 @@
 # worker
 
+## 0.0.7
+
+### Patch Changes
+
+- Updated dependencies [[`5bdea98`](https://github.com/inaridiy/webforai/commit/5bdea98cc7cafd79020123260db721fc6ffefd87)]:
+  - webforai@1.4.0
+
 ## 0.0.6
 
 ### Patch Changes
