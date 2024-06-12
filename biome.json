@@ -7,11 +7,13 @@
 		"useIgnoreFile": true
 	},
 	"organizeImports": {
-		"enabled": true
+		"enabled": true,
+		"ignore": ["**/components/ui/**/*.tsx", "**/components/ui/**/*.ts"]
 	},
 	"formatter": {
 		"enabled": true,
-		"lineWidth": 120
+		"lineWidth": 120,
+		"ignore": ["**/components/ui/**/*.tsx", "**/components/ui/**/*.ts"]
 	},
 	"linter": {
 		"enabled": true,
@@ -34,7 +36,7 @@
 				}
 			}
 		},
-		"ignore": ["**/vite.config.ts"]
+		"ignore": ["**/*.config.ts", "**/components/ui/**/*.tsx", "**/components/ui/**/*.ts"]
 	},
 
 	"overrides": [
@@ -55,7 +57,7 @@
 		},
 		{
 			"include": ["apps/**"],
-			"ignore": ["**/*.json"],
+			"ignore": ["**/*.json", "**/components/ui/**/*.tsx", "**/components/ui/**/*.ts"],
 			"linter": {
 				"rules": {
 					"all": true,
