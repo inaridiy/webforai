@@ -1,9 +1,13 @@
-import type { LinksFunction } from "@remix-run/cloudflare";
+import { ClerkApp } from "@clerk/remix";
+import { rootAuthLoader } from "@clerk/remix/ssr.server";
+import type { LinksFunction, LoaderFunction } from "@remix-run/cloudflare";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
 import type { ReactNode } from "react";
 import stylesheet from "~/tailwind.css?url";
 
 export const links: LinksFunction = () => [{ rel: "stylesheet", href: stylesheet }];
+
+export const loader: LoaderFunction = (args) => rootAuthLoader(args);
 
 export function Layout({ children }: { children: ReactNode }) {
 	return (
@@ -23,6 +27,8 @@ export function Layout({ children }: { children: ReactNode }) {
 	);
 }
 
-export default function App() {
+function App() {
 	return <Outlet />;
 }
+
+export default ClerkApp(App);

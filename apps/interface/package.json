@@ -12,6 +12,7 @@
 		"typegen": "wrangler types"
 	},
 	"dependencies": {
+		"@clerk/remix": "^4.1.1",
 		"@remix-run/cloudflare": "^2.9.2",
 		"@remix-run/cloudflare-pages": "^2.9.2",
 		"@remix-run/react": "^2.9.2",
