@@ -25,6 +25,7 @@
 		"ci:prepublish": "pnpm run build",
 		"ci:version": "changeset version",
 		"ci:publish": "pnpm ci:prepublish && changeset publish",
+		"web:dev": "pnpm run --r --filter \"./apps/**\" dev",
 		"preinstall": "npx only-allow pnpm",
 		"prepare": "pnpm simple-git-hooks",
 		"postinstall": "pnpm -w build"
