@@ -1,6 +1,6 @@
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Link, NavLink, Outlet } from "@remix-run/react";
+import { NavLink, Outlet } from "@remix-run/react";
 import type { FC } from "react";
 
 const SwitchSignButton: FC<{ to: string; children: string }> = ({ to, children }) => (
@@ -35,7 +35,7 @@ export default function AuthLayout() {
 				<div className="lg:p-8">
 					<div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
 						<Outlet />
-						<p className="px-8 text-center text-sm text-muted-foreground">
+						{/* <p className="px-8 text-center text-sm text-muted-foreground">
 							By clicking continue, you agree to our{" "}
 							<Link to="/terms" className="underline underline-offset-4 hover:text-primary">
 								Terms of Service
@@ -45,7 +45,7 @@ export default function AuthLayout() {
 								Privacy Policy
 							</Link>
 							.
-						</p>
+						</p> */}
 					</div>
 				</div>
 			</div>
