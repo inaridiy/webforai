@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { MetaFunction } from "@remix-run/cloudflare";
-import { ArrowBigRight, Rocket } from "lucide-react";
+import { Rocket } from "lucide-react";
 import Balance from "react-wrap-balancer";
 import { ClientOnly } from "remix-utils/client-only";
 
