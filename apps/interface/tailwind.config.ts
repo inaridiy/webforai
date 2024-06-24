@@ -12,6 +12,9 @@ module.exports = {
 			},
 		},
 		extend: {
+			backgroundImage: {
+				gradient: "var(--gradient)",
+			},
 			colors: {
 				border: "hsl(var(--border))",
 				input: "hsl(var(--input))",
@@ -52,6 +55,7 @@ module.exports = {
 				md: "calc(var(--radius) - 2px)",
 				sm: "calc(var(--radius) - 4px)",
 			},
+			gradients: {},
 			keyframes: {
 				"accordion-down": {
 					from: { height: "0" },
