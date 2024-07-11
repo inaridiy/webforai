@@ -4,15 +4,7 @@
 	"description": "A library that provides a web interface for AI",
 	"author": "inaridiy",
 	"license": "MIT",
-	"keywords": [
-		"web",
-		"ai",
-		"html",
-		"html2md",
-		"markdown",
-		"mdast",
-		"hast"
-	],
+	"keywords": ["web", "ai", "html", "html2md", "markdown", "mdast", "hast"],
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/inaridiy/webforai.git"
@@ -21,15 +13,12 @@
 	"scripts": {
 		"copy:package.cjs.json": "pnpm ncp ./package.cjs.json ./dist/cjs/package.json && pnpm ncp ./package.cjs.json ./dist/types/package.json ",
 		"clean": "rimraf dist",
-		"build": "pnpm clean && tsx ./build.ts && pnpm copy:package.cjs.json",
+		"build": "pnpm clean && tsx ./builds/library-build.ts && tsx ./builds/library-build.ts && pnpm copy:package.cjs.json",
 		"test": "echo \"Error: no test specified\"",
 		"prerelease": "pnpm build",
 		"release": "np"
 	},
-	"files": [
-		"dist",
-		"!dist/types/**/*.js"
-	],
+	"files": ["dist", "!dist/types/**/*.js"],
 	"main": "dist/cjs/index.js",
 	"type": "module",
 	"module": "dist/index.js",
@@ -68,21 +57,11 @@
 	},
 	"typesVersions": {
 		"*": {
-			"types": [
-				"./dist/types/index.d.ts"
-			],
-			"loaders/playwright": [
-				"./dist/types/loaders/playwright.d.ts"
-			],
-			"loaders/cf-puppeteer": [
-				"./dist/types/loaders/cf-puppeteer.d.ts"
-			],
-			"loaders/fetch": [
-				"./dist/types/loaders/fetch.d.ts"
-			],
-			"loaders/puppeteer": [
-				"./dist/types/loaders/puppeteer.d.ts"
-			]
+			"types": ["./dist/types/index.d.ts"],
+			"loaders/playwright": ["./dist/types/loaders/playwright.d.ts"],
+			"loaders/cf-puppeteer": ["./dist/types/loaders/cf-puppeteer.d.ts"],
+			"loaders/fetch": ["./dist/types/loaders/fetch.d.ts"],
+			"loaders/puppeteer": ["./dist/types/loaders/puppeteer.d.ts"]
 		}
 	},
 	"peerDependencies": {
