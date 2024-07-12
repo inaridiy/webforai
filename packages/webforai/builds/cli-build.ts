@@ -1,12 +1,12 @@
 /*
-  For `build.ts`, further inspire @honojs/hono with inspire @kaze-style/react.
+  For `build.ts`, further inspire inaridiy with inspire @honojs/hono and @kaze-style/react.
+  https://github.com/inaridiy/webforai/blob/main/packages/webforai/package.json
   https://github.com/honojs/hono/blob/main/build.ts
   https://github.com/taishinaritomi/kaze-style/blob/main/scripts/build.ts
   MIT License
-  Copyright (c) 2024 inaridiy
+  Copyright (c) 2024 moons-14
 */
 
-import { exec } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import arg from "arg";
@@ -56,14 +56,6 @@ const commonOptions: BuildOptions = {
 	platform: "node",
 };
 
-const cjsBuild = () =>
-	context({
-		...commonOptions,
-		outbase: "./bin",
-		outdir: "./dist/bin/cjs",
-		format: "cjs",
-	});
-
 const esmBuild = () =>
 	context({
 		...commonOptions,
@@ -74,11 +66,9 @@ const esmBuild = () =>
 		plugins: [addExtension(".js")],
 	});
 
-const [esmCtx, cjsCtx] = await Promise.all([esmBuild(), cjsBuild()]);
+const [esmCtx] = await Promise.all([esmBuild()]);
 if (isWatch) {
-	Promise.all([esmCtx.watch(), cjsCtx.watch()]);
+	Promise.all([esmCtx.watch()]);
 } else {
-	Promise.all([esmCtx.rebuild(), cjsCtx.rebuild()]).then(() => Promise.all([esmCtx.dispose(), cjsCtx.dispose()]));
+	Promise.all([esmCtx.rebuild()]).then(() => Promise.all([esmCtx.dispose()]));
 }
-
-exec(`tsc ${isWatch ? "-w" : ""} --declaration --project tsconfig.build.json`);
