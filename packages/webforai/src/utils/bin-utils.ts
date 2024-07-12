@@ -1,4 +1,3 @@
-import path from "node:path";
 import { log } from "@clack/prompts";
 
 export function logError(error: Error) {
