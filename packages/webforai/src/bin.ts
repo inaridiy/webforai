@@ -13,8 +13,8 @@ const LOADERS: string[] = ["fetch", "playwright", "puppeteer"];
 
 const loadersHint: { [name: string]: string } = {
 	fetch: "Fetch HTML content from the given URL",
-	playwright: "Retrieve HTML content after lettering using Playwright; Playwright must be installed in advance.",
-	puppeteer: "Retrieve HTML content after lettering using Puppeteer; Puppeteer must be installed in advance.",
+	playwright: "Retrieve HTML content after rendering using Playwright; Playwright must be installed in advance.",
+	puppeteer: "Retrieve HTML content after rendering using Puppeteer; Puppeteer must be installed in advance.",
 };
 const aiModeOptions = { linkAsText: true, tableAsText: true, hideImage: true };
 const readabilityModeOptions = { linkAsText: false, tableAsText: false, hideImage: false };
@@ -206,6 +206,6 @@ program
 		}
 	});
 
-console.info(pc.gray(`Webfprai CLI version ${packageInfo.version}`));
+console.info(pc.gray(`webforai CLI version ${packageInfo.version}`));
 
 program.parse();
