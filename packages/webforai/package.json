@@ -13,7 +13,7 @@
 	"scripts": {
 		"copy:package.cjs.json": "pnpm ncp ./package.cjs.json ./dist/cjs/package.json && pnpm ncp ./package.cjs.json ./dist/types/package.json ",
 		"clean": "rimraf dist",
-		"build": "pnpm clean && tsx ./builds/library-build.ts && tsx ./builds/cli-build.ts && pnpm copy:package.cjs.json",
+		"build": "pnpm clean && tsx build.ts && pnpm copy:package.cjs.json",
 		"test": "echo \"Error: no test specified\"",
 		"prerelease": "pnpm build",
 		"release": "np"

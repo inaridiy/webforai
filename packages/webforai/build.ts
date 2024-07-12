@@ -4,6 +4,8 @@
   https://github.com/taishinaritomi/kaze-style/blob/main/scripts/build.ts
   MIT License
   Copyright (c) 2024 inaridiy
+
+  Modified by moons-14
 */
 
 import { exec } from "node:child_process";
@@ -50,6 +52,19 @@ const addExtension = (extension = ".js", fileExtension = ".ts"): Plugin => ({
 	},
 });
 
+const addBanner: Plugin = {
+	name: "add-banner",
+	setup(build) {
+		build.onLoad({ filter: /bin\.ts$/ }, async (args) => {
+			const source = await fs.promises.readFile(args.path, "utf8");
+			return {
+				contents: `#!/usr/bin/env node\n${source}`,
+				loader: "ts",
+			};
+		});
+	},
+};
+
 const commonOptions: BuildOptions = {
 	entryPoints,
 	logLevel: "info",
@@ -62,6 +77,7 @@ const cjsBuild = () =>
 		outbase: "./src",
 		outdir: "./dist/cjs",
 		format: "cjs",
+		plugins: [addBanner],
 	});
 
 const esmBuild = () =>
@@ -71,7 +87,7 @@ const esmBuild = () =>
 		outbase: "./src",
 		outdir: "./dist",
 		format: "esm",
-		plugins: [addExtension(".js")],
+		plugins: [addExtension(".js"), addBanner],
 	});
 
 const [esmCtx, cjsCtx] = await Promise.all([esmBuild(), cjsBuild()]);
