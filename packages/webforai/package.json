@@ -13,7 +13,7 @@
 	"scripts": {
 		"copy:package.cjs.json": "pnpm ncp ./package.cjs.json ./dist/cjs/package.json && pnpm ncp ./package.cjs.json ./dist/types/package.json ",
 		"clean": "rimraf dist",
-		"build": "pnpm clean && tsx ./builds/library-build.ts && tsx ./builds/library-build.ts && pnpm copy:package.cjs.json",
+		"build": "pnpm clean && tsx ./builds/library-build.ts && tsx ./builds/cli-build.ts && pnpm copy:package.cjs.json",
 		"test": "echo \"Error: no test specified\"",
 		"prerelease": "pnpm build",
 		"release": "np"
@@ -23,7 +23,7 @@
 	"type": "module",
 	"module": "dist/index.js",
 	"types": "dist/types/index.d.ts",
-	"bin": "dist/bin/index.js",
+	"bin": "dist/bin.js",
 	"exports": {
 		".": {
 			"types": "./dist/types/index.d.ts",
@@ -82,6 +82,8 @@
 		}
 	},
 	"dependencies": {
+		"@clack/prompts": "^0.7.0",
+		"commander": "^12.1.0",
 		"fastest-levenshtein": "^1.0.16",
 		"hast-util-from-html": "^2.0.1",
 		"hast-util-select": "^6.0.1",
@@ -89,10 +91,12 @@
 		"hast-util-to-mdast": "^10.1.0",
 		"hast-util-to-string": "^3.0.0",
 		"hast-util-to-text": "^4.0.0",
+		"link": "^2.1.1",
 		"mathml-to-latex": "^1.3.0",
 		"mdast-util-gfm": "^3.0.0",
 		"mdast-util-math": "^3.0.0",
 		"mdast-util-to-markdown": "^2.1.0",
+		"picocolors": "^1.0.1",
 		"puppeteer": "^22.10.0",
 		"trim-trailing-lines": "^2.1.0",
 		"unist-util-filter": "^5.0.1",

@@ -11,17 +11,10 @@ import fs from "node:fs";
 import path from "node:path";
 import arg from "arg";
 import { context } from "esbuild";
-import type { BuildOptions, Plugin, PluginBuild } from "esbuild";
-import { glob } from "glob";
+import type { Plugin, PluginBuild } from "esbuild";
 
 const args = arg({
 	"--watch": Boolean,
-});
-
-const isWatch = args["--watch"];
-
-const entryPoints = glob.sync("./bin/**/*.ts", {
-	ignore: ["./bin/**/*.test.ts"],
 });
 
 const addExtension = (extension = ".js", fileExtension = ".ts"): Plugin => ({
@@ -50,25 +43,25 @@ const addExtension = (extension = ".js", fileExtension = ".ts"): Plugin => ({
 	},
 });
 
-const commonOptions: BuildOptions = {
-	entryPoints,
-	logLevel: "info",
-	platform: "node",
-};
-
+const isWatch = args["--watch"];
 const esmBuild = () =>
 	context({
-		...commonOptions,
+		entryPoints: ["./bin/index.ts"],
+		logLevel: "info",
+		platform: "node",
 		bundle: true,
+		banner: {
+			js: "#!/usr/bin/env node",
+		},
 		outbase: "./bin",
-		outdir: "./dist/bin",
+		outfile: "./dist/bin.js",
 		format: "esm",
 		plugins: [addExtension(".js")],
 	});
 
-const [esmCtx] = await Promise.all([esmBuild()]);
+const esmCtx = await esmBuild();
 if (isWatch) {
-	Promise.all([esmCtx.watch()]);
+	esmCtx.watch();
 } else {
-	Promise.all([esmCtx.rebuild()]).then(() => Promise.all([esmCtx.dispose()]));
+	await esmCtx.rebuild().then(() => esmCtx.dispose());
 }
