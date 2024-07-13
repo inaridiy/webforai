@@ -10,6 +10,7 @@ A library that provides a web interface for AI
 - Ultra-precise Markdown segmentation based on AST
 - Ultra-precise HTML retrieval functions using headless browsers
 - The core functionality is edge-native (runs on Cloudflare Workers!!!)
+- Command-line interface for easy use without coding
 
 ## Demo
 
@@ -18,13 +19,24 @@ There is a demo API for Html2Markdown deployed on CloudflareWorker. Please acces
 - [NPM Package page](https://webforai.inaridiy.workers.dev/?url=https://www.npmjs.com/package/webforai)
 - [Wikipedia of Cloudflare (AI Mode)](https://webforai.inaridiy.workers.dev/?url=https://en.wikipedia.org/wiki/Cloudflare&mode=ai)
 
-## Quick Start
+## Installation
 
-Just install and execute scripts
-
+### As a library
+To use WebforAI as a library in your project, install it along with playwright:
 ```bash
 pnpm i webforai playwright
 ```
+
+### As a CLI tool
+To use WebforAI as a command-line tool, install it globally:
+```bash
+npm install -g webforai
+```
+
+## Quick Start
+
+### Using as a library
+Just install and execute scripts
 
 ```js
 import { promises as fs } from "fs";
@@ -40,6 +52,18 @@ await fs.writeFile("output.md", markdown);
 ```
 
 other examples are in [examples](./examples/simple/src/index.ts)
+
+### Using as a CLI tool
+After installing globally, you can use the webforai command:
+```bash
+webforai https://www.npmjs.com/package/webforai output.md
+```
+This will fetch the HTML from the specified URL, convert it to Markdown, and save it to output.md.
+
+For more CLI options, run:
+```bash
+webforai --help
+```
 
 ## Examples
 
@@ -68,3 +92,28 @@ Convert Mdast to Markdown. If `solveLinks` is specified, the relative links in t
 
 **`loadHtml(url: string, options?: LoadHtmlOptions): Promise<string>`**  
 Load HTML from the specified URL. This function uses Playwright internally.
+
+### CLI Commands
+
+**`webforai <source?> <outputPath?> [options]`**
+Converts the HTML at the specified URL or path to Markdown and saves it to an output file.
+Arguments and options can be specified in the interactive interface even if they are not specified.
+- **`source`**  
+    The URL or path to the HTML file to convert.
+- **`outputPath`**
+    The path to save the output Markdown file. 
+
+#### Options
+- **`--mode <mode>`**  
+    Specify the mode to use for conversion. Options are `default` and `ai`. Default is `default`.
+- **`--loader <loader>`**  
+    Specify the loader to use for fetching HTML. Options are `fetch`, `playwright` and `puppeteer`. Default is `fetch`.
+- **`--baseUrl <baseUrl>`**
+    Specify the base URL to use for relative links in the output Markdown.
+- **`-o --stdout`**  
+    Output the converted Markdown to the console instead of saving it to a file.
+- **`-d --debug`**  
+    Enable debug mode. This will output additional information to the console.
+
+**`webforai --help`**
+Displays help information for the CLI tool.
