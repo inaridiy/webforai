@@ -168,10 +168,6 @@ program
 					content = await puppeteerLoadHtml(finalSource);
 				} else {
 					const response = await fetch(finalSource);
-					if (!response.ok) {
-						console.error(pc.red("Failed to download the content"));
-						process.exit(1);
-					}
 
 					content = await response.text();
 				}
