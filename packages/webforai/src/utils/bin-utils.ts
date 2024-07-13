@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { log } from "@clack/prompts";
 
 export function logError(error: Error) {
@@ -14,18 +16,30 @@ export function isUrl(str: string) {
 	}
 }
 
-export function incrementFileName(fileName: string): string {
-	const parts = fileName.split(".");
-	const name = parts.shift() || "";
-	const rest = parts.length > 0 ? `.${parts.join(".")}` : "";
+export function getNextAvailableFilePath(filePath: string): string {
+	const parsedPath = path.parse(filePath);
+	const directory = parsedPath.dir;
+	const fullName = parsedPath.base;
 
-	const numberRegex = /_(\d+)$/;
-	const match = name.match(numberRegex);
+	// ファイル名を最初のドットで分割
+	const [firstPart, ...restParts] = fullName.split(".");
+	const restName = restParts.length > 0 ? `.${restParts.join(".")}` : "";
 
-	if (match) {
-		const currentNumber = Number.parseInt(match[1], 10);
-		const newNumber = currentNumber + 1;
-		return `${name.replace(numberRegex, "")}_${newNumber}${rest}`;
+	// ベース名から既存の数字を取り除く
+	const baseName = firstPart.replace(/_\d+$/, "");
+
+	let counter = 1;
+	let nextFilePath = filePath;
+
+	while (fs.existsSync(nextFilePath)) {
+		const match = firstPart.match(/_(\d+)$/);
+		if (match) {
+			counter = Number.parseInt(match[1], 10) + 1;
+		}
+		const newName = `${baseName}_${counter}${restName}`;
+		nextFilePath = path.join(directory, newName);
+		counter++;
 	}
-	return `${name}_1${rest}`;
+
+	return nextFilePath;
 }
