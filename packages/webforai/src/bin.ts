@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { cancel, intro, isCancel, outro, select, spinner, text } from "@clack/prompts";
+import { cancel, confirm, intro, isCancel, outro, select, spinner, text } from "@clack/prompts";
 import { program } from "commander";
 import pc from "picocolors";
 import packageInfo from "../package.json" assert { type: "json" };
@@ -98,20 +98,16 @@ program
 			}
 
 			if (fs.existsSync(finalOutputPath)) {
-				const isOutputFileOverwrite = await select({
+				const isOutputFileOverwrite = await confirm({
 					message: "The file already exists. Overwrite?",
-					options: [
-						{ value: "yes", label: "Yes" },
-						{ value: "no", label: "No" },
-					],
-					initialValue: "no",
+					initialValue: false,
 				});
 				if (isCancel(isOutputFileOverwrite)) {
 					cancel("Canceled.");
 					return;
 				}
 
-				if (isOutputFileOverwrite === "no") {
+				if (isOutputFileOverwrite === false) {
 					finalOutputPath = await text({
 						message: "Enter the output file path:",
 						placeholder: "output.md",
@@ -242,6 +238,6 @@ program
 		}
 	});
 
-intro(`webforai CLI version ${packageInfo.version}`);
+intro(pc.inverse(`webforai CLI version ${packageInfo.version}`));
 
 program.parse();
