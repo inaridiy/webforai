@@ -7,7 +7,7 @@ import packageInfo from "../package.json" assert { type: "json" };
 import { htmlToMarkdown } from "./html-to-markdown";
 import { loadHtml as playwrightLoadHtml } from "./loaders/playwright";
 import { loadHtml as puppeteerLoadHtml } from "./loaders/puppeteer";
-import { changeFileExtension, getNextAvailableFilePath, isUrl } from "./utils/bin-utils";
+import { changeFileExtension, getNextAvailableFilePath, isUrl, urlToFilename } from "./utils/bin-utils";
 
 const MODES: string[] = ["default", "ai"];
 const LOADERS: string[] = ["fetch", "playwright", "puppeteer"];
@@ -102,7 +102,11 @@ program
 					finalOutputPath = await text({
 						message: "Enter the output file path:",
 						placeholder: "output.md",
-						initialValue: outputPath ? outputPath : sourceIsUrl ? "output.md" : changeFileExtension(finalSource, "md"),
+						initialValue: outputPath
+							? outputPath
+							: sourceIsUrl
+								? `${urlToFilename(finalSource)}.md`
+								: changeFileExtension(finalSource, "md"),
 						validate: (value: string) => {
 							if (value.trim() === "") {
 								return "Output path is required";

@@ -64,3 +64,44 @@ export function changeFileExtension(filePath: string, newExtension: string): str
 	parsedPath[parsedPath.length - 1] = newFileName;
 	return parsedPath.join("/");
 }
+
+export function urlToFilename(url: string): string {
+	try {
+		const urlObj = new URL(url);
+
+		const domainParts = urlObj.hostname
+			.split(".")
+			.reverse()
+			.reduce((acc: string[], part: string, index: number) => {
+				if (index === 0) {
+					return acc;
+				}
+				if (acc.length >= 2) {
+					return acc;
+				}
+				if (part === "www") {
+					return acc;
+				}
+				// biome-ignore lint/performance/noAccumulatingSpread: <explanation>
+				return [part, ...acc];
+			}, []);
+		const domainString = domainParts.reverse().join("-");
+
+		const pathParts = urlObj.pathname.split("/").filter(Boolean);
+		const relevantPathParts = pathParts.slice(-2);
+		const pathString = relevantPathParts.map((part) => decodeURIComponent(part)).join("-");
+
+		let filename = [domainString, pathString].filter(Boolean).join("-");
+
+		filename = filename
+			.toLowerCase()
+			// biome-ignore lint/suspicious/noControlCharactersInRegex: <explanation>
+			.replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
+			.replace(/[\s.]+/g, "-")
+			.replace(/^-+|-+$/g, "");
+
+		return filename || "output";
+	} catch {
+		return "output";
+	}
+}
