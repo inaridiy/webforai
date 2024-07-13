@@ -156,11 +156,10 @@ program
 
 		let content: string;
 
+		const loadSpinner = spinner();
 		try {
-			const s = spinner();
-
 			if (sourceIsUrl) {
-				s.start("Downloading content.");
+				loadSpinner.start("Downloading content.");
 
 				if (finalLoader === "playwright") {
 					content = await playwrightLoadHtml(finalSource);
@@ -172,9 +171,9 @@ program
 					content = await response.text();
 				}
 
-				s.stop("Content download is complete!");
+				loadSpinner.stop("Content download is complete!");
 			} else {
-				s.start("Retrieving content.");
+				loadSpinner.start("Retrieving content.");
 				if (!fs.existsSync(finalSource)) {
 					console.error(pc.red("The file does not exist"));
 					process.exit(1);
@@ -187,12 +186,14 @@ program
 				}
 
 				content = fs.readFileSync(finalSource, "utf-8");
-				s.stop("Content retrieval is complete!");
+				loadSpinner.stop("Content retrieval is complete!");
 			}
 		} catch (e) {
 			const error = e as Error;
 
-			console.error(pc.red("An error occurred while retrieving content"), error.message);
+			loadSpinner.stop(pc.red("An error occurred while retrieving content"));
+
+			console.error(error.message);
 			if (process.env.DEBUG) {
 				console.error(error.stack);
 			}
@@ -204,9 +205,9 @@ program
 			console.info(content);
 		}
 
+		const convertSpinner = spinner();
 		try {
-			const s = spinner();
-			s.start("Converting content to markdown.");
+			convertSpinner.start("Converting content to markdown.");
 
 			const markdown = htmlToMarkdown(content, {
 				...(sourceIsUrl ? { baseUrl: finalSource } : {}),
@@ -220,13 +221,15 @@ program
 
 			fs.writeFileSync(finalOutputPath, markdown);
 
-			s.stop("Markdown conversion is complete!");
+			convertSpinner.stop("Markdown conversion is complete!");
 
 			outro(`Converted successfully to markdown! Output saved to: ${finalOutputPath} 🎉`);
 		} catch (e) {
 			const error = e as Error;
 
-			console.error(pc.red("An error occurred while converting and saving the markdown"), error.message);
+			convertSpinner.stop(pc.red("An error occurred while converting and saving the markdown"));
+
+			console.error(error.message);
 			if (process.env.DEBUG) {
 				console.error(error.stack);
 			}
