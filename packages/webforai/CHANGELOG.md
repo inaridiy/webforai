@@ -1,5 +1,15 @@
 # webforai
 
+## 1.5.0
+
+### Minor Changes
+
+- [#30](https://github.com/inaridiy/webforai/pull/30) [`167acb1`](https://github.com/inaridiy/webforai/commit/167acb1dca303d651d997c23224d3366ff4375ac) Thanks [@moons-14](https://github.com/moons-14)! - webforai can now be run from the cli
+
+### Patch Changes
+
+- [#31](https://github.com/inaridiy/webforai/pull/31) [`b13719f`](https://github.com/inaridiy/webforai/commit/b13719fd719511d0aeb1ef3749e88fd8145337a6) Thanks [@moons-14](https://github.com/moons-14)! - PRESET_EXTRACT_HAST and DEFAULT_EXTRACT_HAST can be referenced externally
+
 ## 1.4.1
 
 ### Patch Changes
