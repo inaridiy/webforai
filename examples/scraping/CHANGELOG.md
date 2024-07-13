@@ -1,5 +1,12 @@
 # scraping
 
+## 1.0.10
+
+### Patch Changes
+
+- Updated dependencies [[`b13719f`](https://github.com/inaridiy/webforai/commit/b13719fd719511d0aeb1ef3749e88fd8145337a6), [`167acb1`](https://github.com/inaridiy/webforai/commit/167acb1dca303d651d997c23224d3366ff4375ac)]:
+  - webforai@1.5.0
+
 ## 1.0.9
 
 ### Patch Changes
