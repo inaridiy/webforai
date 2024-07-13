@@ -3,9 +3,7 @@
   https://github.com/honojs/hono/blob/main/build.ts
   https://github.com/taishinaritomi/kaze-style/blob/main/scripts/build.ts
   MIT License
-  Copyright (c) 2024 inaridiy
-
-  Modified by moons-14
+  Copyright (c) 2024 - present, inaridiy and webforai contributors
 */
 
 import { exec } from "node:child_process";
