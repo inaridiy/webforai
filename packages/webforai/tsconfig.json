@@ -11,7 +11,19 @@
 		"skipLibCheck": false,
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
+		"resolveJsonModule": true,
 		"types": ["node"]
 	},
-	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.mts", "src/**/*.test.ts", "src/**/*.test.tsx"]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.d.ts",
+		"src/**/*.mts",
+		"src/**/*.test.ts",
+		"src/**/*.test.tsx",
+		"bin/**/*.ts",
+		"bin/**/*.d.ts",
+		"bin/**/*.mts",
+		"bin/**/*.test.ts",
+		"bin/**/*.test.tsx"
+	]
 }
