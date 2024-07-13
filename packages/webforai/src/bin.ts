@@ -48,16 +48,6 @@ program
 			let finalLoader: string | symbol = "fetch";
 			const isOutputFile = !options.stdout;
 
-			if (process.env.DEBUG) {
-				console.info("Arguments and options:");
-				console.table({
-					source,
-					outputPath,
-					...options,
-				});
-				console.info("isOutputFile:", isOutputFile);
-			}
-
 			try {
 				// Determine if source is URL or path
 				finalSource = await text({
@@ -179,11 +169,6 @@ program
 					console.error(error.stack);
 				}
 				process.exit(1);
-			}
-
-			if (process.env.DEBUG) {
-				console.info("Processing with the following options:");
-				console.table({ finalSource, sourceIsUrl, isOutputFile, finalOutputPath, finalMode, finalLoader });
 			}
 
 			let content: string;
