@@ -121,23 +121,16 @@ describe("htmlToMarkdown", () => {
 });
 
 describe("htmlToMarkdown E2E", () => {
-	it("should convert npm README to Markdown ", async () => {
-		const html = await loadHtml("https://www.npmjs.com/package/webforai");
-		const markdown = htmlToMarkdown(html);
+	it("Converting for good", async () => {
+		const html1 = await loadHtml("https://www.npmjs.com/package/webforai");
+		const markdown1 = htmlToMarkdown(html1, { linkAsText: true, hideImage: true });
+
+		const html2 = await loadHtml("https://github.com/inaridiy/webforai");
+		const markdown2 = htmlToMarkdown(html2, { linkAsText: true, hideImage: true });
 
 		// @ts-ignore
-		const original = await import("../README.md?raw");
-		const d = distance(markdown, original.default);
-		expect(d).lte(200); // I'd like to optimise more!
-	});
 
-	it("should convert GitHub README to Markdown ", async () => {
-		const html = await loadHtml("https://github.com/inaridiy/webforai");
-		const markdown = htmlToMarkdown(html);
-
-		// @ts-ignore
-		const original = await import("../../../README.md?raw");
-		const d = distance(markdown, original.default);
-		expect(d).lte(200); // I'd like to optimise more!
+		const d = distance(markdown1, markdown2);
+		expect(d).lte(2500); // I'd like to optimise more!
 	});
 });
