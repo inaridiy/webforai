@@ -98,6 +98,12 @@ program
 							if (value.trim() === "") {
 								return "Output path is required";
 							}
+							if (fs.existsSync(value) && fs.statSync(value).isDirectory()) {
+								return "No directory can be specified.";
+							}
+							if (!fs.existsSync(value) && value.endsWith("/")) {
+								return "No directory can be specified.";
+							}
 						},
 					});
 					if (isCancel(finalOutputPath)) {
@@ -124,9 +130,11 @@ program
 									if (value.trim() === "") {
 										return "Output path is required";
 									}
-
 									if (fs.existsSync(value)) {
 										return "The file already exists";
+									}
+									if (!fs.existsSync(value) && value.endsWith("/")) {
+										return "No directory can be specified.";
 									}
 								},
 							});
