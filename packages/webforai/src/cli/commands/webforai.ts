@@ -2,7 +2,7 @@ import { inputOutputPath } from "../helpers/inputOutputPath";
 import { inputSourcePath } from "../helpers/inputSourcePath";
 import { selectExtractMode } from "../helpers/selectExtractMode";
 import { selectLoader } from "../helpers/selectLoader";
-import { isUrl, sourcePathToOutputPath } from "../utils";
+import { isUrl } from "../utils";
 
 export const webforaiCommand = async (
 	initialPath: string,
