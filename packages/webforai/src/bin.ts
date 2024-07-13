@@ -1,12 +1,12 @@
 import fs from "node:fs";
-import { cancel, isCancel, outro, select, spinner, text } from "@clack/prompts";
+import { cancel, intro, isCancel, outro, select, spinner, text } from "@clack/prompts";
 import { program } from "commander";
 import pc from "picocolors";
 import packageInfo from "../package.json" assert { type: "json" };
 import { htmlToMarkdown } from "./html-to-markdown";
 import { loadHtml as playwrightLoadHtml } from "./loaders/playwright";
 import { loadHtml as puppeteerLoadHtml } from "./loaders/puppeteer";
-import { isUrl } from "./utils/bin-utils";
+import { incrementFileName, isUrl } from "./utils/bin-utils";
 
 const MODES: string[] = ["default", "ai"];
 const LOADERS: string[] = ["fetch", "playwright", "puppeteer"];
@@ -33,11 +33,11 @@ program
 	})
 	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <explanation>
 	.action(async (source: string, outputPath: string, options: { mode?: string; loader?: string; debug?: boolean }) => {
-		let finalSource: string;
-		let sourceIsUrl: boolean;
-		let finalOutputPath: string;
-		let finalMode: string;
-		let finalLoader = "fetch";
+		let finalSource: string | symbol;
+		let sourceIsUrl: boolean | symbol;
+		let finalOutputPath: string | symbol;
+		let finalMode: string | symbol;
+		let finalLoader: string | symbol = "fetch";
 
 		if (process.env.DEBUG) {
 			console.info("Arguments and options:");
@@ -52,7 +52,7 @@ program
 
 		try {
 			// Determine if source is URL or path
-			finalSource = (await text({
+			finalSource = await text({
 				message: "Enter the URL or html path to be converted to markdown:",
 				placeholder: "https://example.com",
 				initialValue: source,
@@ -61,7 +61,7 @@ program
 						return "Source is required";
 					}
 				},
-			})) as unknown as string;
+			});
 			if (isCancel(finalSource)) {
 				cancel("Canceled.");
 				return;
@@ -70,11 +70,11 @@ program
 
 			// Select loader
 			if (sourceIsUrl) {
-				finalLoader = (await select({
+				finalLoader = await select({
 					message: "Select loader:",
 					options: LOADERS.map((mode) => ({ value: mode, label: mode, hint: loadersHint[mode] || "" })),
 					initialValue: options.loader && LOADERS.includes(options.loader) ? options.loader : "fetch",
-				})) as unknown as string;
+				});
 				if (isCancel(finalLoader)) {
 					cancel("Canceled.");
 					return;
@@ -82,7 +82,7 @@ program
 			}
 
 			// Determine output path
-			finalOutputPath = (await text({
+			finalOutputPath = await text({
 				message: "Enter the output file path:",
 				placeholder: "output.md",
 				initialValue: outputPath ? outputPath : "output.md",
@@ -91,18 +91,54 @@ program
 						return "Output path is required";
 					}
 				},
-			})) as unknown as string;
+			});
 			if (isCancel(finalOutputPath)) {
 				cancel("Canceled.");
 				return;
 			}
 
+			if (fs.existsSync(finalOutputPath)) {
+				const isOutputFileOverwrite = await select({
+					message: "The file already exists. Overwrite?",
+					options: [
+						{ value: "yes", label: "Yes" },
+						{ value: "no", label: "No" },
+					],
+					initialValue: "no",
+				});
+				if (isCancel(isOutputFileOverwrite)) {
+					cancel("Canceled.");
+					return;
+				}
+
+				if (isOutputFileOverwrite === "no") {
+					finalOutputPath = await text({
+						message: "Enter the output file path:",
+						placeholder: "output.md",
+						initialValue: incrementFileName(finalOutputPath),
+						validate: (value: string) => {
+							if (value.trim() === "") {
+								return "Output path is required";
+							}
+
+							if (fs.existsSync(value)) {
+								return "The file already exists";
+							}
+						},
+					});
+					if (isCancel(finalOutputPath)) {
+						cancel("Canceled.");
+						return;
+					}
+				}
+			}
+
 			// Select mode
-			finalMode = (await select({
+			finalMode = await select({
 				message: "Select processing mode:",
 				options: MODES.map((mode) => ({ value: mode, label: mode })),
 				initialValue: options.mode && MODES.includes(options.mode) ? options.mode : "default",
-			})) as unknown as string;
+			});
 			if (isCancel(finalMode)) {
 				cancel("Canceled.");
 				return;
@@ -206,6 +242,6 @@ program
 		}
 	});
 
-console.info(pc.gray(`webforai CLI version ${packageInfo.version}`));
+intro(`webforai CLI version ${packageInfo.version}`);
 
 program.parse();
