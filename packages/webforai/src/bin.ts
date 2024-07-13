@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 import { cancel, confirm, intro, isCancel, outro, select, spinner, text } from "@clack/prompts";
 import { program } from "commander";
 import pc from "picocolors";
@@ -241,11 +242,16 @@ program
 				}
 
 				if (isOutputFile) {
+					const directory = path.dirname(finalOutputPath);
+
+					if (!fs.existsSync(directory)) {
+						fs.mkdirSync(directory, { recursive: true });
+					}
 					fs.writeFileSync(finalOutputPath, markdown);
 
 					convertSpinner.stop("Markdown conversion is complete!");
 
-					outro(`Converted successfully to markdown! Output saved to: ${finalOutputPath} 🎉`);
+					outro(`Converted successfully to markdown! Output saved to: ${path.resolve(finalOutputPath)} 🎉`);
 				} else {
 					convertSpinner.stop("Markdown conversion is complete!");
 					outro("Converted successfully to markdown🎉");
