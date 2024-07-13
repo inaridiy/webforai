@@ -68,6 +68,14 @@ program
 						if (value.trim() === "") {
 							return "Source is required";
 						}
+						if (!isUrl(value)) {
+							if (!fs.existsSync(value)) {
+								return "It appears that you are specifying a local file, but the file cannot be found. hint: when specifying a url, start with http or https.";
+							}
+							if (fs.statSync(value).isDirectory()) {
+								return "You are specifying a local file, but you cannot specify a directory. hint: when specifying a url, start with http or https.";
+							}
+						}
 					},
 				});
 				if (isCancel(finalSource)) {
