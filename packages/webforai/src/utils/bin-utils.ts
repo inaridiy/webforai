@@ -21,11 +21,9 @@ export function getNextAvailableFilePath(filePath: string): string {
 	const directory = parsedPath.dir;
 	const fullName = parsedPath.base;
 
-	// ファイル名を最初のドットで分割
 	const [firstPart, ...restParts] = fullName.split(".");
 	const restName = restParts.length > 0 ? `.${restParts.join(".")}` : "";
 
-	// ベース名から既存の数字を取り除く
 	const baseName = firstPart.replace(/_\d+$/, "");
 
 	let counter = 1;
@@ -42,4 +40,27 @@ export function getNextAvailableFilePath(filePath: string): string {
 	}
 
 	return nextFilePath;
+}
+
+export function changeFileExtension(filePath: string, newExtension: string): string {
+	const parsedPath = filePath.split("/");
+	const fileName = parsedPath[parsedPath.length - 1];
+
+	const formattedNewExtension = newExtension.startsWith(".") ? newExtension : `.${newExtension}`;
+
+	if (fileName.startsWith(".")) {
+		const parts = fileName.split(".");
+		if (parts.length === 2) {
+			return parsedPath.slice(0, -1).concat(`${fileName}${formattedNewExtension}`).join("/");
+		}
+		parts[parts.length - 1] = newExtension.replace(/^\./, "");
+		return parsedPath.slice(0, -1).concat(parts.join(".")).join("/");
+	}
+
+	const lastDotIndex = fileName.lastIndexOf(".");
+	const baseName = lastDotIndex !== -1 ? fileName.slice(0, lastDotIndex) : fileName;
+	const newFileName = `${baseName}${formattedNewExtension}`;
+
+	parsedPath[parsedPath.length - 1] = newFileName;
+	return parsedPath.join("/");
 }
