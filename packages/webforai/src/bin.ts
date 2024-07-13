@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { cancel, confirm, intro, isCancel, note, outro, select, spinner, text } from "@clack/prompts";
+import { cancel, confirm, intro, isCancel, outro, select, spinner, text } from "@clack/prompts";
 import { program } from "commander";
 import pc from "picocolors";
 import packageInfo from "../package.json" assert { type: "json" };
