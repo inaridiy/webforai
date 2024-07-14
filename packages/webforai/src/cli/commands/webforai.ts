@@ -71,7 +71,7 @@ export const webforaiCommand = async (
 		? { type: "web", loader: await selectLoader(options.loader) }
 		: { type: "local", loader: null };
 
-	const outputPath = options.stdout ? await inputOutputPath(sourcePath, initialOutputPath) : null;
+	const outputPath = options.stdout ? null : await inputOutputPath(sourcePath, initialOutputPath);
 
 	const mode = await selectExtractMode(options.mode);
 
@@ -87,6 +87,7 @@ export const webforaiCommand = async (
 
 	if (!outputPath) {
 		console.info(markdown);
+		convertSpinner.stop("Markdown conversion is complete!");
 		return;
 	}
 

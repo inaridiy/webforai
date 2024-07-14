@@ -96,11 +96,12 @@
 		"mdast-util-math": "^3.0.0",
 		"mdast-util-to-markdown": "^2.1.0",
 		"picocolors": "^1.0.1",
-		"puppeteer": "^22.10.0",
+
 		"trim-trailing-lines": "^2.1.0",
 		"unist-util-filter": "^5.0.1"
 	},
 	"devDependencies": {
+		"puppeteer": "^22.10.0",
 		"@cloudflare/puppeteer": "^0.0.6",
 		"@tsconfig/recommended": "^1.0.3",
 		"@types/hast": "^3.0.2",

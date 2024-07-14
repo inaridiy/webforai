@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { text } from "@clack/prompts";
-import { isUrl } from "../../utils/bin-utils";
 import { DEFAULT_PATH } from "../constants";
+import { isUrl } from "../utils";
 import { assertContinue } from "./assertContinue";
 
 export const inputSourcePath = async (initialPath?: string) => {

@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { exec } from "node:child_process";
 import { confirm } from "@clack/prompts";
 import { assertContinue } from "./assertContinue";
 
@@ -28,9 +28,7 @@ export const requirePackage = async (packageName: string) => {
 		process.exit(1);
 	}
 
-	const installCommand = `npm install ${packageName} --no-save`;
-	console.info(`Installing ${packageName}...`);
-	execSync(installCommand, { stdio: "inherit" });
+	await exec(`npm install ${packageName}`);
 
 	return true;
 };
