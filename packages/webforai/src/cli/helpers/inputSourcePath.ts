@@ -4,11 +4,11 @@ import { DEFAULT_PATH } from "../constants";
 import { isUrl } from "../utils";
 import { assertContinue } from "./assertContinue";
 
-export const inputSourcePath = async (initialPath?: string) => {
+export const inputSourcePath = async () => {
 	const result = await text({
 		message: "Enter the URL or html path to be converted to markdown:",
 		placeholder: DEFAULT_PATH,
-		initialValue: initialPath ?? undefined,
+		initialValue: "",
 		validate: (value: string) => {
 			if (value.trim() === "") {
 				return "Source is required";

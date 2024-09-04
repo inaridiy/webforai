@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import { spinner as clackSpinner, spinner } from "@clack/prompts";
+import { cancel, spinner as clackSpinner, confirm, outro, spinner } from "@clack/prompts";
 import pc from "picocolors";
+import type { Browser as PlaywrightBrowser } from "playwright";
+import { $ } from "zx";
 import { htmlToMarkdown } from "../../html-to-markdown";
 import { inputOutputPath } from "../helpers/inputOutputPath";
 import { inputSourcePath } from "../helpers/inputSourcePath";
-import { requirePackage } from "../helpers/requirePackage";
 import { selectExtractMode } from "../helpers/selectExtractMode";
 import { selectLoader } from "../helpers/selectLoader";
 import { isUrl } from "../utils";
@@ -13,12 +14,13 @@ import { isUrl } from "../utils";
 const aiModeOptions = { linkAsText: true, tableAsText: true, hideImage: true };
 const readabilityModeOptions = { linkAsText: false, tableAsText: false, hideImage: false };
 
-type LoaderOptions = { type: "web"; loader: string } | { type: "local"; loader: null };
+export type LoaderOptions =
+	| { type: "web"; loader: "playwright" | "pw" | "fetch" | string }
+	| { type: "local"; loader: null };
 
 const loadHtml = async (sourcePath: string, loader: LoaderOptions) => {
-	const loadSpinner = clackSpinner();
-
 	if (loader.type === "local") {
+		const loadSpinner = clackSpinner();
 		loadSpinner.start("Retrieving content.");
 		if (!fs.existsSync(sourcePath)) {
 			console.error(pc.red("The file does not exist"));
@@ -36,59 +38,108 @@ const loadHtml = async (sourcePath: string, loader: LoaderOptions) => {
 		return content;
 	}
 
-	loadSpinner.start("Downloading content.");
+	if (loader.loader === "fetch") {
+		const loadSpinner = clackSpinner();
+		loadSpinner.start("Downloading content.");
+		const { loadHtml } = await import("../../loaders/fetch");
+		const content = await loadHtml(sourcePath);
+		loadSpinner.stop("Content download is complete!");
+		return content;
+	}
 
 	if (loader.loader === "playwright") {
-		await requirePackage("playwright");
+		const launchSpinner = clackSpinner();
+		launchSpinner.start("Launching playwright.");
+
+		const playwright = await import("playwright");
+		let browser: PlaywrightBrowser;
+
+		try {
+			browser = await playwright.chromium.launch();
+			launchSpinner.stop("Playwright launched!");
+		} catch (error) {
+			launchSpinner.stop(pc.red("Playwright failed to launch!"));
+			if (!(error as Error).message.includes("npx playwright install")) {
+				cancel("An unknown error occurred while starting the browser.");
+				console.error(error);
+				process.exit(1);
+			}
+
+			const isInstall = await confirm({
+				message: "To continue, you will need to download a browser. Do you wish to continue?",
+			});
+			if (!isInstall) {
+				cancel("End of process.");
+				process.exit(1);
+			}
+			const installDepsSpinner = spinner();
+			installDepsSpinner.start("Installing browser dependencies.");
+
+			try {
+				await $`npx playwright install`;
+				installDepsSpinner.stop("Browser dependencies installed!");
+			} catch (error) {
+				installDepsSpinner.stop(pc.red("Browser dependencies failed to install!"));
+				cancel("End of process.");
+				console.error(error);
+				process.exit(1);
+			}
+
+			browser = await playwright.chromium.launch();
+		}
+		const loadSpinner = clackSpinner();
+		loadSpinner.start("Loading content.");
 		const { loadHtml } = await import("../../loaders/playwright");
-		const content = await loadHtml(sourcePath);
+		const content = await loadHtml(sourcePath, browser);
 		loadSpinner.stop("Content download is complete!");
-		return content;
-	}
-	if (loader.loader === "puppeteer") {
-		await requirePackage("puppeteer");
-		const { loadHtml } = await import("../../loaders/puppeteer");
-		const content = await loadHtml(sourcePath);
-		loadSpinner.stop("Content download is complete!");
+
+		browser.close();
+
 		return content;
 	}
 
-	const { loadHtml } = await import("../../loaders/fetch");
-
-	const content = await loadHtml(sourcePath);
-	loadSpinner.stop("Content download is complete!");
-	return content;
+	throw new Error("Invalid loader");
 };
 
 export const webforaiCommand = async (
 	initialPath: string,
 	initialOutputPath: string,
-	options: { mode?: string; loader: string; debug?: boolean; baseUrl?: string; stdout?: boolean },
+	options: { mode?: string; loader: string; debug?: boolean; baseUrl?: string },
 ) => {
-	const sourcePath = await inputSourcePath(initialPath);
+	const sourcePath = initialPath ?? (await inputSourcePath());
+	if (options.debug) {
+		console.debug(`sourcePath: ${sourcePath}`);
+	}
 
 	const loader: LoaderOptions = isUrl(sourcePath)
-		? { type: "web", loader: await selectLoader(options.loader) }
+		? { type: "web", loader: options.loader ?? (await selectLoader()) }
 		: { type: "local", loader: null };
+	if (options.debug) {
+		console.debug(`loader: ${loader}`);
+	}
 
-	const outputPath = options.stdout ? null : await inputOutputPath(sourcePath, initialOutputPath);
+	const outputPath = initialOutputPath ?? (await inputOutputPath(sourcePath));
+	if (options.debug) {
+		console.debug(`outputPath: ${outputPath}`);
+	}
 
-	const mode = await selectExtractMode(options.mode);
+	const mode = options.mode ?? (await selectExtractMode());
+	if (options.debug) {
+		console.debug(`mode: ${mode}`);
+	}
 
 	const content = await loadHtml(sourcePath, loader);
-
-	const convertSpinner = spinner();
-	convertSpinner.start("Converting content to markdown.");
+	if (options.debug) {
+		console.debug(`content: ${content}`);
+	}
 
 	const markdown = htmlToMarkdown(content, {
 		baseUrl: isUrl(sourcePath) ? sourcePath : options.baseUrl,
 		...(mode === "ai" ? aiModeOptions : readabilityModeOptions),
 	});
 
-	if (!outputPath) {
-		console.info(markdown);
-		convertSpinner.stop("Markdown conversion is complete!");
-		return;
+	if (options.debug) {
+		console.debug(`markdown: ${markdown}`);
 	}
 
 	const directory = path.dirname(outputPath);
@@ -98,5 +149,5 @@ export const webforaiCommand = async (
 	}
 	fs.writeFileSync(outputPath, markdown);
 
-	convertSpinner.stop("Markdown conversion is complete!");
+	outro("Markdown conversion is complete!");
 };

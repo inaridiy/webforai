@@ -3,11 +3,11 @@ import { confirm, text } from "@clack/prompts";
 import { getNextAvailableFilePath, sourcePathToOutputPath } from "../utils";
 import { assertContinue } from "./assertContinue";
 
-export const inputOutputPath = async (sourcePath: string, initialPath?: string) => {
+export const inputOutputPath = async (sourcePath: string) => {
 	const outputPath = await text({
 		message: "Enter the output file path:",
 		placeholder: "output.md",
-		initialValue: initialPath ?? sourcePathToOutputPath(sourcePath),
+		initialValue: sourcePathToOutputPath(sourcePath),
 		validate: (value: string) => {
 			if (value.trim() === "") {
 				return "Output path is required";

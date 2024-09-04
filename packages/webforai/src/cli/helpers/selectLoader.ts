@@ -1,5 +1,5 @@
 import { select } from "@clack/prompts";
-import { LOADERS, type Loaders } from "../constants";
+import { LOADERS } from "../constants";
 import { assertContinue } from "./assertContinue";
 
 const loadersHint = {
@@ -8,11 +8,11 @@ const loadersHint = {
 	puppeteer: "Retrieve HTML content after rendering using Puppeteer; Puppeteer must be installed in advance.",
 } as const;
 
-export const selectLoader = async (initialLoader?: string) => {
+export const selectLoader = async () => {
 	const result = await select({
 		message: "Select loader:",
+		initialValue: "fetch",
 		options: LOADERS.map((mode) => ({ value: mode, label: mode, hint: loadersHint[mode] || "" })),
-		initialValue: LOADERS.includes(initialLoader as Loaders) ? initialLoader : "fetch",
 	});
 	assertContinue(result);
 
