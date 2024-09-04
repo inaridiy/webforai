@@ -1,5 +1,11 @@
 # webforai
 
+## 1.5.1
+
+### Patch Changes
+
+- [#37](https://github.com/inaridiy/webforai/pull/37) [`39c1122`](https://github.com/inaridiy/webforai/commit/39c112205d0aa2a07a46c92b94be6ed91239cf0f) Thanks [@inaridiy](https://github.com/inaridiy)! - Fix CLI Dep Error
+
 ## 1.5.0
 
 ### Minor Changes
