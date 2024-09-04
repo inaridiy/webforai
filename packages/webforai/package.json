@@ -4,7 +4,15 @@
 	"description": "A library that provides a web interface for AI",
 	"author": "inaridiy",
 	"license": "MIT",
-	"keywords": ["web", "ai", "html", "html2md", "markdown", "mdast", "hast"],
+	"keywords": [
+		"web",
+		"ai",
+		"html",
+		"html2md",
+		"markdown",
+		"mdast",
+		"hast"
+	],
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/inaridiy/webforai.git"
@@ -18,7 +26,10 @@
 		"prerelease": "pnpm build",
 		"release": "np"
 	},
-	"files": ["dist", "!dist/types/**/*.js"],
+	"files": [
+		"dist",
+		"!dist/types/**/*.js"
+	],
 	"main": "dist/cjs/index.js",
 	"type": "module",
 	"module": "dist/index.js",
@@ -58,28 +69,27 @@
 	},
 	"typesVersions": {
 		"*": {
-			"types": ["./dist/types/index.d.ts"],
-			"loaders/playwright": ["./dist/types/loaders/playwright.d.ts"],
-			"loaders/cf-puppeteer": ["./dist/types/loaders/cf-puppeteer.d.ts"],
-			"loaders/fetch": ["./dist/types/loaders/fetch.d.ts"],
-			"loaders/puppeteer": ["./dist/types/loaders/puppeteer.d.ts"]
+			"types": [
+				"./dist/types/index.d.ts"
+			],
+			"loaders/playwright": [
+				"./dist/types/loaders/playwright.d.ts"
+			],
+			"loaders/cf-puppeteer": [
+				"./dist/types/loaders/cf-puppeteer.d.ts"
+			],
+			"loaders/fetch": [
+				"./dist/types/loaders/fetch.d.ts"
+			],
+			"loaders/puppeteer": [
+				"./dist/types/loaders/puppeteer.d.ts"
+			]
 		}
 	},
 	"peerDependencies": {
-		"@cloudflare/puppeteer": "^0.0.6",
-		"playwright": "^1.0.0",
-		"puppeteer": "^22.10.0"
-	},
-	"peerDependenciesMeta": {
-		"playwright": {
-			"optional": true
-		},
-		"@cloudflare/puppeteer": {
-			"optional": true
-		},
-		"puppeteer": {
-			"optional": true
-		}
+		"@cloudflare/puppeteer": ">=0.0.6",
+		"playwright": ">=1.4",
+		"puppeteer": ">=22"
 	},
 	"dependencies": {
 		"@clack/prompts": "^0.7.0",
@@ -96,12 +106,10 @@
 		"mdast-util-math": "^3.0.0",
 		"mdast-util-to-markdown": "^2.1.0",
 		"picocolors": "^1.0.1",
-
 		"trim-trailing-lines": "^2.1.0",
 		"unist-util-filter": "^5.0.1"
 	},
 	"devDependencies": {
-		"puppeteer": "^22.10.0",
 		"@cloudflare/puppeteer": "^0.0.6",
 		"@tsconfig/recommended": "^1.0.3",
 		"@types/hast": "^3.0.2",
@@ -113,6 +121,7 @@
 		"ncp": "^2.0.0",
 		"np": "^9.2.0",
 		"playwright": "^1.40.1",
+		"puppeteer": "^23.2.2",
 		"rimraf": "^5.0.5",
 		"tsx": "^4.7.0",
 		"typescript": "^5.4.5"
