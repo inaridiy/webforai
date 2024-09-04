@@ -1,5 +1,12 @@
 # bench
 
+## 1.0.11
+
+### Patch Changes
+
+- Updated dependencies [[`e4da40c`](https://github.com/inaridiy/webforai/commit/e4da40ce7d805916e0ca7e2cdce0c67815333bf6)]:
+  - webforai@2.0.0
+
 ## 1.0.10
 
 ### Patch Changes

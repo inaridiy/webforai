@@ -1,5 +1,11 @@
 # webforai
 
+## 2.0.0
+
+### Major Changes
+
+- [#34](https://github.com/inaridiy/webforai/pull/34) [`e4da40c`](https://github.com/inaridiy/webforai/commit/e4da40ce7d805916e0ca7e2cdce0c67815333bf6) Thanks [@inaridiy](https://github.com/inaridiy)! - Fix CLI Error
+
 ## 1.5.0
 
 ### Minor Changes
