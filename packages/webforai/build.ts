@@ -50,19 +50,6 @@ const addExtension = (extension = ".js", fileExtension = ".ts"): Plugin => ({
 	},
 });
 
-const addBanner: Plugin = {
-	name: "add-banner",
-	setup(build) {
-		build.onLoad({ filter: /bin\.ts$/ }, async (args) => {
-			const source = await fs.promises.readFile(args.path, "utf8");
-			return {
-				contents: `#!/usr/bin/env node\n${source}`,
-				loader: "ts",
-			};
-		});
-	},
-};
-
 const commonOptions: BuildOptions = {
 	entryPoints,
 	logLevel: "info",
@@ -75,7 +62,6 @@ const cjsBuild = () =>
 		outbase: "./src",
 		outdir: "./dist/cjs",
 		format: "cjs",
-		plugins: [addBanner],
 	});
 
 const esmBuild = () =>
@@ -85,14 +71,25 @@ const esmBuild = () =>
 		outbase: "./src",
 		outdir: "./dist",
 		format: "esm",
-		plugins: [addExtension(".js"), addBanner],
+		plugins: [addExtension(".js")],
 	});
 
-const [esmCtx, cjsCtx] = await Promise.all([esmBuild(), cjsBuild()]);
+const cliBuild = () =>
+	context({
+		entryPoints: ["./src/cli/bin.ts"],
+		outfile: "./dist/bin.js",
+		format: "esm",
+		packages: "external",
+		bundle: true,
+	});
+
+const [esmCtx, cjsCtx, cliCtx] = await Promise.all([esmBuild(), cjsBuild(), cliBuild()]);
 if (isWatch) {
-	Promise.all([esmCtx.watch(), cjsCtx.watch()]);
+	Promise.all([esmCtx.watch(), cjsCtx.watch(), cliCtx.watch()]);
 } else {
-	Promise.all([esmCtx.rebuild(), cjsCtx.rebuild()]).then(() => Promise.all([esmCtx.dispose(), cjsCtx.dispose()]));
+	Promise.all([esmCtx.rebuild(), cjsCtx.rebuild(), cliCtx.rebuild()]).then(() =>
+		Promise.all([esmCtx.dispose(), cjsCtx.dispose(), cliCtx.dispose()]),
+	);
 }
 
 exec(`tsc ${isWatch ? "-w" : ""} --declaration --project tsconfig.build.json`);
