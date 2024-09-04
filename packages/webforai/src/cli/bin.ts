@@ -1,9 +1,9 @@
 import { intro } from "@clack/prompts";
 import { program } from "commander";
 import pc from "picocolors";
-import packageInfo from "../package.json" assert { type: "json" };
-import { webforaiCommand } from "./cli/commands/webforai";
-import { LOADERS, MODES } from "./cli/constants";
+import packageInfo from "../../package.json";
+import { webforaiCommand } from "./commands/webforai";
+import { LOADERS, MODES } from "./constants";
 
 program
 	.name("webforai")
