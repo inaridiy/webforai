@@ -2,7 +2,7 @@ import { intro } from "@clack/prompts";
 import { program } from "commander";
 import pc from "picocolors";
 import packageInfo from "../../package.json";
-import { webforaiCommand } from "./commands/webforai";
+import { webforaiCommand } from "./commands/handlers";
 import { LOADERS, MODES } from "./constants";
 
 program
