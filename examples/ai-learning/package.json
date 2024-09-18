@@ -1,5 +1,5 @@
 {
-	"name": "scraping",
+	"name": "ai-learning",
 	"version": "1.0.11",
 	"description": "",
 	"main": "index.js",
@@ -12,16 +12,18 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
+		"@ai-sdk/google": "^0.0.48",
+		"ai": "^3.3.39",
 		"arg": "^5.0.2",
 		"dotenv": "^16.4.5",
-		"openai": "^4.29.1",
 		"playwright": "^1.40.1",
-		"webforai": "workspace:^"
+		"tsx": "^4.7.0",
+		"webforai": "workspace:^",
+		"zod": "^3.23.8"
 	},
 	"devDependencies": {
 		"@tsconfig/recommended": "^1.0.3",
 		"@types/node": "^20.14.10",
-		"tsx": "^4.7.0",
 		"typescript": "^5.4.5"
 	}
 }

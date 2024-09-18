@@ -1,5 +1,12 @@
 import { type Browser, type BrowserContext, chromium } from "playwright";
 
+export type LoadHtmlOptions = {
+	context?: BrowserContext | Browser;
+	timeout?: number;
+	waitUntil?: "load" | "domcontentloaded" | "networkidle";
+	superBypassMode?: boolean;
+};
+
 /**
  * Useful function for load the HTML of a URL using Playwright.
  * **Not recommended** for use in production environments.
@@ -14,7 +21,8 @@ import { type Browser, type BrowserContext, chromium } from "playwright";
  * console.log(html);
  * ```
  */
-export const loadHtml = async (url: string, context?: BrowserContext | Browser) => {
+export const loadHtml = async (url: string, contextOrOptions?: BrowserContext | Browser | LoadHtmlOptions) => {
+	const { context } = contextOrOptions && "page" in contextOrOptions ? { context: contextOrOptions } : contextOrOptions;
 	const _context = context ?? (await chromium.launch({ headless: true }));
 
 	const page = await _context.newPage();

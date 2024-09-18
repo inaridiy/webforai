@@ -1,0 +1,61 @@
+export const TECH_DOCUMENTS = [
+	"https://react.dev/",
+	"https://react.dev/learn",
+	"https://nextjs.org/",
+	"https://nextjs.org/showcase",
+	"https://nextjs.org/docs",
+	"https://nextjs.org/docs/app/building-your-application/routing/dynamic-routes",
+	"https://docs.expo.dev/",
+	"https://docs.expo.dev/tutorial/introduction/",
+	"https://vuejs.org/",
+	"https://vuejs.org/guide/introduction.html",
+	"https://hono.dev/",
+	"https://hono.dev/docs/",
+	"https://esbuild.github.io/getting-started/",
+	"https://vitejs.dev/config/",
+	"https://tailwindcss.com/",
+	"https://tailwindcss.com/docs/installation",
+	"https://ui.shadcn.com/docs",
+	"https://ui.shadcn.com/docs/components/select",
+	"https://orm.drizzle.team/docs/overview",
+	"https://orm.drizzle.team/docs/rqb",
+	"https://developers.cloudflare.com/pages/framework-guides/deploy-a-hono-site/",
+	"https://emotion.sh/docs/introduction",
+	"https://jotai.org/",
+	"https://clerk.com/docs/quickstarts/nextjs",
+	"https://www.prisma.io/docs/orm/overview/introduction/what-is-prisma",
+	"https://www.npmjs.com/package/webforai",
+];
+
+export const ARTICLES = [
+	"https://blog.cloudflare.com/",
+	"https://blog.cloudflare.com/more-npm-packages-on-cloudflare-workers-combining-polyfills-and-native-code/",
+	"https://gigazine.net/",
+	"https://gigazine.net/news/20240917-synchron-brain-computer-interface-alexa/",
+	"https://dev.classmethod.jp/",
+	"https://dev.classmethod.jp/articles/gha-volta-error-could-not-unpack-node/",
+	"https://zenn.dev/",
+	"https://zenn.dev/inaridiy/articles/f1ed9e73cb182b",
+	"https://ics.media/",
+	"https://ics.media/entry/231120/",
+	"https://saruwakakun.com/html-css/basic",
+	"https://saruwakakun.com/html-css/basic/tools",
+	"https://qiita.com/",
+	"https://qiita.com/Tadataka_Takahashi/items/556e0277017677cef68a",
+	"https://www.wikipedia.org/",
+	"https://ja.wikipedia.org/wiki/%E6%9C%A8%E6%9D%91%E6%8B%93%E5%93%89",
+];
+
+export const NEWS = [
+	"https://www.nytimes.com/international/",
+	"https://www.wsj.com/",
+	"https://www.cnn.co.jp/usa/35223960.html",
+	"https://www.bbc.com/news",
+	"https://www.bbc.com/news/articles/cx2kdd3n7yqo",
+	"https://www3.nhk.or.jp/news/html/20240329/k10014405791000.html",
+];
+
+export const EC_SITE = [
+	"https://www.amazon.co.jp/dp/B08ZSHSFXQ",
+	"https://store.shopping.yahoo.co.jp/gimi1225/p2750.html?sc_i=shopping-pc-web-top--pm_mod-itm_1",
+];
