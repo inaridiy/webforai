@@ -1,10 +1,22 @@
-import { type Browser, type BrowserContext, chromium } from "playwright";
+import { type Browser, chromium, devices } from "playwright";
 
 export type LoadHtmlOptions = {
-	context?: BrowserContext | Browser;
+	browser?: Browser;
 	timeout?: number;
 	waitUntil?: "load" | "domcontentloaded" | "networkidle";
 	superBypassMode?: boolean;
+};
+
+const SUPER_BYPASS_DEVICE = {
+	userAgent:
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+	viewport: { width: 1920, height: 1080 },
+	deviceScaleFactor: 1,
+	hasTouch: false,
+	isMobile: false,
+	javaScriptEnabled: true,
+	locale: "en-US",
+	timezoneId: "America/New_York",
 };
 
 /**
@@ -21,17 +33,37 @@ export type LoadHtmlOptions = {
  * console.log(html);
  * ```
  */
-export const loadHtml = async (url: string, contextOrOptions?: BrowserContext | Browser | LoadHtmlOptions) => {
-	const { context } = contextOrOptions && "page" in contextOrOptions ? { context: contextOrOptions } : contextOrOptions;
-	const _context = context ?? (await chromium.launch({ headless: true }));
+export const loadHtml = async (url: string, options?: LoadHtmlOptions) => {
+	const { browser, waitUntil, timeout, superBypassMode } = options ?? {};
+	const _browser = browser ?? (await chromium.launch({ headless: true }));
+	const context = await _browser.newContext(superBypassMode ? SUPER_BYPASS_DEVICE : devices["Desktop Chrome"]);
 
-	const page = await _context.newPage();
-	await page.goto(url, { waitUntil: "load" });
+	if (superBypassMode) {
+		await context.addInitScript(() => {
+			Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+			Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
+			Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
+		});
+	}
+
+	const page = await context.newPage();
+	if (superBypassMode) {
+		await page.route("**/*.js", (route) => {
+			if (route.request().url().includes("captcha-delivery")) {
+				return route.abort();
+			}
+			return route.continue();
+		});
+	}
+
+	await page.goto(url, { waitUntil: waitUntil ?? "load", timeout });
 	const html = await page.content();
 	await page.close();
 
-	if (!context) {
-		await _context.close();
+	if (browser) {
+		await context.close();
+	} else {
+		await _browser.close();
 	}
 
 	return html;
