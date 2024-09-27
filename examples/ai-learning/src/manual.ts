@@ -5,7 +5,7 @@ import { htmlToMarkdown } from "webforai";
 
 dotenv.config();
 
-const url = "https://www.wsj.com/";
+const url = "https://www.cnn.co.jp/usa/35223960.html";
 const loadHtml = async (url: string) => {
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({

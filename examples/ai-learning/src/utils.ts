@@ -9,7 +9,7 @@ export const persitCachedLoadHtml = async (url: string) => {
 	if (await fs.stat(cachePath).catch(() => false)) {
 		return fs.readFile(cachePath, "utf-8");
 	}
-	const html = await loadHtml(url);
+	const html = await loadHtml(url, { superBypassMode: true });
 	await fs.writeFile(cachePath, html);
 	return html;
 };
