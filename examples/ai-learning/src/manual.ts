@@ -5,7 +5,7 @@ import { htmlToMarkdown } from "webforai";
 
 dotenv.config();
 
-const url = "https://www.cnn.co.jp/usa/35223960.html";
+const url = "https://ics.media/";
 const loadHtml = async (url: string) => {
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
@@ -47,10 +47,12 @@ const loadHtml = async (url: string) => {
 
 const html = await loadHtml(url);
 
-await fs.writeFileSync("html.html", html);
+await fs.mkdirSync(".output", { recursive: true });
+
+await fs.writeFileSync(".output/html.html", html);
 
 const rawContent = await htmlToMarkdown(html, { baseUrl: url, extractors: false });
 const cleanedContent = await htmlToMarkdown(html, { baseUrl: url, extractors: "readability" });
 
-await fs.writeFileSync("raw.md", rawContent);
-await fs.writeFileSync("cleaned.md", cleanedContent);
+await fs.writeFileSync(".output/raw.md", rawContent);
+await fs.writeFileSync(".output/cleaned.md", cleanedContent);

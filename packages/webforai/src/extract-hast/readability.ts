@@ -2,7 +2,8 @@ import type { Element, Nodes as Hast } from "hast";
 import { select, selectAll } from "hast-util-select";
 import { toString as hastToString } from "hast-util-to-string";
 import { filter } from "unist-util-filter";
-import { classnames, hasAncestors, isStrInclude, matchString } from "./utils";
+import type { ExtractParams } from ".";
+import { classnames, isStrInclude, matchString } from "./utils";
 
 const UNLIKELY_ROLES = ["menu", "menubar", "complementary", "navigation", "alert", "alertdialog", "dialog"];
 
@@ -17,26 +18,16 @@ const REGEXPS = {
 
 const BODY_SELECTORS = ["article", "#article", ".article_body", ".article-body", "#content", ".entry", "main"];
 
-const PARAGRAPH_TAGS = ["p", "div", "section", "article", "main", "ul", "ol", "li"];
+const PARAGRAPH_TAGS = ["a", "p", "div", "section", "article", "main", "ul", "ol", "li"];
 
 const BASE_MINIMAL_LENGTH = {
 	ja: 200,
 	en: 500,
 };
 
-const tryGetLang = (node: Hast) => {
-	if (node.type !== "element") {
-		return;
-	}
-	const element = node as Element;
-	if (element.tagName !== "html") {
-		return;
-	}
-
-	const langAttr = element.properties.lang || element.properties["xml:lang"];
-	if (langAttr) {
-		return langAttr as string;
-	}
+const EMPTY_LENGTH = {
+	ja: 4,
+	en: 10,
 };
 
 const metadataFilter = (node: Hast) => !["comment", "doctype"].includes(node.type);
@@ -91,10 +82,7 @@ const unlikelyElementFilter = (node: Hast) => {
 	const element = node as Element;
 
 	// Skip main content elements
-	if (["body", "article", "main", "section", "a"].includes(element.tagName)) {
-		return true;
-	}
-	if (hasAncestors(element, ["table", "code"], 3)) {
+	if (["body", "article", "main", "section", "h1", "h2", "h3", "h4", "h5", "h6", "p"].includes(element.tagName)) {
 		return true;
 	}
 	const match = matchString(element);
@@ -111,21 +99,7 @@ const unlikelyElementFilter = (node: Hast) => {
 	return true;
 };
 
-const isImageLink = (element: Element) => {
-	const a = select("a", element);
-	const img = select("img", a);
-
-	if (!(a && img)) {
-		return false;
-	}
-
-	const imgFilename = img.properties.src?.toString().split("/").pop();
-	const hrefFilename = a.properties.href?.toString().split("/").pop();
-
-	return imgFilename === hrefFilename && imgFilename;
-};
-
-const removeEmptyFilter = (node: Hast) => {
+const removeEmptyFilter = (node: Hast, lang: string) => {
 	if (node.type !== "element") {
 		return true;
 	}
@@ -135,47 +109,38 @@ const removeEmptyFilter = (node: Hast) => {
 		return true;
 	}
 
-	if (isImageLink(element)) {
-		return true;
-	}
-
 	const text = hastToString(element);
-	if (text.length < 10) {
+	const minimalLength = lang in EMPTY_LENGTH ? EMPTY_LENGTH[lang as keyof typeof EMPTY_LENGTH] : 10;
+	if (text.length < minimalLength) {
 		return false;
 	}
 
 	return true;
 };
 
-export const readabilityExtractHast = (hast: Hast): Hast => {
-	const lang = String(select("html", hast)?.properties.lang || tryGetLang(hast) || "en");
+export const readabilityExtractHast = (params: ExtractParams): Hast => {
+	const { hast, lang = "en", url } = params;
 	const body = select("body", hast) ?? hast;
-	const bodyText = hastToString(body);
 
-	const baseFilterd = filter(body, (node) => {
-		if (!metadataFilter(node as Hast)) {
-			return false;
-		}
-		if (!universalElementFilter(node as Hast)) {
-			return false;
-		}
-		return true;
-	});
-
-	if (!baseFilterd) {
-		return { type: "root", children: [] };
+	const metadataFilteredHast = filter(body, (node) => metadataFilter(node as Hast)) as Hast;
+	const metadataFilteredHastText = hastToString(metadataFilteredHast);
+	if (!metadataFilteredHast) {
+		return body;
 	}
 
+	const baseFilterd = filter(metadataFilteredHast, (node) => universalElementFilter(node as Hast)) as Hast;
 	const baseFilterdText = hastToString(baseFilterd);
-	let [baseTree, baseText] =
-		baseFilterdText.length > bodyText.length / 3 || baseFilterdText.length > 5000
+	const [baseTree, baseText] =
+		baseFilterdText.length > metadataFilteredHastText.length / 3 || baseFilterdText.length > 5000
 			? ([baseFilterd as Hast, baseFilterdText] as const)
-			: ([body as Hast, bodyText] as const);
+			: ([metadataFilteredHast as Hast, metadataFilteredHastText] as const);
 
 	let minimalLength = lang in BASE_MINIMAL_LENGTH ? BASE_MINIMAL_LENGTH[lang as keyof typeof BASE_MINIMAL_LENGTH] : 500;
 	if (baseText.length < minimalLength) {
 		minimalLength = Math.max(0, baseText.length - 200);
 	}
+
+	let extractedTree: Hast = baseTree;
 
 	for (const selector of BODY_SELECTORS) {
 		const content = { type: "root" as const, children: selectAll(selector, baseFilterd) };
@@ -188,20 +153,28 @@ export const readabilityExtractHast = (hast: Hast): Hast => {
 		const links = selectAll("a", content);
 		const linkText = links.map((link) => hastToString(link)).join("");
 
-		const linkDensity = linkText.length / bodyText.length;
+		const linkDensity = linkText.length / contentText.length;
 		if (linkDensity > 0.4) {
 			continue;
 		}
 
 		if (contentText.length > minimalLength) {
-			baseTree = content;
-			baseText = contentText;
+			extractedTree = content;
 			break;
 		}
 	}
 
-	const finalFilteredTree = filter(baseTree, (node) => {
-		if (!removeEmptyFilter(node as Hast)) {
+	// const structKeptTree = filter(baseTree, (node) => {
+	// 	const element = node as Element;
+	// 	if (["h1", "h2", "h3"].includes(element.tagName)) {
+	// 		return true;
+	// 	}
+
+	// 	return false;
+	// });
+
+	const finalFilteredTree = filter(extractedTree, (node) => {
+		if (!removeEmptyFilter(node as Hast, lang)) {
 			return false;
 		}
 		if (!unlikelyElementFilter(node as Hast)) {

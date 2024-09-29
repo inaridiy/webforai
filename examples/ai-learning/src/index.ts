@@ -16,7 +16,7 @@ const contents: { url: string; html: string; extractedContent: string; rawConten
 for (const url of TARGETS) {
 	const html = await persitCachedLoadHtml(url);
 
-	const extractedContent = htmlToMarkdown(html, { baseUrl: url, extractors: "strongly" });
+	const extractedContent = htmlToMarkdown(html, { baseUrl: url });
 	const rawContent = htmlToMarkdown(html, { baseUrl: url, extractors: false });
 
 	contents.push({ url, html, extractedContent, rawContent });
@@ -27,6 +27,7 @@ const scores: { url: string; score: number; issues: string[] }[] = [];
 for (const content of contents) {
 	const result = await generateObject({
 		model: google("gemini-1.5-flash-latest"),
+		temperature: 0,
 		schema: z.object({
 			analysis: z.string().describe("Detailed analysis of the cleaning process. 400 characters max."),
 			issues: z.array(z.string()).describe("List of issues found in the cleaned Markdown. 12 issues max."),
@@ -63,7 +64,7 @@ Based on these criteria, assign a score from 0 to 100, where 100 represents perf
 In addition to the score, identify any problems or issues you notice in the cleaned version. List these problems in bullet points, adjusting the granularity to provide a maximum of 12 points.`,
 	}).catch((err) => {
 		console.error(err);
-		return { object: { score: 0, issues: [], analysis: "" } };
+		return { object: { score: -1, issues: [], analysis: "" } };
 	});
 
 	console.info(`${content.url} - ${result.object.score}`);
@@ -71,5 +72,6 @@ In addition to the score, identify any problems or issues you notice in the clea
 }
 
 console.info(scores);
-await fs.writeFileSync("scores.json", JSON.stringify(scores, null, 2));
+await fs.mkdirSync("./output", { recursive: true });
+await fs.writeFileSync("./output/scores.json", JSON.stringify(scores, null, 2));
 console.info(`Avg Score: ${scores.reduce((acc, curr) => acc + curr.score, 0) / scores.length}`);
