@@ -12,11 +12,11 @@ const REGEXPS = {
 	byline: /byline|author|dateline|writtenby|p-author/i,
 	specialUnlikelyCandidates: /frb-|uls-menu|language-link/i,
 	unlikelyCandidates:
-		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore|avatar/i,
+		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|tooltip|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore|avatar/i,
 	okMaybeItsaCandidate: /and|article|body|column|content|main|shadow|code/i,
 };
 
-const BODY_SELECTORS = ["article", "#article", ".article_body", ".article-body", "#content", ".entry", "main"];
+const BODY_SELECTORS = ["article", "#article", ".article_body", ".article-body", "#content", ".entry"];
 
 const PARAGRAPH_TAGS = ["a", "p", "div", "section", "article", "main", "ul", "ol", "li"];
 
@@ -25,10 +25,10 @@ const BASE_MINIMAL_LENGTH = {
 	en: 500,
 };
 
-const EMPTY_LENGTH = {
-	ja: 6,
-	en: 10,
-};
+// const EMPTY_LENGTH = {
+// 	ja: 6,
+// 	en: 10,
+// };
 
 const metadataFilter = (node: Hast) => {
 	return !(
@@ -103,7 +103,7 @@ const unlikelyElementFilter = (node: Hast) => {
 	return true;
 };
 
-const removeEmptyFilter = (node: Hast, lang: string) => {
+const removeEmptyFilter = (node: Hast, _lang: string) => {
 	if (node.type !== "element") {
 		return true;
 	}
@@ -116,12 +116,6 @@ const removeEmptyFilter = (node: Hast, lang: string) => {
 	if (element.tagName === "img" && !element.properties.src) {
 		return false;
 	}
-
-	// const text = hastToString(element);
-	// const minimalLength = lang in EMPTY_LENGTH ? EMPTY_LENGTH[lang as keyof typeof EMPTY_LENGTH] : 10;
-	// if (text.length < minimalLength) {
-	// 	return false;
-	// }
 
 	return true;
 };
@@ -149,6 +143,7 @@ export const readabilityExtractHast = (params: ExtractParams): Hast => {
 	}
 
 	let extractedTree: Hast = baseTree;
+	let extractedText = baseText;
 
 	for (const selector of BODY_SELECTORS) {
 		const content = { type: "root" as const, children: selectAll(selector, baseFilterd) };
@@ -168,6 +163,7 @@ export const readabilityExtractHast = (params: ExtractParams): Hast => {
 
 		if (contentText.length > minimalLength) {
 			extractedTree = content;
+			extractedText = contentText;
 			break;
 		}
 	}
@@ -183,6 +179,7 @@ export const readabilityExtractHast = (params: ExtractParams): Hast => {
 		return true;
 	}) as Hast;
 
-	const finalTree = hastToString(finalFilteredTree).length > baseText.length / 3 ? finalFilteredTree : baseTree;
+	const finalTree =
+		hastToString(finalFilteredTree).length > extractedText.length / 3 ? finalFilteredTree : extractedTree;
 	return finalTree;
 };

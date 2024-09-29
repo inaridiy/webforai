@@ -5,7 +5,7 @@ import { htmlToMarkdown } from "webforai";
 
 dotenv.config();
 
-const url = "https://docs.expo.dev/";
+const url = "https://ui.shadcn.com/docs";
 const loadHtml = async (url: string) => {
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
