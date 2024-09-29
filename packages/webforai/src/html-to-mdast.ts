@@ -10,7 +10,6 @@ import { customCodeHandler } from "./mdast-handlers/custom-code-handler";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
 import { customImgHandler } from "./mdast-handlers/custom-img-handler";
 import { customTableHandler } from "./mdast-handlers/custom-table-handler";
-import { emptyHandler } from "./mdast-handlers/empty-handler";
 import { mathHandler } from "./mdast-handlers/math-handler";
 import { getLangFromHast, getLangFromStr, getUrlFromHast } from "./utils/hast-utils";
 

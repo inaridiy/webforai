@@ -130,14 +130,14 @@ export const readabilityExtractHast = (params: ExtractParams): Hast => {
 	const { hast, lang = "en" } = params;
 	const body = select("body", hast) ?? hast;
 
-	const metadataFilteredHast = filter(body, (node) => metadataFilter(node as Hast)) as Hast;
-	const metadataFilteredHastText = hastToString(metadataFilteredHast);
-	if (!metadataFilteredHast) {
+	const metadataFilteredHast = filter(body, (node) => metadataFilter(node as Hast));
+	const metadataFilteredHastText = metadataFilteredHast && hastToString(metadataFilteredHast);
+	if (!(metadataFilteredHast && metadataFilteredHastText)) {
 		return body;
 	}
 
-	const baseFilterd = filter(metadataFilteredHast, (node) => universalElementFilter(node as Hast)) as Hast;
-	const baseFilterdText = hastToString(baseFilterd);
+	const baseFilterd = filter(metadataFilteredHast, (node) => universalElementFilter(node as Hast));
+	const baseFilterdText = baseFilterd ? hastToString(baseFilterd) : "";
 	const [baseTree, baseText] =
 		baseFilterdText.length > metadataFilteredHastText.length / 3 || baseFilterdText.length > 5000
 			? ([baseFilterd as Hast, baseFilterdText] as const)

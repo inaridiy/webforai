@@ -5,7 +5,7 @@ import { htmlToMarkdown } from "webforai";
 
 dotenv.config();
 
-const url = "https://gigazine.net/news/20220117-faker-js-official/";
+const url = "https://docs.expo.dev/";
 const loadHtml = async (url: string) => {
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
