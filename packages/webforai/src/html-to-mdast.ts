@@ -69,7 +69,6 @@ export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOpti
 			a: customAHandler({ asText: options?.linkAsText }),
 			img: customImgHandler({ hideImage: options?.hideImage }),
 			table: customTableHandler({ asText: options?.tableAsText }),
-			br: emptyHandler,
 		},
 	});
 

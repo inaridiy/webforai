@@ -12,7 +12,7 @@ const REGEXPS = {
 	byline: /byline|author|dateline|writtenby|p-author/i,
 	specialUnlikelyCandidates: /frb-|uls-menu|language-link/i,
 	unlikelyCandidates:
-		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore/i,
+		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore|avatar/i,
 	okMaybeItsaCandidate: /and|article|body|column|content|main|shadow|code/i,
 };
 
@@ -26,11 +26,16 @@ const BASE_MINIMAL_LENGTH = {
 };
 
 const EMPTY_LENGTH = {
-	ja: 4,
+	ja: 6,
 	en: 10,
 };
 
-const metadataFilter = (node: Hast) => !["comment", "doctype"].includes(node.type);
+const metadataFilter = (node: Hast) => {
+	return !(
+		["comment", "doctype"].includes(node.type) ||
+		(node.type === "element" && ["script", "style", "link", "meta", "noscript", "svg", "title"].includes(node.tagName))
+	);
+};
 
 const universalElementFilter = (node: Hast) => {
 	if (node.type !== "element") {
@@ -38,8 +43,7 @@ const universalElementFilter = (node: Hast) => {
 	}
 	const element = node as Element;
 
-	// Remove blacklisted elements
-	if (["script", "aside"].includes(element.tagName)) {
+	if (["aside", "nav"].includes(element.tagName)) {
 		return false;
 	}
 
@@ -105,21 +109,25 @@ const removeEmptyFilter = (node: Hast, lang: string) => {
 	}
 	const element = node as Element;
 
-	if (!PARAGRAPH_TAGS.includes(element.tagName)) {
+	if (PARAGRAPH_TAGS.includes(element.tagName)) {
 		return true;
 	}
 
-	const text = hastToString(element);
-	const minimalLength = lang in EMPTY_LENGTH ? EMPTY_LENGTH[lang as keyof typeof EMPTY_LENGTH] : 10;
-	if (text.length < minimalLength) {
+	if (element.tagName === "img" && !element.properties.src) {
 		return false;
 	}
+
+	// const text = hastToString(element);
+	// const minimalLength = lang in EMPTY_LENGTH ? EMPTY_LENGTH[lang as keyof typeof EMPTY_LENGTH] : 10;
+	// if (text.length < minimalLength) {
+	// 	return false;
+	// }
 
 	return true;
 };
 
 export const readabilityExtractHast = (params: ExtractParams): Hast => {
-	const { hast, lang = "en", url } = params;
+	const { hast, lang = "en" } = params;
 	const body = select("body", hast) ?? hast;
 
 	const metadataFilteredHast = filter(body, (node) => metadataFilter(node as Hast)) as Hast;
@@ -163,15 +171,6 @@ export const readabilityExtractHast = (params: ExtractParams): Hast => {
 			break;
 		}
 	}
-
-	// const structKeptTree = filter(baseTree, (node) => {
-	// 	const element = node as Element;
-	// 	if (["h1", "h2", "h3"].includes(element.tagName)) {
-	// 		return true;
-	// 	}
-
-	// 	return false;
-	// });
 
 	const finalFilteredTree = filter(extractedTree, (node) => {
 		if (!removeEmptyFilter(node as Hast, lang)) {
