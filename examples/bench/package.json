@@ -14,7 +14,7 @@
 	"dependencies": {
 		"arg": "^5.0.2",
 		"playwright": "^1.40.1",
-		"tsx": "^4.7.0",
+		"tsx": "^4.19.1",
 		"webforai": "workspace:^"
 	},
 	"devDependencies": {
