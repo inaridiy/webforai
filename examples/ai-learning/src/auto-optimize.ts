@@ -1,5 +1,4 @@
 import { promises as fs } from "node:fs";
-import * as path from "node:path";
 import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import dotenv from "dotenv";
