@@ -16,17 +16,3 @@ export const isStrInclude = (value: unknown, match: string) => {
 	}
 	return false;
 };
-
-export const hasAncestors = (element: Element, tagNames: string[], depth = 3) => {
-	let parent = element.parent;
-	for (let i = 0; i < depth; i++) {
-		if (!parent || parent.type !== "element") {
-			return false;
-		}
-		if (tagNames.includes(parent.tagName)) {
-			return true;
-		}
-		parent = parent.parent;
-	}
-	return false;
-};

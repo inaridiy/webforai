@@ -10,8 +10,8 @@ import { customCodeHandler } from "./mdast-handlers/custom-code-handler";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
 import { customImgHandler } from "./mdast-handlers/custom-img-handler";
 import { customTableHandler } from "./mdast-handlers/custom-table-handler";
-import { emptyHandler } from "./mdast-handlers/empty-handler";
 import { mathHandler } from "./mdast-handlers/math-handler";
+import { getLangFromHast, getLangFromStr, getUrlFromHast } from "./utils/hast-utils";
 
 export type HtmlToMdastOptions = {
 	/**
@@ -25,6 +25,10 @@ export type HtmlToMdastOptions = {
 	tableAsText?: boolean;
 	/** Whether to hide images. */
 	hideImage?: boolean;
+	/** The language of the HTML. */
+	lang?: string;
+	/** The URL of the HTML. */
+	url?: string;
 };
 
 /**
@@ -45,11 +49,16 @@ export type HtmlToMdastOptions = {
  * ```
  */
 export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOptions): Mdast => {
-	const { extractors } = options || {};
+	const { extractors, url: defaultUrl, lang: defaultLang } = options || {};
 
-	const hast = typeof htmlOrHast === "string" ? fromHtml(htmlOrHast, { fragment: true }) : htmlOrHast;
+	const [lang, hast] =
+		typeof htmlOrHast === "string"
+			? [defaultLang || getLangFromStr(htmlOrHast), fromHtml(htmlOrHast, { fragment: true })]
+			: [defaultLang || getLangFromHast(htmlOrHast), htmlOrHast];
 
-	const extractedHast = extractHast(hast, extractors);
+	const url = defaultUrl || getUrlFromHast(hast);
+
+	const extractedHast = extractHast({ hast, lang, url }, extractors);
 
 	const mdast = toMdast(extractedHast, {
 		handlers: {
@@ -59,7 +68,6 @@ export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOpti
 			a: customAHandler({ asText: options?.linkAsText }),
 			img: customImgHandler({ hideImage: options?.hideImage }),
 			table: customTableHandler({ asText: options?.tableAsText }),
-			br: emptyHandler,
 		},
 	});
 
