@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import pc from "picocolors";
-import { chromium } from "playwright";
-import playwrightPackageJson from "playwright/package.json";
+import { chromium } from "playwright-core";
+import playwrightPackageJson from "playwright-core/package.json";
 import { loadHtml as loadHtmlByFetch } from "../../../loaders/fetch";
 import { loadHtml as loadHtmlByPlaywright } from "../../../loaders/playwright";
 

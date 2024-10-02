@@ -21,7 +21,7 @@ const htmlToMarkdownWithGenerated = async (html: string, generatedPath: string, 
 		const { extractor: generatedExtractor } = await tsImport(generatedPath, parentPath);
 		return htmlToMarkdown(html, { baseUrl: target, extractors: [generatedExtractor] });
 	} catch (e) {
-		console.log("Failed to load generated extractor, using default extractor", e);
+		console.info("Failed to load generated extractor, using default extractor", e);
 		return htmlToMarkdown(html, { baseUrl: target, extractors: false });
 	}
 };

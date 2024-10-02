@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { chromium } from "playwright-core";
 import { describe, expect, it } from "vitest";
 import { loadHtml } from "./puppeteer";
 

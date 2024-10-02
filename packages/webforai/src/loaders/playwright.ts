@@ -1,4 +1,4 @@
-import { type Browser, chromium, devices } from "playwright";
+import { type Browser, chromium, devices } from "playwright-core";
 
 export type LoadHtmlOptions = {
 	browser?: Browser;
