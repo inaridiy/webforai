@@ -18,6 +18,4 @@ program
 	.option("-d, --debug", "output extra debugging information")
 	.action(webforaiCommand);
 
-intro(pc.inverse(`webforai CLI version ${packageInfo.version}`));
-
 program.parse();

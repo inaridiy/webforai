@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { intro, outro, spinner } from "@clack/prompts";
+import { intro, log, outro, spinner } from "@clack/prompts";
 import pc from "picocolors";
 import packageInfo from "../../../../package.json";
 import { htmlToMarkdown } from "../../../html-to-markdown";
@@ -21,16 +21,16 @@ export const webforaiCommand = async (
 	intro(pc.bold(pc.green(`webforai CLI version ${packageInfo.version}`)));
 
 	const sourcePath = initialPath ?? (await inputSourcePath());
-	options.debug && console.debug(`sourcePath: ${sourcePath}`);
+	options.debug && log.info(`sourcePath: ${sourcePath}`);
 
 	const loader = isUrl(sourcePath) ? options.loader ?? (await selectLoader()) : "local";
-	options.debug && console.debug(`loader: ${loader}`);
+	options.debug && log.info(`loader: ${loader}`);
 
 	const outputPath = options.output ?? (await inputOutputPath(sourcePath));
-	options.debug && console.debug(`outputPath: ${outputPath}`);
+	options.debug && log.info(`outputPath: ${outputPath}`);
 
 	const mode = options.mode ?? (await selectExtractMode());
-	options.debug && console.debug(`mode: ${mode}`);
+	options.debug && log.info(`mode: ${mode}`);
 
 	let html: string;
 	const s = spinner();
@@ -43,13 +43,13 @@ export const webforaiCommand = async (
 		console.error(error);
 		process.exit(1);
 	}
-	options.debug && console.debug(`html: ${html}`);
+	options.debug && log.info(`html: ${html}`);
 
 	const markdown = htmlToMarkdown(html, {
 		baseUrl: isUrl(sourcePath) ? sourcePath : undefined,
 		...(mode === "ai" ? aiModeOptions : readabilityModeOptions),
 	});
-	options.debug && console.debug(`markdown: ${markdown}`);
+	options.debug && log.info(`markdown: ${markdown}`);
 
 	const directory = path.dirname(outputPath);
 	const isDirectoryExists = await fs.stat(directory).then((stat) => stat.isDirectory());

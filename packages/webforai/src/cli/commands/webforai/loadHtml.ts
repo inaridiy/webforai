@@ -1,4 +1,6 @@
 import fs from "node:fs/promises";
+import { log } from "@clack/prompts";
+import boxen from "boxen";
 import pc from "picocolors";
 import { chromium } from "playwright-core";
 import { loadHtml as loadHtmlByFetch } from "../../../loaders/fetch";
@@ -21,50 +23,50 @@ const getPlaywrightVersion = async () => {
 
 export const loadHtml = async (sourcePath: string, loader: string, options: { debug?: boolean }) => {
 	if (loader === "local") {
-		options.debug && console.debug(`Loading HTML from local file: ${sourcePath}`);
+		options.debug && log.info(`Loading HTML from local file: ${sourcePath}`);
 		const content = await fs.readFile(sourcePath, "utf-8");
-		options.debug && console.debug(`HTML loaded: ${content.slice(0, 100)}`);
+		options.debug && log.info(`HTML loaded: ${content.slice(0, 100)}`);
 		return content;
 	}
 
 	if (loader === "fetch") {
-		options.debug && console.debug(`Loading HTML from URL: ${sourcePath}`);
+		options.debug && log.info(`Loading HTML from URL: ${sourcePath}`);
 		const content = await loadHtmlByFetch(sourcePath);
-		options.debug && console.debug(`HTML loaded: ${content.slice(0, 100)}`);
+		options.debug && log.info(`HTML loaded: ${content.slice(0, 100)}`);
 		return content;
 	}
 
 	if (loader === "playwright") {
-		options.debug && console.debug(`Loading HTML from playwright: ${sourcePath}`);
+		options.debug && log.info(`Loading HTML from playwright: ${sourcePath}`);
 		const isPlaywrightAvailable = await checkPlaywrightAvailable();
-		options.debug && console.debug(`Playwright available: ${isPlaywrightAvailable}`);
+		options.debug && log.info(`Playwright available: ${isPlaywrightAvailable}`);
 
 		const pwVersion = await getPlaywrightVersion();
 
 		if (!isPlaywrightAvailable) {
 			const message = [
-				"To use playwright loader, you need to install playwright.",
-				"You can install it by running:",
+				pc.bold("Error: Playwright is not available"),
 				"",
-				`	${pc.bold(`npx playwright@${pwVersion} install chromium`)}	`,
+				"To use the Playwright loader, please install Playwright by running:",
 				"",
-				"Hint1: If you get warning like this:",
-				"WARNING: It looks like you are running 'npx playwright install' without first installing your project's dependencies. ",
-				`${pc.bold("Ignore this warning.")}`,
+				`  npx playwright@${pwVersion} install chromium`,
 				"",
-				"Hint2: If you get message like this:",
-				"Host system is missing dependencies to run browsers.",
-				"You should install dependencies by running:",
+				"Hint 1: If you receive a warning like this:",
+				`  "WARNING: It looks like you are running 'npx playwright install' without first installing your project's dependencies."`,
+				"You can safely ignore this warning.",
 				"",
-				`	${pc.bold(`sudo npx playwright@${pwVersion} install-deps`)}	`,
+				"Hint 2: If you encounter the following message:",
+				`  "Host system is missing dependencies to run browsers."`,
+				"You should install the necessary dependencies by executing:",
 				"",
-				pc.gray("Note: Good luck with that."),
+				`  sudo npx playwright@${pwVersion} install-deps`,
 			];
-			console.info(message.join("\n"));
+
+			log.error(boxen(message.join("\n"), { padding: 1, borderStyle: "round" }));
 			throw new Error("Playwright is not available");
 		}
 		const content = await loadHtmlByPlaywright(sourcePath);
-		options.debug && console.debug(`HTML loaded: ${content.slice(0, 100)}`);
+		options.debug && log.info(`HTML loaded: ${content.slice(0, 100)}`);
 		return content;
 	}
 
