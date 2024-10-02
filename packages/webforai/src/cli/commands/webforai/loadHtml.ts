@@ -8,8 +8,12 @@ import { loadHtml as loadHtmlByPlaywright } from "../../../loaders/playwright";
 
 const checkPlaywrightAvailable = async () => {
 	const path = chromium.executablePath();
-	const isAvailable = await fs.access(path).catch(() => false);
-	return !!isAvailable;
+	try {
+		await fs.access(path);
+		return true;
+	} catch {
+		return false;
+	}
 };
 
 const getPlaywrightVersion = async () => {
