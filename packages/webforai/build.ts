@@ -77,6 +77,9 @@ const esmBuild = () =>
 const cliBuild = () =>
 	context({
 		entryPoints: ["./src/cli/bin.ts"],
+		banner: {
+			js: "#!/usr/bin/env node",
+		},
 		outfile: "./dist/bin.js",
 		format: "esm",
 		packages: "external",

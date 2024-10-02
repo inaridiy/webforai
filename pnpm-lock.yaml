@@ -239,9 +239,6 @@ importers:
       commander:
         specifier: ^12.1.0
         version: 12.1.0
-      fastest-levenshtein:
-        specifier: ^1.0.16
-        version: 1.0.16
       hast-util-from-html:
         specifier: ^2.0.3
         version: 2.0.3
@@ -306,6 +303,9 @@ importers:
       esbuild:
         specifier: ^0.19.11
         version: 0.19.12
+      fastest-levenshtein:
+        specifier: ^1.0.16
+        version: 1.0.16
       glob:
         specifier: ^10.3.10
         version: 10.4.5
@@ -315,7 +315,7 @@ importers:
       np:
         specifier: ^9.2.0
         version: 9.2.0(typescript@5.5.3)
-      playwright:
+      playwright-core:
         specifier: ^1.40.1
         version: 1.45.1
       puppeteer:
