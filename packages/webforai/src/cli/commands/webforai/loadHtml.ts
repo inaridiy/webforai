@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import pc from "picocolors";
 import { chromium } from "playwright-core";
-import playwrightPackageJson from "playwright-core/package.json";
 import { loadHtml as loadHtmlByFetch } from "../../../loaders/fetch";
 import { loadHtml as loadHtmlByPlaywright } from "../../../loaders/playwright";
 
@@ -9,6 +8,15 @@ const checkPlaywrightAvailable = async () => {
 	const path = chromium.executablePath();
 	const isAvailable = await fs.access(path).catch(() => false);
 	return !!isAvailable;
+};
+
+const getPlaywrightVersion = async () => {
+	const path = await import.meta.resolve("playwright-core/package.json");
+	const pwPackageJson = await fs
+		.readFile(path.replace("file://", ""), "utf-8")
+		.then((res) => JSON.parse(res.toString()))
+		.catch(() => null);
+	return pwPackageJson?.version;
 };
 
 export const loadHtml = async (sourcePath: string, loader: string, options: { debug?: boolean }) => {
@@ -30,12 +38,15 @@ export const loadHtml = async (sourcePath: string, loader: string, options: { de
 		options.debug && console.debug(`Loading HTML from playwright: ${sourcePath}`);
 		const isPlaywrightAvailable = await checkPlaywrightAvailable();
 		options.debug && console.debug(`Playwright available: ${isPlaywrightAvailable}`);
+
+		const pwVersion = await getPlaywrightVersion();
+
 		if (!isPlaywrightAvailable) {
 			const message = [
 				"To use playwright loader, you need to install playwright.",
 				"You can install it by running:",
 				"",
-				`	${pc.bold(`npx playwright@${playwrightPackageJson.version} install chromium`)}	`,
+				`	${pc.bold(`npx playwright@${pwVersion} install chromium`)}	`,
 				"",
 				"Hint1: If you get warning like this:",
 				"WARNING: It looks like you are running 'npx playwright install' without first installing your project's dependencies. ",
@@ -45,7 +56,7 @@ export const loadHtml = async (sourcePath: string, loader: string, options: { de
 				"Host system is missing dependencies to run browsers.",
 				"You should install dependencies by running:",
 				"",
-				`	${pc.bold(`sudo npx playwright@${playwrightPackageJson.version} install-deps`)}	`,
+				`	${pc.bold(`sudo npx playwright@${pwVersion} install-deps`)}	`,
 				"",
 				pc.gray("Note: Good luck with that."),
 			];
