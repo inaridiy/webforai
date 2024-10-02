@@ -1,5 +1,12 @@
 # simple
 
+## 1.0.14
+
+### Patch Changes
+
+- Updated dependencies [[`00d2a55`](https://github.com/inaridiy/webforai/commit/00d2a55b4a25f6d84da37cb89ec629b5f6179357), [`a7db6ef`](https://github.com/inaridiy/webforai/commit/a7db6ef61f1321e010ed16022086a684c19d77a5)]:
+  - webforai@1.6.2
+
 ## 1.0.13
 
 ### Patch Changes
