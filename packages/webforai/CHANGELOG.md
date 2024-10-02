@@ -1,5 +1,11 @@
 # webforai
 
+## 1.6.1
+
+### Patch Changes
+
+- [#41](https://github.com/inaridiy/webforai/pull/41) [`5e82341`](https://github.com/inaridiy/webforai/commit/5e82341c2a3b8275d78ce808c7d4f81dacb1acdd) Thanks [@inaridiy](https://github.com/inaridiy)! - Fix with { type : "json" } Error
+
 ## 1.6.0
 
 ### Minor Changes

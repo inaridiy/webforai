@@ -1,5 +1,12 @@
 # translate
 
+## 1.0.14
+
+### Patch Changes
+
+- Updated dependencies [[`5e82341`](https://github.com/inaridiy/webforai/commit/5e82341c2a3b8275d78ce808c7d4f81dacb1acdd)]:
+  - webforai@1.6.1
+
 ## 1.0.13
 
 ### Patch Changes
