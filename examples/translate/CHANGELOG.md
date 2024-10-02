@@ -1,5 +1,14 @@
 # translate
 
+## 1.0.13
+
+### Patch Changes
+
+- [#38](https://github.com/inaridiy/webforai/pull/38) [`78f2c44`](https://github.com/inaridiy/webforai/commit/78f2c445f88136bdc596e57b91bec1b223f782d9) Thanks [@inaridiy](https://github.com/inaridiy)! - improve seido
+
+- Updated dependencies [[`78f2c44`](https://github.com/inaridiy/webforai/commit/78f2c445f88136bdc596e57b91bec1b223f782d9), [`30d181e`](https://github.com/inaridiy/webforai/commit/30d181e7a29452b37f6dd665de3e7a3b743c1244)]:
+  - webforai@1.6.0
+
 ## 1.0.12
 
 ### Patch Changes
