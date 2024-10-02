@@ -21,7 +21,7 @@ const args = arg({
 const isWatch = args["--watch"];
 
 const entryPoints = glob.sync("./src/**/*.ts", {
-	ignore: ["./src/**/*.test.ts"],
+	ignore: ["./src/**/*.test.ts", "./src/cli/**/*.ts"],
 });
 
 const addExtension = (extension = ".js", fileExtension = ".ts"): Plugin => ({

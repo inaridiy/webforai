@@ -4,15 +4,7 @@
 	"description": "A library that provides a web interface for AI",
 	"author": "inaridiy",
 	"license": "MIT",
-	"keywords": [
-		"web",
-		"ai",
-		"html",
-		"html2md",
-		"markdown",
-		"mdast",
-		"hast"
-	],
+	"keywords": ["web", "ai", "html", "html2md", "markdown", "mdast", "hast"],
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/inaridiy/webforai.git"
@@ -26,10 +18,7 @@
 		"prerelease": "pnpm build",
 		"release": "np"
 	},
-	"files": [
-		"dist",
-		"!dist/types/**/*.js"
-	],
+	"files": ["dist", "!dist/types/**/*.js"],
 	"main": "dist/cjs/index.js",
 	"type": "module",
 	"module": "dist/index.js",
@@ -69,21 +58,11 @@
 	},
 	"typesVersions": {
 		"*": {
-			"types": [
-				"./dist/types/index.d.ts"
-			],
-			"loaders/playwright": [
-				"./dist/types/loaders/playwright.d.ts"
-			],
-			"loaders/cf-puppeteer": [
-				"./dist/types/loaders/cf-puppeteer.d.ts"
-			],
-			"loaders/fetch": [
-				"./dist/types/loaders/fetch.d.ts"
-			],
-			"loaders/puppeteer": [
-				"./dist/types/loaders/puppeteer.d.ts"
-			]
+			"types": ["./dist/types/index.d.ts"],
+			"loaders/playwright": ["./dist/types/loaders/playwright.d.ts"],
+			"loaders/cf-puppeteer": ["./dist/types/loaders/cf-puppeteer.d.ts"],
+			"loaders/fetch": ["./dist/types/loaders/fetch.d.ts"],
+			"loaders/puppeteer": ["./dist/types/loaders/puppeteer.d.ts"]
 		}
 	},
 	"peerDependencies": {
@@ -104,6 +83,7 @@
 	},
 	"dependencies": {
 		"@clack/prompts": "^0.7.0",
+		"boxen": "^8.0.1",
 		"commander": "^12.1.0",
 		"hast-util-from-html": "^2.0.3",
 		"hast-util-select": "^6.0.2",
@@ -123,12 +103,12 @@
 	"devDependencies": {
 		"@cloudflare/puppeteer": "^0.0.6",
 		"@tsconfig/recommended": "^1.0.3",
-		"fastest-levenshtein": "^1.0.16",
 		"@types/hast": "^3.0.2",
 		"@types/mdast": "^4.0.2",
 		"@types/node": "^20.14.10",
 		"arg": "^5.0.2",
 		"esbuild": "^0.19.11",
+		"fastest-levenshtein": "^1.0.16",
 		"glob": "^10.3.10",
 		"ncp": "^2.0.0",
 		"np": "^9.2.0",

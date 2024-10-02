@@ -1,12 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-/**
- * Determines whether a string is a valid URL.
- * @param maybeUrl - The string to check.
- * @returns `true` if the string is a valid URL, otherwise `false`.
- */
-export const isUrl = (maybeUrl: string): boolean => {
+export const isUrl = (maybeUrl: string) => {
 	try {
 		new URL(maybeUrl);
 		return true;
@@ -15,45 +10,63 @@ export const isUrl = (maybeUrl: string): boolean => {
 	}
 };
 
-/**
- * Changes the file extension of a given file path.
- * @param filePath - The original file path.
- * @param newExtension - The new extension (with or without the leading dot).
- * @returns The file path with the updated extension.
- */
 export function changeFileExtension(filePath: string, newExtension: string): string {
-	const parsed = path.parse(filePath);
-	const ext = newExtension.startsWith(".") ? newExtension : `.${newExtension}`;
-	return path.format({ ...parsed, ext });
+	const parsedPath = filePath.split("/");
+	const fileName = parsedPath[parsedPath.length - 1];
+
+	const formattedNewExtension = newExtension.startsWith(".") ? newExtension : `.${newExtension}`;
+
+	if (fileName.startsWith(".")) {
+		const parts = fileName.split(".");
+		if (parts.length === 2) {
+			return parsedPath.slice(0, -1).concat(`${fileName}${formattedNewExtension}`).join("/");
+		}
+		parts[parts.length - 1] = newExtension.replace(/^\./, "");
+		return parsedPath.slice(0, -1).concat(parts.join(".")).join("/");
+	}
+
+	const lastDotIndex = fileName.lastIndexOf(".");
+	const baseName = lastDotIndex !== -1 ? fileName.slice(0, lastDotIndex) : fileName;
+	const newFileName = `${baseName}${formattedNewExtension}`;
+
+	parsedPath[parsedPath.length - 1] = newFileName;
+	return parsedPath.join("/");
 }
 
-/**
- * Converts a URL into a safe filename.
- * @param url - The URL to convert.
- * @returns The generated filename, or "output" if conversion fails.
- */
 export function urlToFilename(url: string): string {
 	try {
 		const urlObj = new URL(url);
 
-		// Remove "www." from the hostname and get the last two domain parts
-		const hostname = urlObj.hostname.startsWith("www.") ? urlObj.hostname.slice(4) : urlObj.hostname;
-		const domainParts = hostname.split(".").slice(-2).join("-");
+		const domainParts = urlObj.hostname
+			.split(".")
+			.reverse()
+			.reduce((acc: string[], part: string, index: number) => {
+				if (index === 0) {
+					return acc;
+				}
+				if (acc.length >= 2) {
+					return acc;
+				}
+				if (part === "www") {
+					return acc;
+				}
+				// biome-ignore lint/performance/noAccumulatingSpread: <explanation>
+				return [part, ...acc];
+			}, []);
+		const domainString = domainParts.reverse().join("-");
 
-		// Get the last two parts of the path and decode them
 		const pathParts = urlObj.pathname.split("/").filter(Boolean);
-		const relevantPathParts = pathParts.slice(-2).map(decodeURIComponent).join("-");
+		const relevantPathParts = pathParts.slice(-2);
+		const pathString = relevantPathParts.map((part) => decodeURIComponent(part)).join("-");
 
-		// Combine domain and path parts
-		let filename = [domainParts, relevantPathParts].filter(Boolean).join("-");
+		let filename = [domainString, pathString].filter(Boolean).join("-");
 
-		// Clean up the filename
 		filename = filename
 			.toLowerCase()
-			// biome-ignore lint/suspicious/noControlCharactersInRegex:
-			.replace(/[<>:"/\\|?*\x00-\x1F]/g, "") // Remove invalid characters
-			.replace(/[\s.]+/g, "-") // Replace spaces and dots with hyphens
-			.replace(/^-+|-+$/g, ""); // Remove leading and trailing hyphens
+			// biome-ignore lint/suspicious/noControlCharactersInRegex: <explanation>
+			.replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
+			.replace(/[\s.]+/g, "-")
+			.replace(/^-+|-+$/g, "");
 
 		return filename || "output";
 	} catch {
@@ -61,34 +74,32 @@ export function urlToFilename(url: string): string {
 	}
 }
 
-/**
- * Converts a source path to an output path. If the source is a URL, it generates a filename and changes the extension to .md.
- * If the source is a file path, it simply changes the extension to .md.
- * @param sourcePath - The source path or URL.
- * @returns The corresponding output path.
- */
-export const sourcePathToOutputPath = (sourcePath: string): string =>
-	isUrl(sourcePath) ? `${urlToFilename(sourcePath)}.md` : changeFileExtension(sourcePath, "md");
+export const sourcePathToOutputPath = (sourcePath: string) => {
+	return isUrl(sourcePath) ? `${urlToFilename(sourcePath)}.md` : changeFileExtension(sourcePath, "md");
+};
 
-/**
- * Retrieves the next available file path by appending a counter if the file already exists.
- * @param filePath - The original file path.
- * @returns A file path that does not currently exist.
- */
 export function getNextAvailableFilePath(filePath: string): string {
-	const parsed = path.parse(filePath);
-	const dir = parsed.dir;
-	const ext = parsed.ext;
-	const baseName = parsed.name.replace(/_\d+$/, "");
-	const match = parsed.name.match(/_(\d+)$/);
-	let counter = match ? Number(match[1]) + 1 : 1;
+	const parsedPath = path.parse(filePath);
+	const directory = parsedPath.dir;
+	const fullName = parsedPath.base;
 
-	let newPath = path.join(dir, `${baseName}_${counter}${ext}`);
+	const [firstPart, ...restParts] = fullName.split(".");
+	const restName = restParts.length > 0 ? `.${restParts.join(".")}` : "";
 
-	while (fs.existsSync(newPath)) {
+	const baseName = firstPart.replace(/_\d+$/, "");
+
+	let counter = 1;
+	let nextFilePath = filePath;
+
+	while (fs.existsSync(nextFilePath)) {
+		const match = firstPart.match(/_(\d+)$/);
+		if (match) {
+			counter = Number.parseInt(match[1], 10) + 1;
+		}
+		const newName = `${baseName}_${counter}${restName}`;
+		nextFilePath = path.join(directory, newName);
 		counter++;
-		newPath = path.join(dir, `${baseName}_${counter}${ext}`);
 	}
 
-	return newPath;
+	return nextFilePath;
 }

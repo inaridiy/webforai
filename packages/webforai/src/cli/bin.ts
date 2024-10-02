@@ -1,6 +1,4 @@
-import { intro } from "@clack/prompts";
 import { program } from "commander";
-import pc from "picocolors";
 import packageInfo from "../../package.json";
 import { webforaiCommand } from "./commands/webforai";
 import { LOADERS, MODES } from "./constants";
@@ -17,7 +15,5 @@ program
 	.option("-l, --loader <loader>", `Loader to use (${LOADERS.join(", ")})`)
 	.option("-d, --debug", "output extra debugging information")
 	.action(webforaiCommand);
-
-intro(pc.inverse(`webforai CLI version ${packageInfo.version}`));
 
 program.parse();
