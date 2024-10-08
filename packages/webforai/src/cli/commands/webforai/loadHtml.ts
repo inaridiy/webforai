@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { log } from "@clack/prompts";
 import boxen from "boxen";
 import pc from "picocolors";
@@ -19,7 +20,7 @@ const checkPlaywrightAvailable = async () => {
 const getPlaywrightVersion = async () => {
 	const path = await import.meta.resolve("playwright-core/package.json");
 	const pwPackageJson = await fs
-		.readFile(path.replace("file://", ""), "utf-8")
+		.readFile(fileURLToPath(path), "utf-8")
 		.then((res) => JSON.parse(res.toString()))
 		.catch(() => null);
 	return pwPackageJson?.version;
