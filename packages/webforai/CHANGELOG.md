@@ -1,5 +1,11 @@
 # webforai
 
+## 1.6.3
+
+### Patch Changes
+
+- [#47](https://github.com/inaridiy/webforai/pull/47) [`fc84541`](https://github.com/inaridiy/webforai/commit/fc84541331ebc2dbf7d80af0694d9cdc79145a59) Thanks [@inaridiy](https://github.com/inaridiy)! - Fix Playwright installation command for improved reliability
+
 ## 1.6.2
 
 ### Patch Changes
