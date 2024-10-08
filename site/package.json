@@ -1,0 +1,23 @@
+{
+	"name": "site",
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vocs dev",
+		"build": "vocs build",
+		"preview": "vocs preview"
+	},
+	"dependencies": {
+		"@types/react": "latest",
+		"react": "latest",
+		"react-dom": "latest",
+		"react-wrap-balancer": "^1.1.1",
+		"typescript": "latest",
+		"vocs": "latest"
+	},
+	"devDependencies": {
+		"autoprefixer": "^10.4.20",
+		"postcss": "^8.4.47",
+		"tailwindcss": "^3.4.13"
+	}
+}
