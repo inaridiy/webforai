@@ -13,9 +13,11 @@
 		"react-dom": "latest",
 		"react-wrap-balancer": "^1.1.1",
 		"typescript": "latest",
-		"vocs": "latest"
+		"vocs": "latest",
+		"webforai": "workspace:*"
 	},
 	"devDependencies": {
+		"@types/node": "^20.14.10",
 		"autoprefixer": "^10.4.20",
 		"postcss": "^8.4.47",
 		"tailwindcss": "^3.4.13"

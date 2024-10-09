@@ -6,7 +6,7 @@ content:
 
 import { HomePage } from "vocs/components";
 
-<div className="max-w-screen-xl mx-auto vp-doc relative px-6 mb-24 mt-8 md:px-0 md:mb-16">
+<div className="max-w-screen-lg mx-auto vp-doc relative px-6 mb-24 mt-8 md:px-0 md:mb-16">
   <div className="pt-[48px] max-sm:pt-0">
     <div className="max-sm:px-0 flex justify-between z-0 max-md:justify-center">
       <div className="space-y-8 max-w-sm flex flex-col items-start max-md:items-center">
@@ -16,6 +16,7 @@ import { HomePage } from "vocs/components";
         </div>
         <div className="flex justify-center space-x-2">
           <HomePage.Button href="/getting-started" variant="accent">Get started</HomePage.Button>
+          <HomePage.Button href="/cookbook">Cookbook</HomePage.Button>
           <HomePage.Button href="https://github.com/inaridiy/webforai">GitHub</HomePage.Button>
         </div>
       </div>
@@ -27,19 +28,19 @@ import { HomePage } from "vocs/components";
 ```bash [npm]
 npm i webforai
 # or just run
-npx webforai
+npx webforai@latest
 ```
 
 ```bash [pnpm]
 pnpm i webforai
 # or just run
-pnpx webforai
+pnpx webforai@latest
 ```
 
 ```bash [yarn]
 yarn add webforai
 # or just run
-npx webforai
+npx webforai@latest
 ```
 
 :::
@@ -80,3 +81,33 @@ npx webforai
 
   </div>
 </div>
+
+
+
+<section className="max-w-screen-md mx-auto">
+
+#
+# Overview
+
+```ts twoslash
+import { htmlToMarkdown, htmlToMdast } from "webforai";
+import { loadHtml } from "webforai/loaders/playwright";
+
+// Load html from url
+const url = "https://www.npmjs.com/package/webforai";
+const html = await loadHtml(url); // [!code hl]
+
+// Convert html to markdown
+const markdown = htmlToMarkdown(html, { baseUrl: url }); // [!code hl]
+```
+
+#
+# Features
+
+- High-quality HTML to Markdown conversion with simple, customizable options
+- ESM-native, compatible with various environments (browser, Cloudflare Worker, Node.js, etc.)
+- MathML to LaTeX with [mathml-to-latext](https://www.npmjs.com/package/mathml-to-latex) package.
+- Out-of-the-box loaders such as fetch, [playwright](https://www.npmjs.com/package/playwright), [puppeteer](https://www.npmjs.com/package/puppeteer).
+- CLI tool `npx webforai` for quick HTML to Markdown conversion
+
+</section>
