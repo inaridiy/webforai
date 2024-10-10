@@ -27,7 +27,31 @@ yarn add webforai
 
 :::
 
-## Quick Start
+## Quick Start (CLI)
+
+Just run the following command.
+
+```bash
+$ npx webforai@latest https://www.npmjs.com/package/webforai
+
+┌  webforai CLI version 1.6.3
+│
+◇  Select loader: # [!code hl]
+│  fetch # fetch(default) or playwright
+│
+◇  Enter the output file path: # [!code hl]
+│  npmjs-package-webforai.md # default is `{escaped-url}.md`
+│
+◇  Select processing mode: # [!code hl]
+│  default # default or ai mode. ai mode is remove imapges, links, and so on.
+│
+◇  Content loaded!
+│
+└  Done! Markdown saved to npmjs-package-webforai.md
+
+```
+
+## Quick Start (Library)
 
 
 ::::steps
