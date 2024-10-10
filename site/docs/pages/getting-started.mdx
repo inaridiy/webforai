@@ -1,3 +1,90 @@
-# Get started
+---
+title: Getting Started
+---
 
-Hello world!
+# Getting Started
+
+## Overview
+
+Welcome to webforai, an library designed to convert **HTML to Markdown** with simple utilities.
+Whether you're working in a browser, Node.js, or even on Cloudflare Workers, webforai is your go-to tool for bridging between web and LLMs.
+
+## Installation
+
+:::code-group
+
+```bash [npm]
+npm i webforai
+```
+
+```bash [pnpm]
+pnpm i webforai
+```
+
+```bash [yarn]
+yarn add webforai
+```
+
+:::
+
+## Quick Start
+
+
+::::steps
+
+### Load HTML with utilities
+
+Firstly, load HTML using the `loadHtml` utility. Using this function, you can get HTML from a URL in a simple way. It supports versions for **fetch**, **Playwright**, and **Puppeteer**.
+
+:::code-group
+
+```tsx [fetch] twoslash
+import { loadHtml } from "webforai/loaders/fetch"; // [!code hl]
+
+// Load html from url
+const url = "https://www.npmjs.com/package/webforai";
+const html = await loadHtml(url); // [!code hl]
+```
+
+
+```tsx [playwright] twoslash
+// Before using playwright loader, run `npx playwright install`
+import { loadHtml } from "webforai/loaders/playwright"; // [!code hl]
+
+// Load html from url
+const url = "https://www.npmjs.com/package/webforai";
+const html = await loadHtml(url , { superBypassMode: true }); // [!code hl] 
+// @log: Only playwright loader supports super bypass mode. 
+// @log: This is useful to bypass some anti-bot measures.
+```
+
+```tsx [puppeteer] twoslash
+// Before using puppeteer loader, run `npm i puppeteer`
+import { loadHtml } from "webforai/loaders/puppeteer"; // [!code hl]
+
+// Load html from url
+const url = "https://www.npmjs.com/package/webforai";
+const html = await loadHtml(url); // [!code hl]
+```
+
+:::
+
+:::warning
+The `loadHtml` function is designed for ease of use and is not recommended for intensive use in production environments.
+:::
+
+### Convert HTML to Markdown
+
+Now that you have a Client set up, you can now interact with Ethereum and consume [Actions](/docs/actions/public/introduction)!
+
+```tsx 
+import { htmlToMarkdown } from "webforai"; // [!code focus]
+import { loadHtml } from "webforai/loaders/fetch";
+
+// Load html from url
+const url = "https://www.npmjs.com/package/webforai";
+const html = await loadHtml(url); 
+
+const markdown = htmlToMarkdown(html); // [!code focus]
+```
+::::
