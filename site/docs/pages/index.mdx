@@ -107,8 +107,22 @@ const markdown = htmlToMarkdown(html, { baseUrl: url }); // [!code hl]
 - High-quality HTML to Markdown conversion with simple, customizable options
 - ESM-native, compatible with various environments (browser, Cloudflare Worker, Node.js, etc.)
 - Lightweight (only 146kb minified and gzipped)
+- Flexibility because it's built on [Syntax Tree](https://github.com/syntax-tree) ecosystem.
 - MathML to LaTeX with [mathml-to-latext](https://www.npmjs.com/package/mathml-to-latex) package.
 - Out-of-the-box loaders such as fetch, [playwright](https://www.npmjs.com/package/playwright), [puppeteer](https://www.npmjs.com/package/puppeteer).
 - CLI tool `npx webforai` for quick HTML to Markdown conversion
 
 </section>
+
+
+- `htmlToMarkdown`関数では、以下の流れでHTMLからMarkdownへの変換を行っています。
+  - `htmlToMdast`関数でHTML(or Hast)からMDAST(Markdown Abstract Syntax Tree)に変換する
+    - hast-util-from-htmlパッケージでHTMLをHastに変換する
+    - "Extractor"を適用して、本文以外の不要な部分を取り除く
+    - hast-util-to-mdastパッケージでHastをMDASTに変換する。
+      - この過程でmathml-to-latexパッケージを用いてMathMLをLaTeXに変換する
+      - コードタグの自動ハイライト、重複削除などもやる
+  - `mdastToMarkdown`関数でMDASTからMarkdown文字列に変換する
+      - mdast-util-to-markdownパッケージを用いてMDASTをMarkdown文字列に変換する
+        - mdast-util-gfmとmdast-util-mathをプラグインとして適用することで、GFMとMath Equationsに対応する
+
