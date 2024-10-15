@@ -4,7 +4,7 @@ import { toMdast } from "hast-util-to-mdast";
 import type { Nodes as Mdast } from "mdast";
 
 import { extractMdast } from "./extract-mdast";
-import { type ExtractorSelectors, extractHast } from "./extractors";
+import { type ExtractorSelectors, pipeExtractors } from "./extractors";
 import { customAHandler } from "./mdast-handlers/custom-a-handler";
 import { customCodeHandler } from "./mdast-handlers/custom-code-handler";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
@@ -58,7 +58,7 @@ export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOpti
 
 	const url = defaultUrl || getUrlFromHast(hast);
 
-	const extractedHast = extractHast({ hast, lang, url }, extractors);
+	const extractedHast = pipeExtractors({ hast, lang, url }, extractors);
 
 	const mdast = toMdast(extractedHast, {
 		handlers: {

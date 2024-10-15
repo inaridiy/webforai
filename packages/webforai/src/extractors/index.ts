@@ -1,11 +1,11 @@
 import type { Nodes as Hast } from "hast";
-import { readabilityExtractHast } from "./readability";
+import { takumiExtractor } from "./presets/takumi";
 import { stronglyExtractHast } from "./strongly";
 import type { ExtractParams, Extractor } from "./types";
 
 export const PRESET_EXTRACTORS = {
 	strongly: stronglyExtractHast,
-	readability: readabilityExtractHast,
+	takumi: takumiExtractor,
 };
 
 export type PresetExtractors = keyof typeof PRESET_EXTRACTORS;
@@ -13,9 +13,9 @@ export type PresetExtractors = keyof typeof PRESET_EXTRACTORS;
 type ExtractorSelector = Extractor | false | PresetExtractors;
 export type ExtractorSelectors = ExtractorSelector | ExtractorSelector[];
 
-export const DEFAULT_EXTRACTORS: ExtractorSelectors = ["readability"];
+export const DEFAULT_EXTRACTORS: ExtractorSelectors = ["takumi"];
 
-export const extractHast = (params: ExtractParams, extractors: ExtractorSelectors = DEFAULT_EXTRACTORS): Hast => {
+export const pipeExtractors = (params: ExtractParams, extractors: ExtractorSelectors = DEFAULT_EXTRACTORS): Hast => {
 	const { hast, lang } = params;
 	const _extractors = Array.isArray(extractors) ? extractors : [extractors];
 
