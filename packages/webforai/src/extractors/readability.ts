@@ -2,7 +2,7 @@ import type { Element, Nodes as Hast } from "hast";
 import { select, selectAll } from "hast-util-select";
 import { toString as hastToString } from "hast-util-to-string";
 import { filter } from "unist-util-filter";
-import type { ExtractParams } from ".";
+import type { ExtractParams } from "./types";
 import { classnames, isStrInclude, matchString } from "./utils";
 
 const UNLIKELY_ROLES = ["menu", "menubar", "complementary", "navigation", "alert", "alertdialog", "dialog"];
