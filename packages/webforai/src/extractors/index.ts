@@ -1,20 +1,21 @@
 import type { Nodes as Hast } from "hast";
 import { readabilityExtractHast } from "./readability";
 import { stronglyExtractHast } from "./strongly";
+import type { ExtractParams, Extractor } from "./types";
 
-export type ExtractPresets = "strongly" | "readability";
-export type ExtractParams = { hast: Hast; lang?: string; url?: string };
-export type Extractor = ((param: ExtractParams) => Hast) | false | ExtractPresets;
-export type Extracotrs = Extractor | Extractor[];
-
-export const PRESET_EXTRACT_HAST = {
+export const PRESET_EXTRACTORS = {
 	strongly: stronglyExtractHast,
 	readability: readabilityExtractHast,
 };
 
-export const DEFAULT_EXTRACT_HAST: Extracotrs = ["readability"];
+export type PresetExtractors = keyof typeof PRESET_EXTRACTORS;
 
-export const extractHast = (params: ExtractParams, extractors: Extracotrs = DEFAULT_EXTRACT_HAST): Hast => {
+type ExtractorSelector = Extractor | false | PresetExtractors;
+export type ExtractorSelectors = ExtractorSelector | ExtractorSelector[];
+
+export const DEFAULT_EXTRACTORS: ExtractorSelectors = ["readability"];
+
+export const extractHast = (params: ExtractParams, extractors: ExtractorSelectors = DEFAULT_EXTRACTORS): Hast => {
 	const { hast, lang } = params;
 	const _extractors = Array.isArray(extractors) ? extractors : [extractors];
 
@@ -23,8 +24,8 @@ export const extractHast = (params: ExtractParams, extractors: Extracotrs = DEFA
 			if (extractor === false) {
 				return acc;
 			}
-			if (typeof extractor === "string" && extractor in PRESET_EXTRACT_HAST) {
-				return PRESET_EXTRACT_HAST[extractor]({ hast: acc, lang });
+			if (typeof extractor === "string" && extractor in PRESET_EXTRACTORS) {
+				return PRESET_EXTRACTORS[extractor]({ hast: acc, lang });
 			}
 			if (typeof extractor === "function") {
 				return extractor({ hast: acc, lang });
