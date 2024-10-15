@@ -1,10 +1,8 @@
 import type { Nodes as Hast } from "hast";
 import { takumiExtractor } from "./presets/takumi";
-import { stronglyExtractHast } from "./strongly";
 import type { ExtractParams, Extractor } from "./types";
 
 export const PRESET_EXTRACTORS = {
-	strongly: stronglyExtractHast,
 	takumi: takumiExtractor,
 };
 
