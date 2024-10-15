@@ -3,7 +3,7 @@
 	"version": "1.6.3",
 	"description": "A library that provides a web interface for AI",
 	"author": "inaridiy",
-	"license": "MIT",
+	"license": "Apache-2.0",
 	"keywords": ["web", "ai", "html", "html2md", "markdown", "mdast", "hast"],
 	"repository": {
 		"type": "git",
