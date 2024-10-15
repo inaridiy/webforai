@@ -17,7 +17,7 @@ export const loadHtml = async (url: string, ctx?: PuppeteerLaunchOptions) => {
 
 	await Promise.race([page.waitForNetworkIdle(), sleep(10000)]);
 
-	await page.close();
+	await browser.close();
 
 	return html;
 };

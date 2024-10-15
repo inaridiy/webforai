@@ -2,11 +2,18 @@ import type { Element, Nodes as Hast } from "hast";
 import { select, selectAll } from "hast-util-select";
 import { toString as hastToString } from "hast-util-to-string";
 import { filter } from "unist-util-filter";
-import type { ExtractParams } from ".";
+import type { ExtractParams } from "../types";
 import { classnames, isStrInclude, matchString } from "./utils";
 
 const UNLIKELY_ROLES = ["menu", "menubar", "complementary", "navigation", "alert", "alertdialog", "dialog"];
 
+/*
+ * This section of the code is influenced by @mozilla/readability, licensed under Apache License 2.0.
+ * Original copyright (c) 2010 Arc90 Inc
+ * See https://github.com/mozilla/readability for the full license text.
+ * Modifications made by inaridiy
+ * - Added and edited some regular expressions.
+ */
 const REGEXPS = {
 	hidden: /hidden|invisible|fallback-image/i,
 	byline: /byline|author|dateline|writtenby|p-author/i,
@@ -24,11 +31,6 @@ const BASE_MINIMAL_LENGTH = {
 	ja: 200,
 	en: 500,
 };
-
-// const EMPTY_LENGTH = {
-// 	ja: 6,
-// 	en: 10,
-// };
 
 const metadataFilter = (node: Hast) => {
 	return !(
@@ -120,7 +122,14 @@ const removeEmptyFilter = (node: Hast, _lang: string) => {
 	return true;
 };
 
-export const readabilityExtractHast = (params: ExtractParams): Hast => {
+/**
+ * Currently the best Extractor.
+ * The word "takumi" is written as 匠 in Japanese, and it refers to a highly skilled artisan or craftsman.
+ *
+ * @param params - {@link ExtractParams}
+ * @returns The HAST tree.
+ */
+export const takumiExtractor = (params: ExtractParams): Hast => {
 	const { hast, lang = "en" } = params;
 	const body = select("body", hast) ?? hast;
 
