@@ -358,6 +358,9 @@ importers:
         specifier: workspace:*
         version: link:../packages/webforai
     devDependencies:
+      '@types/hast':
+        specifier: ^3.0.2
+        version: 3.0.4
       '@types/node':
         specifier: ^20.14.10
         version: 20.14.10

@@ -17,6 +17,7 @@
 		"webforai": "workspace:*"
 	},
 	"devDependencies": {
+		"@types/hast": "^3.0.2",
 		"@types/node": "^20.14.10",
 		"autoprefixer": "^10.4.20",
 		"postcss": "^8.4.47",
