@@ -3,7 +3,7 @@
 	"version": "1.6.3",
 	"description": "A library that provides a web interface for AI",
 	"author": "inaridiy",
-	"license": "MIT",
+	"license": "Apache-2.0",
 	"keywords": ["web", "ai", "html", "html2md", "markdown", "mdast", "hast"],
 	"repository": {
 		"type": "git",
@@ -14,7 +14,7 @@
 		"copy:package.cjs.json": "pnpm ncp ./package.cjs.json ./dist/cjs/package.json && pnpm ncp ./package.cjs.json ./dist/types/package.json ",
 		"clean": "rimraf dist",
 		"build": "pnpm clean && tsx build.ts && pnpm copy:package.cjs.json",
-		"test": "echo \"Error: no test specified\"",
+		"typecheck": "tsc --noEmit",
 		"prerelease": "pnpm build",
 		"release": "np"
 	},

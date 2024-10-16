@@ -18,10 +18,12 @@
 	"scripts": {
 		"test": "vitest",
 		"build": "pnpm run --r --filter \"./packages/**\" build",
-		"format": "biome format . --write",
+		"format": "biome format .",
+		"format:fix": "pnpm format --write .",
 		"lint": "biome check .",
 		"lint:fix": "pnpm lint --apply",
 		"lint:repo": "sherif",
+		"typecheck": "pnpm run --filter \"./packages/**\" typecheck",
 		"ci:prepublish": "pnpm run build",
 		"ci:version": "changeset version",
 		"ci:publish": "pnpm ci:prepublish && changeset publish",
@@ -38,6 +40,6 @@
 		"vitest": "1.3.0"
 	},
 	"simple-git-hooks": {
-		"pre-commit": "pnpm format && pnpm lint:fix && pnpm lint:repo"
+		"pre-commit": "pnpm format && pnpm lint && pnpm lint:repo && pnpm typecheck"
 	}
 }

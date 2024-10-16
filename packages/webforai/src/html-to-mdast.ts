@@ -3,8 +3,8 @@ import { fromHtml } from "hast-util-from-html";
 import { toMdast } from "hast-util-to-mdast";
 import type { Nodes as Mdast } from "mdast";
 
-import { type Extracotrs, extractHast } from "./extract-hast";
 import { extractMdast } from "./extract-mdast";
+import { type ExtractorSelectors, pipeExtractors } from "./extractors";
 import { customAHandler } from "./mdast-handlers/custom-a-handler";
 import { customCodeHandler } from "./mdast-handlers/custom-code-handler";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
@@ -18,7 +18,7 @@ export type HtmlToMdastOptions = {
 	 * An array of extractors to extract specific elements from the HTML.
 	 * You can define your own functions in addition to the Extractor provided as a preset.
 	 */
-	extractors?: Extracotrs;
+	extractors?: ExtractorSelectors;
 	/** Whether to convert links to plain text. */
 	linkAsText?: boolean;
 	/** Whether to convert tables to plain text. */
@@ -58,7 +58,7 @@ export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOpti
 
 	const url = defaultUrl || getUrlFromHast(hast);
 
-	const extractedHast = extractHast({ hast, lang, url }, extractors);
+	const extractedHast = pipeExtractors({ hast, lang, url }, extractors);
 
 	const mdast = toMdast(extractedHast, {
 		handlers: {
