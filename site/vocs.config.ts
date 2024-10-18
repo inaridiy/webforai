@@ -37,5 +37,28 @@ export default defineConfig({
 				},
 			],
 		},
+		{
+			text: "Cookbook",
+			link: "/cookbook",
+
+			items: [
+				{
+					text: "Simple usage",
+					link: "/cookbook/simple",
+				},
+				{
+					text: "Structured output",
+					link: "/cookbook/structured-output",
+				},
+				{
+					text: "Translation",
+					link: "/cookbook/translation",
+				},
+				{
+					text: "Use with Cloudflare Workers",
+					link: "/cookbook/cf-workers",
+				},
+			],
+		},
 	],
 });
