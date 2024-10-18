@@ -1,0 +1,87 @@
+---
+title: Translation web page
+authors:
+ - "[inaridiy](https://github.com/inaridiy)"
+date: 2024-10-19
+---
+
+# Translation web content
+::authors
+
+You can translate web content to any language by using webforai and the [Vercel AI SDK](https://sdk.vercel.ai/).
+
+::::steps
+## Install dependencies
+
+Install the necessary packages:
+
+:::code-group
+```bash [npm]
+npm init -y
+npm install webforai ai @ai-sdk/google zod
+npm install -D tsx
+```
+
+```bash [pnpm]
+pnpm init -y
+pnpm install webforai ai @ai-sdk/google zod
+pnpm install -D tsx
+```
+:::
+
+## Prepare API Key
+
+This example uses **Google Generative AI (Gemini 1.5 Flash)** via the AI SDK. 
+Set your **Google Generative AI API key** as an environment variable **GOOGLE_GENERATIVE_AI_API_KEY**. You can get the key [here](https://aistudio.google.com/app/apikey).
+
+For other providers, see the [AI SDK provider documentation](https://sdk.vercel.ai/providers/ai-sdk-providers).
+
+## Write code
+
+Here's an example of how to translate a web page using webforai and the Vercel AI SDK.
+A little trick in this code is the use of `experimental_continueSteps`.
+If you enable this flag, it will also make it OK if the outputToken is exceeded.
+
+```ts [src/index.ts] twoslash
+import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
+import { htmlToMarkdown } from "webforai";
+import { loadHtml } from "webforai/loaders/playwright";
+
+const url = "https://github.com/inaridiy";
+const targetLanguage = "ja"; // Translate to Japanese
+
+const html = await loadHtml(url, { superBypassMode: true });
+const markdown = htmlToMarkdown(html);
+
+const prompt = `Translate mechanically converted HTML-based Markdown into ${targetLanguage}, while refining and correcting the content for clarity and coherence.
+
+The Markdown provided may contain redundant or unnecessary information and errors due to mechanical conversion. Your task is to translate the text into Japanese, fixing these issues and improving the overall quality of the Markdown document.
+
+<input_document>
+${markdown}
+</input_document>`;
+
+const response = await generateText({
+	model: google("gemini-1.5-flash-latest"),
+	temperature: 0,
+	prompt,
+	maxSteps: 10,
+	experimental_continueSteps: true, // To long content, you need to set this option.
+});
+
+console.info(response.text);
+
+```
+
+## Launch 🚀
+
+Just run the following command:
+
+```bash
+tsx src/index.ts
+
+# => Output the translated content.
+```
+
+::::

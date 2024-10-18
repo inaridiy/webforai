@@ -33,7 +33,7 @@ importers:
         specifier: ^0.0.48
         version: 0.0.48(zod@3.23.8)
       ai:
-        specifier: ^3.3.39
+        specifier: ^3.4.7
         version: 3.4.7(openai@4.52.7)(react@18.3.1)(sswr@2.1.0(svelte@4.2.19))(svelte@4.2.19)(vue@3.5.10(typescript@5.5.3))(zod@3.23.8)
       arg:
         specifier: ^5.0.2
@@ -165,12 +165,18 @@ importers:
 
   examples/translate:
     dependencies:
+      '@ai-sdk/google':
+        specifier: ^0.0.48
+        version: 0.0.48(zod@3.23.8)
       '@anthropic-ai/sdk':
         specifier: ^0.18.0
         version: 0.18.0
       '@google/generative-ai':
         specifier: ^0.12.0
         version: 0.12.0
+      ai:
+        specifier: ^3.4.7
+        version: 3.4.7(openai@4.52.7)(react@18.3.1)(sswr@2.1.0(svelte@4.2.19))(svelte@4.2.19)(vue@3.5.10(typescript@5.5.3))(zod@3.23.8)
       arg:
         specifier: ^5.0.2
         version: 5.0.2
@@ -352,7 +358,7 @@ importers:
         specifier: latest
         version: 5.6.3
       vocs:
-        specifier: latest
+        specifier: 1.0.0-alpha.61
         version: 1.0.0-alpha.61(@types/node@20.14.10)(@types/react@18.3.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.18.1)(typescript@5.6.3)
       webforai:
         specifier: workspace:*

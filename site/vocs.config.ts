@@ -55,7 +55,7 @@ export default defineConfig({
 					link: "/cookbook/translation",
 				},
 				{
-					text: "Use with Cloudflare Workers",
+					text: "With Cloudflare Workers",
 					link: "/cookbook/cf-workers",
 				},
 			],

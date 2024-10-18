@@ -12,8 +12,10 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
+		"@ai-sdk/google": "^0.0.48",
 		"@anthropic-ai/sdk": "^0.18.0",
 		"@google/generative-ai": "^0.12.0",
+		"ai": "^3.4.7",
 		"arg": "^5.0.2",
 		"dotenv": "^16.4.5",
 		"playwright": "^1.40.1",

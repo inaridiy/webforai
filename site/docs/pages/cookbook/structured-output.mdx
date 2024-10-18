@@ -1,9 +1,13 @@
 ---
 title: Structured Output with ai SDK
+authors:
+ - "[inaridiy](https://github.com/inaridiy)"
+date: 2024-10-19
 ---
 
 # Structured Output
 
+::authors
 You can get **structured JSON** directly from any website by using webforai and the [Vercel AI SDK](https://sdk.vercel.ai/).
 
 ::::steps
@@ -32,11 +36,9 @@ Set your **Google Generative AI API key** as an environment variable **GOOGLE_GE
 
 For other providers, see the [AI SDK provider documentation](https://sdk.vercel.ai/providers/ai-sdk-providers).
 
-## Implementation
+## Write code
 
 Here’s how to convert HTML to Markdown using **webforai** and then transform it into a structured object with **AI SDK**:
-
-
 
 ```ts [src/index.ts] twoslash
 import { google } from "@ai-sdk/google";
