@@ -31,6 +31,10 @@ export default defineConfig({
 					text: "mdastToMarkdown",
 					link: "/api/mdast-to-markdown",
 				},
+				{
+					text: "loaders",
+					link: "/api/loaders",
+				},
 			],
 		},
 	],
