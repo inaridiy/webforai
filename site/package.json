@@ -17,10 +17,13 @@
 		"webforai": "workspace:*"
 	},
 	"devDependencies": {
+		"@ai-sdk/google": "^0.0.48",
 		"@types/hast": "^3.0.2",
 		"@types/node": "^20.14.10",
+		"ai": "^3.4.7",
 		"autoprefixer": "^10.4.20",
 		"postcss": "^8.4.47",
-		"tailwindcss": "^3.4.13"
+		"tailwindcss": "^3.4.13",
+		"zod": "^3.23.8"
 	}
 }

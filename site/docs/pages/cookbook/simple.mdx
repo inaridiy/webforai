@@ -1,4 +1,15 @@
 ---
-title: Simple load and convert html to markdown
+title: Simple usage
 ---
 
+# Simple usage
+
+The simplest way to use Webforai
+
+```ts twoslash
+import { htmlToMarkdown } from "webforai";
+import { loadHtml } from "webforai/loaders/fetch";
+
+const html = await loadHtml("https://example.com");
+const markdown = htmlToMarkdown(html);
+```

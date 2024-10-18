@@ -1,0 +1,89 @@
+---
+title: Structured Output with ai SDK
+---
+
+# Structured Output
+
+You can get **structured JSON** directly from any website by using webforai and the [Vercel AI SDK](https://sdk.vercel.ai/).
+
+::::steps
+## Install dependencies
+
+Install the necessary packages:
+
+:::code-group
+```bash [npm]
+npm init -y
+npm install webforai ai @ai-sdk/google zod
+npm install -D tsx
+```
+
+```bash [pnpm]
+pnpm init -y
+pnpm install webforai ai @ai-sdk/google zod
+pnpm install -D tsx
+```
+:::
+
+## Prepare API Key
+
+This example uses **Google Generative AI (Gemini 1.5 Flash)** via the AI SDK. 
+Set your **Google Generative AI API key** as an environment variable **GOOGLE_GENERATIVE_AI_API_KEY**. You can get the key [here](https://aistudio.google.com/app/apikey).
+
+For other providers, see the [AI SDK provider documentation](https://sdk.vercel.ai/providers/ai-sdk-providers).
+
+## Implementation
+
+Here’s how to convert HTML to Markdown using **webforai** and then transform it into a structured object with **AI SDK**:
+
+
+
+```ts [src/index.ts] twoslash
+import { google } from "@ai-sdk/google";
+import { generateObject } from "ai";
+import { htmlToMarkdown } from "webforai";
+import { loadHtml } from "webforai/loaders/fetch";
+import { z } from "zod";
+
+const html = await loadHtml("https://github.com/inaridiy?tab=repositories");
+const markdown = htmlToMarkdown(html);
+
+const { object: repositories } = await generateObject({
+	model: google("gemini-1.5-flash-latest"),
+	schema: z.object({
+		repositories: z.array(
+			z.object({
+				name: z.string(),
+				url: z.string(),
+				stars: z.number(),
+				license: z.string(),
+			}),
+		),
+	}),
+	prompt: `Please generate a list of repositories from the following markdown content.\n\n${markdown}`,
+});
+
+console.log(repositories);
+```
+
+## Launch 🚀
+
+Just run the following command:
+
+```bash
+tsx src/index.ts
+
+# => {
+# =>   repositories: [
+# =>     {
+# =>       name: 'webforai',
+# =>       url: 'https://github.com/inaridiy/webforai',
+# =>       stars: 46,
+# =>       license: 'MIT'
+# =>     }
+# =>   ]
+# => ...
+# => }
+```
+
+::::
