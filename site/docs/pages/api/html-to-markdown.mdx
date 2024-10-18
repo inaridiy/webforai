@@ -49,6 +49,29 @@ const markdown = htmlToMarkdown("<a href='/foo'>bar</a>", {
 // => "[bar](https://example.com/foo)"
 ```
 
+### options.extractors
+
+type: `ExtractorSelectors`
+
+An array of extractors to extract specific elements from the HTML.
+You can define your own functions in addition to the Extractor provided as a preset.
+
+```ts twoslash
+import { htmlToMarkdown, type Extractor, takumiExtractor } from "webforai"
+
+const yourCustomExtractor: Extractor = (params) => {
+	const { hast, url } = params
+	// ... your logic ...
+	return hast
+};
+
+const html = "<h1>Hello, world!</h1>"
+const markdown = htmlToMarkdown(html, {
+	extractors: [yourCustomExtractor, takumiExtractor]
+});
+// => "# Hello, world!"
+```
+
 ### options.formatting
 
 type: `Omit<MdastToMarkdownOptions, "baseUrl">`
@@ -63,3 +86,35 @@ const markdown = htmlToMarkdown("<h1>Hello, world!</h1>", {
 });
 // => "* Hello, world!"
 ```
+
+### options.linkAsText
+
+type: `boolean`
+
+Whether to convert links to plain text.
+
+```ts
+const markdown = htmlToMarkdown("<a href='/foo'>bar</a>", {
+	linkAsText: true,
+});
+// => "bar"
+```
+
+### options.tableAsText
+
+type: `boolean`
+
+Whether to convert tables to plain text.
+
+
+### options.hideImage
+
+type: `boolean`
+
+Whether to hide images.
+
+### options.lang
+
+type: `string`
+
+The language of the HTML.

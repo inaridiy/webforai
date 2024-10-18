@@ -5,3 +5,56 @@ title: mdastToMarkdown
 # mdastToMarkdown
 
 Convert Mdast to Markdown.
+
+```ts
+import { mdastToMarkdown } from "webforai";
+
+const mdast = {
+    type: 'root',
+    children: [
+      {
+        type: 'paragraph',
+        children: [
+          { type: 'text', value: 'Hello, world!' }
+        ]
+      }
+    ]
+ };
+
+const markdown = mdastToMarkdown(mdast);
+// => "# Hello, world!"
+```
+
+## Returns
+
+`string`
+
+The converted Markdown string.
+
+## Parameters
+
+### mdast
+
+type: `Mdast`
+
+The Mdast tree to convert.
+
+### options.baseUrl
+
+type: `string`
+
+The base URL to use for replacing relative links.
+
+### Omit\<options, "baseUrl">
+
+
+Formatting options passed to [mdast-util-to-markdown](https://github.com/syntax-tree/mdast-util-to-markdown).
+
+default: `DEFAULT_MDAST_TO_MARKDOWN_OPTIONS`
+```ts
+const DEFAULT_MDAST_TO_MARKDOWN_OPTIONS: MdastToMarkdownOptions = {
+  extensions: [gfmToMarkdown(), mathToMarkdown()],
+  bullet: "-",
+};
+```
+
