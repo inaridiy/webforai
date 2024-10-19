@@ -1,8 +1,42 @@
 import { defineConfig } from "vocs";
+import { version } from "../packages/webforai/package.json";
 
 // biome-ignore lint/style/noDefaultExport: This is a config file
 export default defineConfig({
 	title: "Webforai",
+	description: "A esm-native library that converts HTML to Markdown.",
+	baseUrl: "https://webforai.dev",
+	editLink: {
+		pattern: "https://github.com/inaridiy/webforai/edit/main/site/docs/pages/:path",
+		text: "Suggest changes to this page",
+	},
+	socials: [
+		{
+			icon: "github",
+			link: "https://github.com/inaridiy/webforai",
+		},
+		{
+			icon: "x",
+			link: "https://twitter.com/inaridiy",
+		},
+	],
+	topNav: [
+		{ text: "Getting Started", link: "/getting-started" },
+		{ text: "Cookbook", link: "/cookbook" },
+		{
+			text: version,
+			items: [
+				{
+					text: "Releases",
+					link: "https://github.com/inaridiy/webforai/releases",
+				},
+				{
+					text: "Contributing",
+					link: "https://github.com/inaridiy/webforai",
+				},
+			],
+		},
+	],
 	sidebar: [
 		{
 			text: "Installation",
