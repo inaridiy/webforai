@@ -5,26 +5,32 @@
 	"scripts": {
 		"dev": "vocs dev",
 		"build": "vocs build",
-		"preview": "vocs preview"
-	},
-	"dependencies": {
-		"@types/react": "latest",
-		"react": "latest",
-		"react-dom": "latest",
-		"react-wrap-balancer": "^1.1.1",
-		"typescript": "latest",
-		"vocs": "1.0.0-alpha.61",
-		"webforai": "workspace:*"
+		"preview": "vocs preview",
+		"worker:dev": "wrangler dev",
+		"worker:deploy": "wrangler deploy",
+		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
 		"@ai-sdk/google": "^0.0.48",
+		"@cloudflare/workers-types": "^4.20240405.0",
 		"@types/hast": "^3.0.2",
 		"@types/node": "^20.14.10",
+		"@types/react": "latest",
 		"ai": "^3.4.7",
 		"autoprefixer": "^10.4.20",
 		"hast-util-select": "^6.0.2",
 		"postcss": "^8.4.47",
+		"react": "latest",
+		"react-dom": "latest",
+		"react-wrap-balancer": "^1.1.1",
 		"tailwindcss": "^3.4.13",
+		"typescript": "latest",
+		"vocs": "1.0.0-alpha.61",
+		"webforai": "workspace:*",
+		"wrangler": "^3.81.0",
 		"zod": "^3.23.8"
+	},
+	"dependencies": {
+		"hono": "^4.1.1"
 	}
 }

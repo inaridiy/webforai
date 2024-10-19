@@ -13,7 +13,7 @@
 		"@cloudflare/workers-types": "^4.20240405.0",
 		"typescript": "^5.4.5",
 		"vitest": "1.3.0",
-		"wrangler": "^3.48.0"
+		"wrangler": "^3.81.0"
 	},
 	"dependencies": {
 		"@hono/valibot-validator": "^0.2.2",
