@@ -55,6 +55,10 @@ export default defineConfig({
 					link: "/cookbook/translation",
 				},
 				{
+					text: "Custom extractor",
+					link: "/cookbook/custom-extractor",
+				},
+				{
 					text: "With Cloudflare Workers",
 					link: "/cookbook/cf-workers",
 				},
