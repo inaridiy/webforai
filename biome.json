@@ -27,6 +27,9 @@
 					}
 				}
 			},
+			"correctness": {
+				"noUndeclaredVariables": "off"
+			},
 			"complexity": {
 				"noExcessiveCognitiveComplexity": {
 					"level": "error",

@@ -6,9 +6,26 @@ export default defineConfig({
 	title: "Webforai",
 	description: "A esm-native library that converts HTML to Markdown.",
 	baseUrl: "https://webforai.dev",
+	logoUrl: {
+		light: "/images/logo-light.png",
+		dark: "/images/logo-dark.png",
+	},
+	iconUrl: {
+		light: "/images/logo-light.png",
+		dark: "/images/logo-dark.png",
+	},
 	editLink: {
 		pattern: "https://github.com/inaridiy/webforai/edit/main/site/docs/pages/:path",
 		text: "Suggest changes to this page",
+	},
+	theme: {
+		accentColor: {
+			light: "#ff9318",
+			dark: "#ffc517",
+		},
+	},
+	ogImageUrl: {
+		"/": "https://webforai.dev/ogp?logo=%logo&title=%title&description=%description",
 	},
 	socials: [
 		{
