@@ -116,4 +116,19 @@ export default defineConfig({
 			],
 		},
 	],
+	sponsors: [
+		{
+			name: "Personal",
+			height: 60,
+			items: [
+				[
+					{
+						name: "ClankPan ∞",
+						link: "https://x.com/ClankPan",
+						image: "https://pbs.twimg.com/profile_images/1407277306414989315/iIZ-R1jd_400x400.jpg",
+					},
+				],
+			],
+		},
+	],
 });
