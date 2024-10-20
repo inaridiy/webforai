@@ -1,0 +1,120 @@
+---
+title: htmlToMarkdown
+---
+
+# htmlToMarkdown
+
+Useful and high-quality HTML to Markdown converter.
+Internally, it just calls [htmlToMdast](/docs/html-to-mdast) and [mdastToMarkdown](/docs/mdast-to-markdown) in that order.
+
+## Usage
+
+```ts twoslash
+import { htmlToMarkdown } from "webforai";
+
+const html = "<h1>Hello, world!</h1>";
+const markdown = htmlToMarkdown(html);
+// @log: => "# Hello, world!"
+```
+
+## Returns
+
+`string`
+
+The converted Markdown string.
+
+## Parameters
+
+### htmlOrHast
+
+type: `string | Hast`
+
+The HTML string or HAST tree to convert.
+
+```ts
+const markdown = htmlToMarkdown("<h1>Hello, world!</h1>");
+// => "# Hello, world!"
+```
+
+### options.baseUrl
+
+type: `string`
+
+The base URL to use for replacing relative links.
+
+```ts 
+const markdown = htmlToMarkdown("<a href='/foo'>bar</a>", {
+	baseUrl: "https://example.com",
+});
+// => "[bar](https://example.com/foo)"
+```
+
+### options.extractors
+
+type: `ExtractorSelectors`
+
+An array of extractors to extract specific elements from the HTML.
+You can define your own functions in addition to the Extractor provided as a preset.
+
+```ts twoslash
+import { htmlToMarkdown, type Extractor, takumiExtractor } from "webforai"
+
+const yourCustomExtractor: Extractor = (params) => {
+	const { hast, url } = params
+	// ... your logic ...
+	return hast
+};
+
+const html = "<h1>Hello, world!</h1>"
+const markdown = htmlToMarkdown(html, {
+	extractors: [yourCustomExtractor, takumiExtractor]
+});
+// => "# Hello, world!"
+```
+
+### options.formatting
+
+type: `Omit<MdastToMarkdownOptions, "baseUrl">`
+
+Formatting options passed to [mdast-util-to-markdown](https://github.com/syntax-tree/mdast-util-to-markdown).
+
+```ts
+const markdown = htmlToMarkdown("<h1>Hello, world!</h1>", {
+	formatting: {
+		bullet: "*",
+	},
+});
+// => "* Hello, world!"
+```
+
+### options.linkAsText
+
+type: `boolean`
+
+Whether to convert links to plain text.
+
+```ts
+const markdown = htmlToMarkdown("<a href='/foo'>bar</a>", {
+	linkAsText: true,
+});
+// => "bar"
+```
+
+### options.tableAsText
+
+type: `boolean`
+
+Whether to convert tables to plain text.
+
+
+### options.hideImage
+
+type: `boolean`
+
+Whether to hide images.
+
+### options.lang
+
+type: `string`
+
+The language of the HTML.

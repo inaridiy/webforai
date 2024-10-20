@@ -52,7 +52,7 @@ await fs.mkdirSync(".output", { recursive: true });
 await fs.writeFileSync(".output/html.html", html);
 
 const rawContent = await htmlToMarkdown(html, { baseUrl: url, extractors: false });
-const cleanedContent = await htmlToMarkdown(html, { baseUrl: url, extractors: "readability" });
+const cleanedContent = await htmlToMarkdown(html, { baseUrl: url, extractors: "takumi" });
 
 await fs.writeFileSync(".output/raw.md", rawContent);
 await fs.writeFileSync(".output/cleaned.md", cleanedContent);

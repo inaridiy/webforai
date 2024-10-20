@@ -1,0 +1,103 @@
+---
+title: Loaders Utilities
+---
+
+# Loaders Utilities
+
+The **Loaders Utilities** provide simple tools to easily fetch HTML from websites.  
+All the utilities are designed to be straightforward, requiring no configuration. 
+
+:::warning
+However, they are not recommended for production use.
+:::
+
+## Overview of Loaders
+
+Webforai provides three different loaders:
+
+- **Fetch Loader**: The simplest option, using JavaScript's built-in Fetch API.
+- **Playwright Loader**: Ideal for sites requiring JavaScript execution, like SPAs.
+- **Puppeteer Loader**: Another option for handling websites with JavaScript execution.
+
+## Fetch Loader
+
+The **Fetch Loader** is the simplest utility, using JavaScript’s **Fetch API**. 
+It retrieves HTML from a given URL, using a basic User-Agent for the request.
+
+### Usage
+
+```ts twoslash
+import { loadHtml } from "webforai/loaders/fetch";
+
+const html = await loadHtml("https://example.com");
+```
+
+## Playwright Loader
+
+The **Playwright Loader** is a more powerful tool, using [Playwright](https://playwright.dev/) to 
+fetch HTML from websites that need JavaScript execution, like SPAs (Single Page Applications).
+
+### Usage
+
+Before using the Playwright Loader, you need to install the Playwright browser and its dependencies.
+
+:::code-group
+
+```bash [npm]
+npx playwright-core install
+```
+
+```bash [pnpm]
+pnpm install playwright-core
+```
+:::
+
+And then you can use the Playwright Loader as follows:
+
+:::code-group
+
+```ts twoslash [basic-usage]
+import { loadHtml } from "webforai/loaders/playwright";
+
+const html = await loadHtml("https://example.com");
+```
+
+```ts twoslash [super-bypass-mode]
+import { loadHtml } from "webforai/loaders/playwright";
+
+const html = await loadHtml("https://example.com", {
+    superBypassMode: true,
+});
+
+```
+:::
+
+
+## Puppeteer Loader
+
+The **Puppeteer Loader** is another advanced tool that uses [Puppeteer](https://pptr.dev/) to 
+load HTML from sites that rely on JavaScript execution, similar to Playwright.
+
+### Usage
+
+Before using the Puppeteer Loader, you need to install the Puppeteer browser and its dependencies.
+
+:::code-group
+
+```bash [npm]
+npm install puppeteer 
+```
+
+```bash [pnpm]
+pnpm install puppeteer 
+```
+:::
+
+And then you can use the Puppeteer Loader as follows:
+
+```ts twoslash
+import { loadHtml } from "webforai/loaders/puppeteer";
+
+const html = await loadHtml("https://example.com");
+```
+

@@ -1,0 +1,59 @@
+---
+title: Simple usage
+authors:
+ - "[inaridiy](https://github.com/inaridiy)"
+date: 2024-10-19
+---
+
+# Simple usage
+
+::authors
+
+The simplest way to use Webforai
+
+::::steps
+## Install dependencies
+
+Install the necessary packages:
+
+:::code-group
+```bash [npm]
+npm init -y
+npm install webforai
+npm install -D tsx
+```
+
+```bash [pnpm]
+pnpm init -y
+pnpm install webforai
+pnpm install -D tsx
+```
+:::
+
+## Write code
+
+Here’s how to convert HTML to Markdown using **webforai**:
+
+```ts [src/index.ts] twoslash
+import { htmlToMarkdown } from "webforai";
+import { loadHtml } from "webforai/loaders/fetch";
+
+const html = await loadHtml("https://example.com");
+const markdown = htmlToMarkdown(html);
+
+console.log(markdown);
+```
+
+## Launch
+
+```bash
+tsx src/index.ts
+
+# => # Example Domain
+# => 
+# => This domain is for use in illustrative examples in documents. You may use this
+# => domain in literature without prior coordination or asking for permission.
+# => 
+# => More information...
+```
+::::

@@ -1,0 +1,70 @@
+---
+title: How it works
+---
+
+# How it works
+
+## Overview
+
+The core function of webforai is **converting HTML to Markdown**, built on the Syntax Tree ecosystem. This process happens in two steps:
+
+1. **Convert HTML to [Hast](https://github.com/syntax-tree/hast)**. (Hypertext Abstract Syntax Tree)
+2. **Convert Hast to [Mdast](https://github.com/syntax-tree/mdast)**. (Markdown Abstract Syntax Tree)
+3. **Convert Mdast to Markdown**.
+
+What makes this special is the **content extraction** in step 1. This ensures that only the main content—the part humans care about—is extracted from the HTML.
+After that, the rest of the transformation is handled using fine-tuned utilities from the Syntax Tree ecosystem.
+
+![how-it-works](/images/how-it-works.svg)
+
+## Extractor
+
+In webforai, the process of extracting the main content from a web page is abstracted into a component called the **Extractor**.
+This is a flexible system designed to make content extraction simple and customizable.
+
+### Extractor Interface
+
+The Extractor is a function that takes in two things:
+
+- A **Hast** object, which represents the structure of the HTML.
+- Optional metadata, such as the language or URL of the page.
+
+The Extractor processes this input and returns a new Hast object that represents the cleaned-up, extracted content.
+
+```ts twoslash
+import type { Nodes as Hast } from "hast";
+
+type ExtractParams = { hast: Hast; lang?: string; url?: string };
+type Extractor = (params: ExtractParams) => Hast;
+```
+
+### Default Extractor
+
+By default, webforai provides a built-in Extractor called `takumi-extractor`. This extractor is adjusted to produce a high average quality for a typical web page.
+I do my best to adjust it to the best of my ability using various flags and scoring with reference to **Mozilla's readability** and other algorithms.
+
+### Customizing the Extraction
+
+**webforai** allows you to define **multiple extractors** and chain them together.
+The Hast object is passed from one Extractor to the next in the order they are defined, allowing you to fine-tune the extraction process.
+
+You can also create **your own custom Extractor** to implement specific algorithms or extraction logic.
+
+```ts twoslash
+import { htmlToMarkdown } from "webforai";
+import { loadHtml } from "webforai/loaders/fetch";
+import type { Extractor } from "webforai";
+
+// [!code focus]
+const customExtractor: Extractor = (params) => {// [!code focus]
+  const { hast, url } = params;// [!code focus]
+  // Your custom extraction logic here // [!code focus]
+  return hast; // [!code focus]
+}; // [!code focus]
+
+const html = await loadHtml("https://example.com");
+const markdown = await htmlToMarkdown(html, { // [!code focus]
+  extractors: [customExtractor], // [!code focus]
+}); // [!code focus]
+```
+

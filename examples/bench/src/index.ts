@@ -28,7 +28,7 @@ for (const url of targets) {
 
 	const markdown = htmlToMarkdown(html, {
 		baseUrl: url,
-		extractors: "readability",
+		extractors: "takumi",
 		linkAsText: true,
 		tableAsText: true,
 		hideImage: true,

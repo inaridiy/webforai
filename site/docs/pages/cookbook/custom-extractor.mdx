@@ -1,0 +1,40 @@
+---
+title: Custom extractor
+authors:
+ - "[inaridiy](https://github.com/inaridiy)"
+date: 2024-10-20
+---
+
+# Custom extractor
+
+::authors
+
+The default takumi-extractor in webforai is powerful, but occasionally it might not perform well on websites with unique structures. There may also be cases where you need to extract content other than the main body.
+
+For such scenarios, you can create a custom extractor to handle specific requirements.
+
+In the following example, we’ll build a custom extractor to pull the main content from an Amazon product page.
+
+```ts [src/index.ts] twoslash
+import { select } from "hast-util-select";
+import { type Extractor, htmlToMarkdown } from "webforai";
+import { loadHtml } from "webforai/loaders/playwright";
+
+const url = "https://www.amazon.com/Generative-Deep-Learning-Teaching-Machines/dp/1098134184/ref=sr_1_8?sr=8-8s";
+const html = await loadHtml(url);
+
+const amazonShopItemExtractor: Extractor = (params) => {
+	const { hast } = params;
+	const mainContent = select("div#centerCol", hast);
+	if (!mainContent) {
+		return hast;
+	}
+	return mainContent;
+};
+
+const cleanedContent = await htmlToMarkdown(html, { baseUrl: url, extractors: [amazonShopItemExtractor, "takumi"] });
+
+console.info(cleanedContent);
+```
+
+This custom extractor targets the #centerCol element on Amazon product pages. If found, it returns only that content; otherwise, it defaults to the original structure.

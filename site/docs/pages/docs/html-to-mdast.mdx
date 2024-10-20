@@ -1,0 +1,93 @@
+---
+title: htmlToMdast
+---
+
+# htmlToMdast
+
+Convert HTML to Mdast.
+If you simply want to convert from HTML to Markdown, we recommend using [htmlToMarkdown](/docs/html-to-markdown).
+
+## Usage
+
+```ts twoslash
+import { htmlToMdast } from "webforai";
+
+const mdast = htmlToMdast("<h1>Hello, world!</h1>");
+// @log: => {
+// @log:  type: "root",
+// @log:  children: [{ type: "heading", depth: 1, children: [{ type: "text", value: "Hello, world!" }] }]
+// @log: }
+```
+
+## Returns
+
+`mdast.Nodes`
+
+The converted Mdast tree.
+
+## Parameters
+
+### htmlOrHast
+
+type: `string | Hast`
+
+The HTML string or HAST tree to convert.
+
+```ts
+const mdast = htmlToMdast("<h1>Hello, world!</h1>");
+// => {
+//   type: "root",
+//   children: [{ type: "heading", depth: 1, children: [{ type: "text", value: "Hello, world!" }] }]
+// }
+```
+### options.extractors
+
+type: `ExtractorSelectors`
+
+An array of extractors to extract specific elements from the HTML.
+You can define your own functions in addition to the Extractor provided as a preset.
+
+```ts twoslash
+import { htmlToMdast, type Extractor, takumiExtractor } from "webforai"
+
+const yourCustomExtractor: Extractor = (params) => {
+	const { hast, url } = params
+	// ... your logic ...
+	return hast
+};
+
+const html = "<h1>Hello, world!</h1>"
+const mdast = htmlToMdast(html, {
+	extractors: [yourCustomExtractor, takumiExtractor]
+});
+```
+### options.linkAsText
+
+type: `boolean`
+
+Whether to convert links to plain text.
+
+```ts
+const mdast = htmlToMdast("<a href='/foo'>bar</a>", {
+	linkAsText: true,
+});
+```
+
+### options.tableAsText
+
+type: `boolean`
+
+Whether to convert tables to plain text.
+
+
+### options.hideImage
+
+type: `boolean`
+
+Whether to hide images.
+
+### options.lang
+
+type: `string`
+
+The language of the HTML.
