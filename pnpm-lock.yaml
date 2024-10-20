@@ -341,10 +341,6 @@ importers:
         version: 5.5.3
 
   site:
-    dependencies:
-      hono:
-        specifier: ^4.1.1
-        version: 4.4.13
     devDependencies:
       '@ai-sdk/google':
         specifier: ^0.0.48
@@ -353,11 +349,11 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2
       '@cloudflare/workers-types':
-        specifier: ^4.20240405.0
-        version: 4.20240712.0
+        specifier: ^4.20241018.0
+        version: 4.20241018.0
       '@hono/zod-validator':
         specifier: ^0.4.1
-        version: 0.4.1(hono@4.4.13)(zod@3.23.8)
+        version: 0.4.1(hono@4.6.5)(zod@3.23.8)
       '@types/hast':
         specifier: ^3.0.2
         version: 3.0.4
@@ -379,6 +375,9 @@ importers:
       hast-util-select:
         specifier: ^6.0.2
         version: 6.0.2
+      hono:
+        specifier: ^4.6.5
+        version: 4.6.5
       postcss:
         specifier: ^8.4.47
         version: 8.4.47
@@ -405,7 +404,7 @@ importers:
         version: link:../packages/webforai
       wrangler:
         specifier: ^3.81.0
-        version: 3.81.0(@cloudflare/workers-types@4.20240712.0)
+        version: 3.81.0(@cloudflare/workers-types@4.20241018.0)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -837,6 +836,9 @@ packages:
 
   '@cloudflare/workers-types@4.20240712.0':
     resolution: {integrity: sha512-C+C0ZnkRrxR2tPkZKAXwBsWEse7bWaA7iMbaG6IKaxaPTo/5ilx7Ei3BkI2izxmOJMsC05VS1eFUf95urXzhmw==}
+
+  '@cloudflare/workers-types@4.20241018.0':
+    resolution: {integrity: sha512-gGWumpaaqnjN/G6SI7CZQ13G4SpIUV+EM8QqvuN2D3cGDF6mKIm+ov7H4x7V/c+AdY90v0FCc8B5nmEEt90MvQ==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -3558,6 +3560,10 @@ packages:
   hono@4.4.13:
     resolution: {integrity: sha512-c6qqenclmQ6wpXzqiElMa2jt423PVCmgBreDfC5s2lPPpGk7d0lOymd8QTzFZyYC5mSSs6imiTMPip+gLwuW/g==}
     engines: {node: '>=16.0.0'}
+
+  hono@4.6.5:
+    resolution: {integrity: sha512-qsmN3V5fgtwdKARGLgwwHvcdLKursMd+YOt69eGpl1dUCJb8mCd7hZfyZnBYjxCegBG7qkJRQRUy2oO25yHcyQ==}
+    engines: {node: '>=16.9.0'}
 
   hosted-git-info@7.0.2:
     resolution: {integrity: sha512-puUZAUKT5m8Zzvs72XWy3HtvVbTWljRE66cP60bxJzAqf2DgICo7lYTY2IHUmLnNpjYvw5bvmoHvPc0QO2a62w==}
@@ -6629,6 +6635,8 @@ snapshots:
 
   '@cloudflare/workers-types@4.20240712.0': {}
 
+  '@cloudflare/workers-types@4.20241018.0': {}
+
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
@@ -6959,9 +6967,9 @@ snapshots:
       hono: 4.4.13
       valibot: 0.30.0
 
-  '@hono/zod-validator@0.4.1(hono@4.4.13)(zod@3.23.8)':
+  '@hono/zod-validator@0.4.1(hono@4.6.5)(zod@3.23.8)':
     dependencies:
-      hono: 4.4.13
+      hono: 4.6.5
       zod: 3.23.8
 
   '@inquirer/figures@1.0.3': {}
@@ -9405,6 +9413,8 @@ snapshots:
   hono@3.12.12: {}
 
   hono@4.4.13: {}
+
+  hono@4.6.5: {}
 
   hosted-git-info@7.0.2:
     dependencies:
@@ -12401,6 +12411,33 @@ snapshots:
       xxhash-wasm: 1.0.2
     optionalDependencies:
       '@cloudflare/workers-types': 4.20240712.0
+      fsevents: 2.3.3
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  wrangler@3.81.0(@cloudflare/workers-types@4.20241018.0):
+    dependencies:
+      '@cloudflare/kv-asset-handler': 0.3.4
+      '@cloudflare/workers-shared': 0.6.0
+      '@esbuild-plugins/node-globals-polyfill': 0.2.3(esbuild@0.17.19)
+      '@esbuild-plugins/node-modules-polyfill': 0.2.2(esbuild@0.17.19)
+      blake3-wasm: 2.1.5
+      chokidar: 3.6.0
+      esbuild: 0.17.19
+      miniflare: 3.20241011.0
+      nanoid: 3.3.7
+      path-to-regexp: 6.3.0
+      resolve: 1.22.8
+      resolve.exports: 2.0.2
+      selfsigned: 2.4.1
+      source-map: 0.6.1
+      unenv: unenv-nightly@2.0.0-20241009-125958-e8ea22f
+      workerd: 1.20241011.1
+      xxhash-wasm: 1.0.2
+    optionalDependencies:
+      '@cloudflare/workers-types': 4.20241018.0
       fsevents: 2.3.3
     transitivePeerDependencies:
       - bufferutil

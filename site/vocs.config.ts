@@ -25,7 +25,7 @@ export default defineConfig({
 		},
 	},
 	ogImageUrl: {
-		"/": "https://webforai.dev/ogp?logo=%logo&title=%title&description=%description",
+		"/": "https://webforai.dev/api/ogp?logo=%logo&title=%title&description=%description",
 	},
 	socials: [
 		{

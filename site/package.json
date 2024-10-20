@@ -13,7 +13,7 @@
 	"devDependencies": {
 		"@ai-sdk/google": "^0.0.48",
 		"@cloudflare/pages-plugin-vercel-og": "^0.1.2",
-		"@cloudflare/workers-types": "^4.20240405.0",
+		"@cloudflare/workers-types": "^4.20241018.0",
 		"@hono/zod-validator": "^0.4.1",
 		"@types/hast": "^3.0.2",
 		"@types/node": "^20.14.10",
@@ -31,9 +31,7 @@
 		"vocs": "1.0.0-alpha.61",
 		"webforai": "workspace:*",
 		"wrangler": "^3.81.0",
-		"zod": "^3.23.8"
-	},
-	"dependencies": {
-		"hono": "^4.1.1"
+		"zod": "^3.23.8",
+		"hono": "^4.6.5"
 	}
 }

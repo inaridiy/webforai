@@ -4,18 +4,17 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 const fetchImage = async (env: Env, url: string) => {
-	const res = await env.ASSETS.fetch(url);
-	if (res.status !== 404) {
-		return res;
-	}
+	const res = await env.ASSETS.fetch(url).then((r) => (r.status !== 404 ? r : fetch(url)));
 
-	const externalRes = await fetch(url);
-	if (!externalRes.ok) {
-		return null;
-	}
-	return externalRes;
+	const contentType = res.headers.get("Content-Type") || "application/octet-stream";
+	const arrayBuffer = await res.arrayBuffer();
+	const base64String = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+	const dataURL = `data:${contentType};base64,${base64String}`;
+
+	return dataURL;
 };
 
+// biome-ignore lint/style/useNamingConvention: library definition
 const app = new Hono<{ Bindings: Env }>().get(
 	"/api/ogp",
 	zValidator(
@@ -25,7 +24,7 @@ const app = new Hono<{ Bindings: Env }>().get(
 	async (c) => {
 		const { logo, title, description } = c.req.valid("query");
 
-		const logoRes = logo ? await fetchImage(c.env, logo) : null;
+		const logoDataUrl = logo && (await fetchImage(c.env, logo));
 
 		return new ImageResponse(
 			<div
@@ -41,7 +40,7 @@ const app = new Hono<{ Bindings: Env }>().get(
 				}}
 			>
 				{/* biome-ignore lint/a11y/useAltText: */}
-				{logo && <img src={logo} height="60px" style={{ marginTop: 48 }} />}
+				{logoDataUrl && <img src={logoDataUrl} height="120px" style={{ marginTop: 48 }} />}
 				<div style={{ fontSize: "42px", fontWeight: "bold", marginTop: 48, marginBottom: -12 }}>{title}</div>
 				{description && <div style={{ opacity: 0.8, fontSize: "32px", marginTop: 24 }}>{description}</div>}
 			</div>,
