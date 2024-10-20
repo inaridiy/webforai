@@ -1,16 +1,207 @@
 ---
-title: Cloudflare Workers
+title: HTML to Markdown Conversion with Browser Rendering
 authors:
- - "[inaridiy](https://github.com/inaridiy)"
-date: 2024-10-20
+ - "[Your Name]"
+date: 2024-03-15
 ---
 
-# Cloudflare Workers
+# HTML to Markdown Conversion with Browser Rendering
 
 ::authors
+This guide demonstrates how to create a Cloudflare Worker that converts HTML to Markdown using browser rendering. It utilizes Cloudflare's Browser Rendering API, Durable Objects, and the webforai library.
 
-Coming soon...
+::::steps
+## Create a new Worker project
 
-[see the example](https://github.com/inaridiy/webforai/tree/main/examples/worker)
-[HonoJS Docs](https://hono.dev/)
-[Cloudflare Browser Rendering Docs](https://developers.cloudflare.com/browser-rendering/)
+Start by creating a new Cloudflare Worker project:
+
+```bash
+npm create cloudflare@latest
+```
+
+Follow the prompts to set up your project. Choose a project name like "html-to-markdown-worker".
+
+## Install dependencies
+
+Install the necessary packages:
+
+```bash
+npm install @cloudflare/puppeteer hono @hono/valibot-validator valibot webforai
+```
+
+## Configure wrangler.toml
+
+Update your `wrangler.toml` file to include the Browser Rendering API binding and Durable Object:
+
+```toml
+name = "html-to-markdown-worker"
+main = "src/index.ts"
+compatibility_date = "2024-03-15"
+
+# Browser Rendering API binding
+browser = { binding = "MYBROWSER" }
+
+# Binding to a Durable Object
+[[durable_objects.bindings]]
+name = "BROWSER"
+class_name = "BrowserDO"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["BrowserDO"]
+```
+
+## Create the main Worker script
+
+Create a file named `src/index.ts` and add the following code:
+
+```typescript [src/index.ts]
+import { DurableObject } from "cloudflare:workers";
+import puppeteer from "@cloudflare/puppeteer";
+import { vValidator } from "@hono/valibot-validator";
+import { Hono } from "hono";
+import { cache } from "hono/cache";
+import { url, literal, object, optional, string, union } from "valibot";
+import { htmlToMarkdown } from "webforai";
+
+type Bindings = { MYBROWSER: puppeteer.BrowserWorker; BROWSER: DurableObjectNamespace<BrowserDO> };
+
+const app = new Hono<{ Bindings: Bindings }>();
+
+const BROWSER_KEYS = ["browser1", "browser2"];
+
+const schema = object({
+  url: string([url()]),
+  mode: optional(union([literal("readability"), literal("ai")])),
+});
+
+app.get(
+  "/",
+  cache({ cacheName: "html-to-markdown", cacheControl: "max-age=3600" }),
+  vValidator("query", schema),
+  async (c) => {
+    const { url, mode } = c.req.valid("query");
+
+    const pickedKey = BROWSER_KEYS[Math.floor(Math.random() * BROWSER_KEYS.length)];
+    const browser = c.env.BROWSER.get(c.env.BROWSER.idFromName(pickedKey));
+    const result = await browser.renderUrl(url);
+
+    if (!result.success) {
+      return c.text(result.error, 500);
+    }
+
+    const aiModeOptions = { linkAsText: true, tableAsText: true, hideImage: true };
+    const readabilityModeOptions = { linkAsText: false, tableAsText: false, hideImage: false };
+    const markdown = htmlToMarkdown(result.html, {
+      baseUrl: url,
+      ...(mode === "ai" ? aiModeOptions : readabilityModeOptions),
+    });
+    return c.text(markdown);
+  },
+);
+
+export default app;
+```
+
+## Create the Durable Object
+
+In the same `src/index.ts` file, add the following code for the Durable Object:
+
+```typescript [src/index.ts]
+...existing code
+
+const KEEP_BROWSER_ALIVE_IN_SECONDS = 60;
+
+export class BrowserDO extends DurableObject<Bindings> {
+  private browser: puppeteer.Browser | null = null;
+  private keptAliveInSeconds = 0;
+
+  async renderUrl(url: string): Promise<{ success: true; html: string } | { success: false; error: string }> {
+    const normalizedUrl = new URL(url).toString();
+
+    try {
+      if (!this.browser?.isConnected()) {
+        const sessions = await puppeteer.sessions(this.env.MYBROWSER);
+        const freeSession = sessions.find((s) => !s.connectionId);
+        if (freeSession) {
+          this.browser = await puppeteer.connect(this.env.MYBROWSER, freeSession.sessionId);
+        } else {
+          this.browser = await puppeteer.launch(this.env.MYBROWSER);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      return { success: false, error: "Failed to launch browser" };
+    }
+
+    this.keptAliveInSeconds = 0;
+    const page = await this.browser.newPage();
+    await page.goto(normalizedUrl, { waitUntil: "networkidle0" });
+
+    await page.evaluate(() => {
+      const scripts = document.querySelectorAll("script");
+      for (const script of Array.from(scripts)) {
+        script.remove();
+      }
+    });
+
+    const html = await page.content();
+
+    const cleanup = async () => {
+      await page.close();
+      this.keptAliveInSeconds = 0;
+      const currentAlarm = await this.ctx.storage.getAlarm();
+      if (currentAlarm) {
+        return;
+      }
+      const tenSeconds = 10 * 1000;
+      await this.ctx.storage.setAlarm(Date.now() + tenSeconds);
+    };
+    this.ctx.waitUntil(cleanup());
+
+    return { success: true, html };
+  }
+
+  async alarm() {
+    this.keptAliveInSeconds += 10;
+    if (this.keptAliveInSeconds < KEEP_BROWSER_ALIVE_IN_SECONDS) {
+      await this.ctx.storage.setAlarm(Date.now() + 10 * 1000);
+      if (this.browser?.isConnected()) {
+        await this.browser.version();
+      }
+    } else {
+      await this.browser?.close();
+      this.browser = null;
+    }
+  }
+}
+```
+
+## Deploy the Worker
+
+Deploy your Worker to Cloudflare's global network:
+
+```bash
+npx wrangler deploy
+```
+
+## Use your Worker
+
+After deployment, you can call your Worker by making a GET request to its URL with a `url` query parameter:
+
+```
+https://your-worker-url.workers.dev/?url=https://example.com&mode=readability
+```
+
+This will return the Markdown version of the specified URL's content.
+
+::::
+
+This Worker provides an API endpoint that converts HTML pages to Markdown using browser rendering. It supports two modes: "readability" (default) and "ai", which affect how links, tables, and images are processed in the output Markdown.
+
+The Durable Object manages browser sessions, improving performance by reusing sessions and reducing the number of concurrent sessions needed.
+
+## References
+
+- [Cloudflare Browser Rendering](https://developers.cloudflare.com/browser-rendering/)
+- [HonoJS Docs](https://hono.dev/)
