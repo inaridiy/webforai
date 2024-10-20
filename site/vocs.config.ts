@@ -72,19 +72,19 @@ export default defineConfig({
 			items: [
 				{
 					text: "htmlToMarkdown",
-					link: "/api/html-to-markdown",
+					link: "/docs/html-to-markdown",
 				},
 				{
 					text: "htmlToMdast",
-					link: "/api/html-to-mdast",
+					link: "/docs/html-to-mdast",
 				},
 				{
 					text: "mdastToMarkdown",
-					link: "/api/mdast-to-markdown",
+					link: "/docs/mdast-to-markdown",
 				},
 				{
 					text: "loaders",
-					link: "/api/loaders",
+					link: "/docs/loaders",
 				},
 			],
 		},
