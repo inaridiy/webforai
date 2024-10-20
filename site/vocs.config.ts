@@ -20,8 +20,8 @@ export default defineConfig({
 	},
 	theme: {
 		accentColor: {
-			light: "#ff9318",
-			dark: "#ffc517",
+			light: "#1f8fff",
+			dark: "#4db8ff",
 		},
 	},
 	ogImageUrl: {
