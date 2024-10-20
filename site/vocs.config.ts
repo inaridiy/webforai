@@ -41,7 +41,7 @@ export default defineConfig({
 		{ text: "Getting Started", link: "/getting-started" },
 		{ text: "Cookbook", link: "/cookbook" },
 		{
-			text: version,
+			text: version, // <= should update automatically
 			items: [
 				{
 					text: "Releases",
