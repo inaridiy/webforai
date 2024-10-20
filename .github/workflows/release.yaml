@@ -18,6 +18,8 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+      - run: |
+          echo "SKIP_SIMPLE_GIT_HOOKS=1" >> $GITHUB_ENV
       - uses: pnpm/action-setup@v2
         name: Install pnpm
         id: pnpm-install
