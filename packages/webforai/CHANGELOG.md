@@ -1,5 +1,13 @@
 # webforai
 
+## 2.0.0
+
+### Major Changes
+
+- [#50](https://github.com/inaridiy/webforai/pull/50) [`ff85d73`](https://github.com/inaridiy/webforai/commit/ff85d73a6d64a52a990b031f50430fe2956c5f2f) Thanks [@inaridiy](https://github.com/inaridiy)! - New Documentation Site
+
+- [#49](https://github.com/inaridiy/webforai/pull/49) [`baaf7ea`](https://github.com/inaridiy/webforai/commit/baaf7ea33b9a75d07dfb910231d64d5b6efc6f40) Thanks [@inaridiy](https://github.com/inaridiy)! - “Readability” Extractor renamed takumi and license changed to Apache2 license.
+
 ## 1.6.3
 
 ### Patch Changes
