@@ -9,7 +9,7 @@
 		"type": "git",
 		"url": "https://github.com/inaridiy/webforai.git"
 	},
-	"homepage": "https://github.com/inaridiy/webforai.git",
+	"homepage": "https://webforai.dev/",
 	"scripts": {
 		"copy:package.cjs.json": "pnpm ncp ./package.cjs.json ./dist/cjs/package.json && pnpm ncp ./package.cjs.json ./dist/types/package.json ",
 		"clean": "rimraf dist",
