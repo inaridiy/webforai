@@ -4,13 +4,13 @@
   <a href="https://webforai.dev">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://webforai.dev/images/logo-full-dark.svg">
-      <img alt="vocs logo" src="https://webforai.dev/images/logo-full-light.svg" width="auto" height="40">
+      <img alt="webforai logo" src="https://webforai.dev/images/logo-full-light.svg" width="auto" height="40">
     </picture>
   </a>
 </p>
 
 <p align="center">
-  Minimal Documentation Framework, powered by React + Vite.
+  A esm-native library that converts HTML to Markdown & Useful Utilities with simple, lightweight and epic quality.
 <p>
 
 <p align="center">
