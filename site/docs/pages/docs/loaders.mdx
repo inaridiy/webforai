@@ -124,5 +124,5 @@ And then you can use the Playwright Loader as follows:
 ```ts
 import { loadHtml } from "webforai/loaders/cf-puppeteer";
 
-const html = await loadHtml("https://example.com");
+const html = await loadHtml("https://example.com", browser); // browser is the puppeteer browser instance
 ```
