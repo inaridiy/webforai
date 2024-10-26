@@ -13,11 +13,12 @@ However, they are not recommended for production use.
 
 ## Overview of Loaders
 
-Webforai provides three different loaders:
+Webforai provides four different loaders:
 
 - **Fetch Loader**: The simplest option, using JavaScript's built-in Fetch API.
 - **Playwright Loader**: Ideal for sites requiring JavaScript execution, like SPAs.
 - **Puppeteer Loader**: Another option for handling websites with JavaScript execution.
+- **CF Puppeteer Loader**: Option to handle websites running JavaScript on cloudflare workers.
 
 ## Fetch Loader
 
@@ -101,3 +102,27 @@ import { loadHtml } from "webforai/loaders/puppeteer";
 const html = await loadHtml("https://example.com");
 ```
 
+## CF Puppeteer Loader
+The **CF Puppeteer Loader** is the best option for loading HTML from sites that rely on JavaScript execution on [cloudflare workers](https://workers.cloudflare.com/). This loader relies on [puppeteer on cloudflare workers](https://developers.cloudflare.com/browser-rendering/platform/puppeteer/).
+
+### Usage
+Before using the CF Puppeteer Loader, you need to prepare a wrangler environment and install @cloudflare/puppeteer. Refer to the [cookbook](/cookbook/cf-workers) for instructions on how to create a project.
+
+:::code-group
+
+```bash [npm]
+npm install @cloudflare/puppeteer --save-dev
+```
+
+```bash [pnpm]
+pnpm install -D @cloudflare/puppeteer
+```
+:::
+
+And then you can use the Playwright Loader as follows:
+
+```ts
+import { loadHtml } from "webforai/loaders/cf-puppeteer";
+
+const html = await loadHtml("https://example.com", browser); // browser is the puppeteer browser instance
+```
