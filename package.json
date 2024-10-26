@@ -7,7 +7,7 @@
 		"type": "git",
 		"url": "https://github.com/inaridiy/webforai.git"
 	},
-	"homepage": "https://github.com/inaridiy/webforai",
+	"homepage": "https://webforai.dev/",
 	"bugs": "https://github.com/inaridiy/webforai/issues",
 	"keywords": ["ai", "web", "scraping"],
 	"private": true,
