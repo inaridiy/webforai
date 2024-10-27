@@ -1,5 +1,11 @@
 # webforai
 
+## 2.0.1
+
+### Patch Changes
+
+- [#52](https://github.com/inaridiy/webforai/pull/52) [`a2e0fc0`](https://github.com/inaridiy/webforai/commit/a2e0fc0b00554a3d860f0cdf67494c1691f9eeb3) Thanks [@moons-14](https://github.com/moons-14)! - update package.json homepage
+
 ## 2.0.0
 
 ### Major Changes
