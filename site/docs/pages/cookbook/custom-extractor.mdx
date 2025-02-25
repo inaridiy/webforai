@@ -17,7 +17,7 @@ In the following example, we’ll build a custom extractor to pull the main cont
 
 ```ts [src/index.ts] twoslash
 import { select } from "hast-util-select";
-import { type Extractor, htmlToMarkdown } from "webforai";
+import { type Extractor, htmlToMarkdown, takumiExtractor } from "webforai";
 import { loadHtml } from "webforai/loaders/playwright";
 
 const url = "https://www.amazon.com/Generative-Deep-Learning-Teaching-Machines/dp/1098134184/ref=sr_1_8?sr=8-8s";
@@ -32,7 +32,7 @@ const amazonShopItemExtractor: Extractor = (params) => {
 	return mainContent;
 };
 
-const cleanedContent = await htmlToMarkdown(html, { baseUrl: url, extractors: [amazonShopItemExtractor, "takumi"] });
+const cleanedContent = await htmlToMarkdown(html, { baseUrl: url, extractors: [amazonShopItemExtractor, takumiExtractor] });
 
 console.info(cleanedContent);
 ```

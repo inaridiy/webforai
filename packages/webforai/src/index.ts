@@ -8,7 +8,6 @@ export {
 	takumiExtractor,
 	type ExtractorSelectors,
 	type ExtractorSelector,
-	type PresetExtractors,
 	type ExtractParams,
 	type Extractor,
 } from "./extractors";

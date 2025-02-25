@@ -1,9 +1,8 @@
 import type { Nodes as Hast } from "hast";
-import { DEFAULT_EXTRACTORS, PRESET_EXTRACTORS } from "../constants";
+import { DEFAULT_EXTRACTORS } from "../constants";
 import type { ExtractParams, Extractor } from "./types";
 
-export type PresetExtractors = keyof typeof PRESET_EXTRACTORS;
-export type ExtractorSelector = Extractor | false | PresetExtractors;
+export type ExtractorSelector = Extractor | false;
 export type ExtractorSelectors = ExtractorSelector | ExtractorSelector[];
 
 export const pipeExtractors = (params: ExtractParams, extractors: ExtractorSelectors = DEFAULT_EXTRACTORS): Hast => {
@@ -14,9 +13,6 @@ export const pipeExtractors = (params: ExtractParams, extractors: ExtractorSelec
 		_extractors.reduce<Hast>((acc, extractor) => {
 			if (extractor === false) {
 				return acc;
-			}
-			if (typeof extractor === "string" && extractor in PRESET_EXTRACTORS) {
-				return PRESET_EXTRACTORS[extractor]({ hast: acc, lang });
 			}
 			if (typeof extractor === "function") {
 				return extractor({ hast: acc, lang });
