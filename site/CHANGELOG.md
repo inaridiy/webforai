@@ -1,5 +1,11 @@
 # site
 
+## 0.1.0
+
+### Minor Changes
+
+- [#56](https://github.com/inaridiy/webforai/pull/56) [`ea8b326`](https://github.com/inaridiy/webforai/commit/ea8b3261eb2a7ec5b635a54a17ed18cca50106f4) Thanks [@inaridiy](https://github.com/inaridiy)! - Add minimal filter extractor
+
 ## 0.0.2
 
 ### Patch Changes
