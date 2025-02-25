@@ -6,6 +6,7 @@ export { mdastToMarkdown } from "./mdast-to-markdown";
 export {
 	pipeExtractors,
 	takumiExtractor,
+	minimalFilter,
 	type ExtractorSelectors,
 	type ExtractorSelector,
 	type ExtractParams,
