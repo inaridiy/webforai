@@ -57,6 +57,14 @@ export const loadHtml = async (url: string, options?: LoadHtmlOptions) => {
 	}
 
 	await page.goto(url, { waitUntil: waitUntil ?? "load", timeout });
+	await page.evaluate(() => {
+		const elements = document.querySelectorAll("*");
+		for (const element of elements) {
+			const rect = element.getBoundingClientRect();
+			element.setAttribute("data-rwidth", rect.width.toString());
+			element.setAttribute("data-rheight", rect.height.toString());
+		}
+	});
 	const html = await page.content();
 	await page.close();
 
