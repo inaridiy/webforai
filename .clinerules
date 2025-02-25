@@ -1,0 +1,114 @@
+{
+	"project": {
+		"name": "WebForAI",
+		"description": "A library that converts HTML to Markdown with various loaders and extractors for AI consumption",
+		"repository": "https://github.com/inaridiy/webforai",
+		"homepage": "https://webforai.dev/"
+	},
+	"structure": {
+		"monorepo": true,
+		"packageManager": "pnpm",
+		"mainPackage": "packages/webforai",
+		"directories": {
+			"packages": {
+				"description": "Contains the main WebForAI package",
+				"patterns": ["packages/**"]
+			},
+			"examples": {
+				"description": "Example projects demonstrating WebForAI usage",
+				"patterns": ["examples/**"]
+			},
+			"site": {
+				"description": "Documentation website",
+				"patterns": ["site/**"]
+			},
+			"apps": {
+				"description": "Application implementations",
+				"patterns": ["apps/**"]
+			}
+		}
+	},
+	"capabilities": {
+		"core": [
+			"HTML to Markdown conversion",
+			"HTML to MDAST conversion",
+			"MDAST to Markdown conversion",
+			"Web content loading via various methods"
+		],
+		"loaders": ["Playwright", "Puppeteer", "Cloudflare Puppeteer", "Fetch API"],
+		"extractors": ["Content extraction presets", "Custom extraction pipelines"]
+	},
+	"algorithms": {
+		"htmlToMarkdown": {
+			"description": "Main conversion pipeline that transforms HTML to Markdown",
+			"flow": "HTML → HAST → MDAST → Markdown",
+			"steps": [
+				"Parse HTML into HAST (HTML Abstract Syntax Tree)",
+				"Apply content extractors to clean and focus on main content",
+				"Transform HAST to MDAST (Markdown Abstract Syntax Tree)",
+				"Convert MDAST to Markdown text with formatting options"
+			]
+		},
+		"contentExtraction": {
+			"description": "Intelligent algorithms to extract the main content from web pages",
+			"implementations": [
+				{
+					"name": "takumiExtractor",
+					"description": "Advanced content extractor inspired by Mozilla Readability",
+					"techniques": [
+						"Metadata filtering to remove scripts, styles, and other non-content elements",
+						"Universal element filtering to remove navigation, asides, and hidden content",
+						"Content selection using common article selectors",
+						"Link density analysis to identify content-rich areas",
+						"Language-specific content length thresholds"
+					]
+				}
+			]
+		},
+		"mdastHandlers": {
+			"description": "Custom handlers for transforming specific HTML elements to Markdown",
+			"handlers": [
+				"customAHandler: Enhanced link handling with text-only option",
+				"customCodeHandler: Code block handling with language detection",
+				"customDivHandler: Special div element processing",
+				"customImgHandler: Image handling with hide option",
+				"customTableHandler: Table processing with text-only option",
+				"mathHandler: Mathematical notation conversion"
+			]
+		},
+		"linkProcessing": {
+			"description": "Utilities for handling and transforming links",
+			"features": ["Relative to absolute URL conversion", "Base URL integration", "Link text extraction"]
+		}
+	},
+	"development": {
+		"nodeVersion": ">=18.0.0",
+		"commands": {
+			"build": "pnpm run --r --filter \"./packages/**\" build",
+			"test": "vitest",
+			"format": "biome format .",
+			"lint": "biome check ."
+		},
+		"tools": ["TypeScript", "Biome", "Vitest", "Changesets"]
+	},
+	"customModes": [
+		{
+			"slug": "webforai-dev",
+			"name": "WebForAI Developer",
+			"roleDefinition": "You are Roo, a specialized developer for the WebForAI library. You understand HTML parsing, Markdown generation, and web content extraction techniques. You're familiar with the project's architecture including loaders, extractors, and MDAST/HAST transformations.",
+			"groups": ["read", "edit", "browser", "command", "mcp"]
+		},
+		{
+			"slug": "webforai-docs",
+			"name": "WebForAI Documentation",
+			"roleDefinition": "You are Roo, a documentation specialist for the WebForAI library. You excel at creating clear, concise documentation with practical examples. You understand the library's capabilities and can explain complex concepts in an accessible way.",
+			"groups": [
+				"read",
+				["edit", { "fileRegex": "\\.(md|mdx)$", "description": "Markdown and MDX files only" }],
+				"browser",
+				"command",
+				"mcp"
+			]
+		}
+	]
+}

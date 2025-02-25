@@ -7,9 +7,16 @@ await fs.mkdir(".output", { recursive: true });
 
 const args = arg({ "--url": String });
 
-const url = args["--url"] || "https://ja.wikipedia.org/wiki/%E5%BE%A1%E5%9D%82%E7%BE%8E%E7%90%B4";
+const url = args["--url"] ?? "https://webforai.dev/";
 
 const html = await loadHtml(url);
-const markdown = htmlToMarkdown(html, { baseUrl: url, linkAsText: true, hideImage: true });
+
+await fs.writeFile(".output/output.html", html);
+
+const rawMarkdown = htmlToMarkdown(html, { baseUrl: url, extractors: false });
+
+await fs.writeFile(".output/output.raw.md", rawMarkdown);
+
+const markdown = htmlToMarkdown(html, { baseUrl: url });
 
 await fs.writeFile(".output/output.md", markdown);

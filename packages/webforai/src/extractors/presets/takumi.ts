@@ -19,7 +19,7 @@ const REGEXPS = {
 	byline: /byline|author|dateline|writtenby|p-author/i,
 	specialUnlikelyCandidates: /frb-|uls-menu|language-link/i,
 	unlikelyCandidates:
-		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|tooltip|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore|avatar/i,
+		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|tooltip|disqus|extra|footer|gdpr|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore|avatar/i,
 	okMaybeItsaCandidate: /and|article|body|column|content|main|shadow|code/i,
 };
 
@@ -27,10 +27,11 @@ const BODY_SELECTORS = ["article", "#article", ".article_body", ".article-body",
 
 const PARAGRAPH_TAGS = ["a", "p", "div", "section", "article", "main", "ul", "ol", "li"];
 
-const BASE_MINIMAL_LENGTH = {
-	ja: 200,
-	en: 500,
-};
+const CONTENTABLE_TAGS = ["article", "main", "section", "h1", "h2", "h3", "h4", "h5", "h6", "p"];
+
+const TEXTABLE_TAGS = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "ul"];
+
+const BASE_MINIMAL_LENGTH = { ja: 200, en: 500 };
 
 const metadataFilter = (node: Hast) => {
 	return !(
@@ -88,9 +89,10 @@ const unlikelyElementFilter = (node: Hast) => {
 	const element = node as Element;
 
 	// Skip main content elements
-	if (["body", "article", "main", "section", "h1", "h2", "h3", "h4", "h5", "h6", "p"].includes(element.tagName)) {
+	if (CONTENTABLE_TAGS.includes(element.tagName)) {
 		return true;
 	}
+
 	const match = matchString(element);
 
 	if (REGEXPS.specialUnlikelyCandidates.test(match)) {
@@ -116,6 +118,10 @@ const removeEmptyFilter = (node: Hast, _lang: string) => {
 	}
 
 	if (element.tagName === "img" && !element.properties.src) {
+		return false;
+	}
+
+	if (TEXTABLE_TAGS.includes(element.tagName) && hastToString(element).length === 0) {
 		return false;
 	}
 
