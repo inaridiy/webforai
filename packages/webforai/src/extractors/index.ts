@@ -6,3 +6,4 @@ export {
 } from "./pipeExtractors";
 export { takumiExtractor } from "./presets/takumi";
 export { type ExtractParams, type Extractor } from "./types";
+export { minimalFilter } from "./presets/minimal-filter";
