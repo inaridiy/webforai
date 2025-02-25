@@ -1,6 +1,6 @@
 {
 	"name": "ai-learning",
-	"version": "1.0.17",
+	"version": "1.1.0",
 	"description": "",
 	"main": "index.js",
 	"type": "module",
