@@ -1,5 +1,12 @@
 # bench
 
+## 1.0.19
+
+### Patch Changes
+
+- Updated dependencies [[`7fa6ec7`](https://github.com/inaridiy/webforai/commit/7fa6ec75b9966a92820a21a4b8f9eb85c5c2020c)]:
+  - webforai@2.1.1
+
 ## 1.0.18
 
 ### Patch Changes

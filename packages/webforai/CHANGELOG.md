@@ -1,5 +1,11 @@
 # webforai
 
+## 2.1.1
+
+### Patch Changes
+
+- [#58](https://github.com/inaridiy/webforai/pull/58) [`7fa6ec7`](https://github.com/inaridiy/webforai/commit/7fa6ec75b9966a92820a21a4b8f9eb85c5c2020c) Thanks [@inaridiy](https://github.com/inaridiy)! - fix
+
 ## 2.1.0
 
 ### Minor Changes
