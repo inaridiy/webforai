@@ -1,0 +1,44 @@
+{
+  "name": "webforai-mcp",
+  "version": "0.1.0",
+  "description": "MCP Server and CLI for WebForAI",
+  "author": "inaridiy",
+  "license": "Apache-2.0",
+  "keywords": [
+    "webforai",
+    "mcp",
+    "cli",
+    "ai"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/inaridiy/webforai.git",
+    "directory": "packages/webforai-mcp"
+  },
+  "homepage": "https://webforai.dev/",
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "pnpm clean && tsx build.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "prerelease": "pnpm build",
+    "release": "np"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "bin": "dist/index.js",
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.3",
+    "@types/node": "^20.14.10",
+    "arg": "^5.0.2",
+    "esbuild": "^0.19.11",
+    "glob": "^10.3.10",
+    "ncp": "^2.0.0",
+    "np": "^9.2.0",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.4.5"
+  }
+}
