@@ -33,6 +33,6 @@
 		"webforai": "workspace:*",
 		"wrangler": "^3.81.0",
 		"zod": "^3.23.8",
-		"hono": "^4.6.5"
+		"hono": "^4.10.3"
 	}
 }
