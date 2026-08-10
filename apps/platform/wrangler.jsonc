@@ -1,0 +1,74 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "webforai-platform",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "platform",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "JOBS_KV",
+      "id": "00000000000000000000000000000000"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ARTIFACTS",
+      "bucket_name": "webforai-platform-artifacts"
+    }
+  ],
+  "browser": {
+    "binding": "BROWSER"
+  },
+  "workflows": [
+    {
+      "name": "crawl-workflow",
+      "binding": "CRAWL_WORKFLOW",
+      "class_name": "CrawlWorkflow"
+    }
+  ],
+  "containers": [
+    {
+      "class_name": "NodejsFnContainer",
+      "image": "./.create-nodejs-fn/Dockerfile",
+      "max_instances": 10,
+      "instance_type": "basic"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "NodejsFnContainer",
+        "name": "NODEJS_FN"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "NodejsFnContainer"
+      ]
+    }
+  ],
+  "vars": {
+    "BASE_URL": "http://localhost:5173",
+    "STRIPE_METER_EVENT_NAME": "webforai_credits"
+  }
+}

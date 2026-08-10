@@ -1,0 +1,4 @@
+# create-nodejs-fn
+.create-nodejs-fn/*
+!.create-nodejs-fn/Dockerfile
+src/__generated__

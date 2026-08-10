@@ -16,7 +16,10 @@ Revision note (2026-08-10): Initial version.
 - **Workflows**: `crawl-workflow` (WorkflowEntrypoint in the same Worker) executes async jobs
   step-by-step (one step per page fetch+convert) so every page benefits from Workflows
   retries; terminal failure still writes a `failed` job record (unhappy path is explicit).
-- **Browser Rendering** binding for the `cf-browser` engine.
+  Step return values are capped at 1 MiB — steps therefore persist page results to KV/R2
+  *inside* the step and return only small summaries (url, status, credits).
+- **Browser Run** (formerly Browser Rendering) binding for the `cf-browser` engine, via
+  `@cloudflare/playwright`.
 
 ## Bindings
 

@@ -29,6 +29,13 @@ Batch/crawl bill per successfully converted page using the same schedule.
   graduated tiers — first 500 credits/month at $0, then $0.002/credit (tune later).
 - Customer per user via Better Auth Stripe plugin (created on signup/first checkout).
 
+Revision note (2026-08-10): `@better-auth/stripe` models fixed plans only — no metered
+support. It is used solely for customer creation + webhook plumbing; checkout sessions
+(metered price, no quantity), the billing portal redirect, and meter events go through the
+`stripe` SDK (v22, `Stripe.createFetchHttpClient()` on Workers) directly. Stripe positions
+Metronome for new usage billing, but Billing Meters remain fully supported and are the
+simplest OSS-reproducible primitive — we use Billing Meters deliberately.
+
 ## Enforcement (fail-closed order)
 
 1. Resolve user from API key → stripe customer + subscription state (D1).
