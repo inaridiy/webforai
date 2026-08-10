@@ -2,3 +2,8 @@
 .create-nodejs-fn/*
 !.create-nodejs-fn/Dockerfile
 src/__generated__
+
+# local secrets & build output
+.dev.vars
+dist
+.wrangler

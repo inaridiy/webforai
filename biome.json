@@ -1,7 +1,12 @@
 {
 	"$schema": "https://biomejs.dev/schemas/1.5.3/schema.json",
 	"files": {
-		"ignore": ["worker-configuration.d.ts", "package.json"]
+		"ignore": [
+			"worker-configuration.d.ts",
+			"package.json",
+			"apps/platform/drizzle/**",
+			"apps/platform/wrangler.jsonc"
+		]
 	},
 	"vcs": {
 		"enabled": true,

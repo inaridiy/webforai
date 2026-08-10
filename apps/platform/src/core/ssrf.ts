@@ -31,7 +31,10 @@ export const assertPublicHttpUrl = (raw: string): URL => {
 
 export const isForbiddenHost = (hostname: string): boolean => {
 	// IPv6 hostnames come back from `URL` bracketed ("[::1]").
-	const host = hostname.toLowerCase().replace(/\.$/, "").replace(/^\[|\]$/g, "");
+	const host = hostname
+		.toLowerCase()
+		.replace(/\.$/, "")
+		.replace(/^\[|\]$/g, "");
 
 	if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) {
 		return true;

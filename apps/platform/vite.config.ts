@@ -1,4 +1,5 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { createNodejsFnPlugin } from "create-nodejs-fn";
 import { defineConfig } from "vite";
@@ -7,6 +8,7 @@ import { defineConfig } from "vite";
 export default defineConfig({
 	plugins: [
 		react(),
+		tailwindcss(),
 		createNodejsFnPlugin({
 			// Node-only packages stay in the container image; the Worker sees typed proxies.
 			external: ["undici", "playwright"],

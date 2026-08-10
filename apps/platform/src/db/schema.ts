@@ -28,6 +28,25 @@ export const jobs = sqliteTable(
 	(table) => [index("jobs_user_idx").on(table.userId, table.createdAt)],
 );
 
+/**
+ * Mirror of the Stripe subscription state for the metered price.
+ *
+ * The Better Auth stripe plugin only models *fixed* plans, so its `subscription` table is
+ * not enabled here (see docs/specs/platform/04_billing.md); this table is the local,
+ * hot-path-readable truth kept in sync by the plugin's `onEvent` webhook callback.
+ */
+export const billingState = sqliteTable("billing_state", {
+	/** Better Auth `user.id`. */
+	userId: text("user_id").primaryKey(),
+	stripeCustomerId: text("stripe_customer_id"),
+	status: text("status", { enum: ["none", "active", "past_due", "canceled"] })
+		.notNull()
+		.default("none"),
+	stripeSubscriptionId: text("stripe_subscription_id"),
+	currentPeriodEnd: integer("current_period_end", { mode: "timestamp" }),
+	updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
 export const usageEvents = sqliteTable(
 	"usage_events",
 	{

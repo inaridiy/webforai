@@ -8,7 +8,16 @@
   ],
   "assets": {
     "not_found_handling": "single-page-application",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    // The SPA fallback answers anything that is not a static asset, which would swallow the
+    // API. These prefixes are routed to the Worker first so /v1, /api and signed artifact URLs
+    // keep working while deep links still resolve to index.html.
+    "run_worker_first": [
+      "/v1/*",
+      "/api/*",
+      "/artifacts/*",
+      "/health"
+    ]
   },
   "observability": {
     "enabled": true
@@ -67,6 +76,12 @@
       ]
     }
   ],
+  // Reconciliation pass for Stripe meter events that were never acknowledged.
+  "triggers": {
+    "crons": [
+      "*/15 * * * *"
+    ]
+  },
   "vars": {
     "BASE_URL": "http://localhost:5173",
     "STRIPE_METER_EVENT_NAME": "webforai_credits"

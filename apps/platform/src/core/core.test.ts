@@ -72,12 +72,12 @@ describe("link discovery", () => {
 
 	it("applies include/exclude path patterns; invalid patterns match nothing", () => {
 		const html = `<a href="/docs/x">1</a><a href="/blog/y">2</a>`;
-		expect(
-			discoverLinks(html, "https://docs.example.com/", { ...scope, includePaths: ["^/docs"] }),
-		).toEqual(["https://docs.example.com/docs/x"]);
-		expect(
-			discoverLinks(html, "https://docs.example.com/", { ...scope, excludePaths: ["^/blog"] }),
-		).toEqual(["https://docs.example.com/docs/x"]);
+		expect(discoverLinks(html, "https://docs.example.com/", { ...scope, includePaths: ["^/docs"] })).toEqual([
+			"https://docs.example.com/docs/x",
+		]);
+		expect(discoverLinks(html, "https://docs.example.com/", { ...scope, excludePaths: ["^/blog"] })).toEqual([
+			"https://docs.example.com/docs/x",
+		]);
 		expect(discoverLinks(html, "https://docs.example.com/", { ...scope, includePaths: ["["] })).toEqual([]);
 	});
 
