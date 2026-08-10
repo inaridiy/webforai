@@ -1,6 +1,6 @@
 {
 	"name": "@webforai/evals",
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"description": "Corpus fetching, accuracy assertions and benchmarks for webforai",
 	"private": true,
 	"type": "module",
