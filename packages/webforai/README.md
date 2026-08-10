@@ -97,6 +97,13 @@ lists keep their term/definition pairing.
 
 See the [changeset](/.changeset) for the full list, including the breaking changes.
 
+## Platform (hosted API)
+
+[`apps/platform`](https://github.com/inaridiy/webforai/tree/main/apps/platform) is an OSS,
+self-hostable SaaS built on this library: a metered crawl→Markdown HTTP API on Cloudflare
+(Workers + Workflows + Containers + Browser Run) with Better Auth accounts/API keys and
+Stripe usage-based billing. See its README and the design ledger in `docs/specs/platform`.
+
 ## Support
 
 - [GitHub Sponsors](https://github.com/sponsors/inaridiy)
