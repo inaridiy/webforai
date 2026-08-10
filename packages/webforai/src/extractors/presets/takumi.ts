@@ -1,200 +1,191 @@
-import type { Element, Nodes as Hast } from "hast";
-import { select, selectAll } from "hast-util-select";
-import { toString as hastToString } from "hast-util-to-string";
-import { filter } from "unist-util-filter";
-import type { ExtractParams } from "../types";
-import { classnames, isStrInclude, matchString } from "./utils";
-
-const UNLIKELY_ROLES = ["menu", "menubar", "complementary", "navigation", "alert", "alertdialog", "dialog"];
-
-/*
- * This section of the code is influenced by @mozilla/readability, licensed under Apache License 2.0.
- * Original copyright (c) 2010 Arc90 Inc
- * See https://github.com/mozilla/readability for the full license text.
- * Modifications made by inaridiy
- * - Added and edited some regular expressions.
+/**
+ * The main-content extractor.
+ *
+ * "takumi" is written 匠 in Japanese and refers to a highly skilled artisan.
+ *
+ * The pipeline is:
+ *
+ *   1. scope to `<body>` and clone, so the caller's tree is never mutated
+ *   2. strip nodes that can never be content (metadata, comments, invisible elements)
+ *   3. take the semantic shortcut when the page states where its content is
+ *   4. strip likely furniture, reverting if that cut too deep
+ *   5. score candidate containers and pick the best, plus its qualifying siblings
+ *   6. clean widgets out of the winner and drop empty wrappers
+ *
+ * Every narrowing step is guarded: if a step leaves less text than its input can justify, the
+ * extractor keeps the wider tree. Losing the article is far worse than keeping some boilerplate.
  */
-const REGEXPS = {
-	hidden: /hidden|invisible|fallback-image/i,
-	byline: /byline|author|dateline|writtenby|p-author/i,
-	specialUnlikelyCandidates: /frb-|uls-menu|language-link/i,
-	unlikelyCandidates:
-		/-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|tooltip|disqus|extra|footer|gdpr|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore|avatar/i,
-	okMaybeItsaCandidate: /and|article|body|column|content|main|shadow|code/i,
+
+import type { Element, Nodes as Hast } from "hast";
+
+import {
+	MetricsCollector,
+	cloneHast,
+	findElement,
+	isElement,
+	pruneInPlace,
+	stringProperty,
+} from "../../utils/hast-fast";
+import { minContentLength } from "../lib/constants";
+import { cleanContent, findCleanupTargets, findUnlikelyElements, stripNonContent } from "../lib/sanitize";
+import { buildScoringContext, climbToArticleBoundary, collectArticleNodes, scoreCandidates } from "../lib/score";
+import { truncateTrailingBoilerplate } from "../lib/terminators";
+import type { ExtractParams } from "../types";
+
+/** Fraction of the parent tree's text a narrowed selection must retain to be trusted. */
+const MIN_RETAINED_FRACTION = 0.25;
+
+/** Attribute-driven markers that state, unambiguously, where the content is. */
+const SEMANTIC_SELECTORS: Array<(element: Element) => boolean> = [
+	(element) => stringProperty(element, "itemprop")?.includes("articleBody") ?? false,
+	(element) => element.tagName === "article",
+	(element) => element.tagName === "main",
+	(element) => stringProperty(element, "role") === "main",
+];
+
+const findBody = (hast: Hast): Hast => findElement(hast, (element) => element.tagName === "body") ?? hast;
+
+/**
+ * Returns the semantic container when the page marks one and it holds enough prose.
+ *
+ * Skipped when several equally-marked candidates exist (index pages list many `<article>`
+ * elements), because in that case the markup says "these are entries", not "this is the body".
+ */
+const semanticShortcut = (tree: Hast, collector: MetricsCollector, minLength: number): Element | undefined => {
+	for (const matches of SEMANTIC_SELECTORS) {
+		const found: Element[] = [];
+		collectMatching(tree, matches, found);
+
+		if (found.length !== 1) {
+			continue;
+		}
+
+		const candidate = found[0];
+		const metrics = collector.metrics(candidate);
+		if (metrics.text >= minLength && collector.linkDensity(candidate) < 0.5) {
+			return candidate;
+		}
+	}
+
+	return undefined;
 };
 
-const BODY_SELECTORS = ["article", "#article", ".article_body", ".article-body", "#content", ".entry"];
-
-const PARAGRAPH_TAGS = ["a", "p", "div", "section", "article", "main", "ul", "ol", "li"];
-
-const CONTENTABLE_TAGS = ["article", "main", "section", "h1", "h2", "h3", "h4", "h5", "h6", "p"];
-
-const TEXTABLE_TAGS = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "ul"];
-
-const BASE_MINIMAL_LENGTH = { ja: 200, en: 500 };
-
-const metadataFilter = (node: Hast) => {
-	return !(
-		["comment", "doctype"].includes(node.type) ||
-		(node.type === "element" && ["script", "style", "link", "meta", "noscript", "svg", "title"].includes(node.tagName))
-	);
+/** Collects matches but stops early once ambiguity is established. */
+const collectMatching = (tree: Hast, matches: (element: Element) => boolean, into: Element[]): void => {
+	const stack: Hast[] = [tree];
+	while (stack.length > 0 && into.length < 2) {
+		// biome-ignore lint/style/noNonNullAssertion: guarded by the loop condition
+		const node = stack.pop()!;
+		if (isElement(node) && matches(node)) {
+			into.push(node);
+			continue;
+		}
+		if ("children" in node) {
+			for (const child of node.children) {
+				stack.push(child as Hast);
+			}
+		}
+	}
 };
 
-const universalElementFilter = (node: Hast) => {
-	if (node.type !== "element") {
-		return true;
-	}
-	const element = node as Element;
+const asRootOf = (nodes: Element[]): Hast => ({ type: "root", children: nodes });
 
-	if (["aside", "nav"].includes(element.tagName)) {
-		return false;
-	}
+/**
+ * Picks the content container using candidate scoring.
+ *
+ * Returns `undefined` when nothing scored, which means the page has no prose-shaped container
+ * and the caller should keep the whole document.
+ */
+const scoredSelection = (tree: Hast, collector: MetricsCollector, lang: string | undefined): Hast | undefined => {
+	const context = buildScoringContext(tree, collector, lang);
+	const candidates = scoreCandidates(tree, context);
 
-	// Remove elements with hidden properties
-	if (["hidden", "aria-hidden"].some((key) => element.properties[key])) {
-		return false;
-	}
-	if (classnames(element).some((classname) => REGEXPS.hidden.test(classname))) {
-		return false;
-	}
-
-	// Remove dialog elements
-	if (element.tagName === "dialog") {
-		return false;
-	}
-	if (element.properties.role === "dialog" && element.properties["aria-modal"]) {
-		return false;
+	const top = candidates[0];
+	if (!top) {
+		return undefined;
 	}
 
-	// Remove byline elements
-	if (element.properties.rel === "author" && isStrInclude(element.properties.itemprop, "author")) {
-		return false;
-	}
-	if (REGEXPS.byline.test(matchString(element))) {
-		return false;
-	}
+	// Score concentrates in the densest section of a long document, so on reference pages the
+	// winner can be one section of the article rather than the article. Climb to the real
+	// boundary first; sibling collection then runs at the promoted level.
+	const promoted = climbToArticleBoundary(top, candidates, context);
+	const anchor = promoted === top.element ? top : { element: promoted, score: top.score };
 
-	// Remove unlikely roles
-	if (element.properties.role && UNLIKELY_ROLES.includes(element.properties.role as string)) {
-		return false;
-	}
-
-	return true;
-};
-
-const unlikelyElementFilter = (node: Hast) => {
-	if (node.type !== "element") {
-		return true;
-	}
-	const element = node as Element;
-
-	// Skip main content elements
-	if (CONTENTABLE_TAGS.includes(element.tagName)) {
-		return true;
-	}
-
-	const match = matchString(element);
-
-	if (REGEXPS.specialUnlikelyCandidates.test(match)) {
-		return false;
-	}
-
-	// Remove unlikely candidates
-	if (REGEXPS.unlikelyCandidates.test(match) && !REGEXPS.okMaybeItsaCandidate.test(match)) {
-		return false;
-	}
-
-	return true;
-};
-
-const removeEmptyFilter = (node: Hast, _lang: string) => {
-	if (node.type !== "element") {
-		return true;
-	}
-	const element = node as Element;
-
-	if (PARAGRAPH_TAGS.includes(element.tagName)) {
-		return true;
-	}
-
-	if (element.tagName === "img" && !element.properties.src) {
-		return false;
-	}
-
-	if (TEXTABLE_TAGS.includes(element.tagName) && hastToString(element).length === 0) {
-		return false;
-	}
-
-	return true;
+	const selected = collectArticleNodes(anchor, candidates, context);
+	return selected.length === 1 ? selected[0] : asRootOf(selected);
 };
 
 /**
- * Currently the best Extractor.
- * The word "takumi" is written as 匠 in Japanese, and it refers to a highly skilled artisan or craftsman.
+ * Extracts the main content of a document.
  *
  * @param params - {@link ExtractParams}
- * @returns The HAST tree.
+ * @returns The HAST tree containing only the article content.
  */
 export const takumiExtractor = (params: ExtractParams): Hast => {
-	const { hast, lang = "en" } = params;
-	const body = select("body", hast) ?? hast;
+	const { hast, lang, owned } = params;
 
-	const metadataFilteredHast = filter(body, (node) => metadataFilter(node as Hast));
-	const metadataFilteredHastText = metadataFilteredHast && hastToString(metadataFilteredHast);
-	if (!(metadataFilteredHast && metadataFilteredHastText)) {
+	// `owned` means the caller parsed the HTML for us and nobody else holds a reference, so the
+	// tree can be mutated directly. Cloning a megabyte-scale document is the single most
+	// expensive operation in the pipeline, and skipping it is safe exactly in that case.
+	const body = owned ? findBody(hast) : cloneHast(findBody(hast));
+	stripNonContent(body);
+
+	let collector = new MetricsCollector();
+	const baseText = collector.textLength(body);
+	if (baseText === 0) {
 		return body;
 	}
 
-	const baseFilterd = filter(metadataFilteredHast, (node) => universalElementFilter(node as Hast));
-	const baseFilterdText = baseFilterd ? hastToString(baseFilterd) : "";
-	const [baseTree, baseText] =
-		baseFilterdText.length > metadataFilteredHastText.length / 3 || baseFilterdText.length > 5000
-			? ([baseFilterd as Hast, baseFilterdText] as const)
-			: ([metadataFilteredHast as Hast, metadataFilteredHastText] as const);
+	// A short page cannot clear the language's nominal threshold, so scale it down rather than
+	// rejecting every candidate and falling back to the raw document.
+	const minLength = Math.min(minContentLength(lang), Math.max(0, baseText - 200));
 
-	let minimalLength = lang in BASE_MINIMAL_LENGTH ? BASE_MINIMAL_LENGTH[lang as keyof typeof BASE_MINIMAL_LENGTH] : 500;
-	if (baseText.length < minimalLength) {
-		minimalLength = Math.max(0, baseText.length - 200);
+	const shortcut = semanticShortcut(body, collector, minLength);
+	const searchRoot: Hast = shortcut ?? body;
+
+	// Price the furniture-removal pass before paying for it: summing the text of the elements it
+	// would delete is far cheaper than cloning the tree, pruning the copy and re-measuring.
+	const searchText = collector.textLength(searchRoot);
+	const doomed = findUnlikelyElements(searchRoot);
+	const doomedText = doomed.reduce((sum, element) => sum + collector.metrics(element).text, 0);
+
+	if (searchText - doomedText > Math.max(minLength, searchText * MIN_RETAINED_FRACTION)) {
+		const doomedSet = new Set<Element>(doomed);
+		pruneInPlace(searchRoot, (node) => !(isElement(node) && doomedSet.has(node)));
+		collector = new MetricsCollector();
 	}
 
-	let extractedTree: Hast = baseTree;
-	let extractedText = baseText;
+	const scoringRoot = searchRoot;
+	const scoringRootText = collector.textLength(scoringRoot);
+	const selection = shortcut ? scoringRoot : scoredSelection(scoringRoot, collector, lang) ?? scoringRoot;
 
-	for (const selector of BODY_SELECTORS) {
-		const content = { type: "root" as const, children: selectAll(selector, baseFilterd) };
-		const contentText = hastToString(content);
+	// The selection is a live subtree of `scoringRoot`; cleaning mutates it, so measure first.
+	const selectionText = collector.textLength(selection);
 
-		if (contentText.length < 25) {
-			continue;
-		}
+	const selectionIsSound = selectionText >= minLength || selectionText > scoringRootText * MIN_RETAINED_FRACTION;
+	const chosen = selectionIsSound ? selection : scoringRoot;
 
-		const links = selectAll("a", content);
-		const linkText = links.map((link) => hastToString(link)).join("");
+	// Trailing boilerplate goes first, while its markers still exist: the widget cleanup below
+	// would remove the "Related articles" heading itself and leave whatever followed it behind.
+	truncateTrailingBoilerplate(chosen);
 
-		const linkDensity = linkText.length / contentText.length;
-		if (linkDensity > 0.4) {
-			continue;
-		}
+	// Final guard: cleaning must not gut the article either.
+	//
+	// The check has to happen *before* the removal, because `cleanContent` prunes in place and
+	// hands back the same tree — comparing after the fact would leave the fallback with nothing
+	// but the tree it had just rejected. Pricing the pass beforehand also avoids a clone, which
+	// on large pages costs more than every other extraction step combined.
+	const cleanupCollector = new MetricsCollector();
+	// Measured against `chosen`, not `selection`: the two differ whenever the selection was
+	// rejected above, and subtracting one tree's widgets from another tree's total is meaningless.
+	const chosenText = cleanupCollector.textLength(chosen);
+	const widgets = findCleanupTargets(chosen, cleanupCollector);
+	const widgetText = widgets.reduce((sum, element) => sum + cleanupCollector.metrics(element).text, 0);
+	const remainingText = chosenText - widgetText;
 
-		if (contentText.length > minimalLength) {
-			extractedTree = content;
-			extractedText = contentText;
-			break;
-		}
+	if (remainingText < chosenText * MIN_RETAINED_FRACTION && remainingText < minLength) {
+		return chosen;
 	}
 
-	const finalFilteredTree = filter(extractedTree, (node) => {
-		if (!removeEmptyFilter(node as Hast, lang)) {
-			return false;
-		}
-		if (!unlikelyElementFilter(node as Hast)) {
-			return false;
-		}
-
-		return true;
-	}) as Hast;
-
-	const finalTree =
-		hastToString(finalFilteredTree).length > extractedText.length / 3 ? finalFilteredTree : extractedTree;
-	return finalTree;
+	return cleanContent(chosen, cleanupCollector);
 };

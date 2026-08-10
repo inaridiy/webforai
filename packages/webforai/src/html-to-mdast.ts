@@ -10,7 +10,10 @@ import { customCodeHandler } from "./mdast-handlers/custom-code-handler";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
 import { customImgHandler } from "./mdast-handlers/custom-img-handler";
 import { customTableHandler } from "./mdast-handlers/custom-table-handler";
+import { definitionListHandler } from "./mdast-handlers/definition-list-handler";
 import { mathHandler } from "./mdast-handlers/math-handler";
+import { supSubHandler } from "./mdast-handlers/sup-sub-handler";
+import { type NormalizeOptions, normalizeHast } from "./normalize";
 import { getLangFromHast, getLangFromStr, getUrlFromHast } from "./utils/hast-utils";
 
 export type HtmlToMdastOptions = {
@@ -29,6 +32,16 @@ export type HtmlToMdastOptions = {
 	lang?: string;
 	/** The URL of the HTML. */
 	url?: string;
+	/** Markup repair passes applied before conversion. See {@link NormalizeOptions}. */
+	normalize?: NormalizeOptions;
+	/**
+	 * Declares that the caller owns the HAST tree and extractors may mutate it in place.
+	 *
+	 * Set automatically when a string is passed. Supply it yourself only when you parsed the
+	 * HTML and hold no other reference to the tree: it skips a full structural clone, which is
+	 * the single most expensive step on large documents.
+	 */
+	owned?: boolean;
 };
 
 /**
@@ -51,20 +64,31 @@ export type HtmlToMdastOptions = {
 export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOptions): Mdast => {
 	const { extractors, url: defaultUrl, lang: defaultLang } = options || {};
 
+	// A tree we parsed here is ours alone, so extractors may mutate it instead of cloning. A tree
+	// handed in by the caller is read-only unless the caller says otherwise.
 	const [lang, hast] =
 		typeof htmlOrHast === "string"
 			? [defaultLang || getLangFromStr(htmlOrHast), fromHtml(htmlOrHast, { fragment: true })]
 			: [defaultLang || getLangFromHast(htmlOrHast), htmlOrHast];
 
+	const isOwned = typeof htmlOrHast === "string" || (options?.owned ?? false);
+
 	const url = defaultUrl || getUrlFromHast(hast);
 
-	const extractedHast = pipeExtractors({ hast, lang, url }, extractors);
+	const extractedHast = pipeExtractors({ hast, lang, url, owned: isOwned }, extractors);
+
+	// Repairs markup the Markdown conversion cannot interpret (lazy image URLs, doubly-rendered
+	// maths, ARIA-only headings). Runs after extraction so it only visits surviving nodes.
+	normalizeHast(extractedHast, options?.normalize);
 
 	const mdast = toMdast(extractedHast, {
 		handlers: {
 			math: mathHandler,
 			div: customDivHandler,
 			pre: customCodeHandler,
+			dl: definitionListHandler,
+			sup: supSubHandler("sup"),
+			sub: supSubHandler("sub"),
 			a: customAHandler({ asText: options?.linkAsText }),
 			img: customImgHandler({ hideImage: options?.hideImage }),
 			table: customTableHandler({ asText: options?.tableAsText }),

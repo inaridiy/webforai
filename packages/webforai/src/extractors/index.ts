@@ -7,3 +7,4 @@ export {
 export { takumiExtractor } from "./presets/takumi";
 export { type ExtractParams, type Extractor } from "./types";
 export { minimalFilter } from "./presets/minimal-filter";
+export { autoExtractor, createAutoExtractor, type AutoExtractorOptions } from "./presets/auto";

@@ -1,0 +1,31 @@
+{
+	"name": "@webforai/evals",
+	"version": "0.0.0",
+	"description": "Corpus fetching, accuracy assertions and benchmarks for webforai",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"corpus:fetch": "tsx src/cli/fetch-corpus.ts",
+		"corpus:status": "tsx src/cli/fetch-corpus.ts --status",
+		"bench": "tsx src/cli/bench.ts",
+		"report": "tsx src/cli/report.ts",
+		"compare": "tsx src/cli/compare.ts",
+		"bench:extract": "tsx src/cli/bench-extract.ts",
+		"judge:prepare": "tsx src/cli/prepare-judge.ts",
+		"judge:report": "tsx src/cli/judge-report.ts"
+	},
+	"dependencies": {
+		"playwright-core": "^1.40.1",
+		"undici": "^6.19.8",
+		"webforai": "workspace:^"
+	},
+	"devDependencies": {
+		"@tsconfig/recommended": "^1.0.3",
+		"@types/node": "^20.14.10",
+		"hast-util-from-html": "^2.0.3",
+		"hast-util-to-mdast": "^10.1.0",
+		"tsx": "^4.19.1",
+		"typescript": "^5.4.5",
+		"webforai-v2": "npm:webforai@2.1.1"
+	}
+}

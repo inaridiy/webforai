@@ -3,3 +3,13 @@ dist
 .npmrc
 .DS_Store
 .wrangler
+
+# Local secrets (proxy credentials, LLM API keys). Never commit.
+.env
+.env.local
+
+# Evaluation corpus cache and reports. Fetched page HTML is deliberately not
+# committed: it is third-party content and would bloat the repository.
+.cache
+evals/.cache
+evals/.reports

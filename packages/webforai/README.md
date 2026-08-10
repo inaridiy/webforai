@@ -52,6 +52,51 @@ const html = await loadHtml(url);
 const markdown = htmlToMarkdown(html, { baseUrl: url });
 ```
 
+## What v3 changes
+
+**Better extraction.** The main-content extractor scores candidate containers the way Readability
+does — paragraph density, link density, class weighting, ancestor propagation — and adds signals
+the 2010 heuristics predate: semantic markup (`<article>`, `<main>`, `role="main"`, schema.org
+`articleBody`), the rendered geometry a browser loader can supply, and CJK-aware length
+thresholds. Across a 60-page corpus of real sites, the share of output lines that were bare links
+— the clearest sign navigation leaked in — dropped from 10.6% to 5.0%.
+
+**Site adapters.** Pages that generic scoring cannot read are handled directly, matched by
+hostname or by a platform fingerprint so self-hosted instances are covered too: GitHub, Stack
+Overflow, npm, MDN, Zenn, Qiita, Medium, Substack, note, Hatena, WordPress, Wikipedia, Reddit,
+YouTube, Hacker News, Docusaurus, VitePress, MkDocs, Read the Docs and GitBook. An adapter that
+produces too little is ignored in favour of generic extraction, so a site redesign degrades
+rather than breaks.
+
+```ts
+// Pass adapters: false for generic extraction only.
+import { createAutoExtractor } from "webforai";
+
+const markdown = htmlToMarkdown(html, {
+  url,
+  extractors: [createAutoExtractor({ adapters: false })],
+});
+```
+
+**Page metadata.**
+
+```ts
+import { htmlToMarkdownWithMetadata } from "webforai";
+
+const { markdown, metadata } = htmlToMarkdownWithMetadata(html, { url });
+// metadata: { title, author, published, siteName, canonicalUrl, lang, ... }
+
+// Or prepend it as YAML front matter:
+const withFrontmatter = htmlToMarkdown(html, { url, frontmatter: true });
+```
+
+**Markup fixes.** Lazily-loaded images (`data-src`, `srcset`) now resolve to a real URL instead
+of `![alt]()`; KaTeX and MathJax expressions are no longer emitted twice; `role="heading"`
+elements become real headings; superscripts and subscripts stay distinguishable; and definition
+lists keep their term/definition pairing.
+
+See the [changeset](/.changeset) for the full list, including the breaking changes.
+
 ## Support
 
 - [GitHub Sponsors](https://github.com/sponsors/inaridiy)

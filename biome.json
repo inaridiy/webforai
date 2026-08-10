@@ -40,7 +40,6 @@
 			}
 		}
 	},
-
 	"overrides": [
 		{
 			"include": ["examples/**"],
@@ -53,6 +52,28 @@
 					},
 					"correctness": {
 						"noUndeclaredVariables": "off"
+					}
+				}
+			}
+		},
+		{
+			"include": ["evals/**"],
+			"ignore": ["**/*.json"],
+			"linter": {
+				"rules": {
+					"recommended": true,
+					"style": {
+						"useNamingConvention": "off"
+					},
+					"suspicious": {
+						"noConsoleLog": "off",
+						"noExplicitAny": "off"
+					},
+					"correctness": {
+						"noUndeclaredVariables": "off"
+					},
+					"complexity": {
+						"noExcessiveCognitiveComplexity": "off"
 					}
 				}
 			}
