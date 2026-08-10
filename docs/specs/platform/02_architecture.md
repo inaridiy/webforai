@@ -1,0 +1,77 @@
+# Platform Architecture
+
+Revision note (2026-08-10): Initial version.
+
+## One Worker, one deployable
+
+`apps/platform` is a single Cloudflare Worker built with Vite:
+
+- **Hono** app: `/api/auth/*` (Better Auth), `/v1/*` (public API), `/api/dashboard/*`
+  (session-authenticated dashboard API), Stripe webhook route.
+- **React SPA dashboard** served as static assets (Workers Assets) with SPA fallback.
+- **create-nodejs-fn** Vite plugin provides `*.container.ts` functions that run in a
+  Cloudflare Container (Node.js) — used for Webshare-proxied fetch and Playwright, because
+  Workers `fetch()` cannot use third-party egress proxies and Workers cannot run full
+  Playwright.
+- **Workflows**: `crawl-workflow` (WorkflowEntrypoint in the same Worker) executes async jobs
+  step-by-step (one step per page fetch+convert) so every page benefits from Workflows
+  retries; terminal failure still writes a `failed` job record (unhappy path is explicit).
+- **Browser Rendering** binding for the `cf-browser` engine.
+
+## Bindings
+
+| binding | type | purpose |
+|---|---|---|
+| `DB` | D1 | users/sessions/api keys (Better Auth), jobs, usage ledger |
+| `JOBS_KV` | KV | job results (TTL), rate/quota counters |
+| `ARTIFACTS` | R2 | screenshots, rehosted images, oversized results (lifecycle TTL) |
+| `BROWSER` | Browser Rendering | `cf-browser` engine |
+| `CRAWL_WORKFLOW` | Workflows | async jobs |
+| `NODEJS_FN` | Container/DO | create-nodejs-fn runtime |
+
+Secrets: `BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+`WEBSHARE_PROXY_USERNAME`, `WEBSHARE_PROXY_PASSWORD`, optional `GITHUB_CLIENT_ID/SECRET`.
+Typed access via a zod-validated `env.ts` (fail-closed: engines whose secrets are missing are
+reported `unavailable`, not silently downgraded).
+
+## Core flow (shared by sync and async)
+
+```
+request → auth (api key) → billing guard (subscription/free allowance)
+  → acquire HTML (engine) → webforai htmlToMarkdownWithMetadata
+  → optional screenshot → R2         (engine capability)
+  → optional image rehost → R2 + markdown rewrite
+  → usage event (credits) → Stripe meter + D1 ledger   (only on success)
+  → result
+```
+
+`scrape-core.ts` implements this once; the sync route calls it inline, the Workflow calls it
+per URL inside `step.do`. Container functions and Browser Rendering are injected as an
+`engines` dependency object so the core is unit-testable without Cloudflare.
+
+## Data model (D1, drizzle)
+
+- Better Auth tables (generated): `user`, `session`, `account`, `verification`, `apikey`,
+  + stripe plugin tables (`subscription`).
+- `jobs`: id (ULID), userId, type (`batch`|`crawl`), status
+  (`queued`|`running`|`completed`|`failed`), request json, counts (total/succeeded/failed),
+  creditsUsed, workflowInstanceId, timestamps. Status transitions are monotonic; Workflow
+  steps upsert per-page results into KV under `job:<id>:<n>` and update counters — never
+  delete-and-reinsert.
+- `usage_events`: id (= idempotency key sent to Stripe), userId, jobId?, operation, credits,
+  createdAt. Local ledger is the audit source; Stripe meter is billing truth.
+
+## Job results
+
+- KV `job:<id>:meta` (status snapshot for cheap polling) + `job:<id>:<n>` per-page result,
+  TTL 7 days. Results >1 MiB (KV value ceiling 25 MiB, but we cap early) go to R2 with a
+  presigned/expiring URL in the KV record.
+
+## Repo integration
+
+- New workspace dir `apps/*` added to `pnpm-workspace.yaml`.
+- The platform depends on `webforai` via `workspace:*` — the library remains the product,
+  the platform is a consumer.
+- Existing repo toolchain (biome, vitest, pnpm 9, changesets) is kept; the platform plugs
+  into the same scripts. Vite+ / pnpm 10 supply-chain fields are intentionally not adopted
+  in this pass (pnpm 9 lockfile compatibility; revisit separately).
