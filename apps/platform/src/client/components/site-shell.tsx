@@ -25,6 +25,9 @@ const HeaderActions = ({ session, onSignOut }: { session: SessionState; onSignOu
 	if (session.status === "authenticated") {
 		return (
 			<div className="flex items-center gap-2">
+				<Link href="/playground" className={buttonClass("ghost", "sm")}>
+					Playground
+				</Link>
 				<Link href="/dashboard" className={buttonClass("outline", "sm")}>
 					Dashboard
 				</Link>

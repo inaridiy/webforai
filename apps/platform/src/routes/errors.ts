@@ -3,6 +3,31 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { ZodError } from "zod";
 import { PlatformError } from "../core/types";
 
+interface Validator<T> {
+	safeParse(value: unknown): { success: true; data: T } | { success: false; error: ZodError };
+}
+
+/**
+ * Parses and validates a JSON request body against a schema.
+ *
+ * Validation failures are 400 `invalid_request` — anything else would let a bad body run a job.
+ * Shared by `/v1` and the dashboard playground so the two never diverge on how a malformed body
+ * is rejected.
+ */
+export const parseBody = async <T>(raw: Promise<unknown>, schema: Validator<T>): Promise<T> => {
+	let value: unknown;
+	try {
+		value = await raw;
+	} catch {
+		throw new PlatformError("invalid_request", "Request body must be valid JSON.", 400);
+	}
+	const parsed = schema.safeParse(value);
+	if (!parsed.success) {
+		throw new PlatformError("invalid_request", describeZodError(parsed.error), 400);
+	}
+	return parsed.data;
+};
+
 /**
  * The one place an unhandled error becomes a response body.
  *

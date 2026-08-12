@@ -5,11 +5,11 @@ import { UsageOverview } from "../components/dashboard/usage-overview";
 import { UsageTable } from "../components/dashboard/usage-table";
 import { fetchUsage } from "../lib/api";
 import type { Session } from "../lib/auth-client";
-import { navigate } from "../lib/router";
+import { Link, navigate } from "../lib/router";
 import { useAsyncResult } from "../lib/use-async";
 import type { SessionState } from "../lib/use-session";
 import { Alert } from "../ui/alert";
-import { Button } from "../ui/button";
+import { Button, buttonClass } from "../ui/button";
 import { LoadingRow } from "../ui/spinner";
 
 const UsageSection = () => {
@@ -43,10 +43,15 @@ const UsageSection = () => {
 
 const DashboardBody = ({ session }: { session: Session }) => (
 	<div className="mx-auto w-full max-w-6xl px-5 py-10">
-		<header className="mb-8">
-			<p className="font-mono text-[0.6875rem] text-muted-foreground uppercase tracking-wider">Dashboard</p>
-			<h1 className="mt-1 font-semibold text-2xl tracking-tight">{session.user.name || session.user.email}</h1>
-			<p className="mt-1 text-muted-foreground text-sm">{session.user.email}</p>
+		<header className="mb-8 flex flex-wrap items-start justify-between gap-4">
+			<div>
+				<p className="font-mono text-[0.6875rem] text-muted-foreground uppercase tracking-wider">Dashboard</p>
+				<h1 className="mt-1 font-semibold text-2xl tracking-tight">{session.user.name || session.user.email}</h1>
+				<p className="mt-1 text-muted-foreground text-sm">{session.user.email}</p>
+			</div>
+			<Link href="/playground" className={buttonClass("outline", "sm")}>
+				Open playground
+			</Link>
 		</header>
 		<div className="flex flex-col gap-4">
 			<UsageSection />

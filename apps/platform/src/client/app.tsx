@@ -9,6 +9,7 @@ import { DashboardPage } from "./pages/dashboard";
 import { DocsPage } from "./pages/docs";
 import { LandingPage } from "./pages/landing";
 import { NotFoundPage } from "./pages/not-found";
+import { PlaygroundPage } from "./pages/playground";
 
 const renderRoute = (path: string, session: SessionState, reloadSession: () => void) => {
 	switch (path) {
@@ -20,6 +21,8 @@ const renderRoute = (path: string, session: SessionState, reloadSession: () => v
 			return <SignupPage onAuthenticated={reloadSession} />;
 		case "/dashboard":
 			return <DashboardPage session={session} />;
+		case "/playground":
+			return <PlaygroundPage session={session} />;
 		case "/docs":
 			return <DocsPage />;
 		default:

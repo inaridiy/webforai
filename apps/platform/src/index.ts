@@ -17,6 +17,7 @@ import { dashboardRoutes } from "./routes/dashboard";
 import { dashboardJobsRoutes } from "./routes/dashboard-jobs";
 import { type DemoDeps, demoRoutes } from "./routes/demo";
 import { onPlatformError } from "./routes/errors";
+import { playgroundRoutes } from "./routes/playground";
 import { v1Routes } from "./routes/v1";
 
 /**
@@ -54,6 +55,7 @@ app.use(
 );
 app.route("/api/dashboard", dashboardRoutes());
 app.route("/api/dashboard", dashboardJobsRoutes());
+app.route("/api/dashboard", playgroundRoutes());
 
 /**
  * Real dependencies for the public demo. Built here rather than in `routes/demo.ts` so that

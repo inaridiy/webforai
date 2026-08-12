@@ -1,20 +1,11 @@
-import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import type { ZodError } from "zod";
 
-import { createArtifactStore } from "../artifacts/store";
 import type { AuthVariables } from "../auth/middleware";
 import { ensureSpendable } from "../billing/guard";
-import { createBillingRepo } from "../billing/repo";
-import { createStripe } from "../billing/stripe";
-import { recordUsage } from "../billing/usage";
-import { scrapePage } from "../core/scrape-core";
 import { PlatformError, type ScrapeRequest } from "../core/types";
 import { ulid } from "../core/ulid";
 import { createDb } from "../db/client";
-import { user } from "../db/schema";
-import { createEngines } from "../engines";
-import { type AppConfig, loadConfig } from "../env";
+import { loadConfig } from "../env";
 import { type JobRow, createJobsRepo } from "../jobs/repo";
 import {
 	DEFAULT_RESULTS_PAGE_SIZE,
@@ -24,7 +15,7 @@ import {
 	listPageResults,
 } from "../jobs/results";
 import type { JobParams } from "../jobs/workflow";
-import { describeZodError, onPlatformError } from "./errors";
+import { onPlatformError, parseBody } from "./errors";
 import {
 	type BatchRequest,
 	type CrawlRequest,
@@ -33,6 +24,7 @@ import {
 	crawlBodySchema,
 	scrapeBodySchema,
 } from "./schemas";
+import { billingDeps, customerIdOf, runSyncScrape } from "./scrape-run";
 
 /**
  * The public, API-key authenticated surface (docs/specs/platform/03_api.md).
@@ -45,54 +37,6 @@ import {
 type V1Env = { Bindings: Env; Variables: AuthVariables };
 
 export { batchBodySchema, crawlBodySchema, scrapeBodySchema };
-
-interface Validator<T> {
-	safeParse(value: unknown): { success: true; data: T } | { success: false; error: ZodError };
-}
-
-/** Validation failures are 400 `invalid_request`; everything else would let a bad body run a job. */
-const parseBody = async <T>(raw: Promise<unknown>, schema: Validator<T>): Promise<T> => {
-	let value: unknown;
-	try {
-		value = await raw;
-	} catch {
-		throw new PlatformError("invalid_request", "Request body must be valid JSON.", 400);
-	}
-	const parsed = schema.safeParse(value);
-	if (!parsed.success) {
-		throw new PlatformError("invalid_request", describeZodError(parsed.error), 400);
-	}
-	return parsed.data;
-};
-
-/** The Stripe customer of the *authenticated* user; a client-supplied id is never trusted. */
-const customerIdOf = async (env: Env, userId: string): Promise<string | undefined> => {
-	const rows = await createDb(env)
-		.select({ stripeCustomerId: user.stripeCustomerId })
-		.from(user)
-		.where(eq(user.id, userId))
-		.limit(1);
-	return rows[0]?.stripeCustomerId ?? undefined;
-};
-
-const billingDeps = (env: Env, config: AppConfig) => ({ repo: createBillingRepo(createDb(env)), config });
-
-const scrapeDeps = (env: Env, config: AppConfig) => ({
-	engines: createEngines(env, config),
-	artifacts: createArtifactStore(env, config),
-});
-
-/** `executionCtx` is unavailable outside a real fetch invocation; then the meter call is awaited. */
-const waitUntilOf = (c: {
-	executionCtx: { waitUntil(promise: Promise<unknown>): void };
-}): ((promise: Promise<unknown>) => void) | undefined => {
-	try {
-		const ctx = c.executionCtx;
-		return (promise) => ctx.waitUntil(promise);
-	} catch {
-		return undefined;
-	}
-};
 
 const jobResponse = (
 	row: JobRow,
@@ -188,18 +132,7 @@ export const v1Routes = () => {
 			region: body.region,
 			convert: body.convert,
 		};
-		const result = await scrapePage(scrapeDeps(c.env, config), request);
-
-		const stripeCustomerId = await customerIdOf(c.env, userId);
-		await recordUsage(
-			{
-				repo: createBillingRepo(createDb(c.env)),
-				config,
-				stripe: createStripe(config),
-				waitUntil: waitUntilOf(c),
-			},
-			{ userId, stripeCustomerId, operation: request.engine, credits: result.credits },
-		);
+		const result = await runSyncScrape(c, config, { userId, request });
 
 		return c.json(result);
 	});

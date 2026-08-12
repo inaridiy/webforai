@@ -6,6 +6,7 @@ import {
 	MAX_CRAWL_PAGES,
 	batchBodySchema,
 	crawlBodySchema,
+	playgroundBodySchema,
 	scrapeBodySchema,
 } from "./schemas";
 
@@ -57,6 +58,43 @@ describe("scrape body", () => {
 		expect(
 			scrapeBodySchema.safeParse({ url: "https://example.com", convert: { extractor: "readability" } }).success,
 		).toBe(false);
+	});
+});
+
+describe("playground body", () => {
+	it("fills in the same defaults as the scrape body but without async", () => {
+		const parsed = playgroundBodySchema.parse({ url: "https://example.com/a" });
+		expect(parsed).toEqual({
+			url: "https://example.com/a",
+			engine: "fetch",
+			screenshot: false,
+			rehostImages: false,
+			region: "auto",
+			convert: {},
+		});
+	});
+
+	it("rejects the async flag — the playground is sync-only", () => {
+		expect(playgroundBodySchema.safeParse({ url: "https://example.com/a", async: true }).success).toBe(false);
+		expect(playgroundBodySchema.safeParse({ url: "https://example.com/a", async: false }).success).toBe(false);
+	});
+
+	it("rejects a screenshot on an engine that cannot take one", () => {
+		const result = playgroundBodySchema.safeParse({
+			url: "https://example.com/a",
+			engine: "fetch",
+			screenshot: true,
+		});
+		expect(result.success).toBe(false);
+		expect(result.success === false && issuePaths(result.error)).toEqual(["screenshot"]);
+	});
+
+	it("accepts a screenshot on the browser engines", () => {
+		for (const engine of ["proxy-browser", "cf-browser"]) {
+			expect(playgroundBodySchema.safeParse({ url: "https://example.com/a", engine, screenshot: true }).success).toBe(
+				true,
+			);
+		}
 	});
 });
 

@@ -61,10 +61,20 @@ const requireScreenshotCapableEngine = <T extends { engine: (typeof ENGINES)[num
 	}
 };
 
+/** The single-URL scrape fields shared by the API `/scrape` body and the dashboard playground. */
+const scrapeFields = { url: urlSchema, ...commonFields };
+
 export const scrapeBodySchema = z
-	.object({ url: urlSchema, async: z.boolean().default(false), ...commonFields })
+	.object({ ...scrapeFields, async: z.boolean().default(false) })
 	.strict()
 	.superRefine(requireScreenshotCapableEngine);
+
+/**
+ * The dashboard playground runs the sync scrape path only, so it takes the same body as
+ * `/v1/scrape` minus `async` — an `async` key is rejected rather than silently ignored, keeping
+ * the playground's contract a strict subset of the public one.
+ */
+export const playgroundBodySchema = z.object(scrapeFields).strict().superRefine(requireScreenshotCapableEngine);
 
 export const batchBodySchema = z
 	.object({ urls: z.array(urlSchema).min(1).max(MAX_BATCH_URLS), ...commonFields })
@@ -87,5 +97,6 @@ export const crawlBodySchema = z
 	.superRefine(requireScreenshotCapableEngine);
 
 export type ScrapeBody = z.infer<typeof scrapeBodySchema>;
+export type PlaygroundBody = z.infer<typeof playgroundBodySchema>;
 export type BatchRequest = z.infer<typeof batchBodySchema>;
 export type CrawlRequest = z.infer<typeof crawlBodySchema>;

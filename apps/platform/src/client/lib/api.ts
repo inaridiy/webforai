@@ -116,3 +116,32 @@ const billingRedirect = async (path: string): Promise<Result<string>> => {
 
 export const startCheckout = (): Promise<Result<string>> => billingRedirect("/api/dashboard/billing/checkout");
 export const openBillingPortal = (): Promise<Result<string>> => billingRedirect("/api/dashboard/billing/portal");
+
+export type PlaygroundRequest = {
+	url: string;
+	engine: string;
+	screenshot: boolean;
+	rehostImages: boolean;
+	region: string;
+	convert: { extractor: string; frontmatter: boolean };
+};
+
+export type PlaygroundResult = {
+	url: string;
+	engine: string;
+	markdown: string;
+	metadata: Record<string, unknown>;
+	credits: number;
+	screenshotUrl?: string;
+	images?: { original: string; rehosted: string }[];
+};
+
+/**
+ * Runs a single sync scrape against the session-authenticated playground endpoint. Unlike the
+ * public demo this spends the signed-in account's credits, exactly like `POST /v1/scrape`.
+ */
+export const runPlaygroundScrape = (request: PlaygroundRequest): Promise<Result<PlaygroundResult>> =>
+	requestJson<PlaygroundResult>("/api/dashboard/playground/scrape", {
+		method: "POST",
+		body: JSON.stringify(request),
+	});

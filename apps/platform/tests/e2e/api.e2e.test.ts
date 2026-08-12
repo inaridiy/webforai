@@ -148,6 +148,43 @@ describe("dashboard usage", () => {
 	});
 });
 
+describe("playground (session-authed, billed)", () => {
+	it("signup → session cookie → playground scrape returns markdown + 1 credit", async () => {
+		const account = await signUp();
+		const res = await api<{ markdown: string; metadata: Record<string, unknown>; credits: number }>(
+			"/api/dashboard/playground/scrape",
+			{
+				method: "POST",
+				headers: { cookie: account.cookie },
+				json: { url: "https://example.com/", engine: "fetch" },
+			},
+		);
+		expect(res.status).toBe(200);
+		expect(res.body.markdown).toContain("Example Domain");
+		expect(res.body.credits).toBe(1);
+		expect(res.body.metadata).toBeTruthy();
+	});
+
+	it("rejects an unauthenticated call with 401", async () => {
+		const res = await api("/api/dashboard/playground/scrape", {
+			method: "POST",
+			json: { url: "https://example.com/", engine: "fetch" },
+		});
+		expect(res.status).toBe(401);
+	});
+
+	it("rejects screenshot:true on the fetch engine with 400", async () => {
+		const account = await signUp();
+		const res = await api<{ error: { code: string } }>("/api/dashboard/playground/scrape", {
+			method: "POST",
+			headers: { cookie: account.cookie },
+			json: { url: "https://example.com/", engine: "fetch", screenshot: true },
+		});
+		expect(res.status).toBe(400);
+		expect(res.body.error.code).toBe("invalid_request");
+	});
+});
+
 describe("demo rate limit", () => {
 	/**
 	 * The demo endpoint is public and keyless; `DEMO_IP_LIMIT = 5` per 10 min per IP.
