@@ -9,6 +9,7 @@
 		"deploy": "pnpm build && wrangler deploy",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
+		"test:e2e": "vitest run --config vitest.e2e.config.ts",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate:local": "wrangler d1 migrations apply platform --local",
 		"db:migrate:remote": "wrangler d1 migrations apply platform --remote",
