@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { REGIONS } from "../core/regions";
 import { ENGINES, SCREENSHOT_ENGINES } from "../core/types";
 
 /**
@@ -31,11 +32,18 @@ const convertSchema = z
 
 const engineSchema = z.enum(ENGINES).default("fetch");
 
-/** Fields every scrape-shaped request carries. */
+/**
+ * Fields every scrape-shaped request carries.
+ *
+ * `region` is accepted for every engine but only the proxy engines can act on it; an ignored
+ * region is a documented no-op rather than a validation error, so a client can set one default
+ * for a mixed-engine workload.
+ */
 const commonFields = {
 	engine: engineSchema,
 	screenshot: z.boolean().default(false),
 	rehostImages: z.boolean().default(false),
+	region: z.enum(REGIONS).default("auto"),
 	convert: convertSchema,
 };
 

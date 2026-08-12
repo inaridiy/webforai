@@ -4,6 +4,7 @@ import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 import { nodejsFn } from "../__generated__/create-nodejs-fn.runtime";
 import { assertPublicHttpUrl } from "../core/ssrf";
+import { buildProxyUsername } from "./proxy-username";
 import { FETCH_TIMEOUT_MS, HTML_REQUEST_HEADERS, MAX_HTML_BYTES, PLATFORM_USER_AGENT } from "./workers-fetch";
 
 /**
@@ -38,14 +39,21 @@ const containerError = (code: ContainerErrorCode, message: string): Error => new
 const readEnv = (name: string): string | undefined =>
 	(globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[name];
 
-/** Webshare rotates the egress IP per request when the username carries the `-rotate` suffix. */
-const proxyCredentials = (): { username: string; password: string } => {
+/**
+ * Webshare rotates the egress IP per request when the username carries the `-rotate` suffix, and
+ * pins it to a country when the username carries `-{CC}-rotate`.
+ *
+ * The country arrives as a plain ISO code because everything crossing the container RPC boundary
+ * must be serialisable — the Worker resolves the API's coarse region to a code (`core/regions.ts`)
+ * so the container never imports `core/`.
+ */
+const proxyCredentials = (country?: string): { username: string; password: string } => {
 	const username = readEnv("WEBSHARE_PROXY_USERNAME");
 	const password = readEnv("WEBSHARE_PROXY_PASSWORD");
 	if (!(username && password)) {
 		throw containerError("engine_unavailable", "Webshare credentials are not present in the container environment");
 	}
-	return { username: username.endsWith("-rotate") ? username : `${username}-rotate`, password };
+	return { username: buildProxyUsername(username, country), password };
 };
 
 /**
@@ -109,10 +117,14 @@ export interface ProxyBrowserResult extends ProxyFetchResult {
 	screenshotBase64?: string;
 }
 
-/** `proxy-fetch` engine: undici through the Webshare rotating HTTP proxy. */
-export const proxyFetch = nodejsFn(async (url: string): Promise<ProxyFetchResult> => {
+/**
+ * `proxy-fetch` engine: undici through the Webshare rotating HTTP proxy.
+ *
+ * `country` is an ISO 3166-1 alpha-2 code or `undefined` for no geo-targeting.
+ */
+export const proxyFetch = nodejsFn(async (url: string, country?: string): Promise<ProxyFetchResult> => {
 	const target = assertAllowedUrl(url);
-	const { username, password } = proxyCredentials();
+	const { username, password } = proxyCredentials(country);
 	const proxyUri = `http://${encodeURIComponent(username)}:${encodeURIComponent(password)}@p.webshare.io:80`;
 	const agent = new ProxyAgent(proxyUri);
 
@@ -159,30 +171,32 @@ const gotoWithFallback = async (page: Page, url: string) => {
 };
 
 /** `proxy-browser` engine: Playwright Chromium behind the same Webshare proxy. */
-export const proxyBrowser = nodejsFn(async (url: string, screenshot: boolean): Promise<ProxyBrowserResult> => {
-	const target = assertAllowedUrl(url);
-	const { username, password } = proxyCredentials();
-	const browser = await chromium.launch({
-		headless: true,
-		proxy: { server: WEBSHARE_PROXY_SERVER, username, password },
-	});
+export const proxyBrowser = nodejsFn(
+	async (url: string, screenshot: boolean, country?: string): Promise<ProxyBrowserResult> => {
+		const target = assertAllowedUrl(url);
+		const { username, password } = proxyCredentials(country);
+		const browser = await chromium.launch({
+			headless: true,
+			proxy: { server: WEBSHARE_PROXY_SERVER, username, password },
+		});
 
-	try {
-		const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT });
-		const response = await gotoWithFallback(page, target);
-		const finalUrl = assertAllowedUrl(page.url() || target);
-		const html = await page.content();
-		const screenshotBase64 = screenshot
-			? (await page.screenshot({ type: "png", fullPage: true })).toString("base64")
-			: undefined;
+		try {
+			const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT });
+			const response = await gotoWithFallback(page, target);
+			const finalUrl = assertAllowedUrl(page.url() || target);
+			const html = await page.content();
+			const screenshotBase64 = screenshot
+				? (await page.screenshot({ type: "png", fullPage: true })).toString("base64")
+				: undefined;
 
-		return { html, finalUrl, status: response?.status() ?? 200, screenshotBase64 };
-	} catch (error) {
-		throw normalizeFailure(error, target);
-	} finally {
-		await browser.close();
-	}
-});
+			return { html, finalUrl, status: response?.status() ?? 200, screenshotBase64 };
+		} catch (error) {
+			throw normalizeFailure(error, target);
+		} finally {
+			await browser.close();
+		}
+	},
+);
 
 const CODED_MESSAGE = /^[a-z_]+: /;
 

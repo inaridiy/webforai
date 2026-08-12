@@ -26,14 +26,14 @@
     {
       "binding": "DB",
       "database_name": "platform",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "143d303e-6b8d-49b8-a95e-29c4652c36f4",
       "migrations_dir": "drizzle"
     }
   ],
   "kv_namespaces": [
     {
       "binding": "JOBS_KV",
-      "id": "00000000000000000000000000000000"
+      "id": "229e52e7e9024fdb8afd88cce383a0cb"
     }
   ],
   "r2_buckets": [
@@ -82,8 +82,14 @@
       "*/15 * * * *"
     ]
   },
+  "routes": [
+    {
+      "pattern": "platform.webforai.dev",
+      "custom_domain": true
+    }
+  ],
   "vars": {
-    "BASE_URL": "http://localhost:5173",
+    "BASE_URL": "https://platform.webforai.dev",
     "STRIPE_METER_EVENT_NAME": "webforai_credits"
   }
 }

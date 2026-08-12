@@ -5,6 +5,7 @@ content:
 ---
 
 import { HomePage } from "vocs/components";
+import { DemoScrape } from "../components/DemoScrape";
 
 <div className="max-w-screen-lg mx-auto vp-doc relative px-6 mb-24 mt-8 md:px-0 md:mb-16">
   <div className="pt-[48px] max-sm:pt-0">
@@ -84,6 +85,17 @@ npx webforai@latest
 
 
 
+<section className="max-w-screen-md mx-auto" id="demo">
+
+#
+# Try it
+
+Paste a URL and get the Markdown webforai produces — converted live by the hosted [webforai platform](/platform).
+
+<DemoScrape />
+
+</section>
+
 <section className="max-w-screen-md mx-auto">
 
 #
@@ -111,6 +123,24 @@ const markdown = htmlToMarkdown(html, { baseUrl: url }); // [!code hl]
 - MathML to LaTeX with [mathml-to-latext](https://www.npmjs.com/package/mathml-to-latex) package.
 - Out-of-the-box loaders such as fetch, [playwright](https://www.npmjs.com/package/playwright), [puppeteer](https://www.npmjs.com/package/puppeteer).
 - CLI tool `npx webforai` for quick HTML to Markdown conversion
+
+</section>
+
+<section className="max-w-screen-md mx-auto">
+
+#
+# Hosted platform
+
+Don't want to run the browsers, proxies and queues yourself? **webforai platform** is an OSS, self-hostable
+crawl→Markdown API built on this library — scrape, batch and crawl over four engines
+(`fetch` / `proxy-fetch` / `proxy-browser` / `cf-browser`, 1 / 2 / 5 / 5 credits per page),
+with **500 credits per month free**.
+
+<div className="flex flex-wrap gap-2 mt-6">
+  <HomePage.Button href="/platform" variant="accent">Platform docs</HomePage.Button>
+  <HomePage.Button href="/platform/api-reference">API reference</HomePage.Button>
+  <HomePage.Button href="#demo">Try the demo</HomePage.Button>
+</div>
 
 </section>
 

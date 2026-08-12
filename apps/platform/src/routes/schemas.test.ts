@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { REGIONS } from "../core/regions";
 import {
 	MAX_BATCH_URLS,
 	MAX_CRAWL_DEPTH,
@@ -20,9 +21,17 @@ describe("scrape body", () => {
 			engine: "fetch",
 			screenshot: false,
 			rehostImages: false,
+			region: "auto",
 			async: false,
 			convert: {},
 		});
+	});
+
+	it("accepts every documented region and rejects anything else", () => {
+		for (const region of REGIONS) {
+			expect(scrapeBodySchema.safeParse({ url: "https://example.com/a", region }).success).toBe(true);
+		}
+		expect(scrapeBodySchema.safeParse({ url: "https://example.com/a", region: "antarctica" }).success).toBe(false);
 	});
 
 	it("rejects a screenshot on an engine that cannot take one", () => {

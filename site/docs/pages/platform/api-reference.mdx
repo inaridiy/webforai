@@ -1,0 +1,279 @@
+---
+title: Platform API Reference
+---
+
+# Platform API Reference
+
+The HTTP contract of the [webforai platform](/platform). All request and response bodies are JSON.
+
+## Base URL
+
+```txt
+https://platform.webforai.dev
+```
+
+Self-hosted instances expose the same routes under your own host.
+
+## Authentication
+
+Every `/v1` endpoint except the [public demo](#post-v1demoscrape) requires an API key, created on
+the dashboard and sent as a bearer token.
+
+```bash
+curl -X POST https://platform.webforai.dev/v1/scrape \
+  -H "Authorization: Bearer wfa_..." \
+  -H "content-type: application/json" \
+  -d '{ "url": "https://example.com/article" }'
+```
+
+## Errors
+
+Failures use the appropriate HTTP status and a uniform body:
+
+```jsonc
+{ "error": { "code": "payment_required", "message": "Free allowance exhausted" } }
+```
+
+Failed operations are **never billed**.
+
+## Region
+
+`region` is an optional field on `/v1/scrape`, `/v1/batch`, `/v1/crawl` and `/v1/demo/scrape`.
+It expresses a coarse geographic preference for the egress location:
+
+| value | meaning |
+| --- | --- |
+| `auto` | let the platform choose (default) |
+| `us` | United States |
+| `eu` | Europe |
+| `uk` | United Kingdom |
+| `jp` | Japan |
+| `asia` | Asia |
+
+It only affects the proxy engines (`proxy-fetch`, `proxy-browser`), which select a Webshare exit
+node in the requested area. The `fetch` and `cf-browser` engines egress from Cloudflare's own
+network and ignore the field. A region is a preference, not a guarantee — if no exit node is
+available there, the request falls back to `auto`, and the response always reports the region that
+was actually used.
+
+## POST /v1/scrape
+
+Synchronous, single URL. Runs on the plain Worker — fast, but not durable. With `"async": true` it
+instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and returns
+`202 { "jobId": "job_..." }`.
+
+### Request
+
+```jsonc
+{
+  "url": "https://example.com/article",
+  "engine": "fetch",             // fetch | proxy-fetch | proxy-browser | cf-browser
+  "region": "auto",              // auto | us | eu | uk | jp | asia (proxy engines only)
+  "screenshot": false,           // proxy-browser / cf-browser only (400 otherwise)
+  "rehostImages": false,
+  "async": false,
+  "convert": {                   // passthrough to webforai (all optional)
+    "extractor": "auto",         // auto | takumi | minimal | none
+    "frontmatter": true,
+    "baseUrl": "..."
+  }
+}
+```
+
+### Response — 200
+
+```jsonc
+{
+  "url": "https://example.com/article",
+  "engine": "fetch",
+  "region": "auto",
+  "markdown": "# ...",
+  "metadata": { "title": "..." },
+  "screenshotUrl": "https://...r2...", // when requested; expires
+  "images": [{ "original": "https://...", "rehosted": "https://..." }],
+  "credits": 1
+}
+```
+
+### Example
+
+```bash
+curl -X POST https://platform.webforai.dev/v1/scrape \
+  -H "Authorization: Bearer wfa_..." \
+  -H "content-type: application/json" \
+  -d '{
+    "url": "https://example.com/article",
+    "engine": "proxy-fetch",
+    "region": "jp"
+  }'
+```
+
+## POST /v1/batch
+
+Asynchronous, a list of URLs. Limit: **100 URLs per job**.
+
+```jsonc
+{
+  "urls": ["https://a", "https://b"],
+  "engine": "fetch",
+  "region": "auto",
+  "screenshot": false,
+  "rehostImages": false,
+  "convert": {}
+}
+```
+
+Returns `202`:
+
+```jsonc
+{ "jobId": "job_..." }
+```
+
+```bash
+curl -X POST https://platform.webforai.dev/v1/batch \
+  -H "Authorization: Bearer wfa_..." \
+  -H "content-type: application/json" \
+  -d '{ "urls": ["https://example.com/a", "https://example.com/b"] }'
+```
+
+## POST /v1/crawl
+
+Asynchronous, recursive same-origin crawl from a seed URL.
+
+```jsonc
+{
+  "url": "https://docs.example.com/",
+  "engine": "fetch",
+  "region": "auto",
+  "maxDepth": 2,                 // ≤ 5
+  "limit": 50,                   // pages, ≤ 500
+  "includePaths": ["^/docs"],    // regex on pathname, optional
+  "excludePaths": [],
+  "sameOrigin": true,            // fixed true initially
+  "screenshot": false,
+  "rehostImages": false,
+  "convert": {}
+}
+```
+
+Links are discovered from the `<a href>` elements of the fetched HTML *before* extraction, then
+normalized, deduped, fragment-stripped and same-origin filtered, and walked breadth-first by depth
+until `limit` is reached. Returns `202 { "jobId": "job_..." }`.
+
+```bash
+curl -X POST https://platform.webforai.dev/v1/crawl \
+  -H "Authorization: Bearer wfa_..." \
+  -H "content-type: application/json" \
+  -d '{ "url": "https://docs.example.com/", "maxDepth": 2, "limit": 50 }'
+```
+
+## GET /v1/jobs/:id
+
+Job status snapshot — cheap to poll.
+
+```jsonc
+{
+  "jobId": "job_...",
+  "type": "crawl",               // batch | crawl
+  "status": "running",           // queued | running | completed | failed
+  "total": 50,
+  "completed": 12,
+  "failed": 1,
+  "credits": 13,
+  "expiresAt": "..."
+}
+```
+
+```bash
+curl https://platform.webforai.dev/v1/jobs/job_... \
+  -H "Authorization: Bearer wfa_..."
+```
+
+## GET /v1/jobs/:id/results
+
+Paged page results. Each item mirrors the synchronous scrape response plus a per-page status:
+
+```jsonc
+{
+  "items": [
+    {
+      "url": "https://docs.example.com/intro",
+      "status": "ok",            // ok | error
+      "markdown": "# ...",
+      "metadata": { "title": "..." },
+      "credits": 1
+    },
+    {
+      "url": "https://docs.example.com/broken",
+      "status": "error",
+      "error": { "code": "fetch_failed", "message": "..." }
+    }
+  ],
+  "cursor": "..."                // absent on the last page
+}
+```
+
+Large markdown payloads are replaced by `{ "resultUrl": "<expiring R2 url>" }`. Results are
+retained for 7 days.
+
+```bash
+curl "https://platform.webforai.dev/v1/jobs/job_.../results?cursor=..." \
+  -H "Authorization: Bearer wfa_..."
+```
+
+## POST /v1/demo/scrape
+
+The public, unauthenticated endpoint behind the [demo on the home page](/#demo). No API key, no
+account, no credits — it always runs the `proxy-fetch` engine and truncates the output.
+
+### Request
+
+```jsonc
+{
+  "url": "https://example.com",
+  "region": "auto"               // optional: auto | us | eu | uk | jp | asia
+}
+```
+
+### Response — 200
+
+```jsonc
+{
+  "url": "https://example.com",
+  "region": "auto",
+  "markdown": "# Example Domain\n...",
+  "truncated": false,            // true when the markdown was cut at ~8000 characters
+  "metadata": { "title": "Example Domain" }
+}
+```
+
+### Response — 429
+
+Rate limited to **5 requests per 10 minutes per IP**. The response carries a `Retry-After` header
+and repeats the value in the body.
+
+```jsonc
+{
+  "error": {
+    "code": "rate_limited",
+    "message": "Too many requests from this IP.",
+    "retryAfter": 240
+  }
+}
+```
+
+```bash
+curl -X POST https://platform.webforai.dev/v1/demo/scrape \
+  -H "content-type: application/json" \
+  -d '{ "url": "https://example.com", "region": "auto" }'
+```
+
+## Behavioural rules
+
+- **Billing guard runs before side effects**, usage is recorded **after success only**. In async
+  jobs this is per page — a failed page is not billed.
+- **SSRF guard**: public `http(s)` URLs only. Private IP ranges, localhost and non-standard ports
+  are rejected at validation time for every engine, and re-checked inside the container fetcher —
+  redirect targets included.
+- **Rate limits**: per-key requests per minute, plus the job-level caps above (≤100 URLs per
+  batch, ≤5 crawl depth, ≤500 crawl pages). The public demo endpoint is limited per IP instead.

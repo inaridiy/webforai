@@ -40,6 +40,7 @@ export default defineConfig({
 	topNav: [
 		{ text: "Getting Started", link: "/getting-started" },
 		{ text: "Cookbook", link: "/cookbook" },
+		{ text: "Platform", link: "/platform" },
 		{
 			text: version, // <= should update automatically
 			items: [
@@ -112,6 +113,24 @@ export default defineConfig({
 				{
 					text: "With Cloudflare Workers",
 					link: "/cookbook/cf-workers",
+				},
+			],
+		},
+		{
+			text: "Platform",
+			link: "/platform",
+			items: [
+				{
+					text: "Overview",
+					link: "/platform",
+				},
+				{
+					text: "API Reference",
+					link: "/platform/api-reference",
+				},
+				{
+					text: "Billing",
+					link: "/platform/billing",
 				},
 			],
 		},

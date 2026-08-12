@@ -70,7 +70,7 @@ export const fetchForScrape = async (deps: ScrapeDeps, req: ScrapeRequest): Prom
 		throw new PlatformError("screenshot_unsupported", `engine "${req.engine}" cannot take screenshots`, 400);
 	}
 
-	return deps.engines[req.engine]({ url: target.href, screenshot: req.screenshot });
+	return deps.engines[req.engine]({ url: target.href, screenshot: req.screenshot, region: req.region });
 };
 
 /** Conversion + artifacts + pricing — the second half of `scrapePage`, for an already fetched page. */

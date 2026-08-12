@@ -1,4 +1,12 @@
-import { type Engine, type EngineSet, EngineUnavailableError, type FetchedPage, PlatformError } from "../core/types";
+import { regionToCountry } from "../core/regions";
+import {
+	type Engine,
+	type EngineFetchParams,
+	type EngineSet,
+	EngineUnavailableError,
+	type FetchedPage,
+	PlatformError,
+} from "../core/types";
 import type { AppConfig } from "../env";
 import { cfBrowserEngine } from "./cf-browser";
 import { proxyBrowser, proxyFetch } from "./node.container";
@@ -65,20 +73,28 @@ const decodeBase64 = (value: string): Uint8Array => {
 	return bytes;
 };
 
+/**
+ * The API's coarse region resolved to the ISO code Webshare wants. Done Worker-side so the
+ * container never imports `core/`, and so `auto` (the default) crosses the RPC as `undefined`.
+ */
+const countryFor = (region: EngineFetchParams["region"]): string | undefined => regionToCountry(region ?? "auto");
+
 export const createEngines = (env: Env, config: AppConfig): EngineSet => ({
+	// `fetch` and `cf-browser` egress from Cloudflare and cannot be geo-targeted, so they ignore
+	// `region` rather than silently pretending to honour it.
 	fetch: workersFetchEngine,
 
-	"proxy-fetch": async ({ url }): Promise<FetchedPage> => {
+	"proxy-fetch": async ({ url, region }): Promise<FetchedPage> => {
 		requireProxy(config, "proxy-fetch");
-		const page = await callContainer("proxy-fetch", () => proxyFetch(url));
+		const page = await callContainer("proxy-fetch", () => proxyFetch(url, countryFor(region)));
 		return { html: page.html, url: page.finalUrl, status: page.status };
 	},
 
 	// `screenshot` is honoured here; `scrape-core` rejects it for the two engines that cannot
 	// produce one, so the flag never reaches them.
-	"proxy-browser": async ({ url, screenshot }): Promise<FetchedPage> => {
+	"proxy-browser": async ({ url, screenshot, region }): Promise<FetchedPage> => {
 		requireProxy(config, "proxy-browser");
-		const page = await callContainer("proxy-browser", () => proxyBrowser(url, screenshot));
+		const page = await callContainer("proxy-browser", () => proxyBrowser(url, screenshot, countryFor(region)));
 		return {
 			html: page.html,
 			url: page.finalUrl,

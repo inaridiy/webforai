@@ -1,4 +1,5 @@
 import type { HtmlToMarkdownOptions } from "webforai";
+import type { Region } from "./regions";
 
 export const ENGINES = ["fetch", "proxy-fetch", "proxy-browser", "cf-browser"] as const;
 export type Engine = (typeof ENGINES)[number];
@@ -18,6 +19,8 @@ export interface ScrapeRequest {
 	screenshot: boolean;
 	rehostImages: boolean;
 	convert: ConvertOptions;
+	/** Egress region; honoured by the proxy engines only. Absent means `auto`. */
+	region?: Region;
 }
 
 /** What an engine returns: the rendered/raw HTML plus an optional screenshot. */
@@ -33,6 +36,8 @@ export interface FetchedPage {
 export interface EngineFetchParams {
 	url: string;
 	screenshot: boolean;
+	/** Absent means `auto`; engines that cannot geo-target their egress ignore it. */
+	region?: Region;
 }
 
 /**

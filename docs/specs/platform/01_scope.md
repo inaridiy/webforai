@@ -31,6 +31,9 @@ webforai's crawl→Markdown conversion as a metered HTTP API, deployed entirely 
 - `screenshot` (engines `proxy-browser` / `cf-browser`): PNG stored in R2, expiring URL returned.
 - `rehostImages`: download images referenced by the resulting Markdown, re-upload to R2 with a
   TTL (lifecycle rule), rewrite Markdown URLs to the R2-hosted copies.
+- `region` (`auto` | `us` | `eu` | `uk` | `jp` | `asia`): coarse egress location, applied by
+  pinning the Webshare exit IP to a representative country. Proxy engines only; the other two
+  egress from Cloudflare and ignore it. No price difference.
 - Extraction options passed through to webforai (`extractor` preset, `frontmatter`, ...).
 
 ## Accounts, keys, billing
@@ -42,8 +45,9 @@ webforai's crawl→Markdown conversion as a metered HTTP API, deployed entirely 
 
 ## Non-goals (initial)
 
-- Multi-region routing, org/team accounts, JS-rendering heuristics ("auto engine"), webhooks on
-  job completion (nice-to-have later), PDF conversion.
+- Multi-region routing of the platform itself (the `region` option above is proxy egress
+  geo-targeting, not infrastructure placement), org/team accounts, JS-rendering heuristics
+  ("auto engine"), webhooks on job completion (nice-to-have later), PDF conversion.
 
 ## Licensing / OSS
 

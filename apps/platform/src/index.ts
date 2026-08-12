@@ -1,17 +1,21 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 
+import { createArtifactStore } from "./artifacts/store";
 import { type Auth, createAuth } from "./auth/auth";
 import { type AuthVariables, requireApiKey, sessionMiddleware } from "./auth/middleware";
 import { createBillingRepo } from "./billing/repo";
 import { createStripe } from "./billing/stripe";
 import { retryUnreportedUsage } from "./billing/usage";
+import { scrapePage } from "./core/scrape-core";
 import { createDb } from "./db/client";
+import { createEngines } from "./engines";
 import { loadConfig } from "./env";
 import { CrawlWorkflow } from "./jobs/workflow";
 import { artifactRoutes } from "./routes/artifacts";
 import { dashboardRoutes } from "./routes/dashboard";
 import { dashboardJobsRoutes } from "./routes/dashboard-jobs";
+import { type DemoDeps, demoRoutes } from "./routes/demo";
 import { onPlatformError } from "./routes/errors";
 import { v1Routes } from "./routes/v1";
 
@@ -50,6 +54,29 @@ app.use(
 );
 app.route("/api/dashboard", dashboardRoutes());
 app.route("/api/dashboard", dashboardJobsRoutes());
+
+/**
+ * Real dependencies for the public demo. Built here rather than in `routes/demo.ts` so that
+ * module stays free of the Workers-only engine imports and can be unit-tested.
+ */
+const demoDeps = (env: Env): DemoDeps => {
+	const config = loadConfig(env);
+	const scrape = { engines: createEngines(env, config), artifacts: createArtifactStore(env, config) };
+	return {
+		kv: env.JOBS_KV,
+		proxyEnabled: config.proxyEnabled,
+		runScrape: (request) => scrapePage(scrape, request),
+		now: () => new Date(),
+	};
+};
+
+/**
+ * Registered **before** the `/v1/*` API-key middleware, and that order is the guarantee: Hono
+ * dispatches matched handlers in registration order and stops at the first one that returns a
+ * response, so `POST /v1/demo/scrape` answers without `requireApiKey` ever running. Moving this
+ * line below the `app.use` would silently make the demo require a key.
+ */
+app.route("/v1/demo", demoRoutes(demoDeps));
 
 app.use(
 	"/v1/*",

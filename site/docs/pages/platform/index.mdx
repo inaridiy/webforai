@@ -1,0 +1,75 @@
+---
+title: Platform
+---
+
+# webforai platform
+
+**webforai platform** is a hosted crawl→Markdown API built on this library.
+It takes a URL (or a whole site) and gives you back the same clean Markdown `htmlToMarkdown` produces,
+without you running the browsers, proxies and queues yourself.
+
+It is fully open source and self-hostable — the entire service is a single Cloudflare Worker in
+[`apps/platform`](https://github.com/inaridiy/webforai/tree/main/apps/platform) of this repository.
+
+```bash
+curl -X POST https://platform.webforai.dev/v1/scrape \
+  -H "Authorization: Bearer wfa_..." \
+  -H "content-type: application/json" \
+  -d '{ "url": "https://example.com/article" }'
+```
+
+Try it without an account on the [live demo](/#demo), or read the full [API reference](/platform/api-reference).
+
+## Capabilities
+
+- **Scrape** — a single URL → Markdown + metadata. Synchronous, returns in one request.
+- **Batch** — a list of URLs (≤100 per job) → Markdown per URL. Asynchronous.
+- **Crawl** — a seed URL → recursive same-origin crawl with depth/page limits and
+  include/exclude path patterns → Markdown per page. Asynchronous.
+
+Asynchronous jobs run the exact same core logic on Cloudflare Workflows, so every page gets
+durable execution and retries. Results are retained for 7 days and read back through the
+[jobs API](/platform/api-reference#get-v1jobs).
+
+## Engines
+
+Every request picks how the HTML is acquired. Engines differ in what they can render, whether
+they egress through a proxy, and what they cost in credits.
+
+| engine | how it fetches | proxy | screenshot | credits |
+| --- | --- | --- | --- | --- |
+| `fetch` | Workers `fetch()` | no | no | 1 |
+| `proxy-fetch` | Node + undici in a Cloudflare Container | Webshare | no | 2 |
+| `proxy-browser` | Playwright in a Cloudflare Container | Webshare | yes | 5 |
+| `cf-browser` | Cloudflare Browser Rendering | no | yes | 5 |
+
+Use `fetch` for static HTML, the `proxy-*` engines when a site blocks datacenter IPs or you need
+[a specific region](/platform/api-reference#region), and either browser engine when the content
+only exists after JavaScript runs.
+
+## Options
+
+- `screenshot` — PNG of the rendered page, stored in R2 and returned as an expiring URL.
+  Browser engines only (`proxy-browser`, `cf-browser`).
+- `rehostImages` — downloads the images referenced by the resulting Markdown, re-uploads them to
+  R2 with a TTL, and rewrites the Markdown to point at those copies.
+- `convert` — extraction options passed straight through to webforai (`extractor` preset,
+  `frontmatter`, `baseUrl`).
+
+## Accounts and pricing
+
+Accounts and API keys live on the dashboard; requests authenticate with
+`Authorization: Bearer wfa_...`. Usage is metered in credits with **500 credits per month free** —
+see [Billing](/platform/billing) for the full schedule.
+
+## Self-hosting
+
+Nothing here is proprietary. Deploy your own instance on your own Cloudflare account —
+D1, KV, R2, Workflows and Browser Rendering bindings, plus your own Webshare and Stripe
+credentials. The setup steps live in the
+[`apps/platform` README](https://github.com/inaridiy/webforai/tree/main/apps/platform#deploying-your-own-instance).
+
+:::warning
+The platform is a consumer of webforai, not a replacement for it. If you can run the conversion
+yourself, [use the library](/getting-started) — it is faster, free, and has no rate limits.
+:::

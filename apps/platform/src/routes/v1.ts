@@ -173,6 +173,7 @@ export const v1Routes = () => {
 				engine: body.engine,
 				screenshot: body.screenshot,
 				rehostImages: body.rehostImages,
+				region: body.region,
 				convert: body.convert,
 			};
 			const jobId = await startJob(c.env, { userId, type: "batch", request, total: 1 });
@@ -184,6 +185,7 @@ export const v1Routes = () => {
 			engine: body.engine,
 			screenshot: body.screenshot,
 			rehostImages: body.rehostImages,
+			region: body.region,
 			convert: body.convert,
 		};
 		const result = await scrapePage(scrapeDeps(c.env, config), request);

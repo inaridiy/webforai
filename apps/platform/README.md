@@ -31,7 +31,18 @@ curl https://<your-host>/v1/jobs/<jobId>/results  # paged results
 Engines: `fetch` (Workers fetch, 1 credit), `proxy-fetch` (Webshare rotating proxy via
 container, 2), `proxy-browser` (Playwright + Webshare in container, 5, screenshots),
 `cf-browser` (Cloudflare Browser Run, 5, screenshots). `rehostImages: true` re-uploads the
-page's images to R2 behind expiring signed URLs. Full contract: `docs/specs/platform/03_api.md`.
+page's images to R2 behind expiring signed URLs. `"region": "us" | "eu" | "uk" | "jp" | "asia"`
+picks the proxy egress country (`auto` by default; ignored by the two non-proxy engines).
+Full contract: `docs/specs/platform/03_api.md`.
+
+`POST /v1/demo/scrape` is a public, keyless, unbilled demo (fixed `proxy-fetch`, markdown
+truncated to 8000 chars) for the docs site, limited to 5 requests / 10 min per IP and 500 / day
+globally:
+
+```bash
+curl -X POST https://<your-host>/v1/demo/scrape \
+  -H 'content-type: application/json' -d '{ "url": "https://example.com", "region": "us" }'
+```
 
 ## Local development
 

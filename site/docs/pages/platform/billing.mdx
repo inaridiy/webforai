@@ -1,0 +1,61 @@
+---
+title: Platform Billing
+---
+
+# Billing
+
+The [webforai platform](/platform) is metered in **credits**. Every operation reports a credit
+amount; nothing else is counted — no per-seat pricing, no request tiers, no minimum commitment.
+
+## Credit schedule
+
+| operation | credits |
+| --- | --- |
+| scrape via `fetch` | 1 |
+| scrape via `proxy-fetch` | 2 |
+| scrape via `proxy-browser` | 5 |
+| scrape via `cf-browser` | 5 |
+| `screenshot` option | +1 |
+| `rehostImages` option | +1 per started 5 images |
+
+Batch and crawl jobs bill **per successfully converted page** using the same schedule. A page that
+fails is not billed, and neither is a request that errors before the conversion runs.
+
+The schedule is a single source of truth in the codebase
+([`src/billing/credits.ts`](https://github.com/inaridiy/webforai/blob/main/apps/platform/src/billing/credits.ts)).
+
+## Price
+
+- **500 credits per month free** — no subscription, no card.
+- Beyond that, a metered monthly subscription with graduated tiers: the first 500 credits at $0,
+  then **$0.002 per credit**.
+
+500 free credits is 500 `fetch` scrapes, 250 `proxy-fetch` scrapes, or 100 browser-rendered pages
+every month.
+
+## How usage is counted
+
+1. The API key resolves to a user, their Stripe customer and their subscription state.
+2. **No active subscription** → the request is allowed only within the free monthly allowance,
+   tracked against the local usage ledger for the current calendar month. Past it, the API returns
+   `402 payment_required`.
+3. **Active subscription** → the request proceeds.
+4. The operation runs. **Only on success** a usage row is written to the ledger and mirrored to a
+   Stripe meter event, using the row id as the idempotency key.
+
+The local ledger is the audit source and the dashboard's `Usage` view reads from it; the Stripe
+meter is what the invoice is computed from. Unreported rows are retried automatically, so a
+transient Stripe outage never loses or double-counts usage.
+
+## Managing the subscription
+
+Checkout and the billing portal are both reachable from the dashboard. Cancelling drops you back to
+the free allowance rather than disabling the account.
+
+## Self-hosting
+
+Billing is optional. Running your own instance without `STRIPE_SECRET_KEY` starts the platform in
+free-allowance-only mode — everything works, nothing is metered externally, and you pay Cloudflare
+and Webshare directly instead. If you do want metering, `pnpm stripe:setup` creates the meter and
+the metered price for you. See the
+[`apps/platform` README](https://github.com/inaridiy/webforai/tree/main/apps/platform#deploying-your-own-instance).
