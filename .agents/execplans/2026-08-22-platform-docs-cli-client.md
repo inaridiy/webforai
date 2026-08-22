@@ -67,6 +67,16 @@ over tracked files returns nothing;
       (Docker available — real D1/KV/workerd, new `PROXY_*` names and the `browser` engine id
       exercised live); site build green; README drift pass done; retrospective below.
 
+- [x] (2026-08-22) **Production deploy** (user-approved): site → webforai.dev (new /cli,
+      /platform/client pages live); platform → platform.webforai.dev (new container image,
+      version d1d436b0 + secret-change versions). `PROXY_URL`/`PROXY_USERNAME`/
+      `PROXY_PASSWORD` set (values piped from the local `.dev.vars`, never echoed), old
+      vendor-named secrets **deleted**, `.dev.vars` migrated to the new key names. Live
+      smoke: /health ok; demo 200 through the proxy (region us); fresh signup → `wfa_` key →
+      `fetch` scrape 1 credit → **`browser` engine + screenshot 200, 6 credits, screenshot
+      URL returned — the Browser Run live check from the 2026-08-10 plan's remaining list is
+      done**; old id `cf-browser` → 400 invalid_request.
+
 ## Surprises & Discoveries
 
 - The platform SPA's `/docs` page and `site/docs/pages/platform/api-reference.mdx` had both
@@ -101,6 +111,15 @@ over tracked files returns nothing;
 - Repo-root `README.md` is a **symlink** to `packages/webforai/README.md` (commit fc63669
   "chore: fix symlink") — editing either edits both; a sweep that "updates both READMEs"
   touches one file.
+
+- (deploy) `wrangler secret put` via the chat's `!` command runs **without a TTY**: wrangler
+  silently reads stdin-to-EOF and uploads an **empty string** with a "Success!" message.
+  Diagnosed via `wrangler versions view` (bindings present) + zod semantics (empty
+  `PROXY_URL` would have failed `.url()`, so the empties had to be username/password). Fix:
+  pipe values from the local gitignored `.dev.vars`. Also: bare `pnpm deploy` is shadowed by
+  pnpm's own deploy command — README now says `pnpm run deploy`; and the production zone's
+  browser integrity check 403s Python-urllib's default User-Agent (error 1010), so API smoke
+  scripts need a browser-like UA.
 
 ## Decision log
 

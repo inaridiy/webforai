@@ -86,7 +86,7 @@ dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer
 | `pnpm db:migrate:local` / `:remote` | apply migrations to D1 |
 | `pnpm stripe:setup` | create Stripe meter + metered price (prints ids) |
 | `pnpm cf-typegen` | regenerate `worker-configuration.d.ts` |
-| `pnpm deploy` | build + `wrangler deploy` |
+| `pnpm run deploy` | build + `wrangler deploy` (`run` is required — bare `pnpm deploy` is pnpm's own command) |
 
 ## Deploying your own instance
 
@@ -102,7 +102,7 @@ dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer
    your host.
 5. R2 lifecycle (artifact TTL): `wrangler r2 bucket lifecycle add webforai-platform-artifacts`
    with prefix rules for `screenshots/`, `images/`, `results/` (e.g. expire after 7 days).
-6. `pnpm deploy` (Workers Paid plan needed for Containers/Workflows/Browser Run).
+6. `pnpm run deploy` (Workers Paid plan needed for Containers/Workflows/Browser Run).
 
 ## Billing model
 
