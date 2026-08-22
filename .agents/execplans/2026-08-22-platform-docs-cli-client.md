@@ -77,6 +77,13 @@ over tracked files returns nothing;
       URL returned — the Browser Run live check from the 2026-08-10 plan's remaining list is
       done**; old id `cf-browser` → 400 invalid_request.
 
+- [x] (2026-08-22) **npm release**: `webforai@3.0.0` published to npm (`latest`), 2FA'd by
+      the operator. Verified from the registry in a clean project: CJS + ESM resolution of
+      the `webforai/platform` subpath, `npx webforai --version` = 3.0.0, `--json` envelope.
+      Tagged `webforai@3.0.0` and pushed. (The `@webforai` scope could not be created; see
+      the same-day pivot decision — the client shipped as a subpath instead, so there is no
+      second package to publish.)
+
 ## Surprises & Discoveries
 
 - The platform SPA's `/docs` page and `site/docs/pages/platform/api-reference.mdx` had both
