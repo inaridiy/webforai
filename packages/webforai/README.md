@@ -35,7 +35,13 @@
 ## Overview
 
 ```bash
-npx webforai@latest
+# URL or local HTML file → Markdown on stdout (add -o out.md to write a file)
+npx webforai@latest https://example.com/article
+
+# machine-readable output, hosted-platform fetching, agent installation
+npx webforai@latest https://example.com --json
+npx webforai@latest https://example.com --engine browser   # platform, renders JS
+npx webforai@latest skill --install                        # Agent Skill via `npx skills add`
 ```
 
 or
@@ -102,7 +108,11 @@ See the [changeset](/.changeset) for the full list, including the breaking chang
 [`apps/platform`](https://github.com/inaridiy/webforai/tree/main/apps/platform) is an OSS,
 self-hostable SaaS built on this library: a metered crawl→Markdown HTTP API on Cloudflare
 (Workers + Workflows + Containers + Browser Run) with Better Auth accounts/API keys and
-Stripe usage-based billing. See its README and the design ledger in `docs/specs/platform`.
+Stripe usage-based billing. Use it through the typed
+[`@webforai/platform`](https://www.npmjs.com/package/@webforai/platform) client or the CLI
+(`npx webforai <url> --engine browser`); docs live at
+[webforai.dev/platform](https://webforai.dev/platform). See its README and the design ledger
+in `docs/specs/platform`.
 
 ## Support
 

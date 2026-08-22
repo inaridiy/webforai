@@ -5,8 +5,8 @@ import { assertContinue } from "./assertContinue";
 export const selectExtractMode = async () => {
 	const result = await select({
 		message: "Select processing mode:",
-		options: MODES.map((mode) => ({ value: mode, label: mode })),
-		initialValue: MODES[0],
+		options: MODES.map((mode) => ({ value: mode as string, label: mode as string })),
+		initialValue: MODES[0] as string,
 	});
 
 	assertContinue(result);
