@@ -15,11 +15,11 @@ Install the `webforai` package with your preferred package manager.
 npm i webforai
 
 # or install with playwright browser binaries to use the playwright loader.
-npx webforai@latest
+npm i webforai
 npx playwright install
 
 # or install with puppeteer browser binaries to use the puppeteer loader.
-npx webforai@latest puppeteer
+npm i webforai puppeteer
 ```
 
 ```bash [pnpm]
@@ -27,11 +27,11 @@ npx webforai@latest puppeteer
 pnpm i webforai
 
 # or install with playwright browser binaries to use the playwright loader.
-pnpm i webforai@latest
-pnpm playwright install
+pnpm i webforai
+pnpm exec playwright install
 
 # or install with puppeteer browser binaries to use the puppeteer loader.
-pnpm i webforai@latest puppeteer
+pnpm i webforai puppeteer
 ```
 
 ```bash [yarn]
@@ -39,11 +39,16 @@ pnpm i webforai@latest puppeteer
 yarn add webforai
 
 # or install with playwright browser binaries to use the playwright loader.
-yarn add webforai@latest
+yarn add webforai
 npx playwright install
 
 # or install with puppeteer browser binaries to use the puppeteer loader.
-yarn add webforai@latest puppeteer
+yarn add webforai puppeteer
 ```
 :::
 
+
+## CLI only
+
+The CLI needs no install at all — `npx webforai@latest <url>` prints Markdown to stdout.
+See the [CLI reference](/cli).

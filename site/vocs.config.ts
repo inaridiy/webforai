@@ -69,6 +69,10 @@ export default defineConfig({
 			link: "/how-it-works",
 		},
 		{
+			text: "CLI",
+			link: "/cli",
+		},
+		{
 			text: "API Reference",
 			items: [
 				{
@@ -127,6 +131,10 @@ export default defineConfig({
 				{
 					text: "API Reference",
 					link: "/platform/api-reference",
+				},
+				{
+					text: "TypeScript Client",
+					link: "/platform/client",
 				},
 				{
 					text: "Billing",

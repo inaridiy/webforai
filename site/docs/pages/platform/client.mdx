@@ -1,0 +1,98 @@
+---
+title: Platform Client (TypeScript)
+---
+
+# TypeScript client — `@webforai/platform`
+
+[`@webforai/platform`](https://www.npmjs.com/package/@webforai/platform) is the official
+typed client for the platform API. It has zero dependencies and runs anywhere `fetch`
+exists: Node ≥18, browsers, Cloudflare Workers and other edge runtimes.
+
+```bash
+npm i @webforai/platform
+```
+
+## Scrape
+
+```ts
+import { createPlatformClient } from "@webforai/platform";
+
+const platform = createPlatformClient({ apiKey: process.env.WEBFORAI_API_KEY });
+
+const page = await platform.scrape({
+  url: "https://example.com/article",
+  engine: "browser",              // fetch | browser | proxy-fetch | proxy-browser
+  convert: { frontmatter: true },
+});
+
+page.markdown;  // "# …"
+page.metadata;  // { title, author, … }
+page.credits;   // 5
+```
+
+Self-hosting? Point the client at your own deployment:
+
+```ts
+const platform = createPlatformClient({ apiKey, baseUrl: "https://platform.your.domain" });
+```
+
+## Batch and crawl jobs
+
+Async jobs return a `jobId`; `waitForJob` polls until the job reaches a terminal state, and
+`jobResults` iterates every page result — following pagination and downloading oversized
+results (which the API stores out-of-band) transparently.
+
+```ts
+const { jobId } = await platform.crawl({
+  url: "https://docs.example.com/",
+  maxDepth: 2,
+  limit: 50,
+});
+
+await platform.waitForJob(jobId, {
+  onStatus: (s) => console.log(`${s.status} ${s.completed}/${s.total}`),
+});
+
+for await (const result of platform.jobResults(jobId)) {
+  if (result.status === "ok") {
+    console.log(result.url, result.markdown.length);
+  } else {
+    console.warn(result.url, result.error.code);
+  }
+}
+```
+
+Lower-level pieces are also exposed: `scrapeAsync` (a single URL as an async job),
+`getJob(jobId)` and `getJobResults(jobId, { cursor })` for manual polling and paging.
+
+## Error handling
+
+Every non-2xx response throws a `PlatformApiError` carrying the API's error `code`, the HTTP
+`status`, and `retryAfter` (seconds) when the server provided one. The client never retries
+on its own.
+
+```ts
+import { PlatformApiError } from "@webforai/platform";
+
+try {
+  await platform.scrape({ url });
+} catch (error) {
+  if (error instanceof PlatformApiError) {
+    switch (error.code) {
+      case "payment_required": // out of credits
+      case "rate_limited":     // back off; error.retryAfter may be set
+      case "engine_unavailable": // deployment lacks that engine's config
+    }
+  }
+}
+```
+
+The full list of codes and shapes lives in the [API reference](/platform/api-reference).
+
+## Demo endpoint
+
+The public, keyless demo endpoint is available too (rate-limited, truncated output):
+
+```ts
+const demo = await createPlatformClient().demoScrape({ url: "https://example.com" });
+```

@@ -1,0 +1,105 @@
+---
+title: CLI
+---
+
+# CLI
+
+`npx webforai` converts a URL or a local HTML file to clean Markdown. Since v3 it is
+**non-interactive by default**: the Markdown goes to stdout and every log goes to stderr, so
+the command composes with pipes, scripts and AI agents. The guided wizard is still there
+behind `-i`.
+
+```bash
+# Markdown to stdout
+npx webforai@latest https://example.com/article
+
+# write to a file instead
+npx webforai@latest https://example.com/article -o article.md
+
+# convert a local HTML file
+npx webforai@latest ./page.html
+
+# machine-readable output
+npx webforai@latest https://example.com --json | jq -r .markdown
+```
+
+## Flags
+
+| flag | meaning |
+| --- | --- |
+| `-o, --output <path>` | Write Markdown to a file instead of stdout. |
+| `-l, --loader <loader>` | `fetch` (default for URLs), `playwright`, or `platform`. Local files are detected automatically. |
+| `-m, --mode <mode>` | `default` or `ai` — `ai` strips links, tables and images down to plain text (local conversion only). |
+| `--extractor <name>` | Main-content extraction preset: `auto` (default), `takumi`, `minimal`, or `none` for the whole page. |
+| `--frontmatter` | Prepend YAML front matter built from the page metadata (title, author, canonical URL, …). |
+| `--json` | Print a JSON envelope instead of raw Markdown (below). |
+| `--engine <engine>` | Platform engine: `fetch`, `browser`, `proxy-fetch`, `proxy-browser`. Implies `-l platform`. |
+| `--region <region>` | Platform proxy egress region: `auto`, `us`, `eu`, `uk`, `jp`, `asia`. Implies `-l platform`. |
+| `--screenshot` | Platform browser engines only: also capture a screenshot (expiring URL). |
+| `--api-key <key>` | Platform API key; defaults to `$WEBFORAI_API_KEY`. |
+| `--platform-url <url>` | Platform base URL; defaults to `$WEBFORAI_PLATFORM_URL` or the hosted instance. |
+| `-i, --interactive` | Guided prompt flow. |
+| `-d, --debug` | Verbose logs on stderr. |
+
+Exit codes: `0` success, `1` runtime failure, `2` usage error.
+
+## Loaders
+
+- **fetch** — plain HTTP fetch. Fast, no JavaScript execution.
+- **playwright** — renders the page in local headless Chromium first. Install it once with
+  `npx playwright install chromium`.
+- **platform** — the [hosted webforai platform](/platform) fetches and converts server-side.
+  Useful for JavaScript-heavy pages without a local browser, bot-protected sites (proxy
+  engines), region-pinned fetching, and screenshots.
+
+```bash
+export WEBFORAI_API_KEY=wfa_...   # from https://platform.webforai.dev/dashboard
+npx webforai@latest https://spa.example.com --engine browser
+npx webforai@latest https://blocked.example.com --engine proxy-fetch --region jp
+```
+
+## JSON output
+
+`--json` prints a single envelope object:
+
+```json
+{
+  "source": "https://example.com",
+  "loader": "platform",
+  "url": "https://example.com/",
+  "engine": "browser",
+  "region": "auto",
+  "markdown": "# …",
+  "metadata": { "title": "…" },
+  "credits": 5,
+  "screenshotUrl": "https://…",
+  "output": "article.md"
+}
+```
+
+`engine`, `region`, `credits` and `screenshotUrl` appear only when the platform loader ran;
+`output` only when `-o` also wrote a file.
+
+## For AI agents
+
+The CLI ships an [Agent Skill](https://github.com/vercel-labs/skills) that teaches coding
+agents when and how to use it:
+
+```bash
+# print the SKILL.md
+npx webforai@latest skill
+
+# install it via Vercel's skills CLI (agent picker, symlinks, lockfile)
+npx webforai@latest skill --install
+
+# or install straight from the repository
+npx skills add inaridiy/webforai
+```
+
+`skill --install` forwards `--global`, `--agent <agents>`, `-y`, `--copy` and `--all` to
+`npx skills add`; `--dir <path>` writes the file directly without the skills CLI.
+
+## Interactive mode
+
+`npx webforai -i` walks through source, loader (including the platform), mode and output
+path with prompts — the behavior older versions had by default.

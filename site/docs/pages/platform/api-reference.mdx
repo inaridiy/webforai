@@ -52,9 +52,9 @@ It expresses a coarse geographic preference for the egress location:
 
 It only affects the proxy engines (`proxy-fetch`, `proxy-browser`), which select a proxy exit
 node in the requested area. The `fetch` and `browser` engines egress from Cloudflare's own
-network and ignore the field. A region is a preference, not a guarantee — if no exit node is
-available there, the request falls back to `auto`, and the response always reports the region that
-was actually used.
+network and ignore the field rather than failing, so one default can be set for a mixed-engine
+workload. A region is a preference for a representative exit country, not a guarantee. Pricing
+is unaffected.
 
 ## POST /v1/scrape
 
@@ -84,9 +84,8 @@ instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and retu
 
 ```jsonc
 {
-  "url": "https://example.com/article",
+  "url": "https://example.com/article",      // final URL after redirects
   "engine": "fetch",
-  "region": "auto",
   "markdown": "# ...",
   "metadata": { "title": "..." },
   "screenshotUrl": "https://...r2...", // when requested; expires
@@ -149,7 +148,7 @@ Asynchronous, recursive same-origin crawl from a seed URL.
   "limit": 50,                   // pages, ≤ 500
   "includePaths": ["^/docs"],    // regex on pathname, optional
   "excludePaths": [],
-  "sameOrigin": true,            // fixed true initially
+  "sameOrigin": true,            // only true is accepted (sending false is a 400)
   "screenshot": false,
   "rehostImages": false,
   "convert": {}
@@ -191,14 +190,18 @@ curl https://platform.webforai.dev/v1/jobs/job_... \
 
 ## GET /v1/jobs/:id/results
 
-Paged page results. Each item mirrors the synchronous scrape response plus a per-page status:
+Paged page results (20 per page). Each item mirrors the synchronous scrape response plus a
+per-page status:
 
 ```jsonc
 {
-  "items": [
+  "jobId": "job_...",
+  "status": "completed",         // the job's status at read time
+  "results": [
     {
       "url": "https://docs.example.com/intro",
       "status": "ok",            // ok | error
+      "engine": "fetch",
       "markdown": "# ...",
       "metadata": { "title": "..." },
       "credits": 1
@@ -206,6 +209,7 @@ Paged page results. Each item mirrors the synchronous scrape response plus a per
     {
       "url": "https://docs.example.com/broken",
       "status": "error",
+      "engine": "fetch",
       "error": { "code": "fetch_failed", "message": "..." }
     }
   ],
@@ -213,8 +217,11 @@ Paged page results. Each item mirrors the synchronous scrape response plus a per
 }
 ```
 
-Large markdown payloads are replaced by `{ "resultUrl": "<expiring R2 url>" }`. Results are
-retained for 7 days.
+Markdown payloads larger than ~100 KiB are stored out-of-band: the item instead carries
+`{ "status": "ok", "url", "engine", "credits", "resultUrl": "<expiring URL>" }` — fetch
+`resultUrl` (a plain GET, no auth header) to get the full item. The
+[TypeScript client](/platform/client)'s `jobResults` iterator does this automatically.
+Results are retained for 7 days; `resultUrl`/`screenshotUrl` links expire after ~24 hours.
 
 ```bash
 curl "https://platform.webforai.dev/v1/jobs/job_.../results?cursor=..." \
@@ -240,9 +247,10 @@ account, no credits — it always runs the `proxy-fetch` engine and truncates th
 ```jsonc
 {
   "url": "https://example.com",
-  "region": "auto",
+  "region": "auto",              // echoes the requested region
   "markdown": "# Example Domain\n...",
   "truncated": false,            // true when the markdown was cut at ~8000 characters
+  "title": "Example Domain",     // when the page has one
   "metadata": { "title": "Example Domain" }
 }
 ```
