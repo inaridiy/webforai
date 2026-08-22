@@ -1,6 +1,6 @@
 {
 	"name": "@webforai/platform",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Typed, dependency-free client for the webforai platform crawl-to-Markdown API",
 	"author": "inaridiy",
 	"license": "Apache-2.0",
