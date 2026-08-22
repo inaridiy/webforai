@@ -6,9 +6,9 @@ import type { Engine } from "../core/types";
  */
 export const ENGINE_CREDITS: Record<Engine, number> = {
 	fetch: 1,
+	browser: 5,
 	"proxy-fetch": 2,
 	"proxy-browser": 5,
-	"cf-browser": 5,
 };
 
 export const SCREENSHOT_CREDITS = 1;

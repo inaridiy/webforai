@@ -1,11 +1,11 @@
 import type { HtmlToMarkdownOptions } from "webforai";
 import type { Region } from "./regions";
 
-export const ENGINES = ["fetch", "proxy-fetch", "proxy-browser", "cf-browser"] as const;
+export const ENGINES = ["fetch", "browser", "proxy-fetch", "proxy-browser"] as const;
 export type Engine = (typeof ENGINES)[number];
 
 /** Engines that render pages in a real browser and can produce screenshots. */
-export const SCREENSHOT_ENGINES: readonly Engine[] = ["proxy-browser", "cf-browser"];
+export const SCREENSHOT_ENGINES: readonly Engine[] = ["browser", "proxy-browser"];
 
 export interface ConvertOptions {
 	extractor?: "auto" | "takumi" | "minimal" | "none";

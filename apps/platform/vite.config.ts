@@ -17,7 +17,7 @@ export default defineConfig({
 				// Its version must match the `playwright` dependency version exactly.
 				baseImage: "mcr.microsoft.com/playwright:v1.62.1-noble",
 			},
-			workerEnvVars: ["WEBSHARE_PROXY_USERNAME", "WEBSHARE_PROXY_PASSWORD"],
+			workerEnvVars: ["PROXY_URL", "PROXY_USERNAME", "PROXY_PASSWORD"],
 		}),
 		cloudflare(),
 	],

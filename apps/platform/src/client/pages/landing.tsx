@@ -14,11 +14,17 @@ const scrapeSnippet = `curl -X POST https://<your-deployment>/v1/scrape \\
     "convert": { "extractor": "auto", "frontmatter": true }
   }'`;
 
-const engines: { id: string; runtime: string; proxy: string; screenshot: string; credits: string }[] = [
-	{ id: "fetch", runtime: "Workers fetch()", proxy: "no", screenshot: "no", credits: "1" },
-	{ id: "proxy-fetch", runtime: "Node container, undici", proxy: "Webshare", screenshot: "no", credits: "2" },
-	{ id: "proxy-browser", runtime: "Node container, Playwright", proxy: "Webshare", screenshot: "yes", credits: "5" },
-	{ id: "cf-browser", runtime: "Cloudflare Browser Rendering", proxy: "no", screenshot: "yes", credits: "5" },
+const engines: { id: string; how: string; proxy: string; screenshot: string; credits: string }[] = [
+	{ id: "fetch", how: "Plain HTTP fetch from the edge", proxy: "no", screenshot: "no", credits: "1" },
+	{ id: "browser", how: "Headless browser rendering", proxy: "no", screenshot: "yes", credits: "5" },
+	{ id: "proxy-fetch", how: "HTTP fetch through a rotating proxy", proxy: "yes", screenshot: "no", credits: "2" },
+	{
+		id: "proxy-browser",
+		how: "Headless browser behind the rotating proxy",
+		proxy: "yes",
+		screenshot: "yes",
+		credits: "5",
+	},
 ];
 
 const capabilities: { title: string; body: string; tag: string }[] = [
@@ -49,16 +55,16 @@ const Hero = () => (
 			</h1>
 			<p className="mt-5 max-w-2xl text-lg text-muted-foreground leading-relaxed">
 				webforai platform wraps the webforai extraction library in a metered HTTP API. Four acquisition engines — plain
-				fetch, proxied fetch, proxied browser, Cloudflare Browser Rendering — behind one request body, with async batch
-				and crawl jobs that survive retries.
+				fetch, browser rendering, proxied fetch, proxied browser — behind one request body, with async batch and crawl
+				jobs that survive retries.
 			</p>
 			<div className="mt-8 flex flex-wrap items-center gap-3">
 				<Link href="/signup" className={buttonClass("primary", "lg")}>
 					Get an API key
 				</Link>
-				<Link href="/docs" className={buttonClass("outline", "lg")}>
+				<a href="https://webforai.dev/platform/api-reference" className={buttonClass("outline", "lg")}>
 					Read the API reference
-				</Link>
+				</a>
 			</div>
 			<div className="mt-12 max-w-3xl">
 				<CodeBlock code={scrapeSnippet} label="curl" />
@@ -98,7 +104,7 @@ const Engines = () => (
 					<THead>
 						<TR>
 							<TH>Engine</TH>
-							<TH>Runtime</TH>
+							<TH>How it fetches</TH>
 							<TH>Proxy</TH>
 							<TH>Screenshot</TH>
 							<TH className="text-right">Credits</TH>
@@ -108,7 +114,7 @@ const Engines = () => (
 						{engines.map((engine) => (
 							<TR key={engine.id}>
 								<TD className="font-mono text-accent">{engine.id}</TD>
-								<TD className="text-muted-foreground">{engine.runtime}</TD>
+								<TD className="text-muted-foreground">{engine.how}</TD>
 								<TD className="text-muted-foreground">{engine.proxy}</TD>
 								<TD className="text-muted-foreground">{engine.screenshot}</TD>
 								<TD className="text-right font-mono tabular">{engine.credits}</TD>

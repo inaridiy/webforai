@@ -1,5 +1,7 @@
 # Billing
 
+Revision note (2026-08-22): Engine `cf-browser` renamed to `browser` in the credit schedule
+(same 5-credit price).
 Revision note (2026-08-10): Initial version.
 
 ## Model: credit-denominated usage billing
@@ -13,9 +15,9 @@ A single meter keeps Stripe simple while letting per-operation prices differ.
 | operation | credits |
 |---|---|
 | scrape via `fetch` | 1 |
+| scrape via `browser` | 5 |
 | scrape via `proxy-fetch` | 2 |
 | scrape via `proxy-browser` | 5 |
-| scrape via `cf-browser` | 5 |
 | screenshot option | +1 |
 | image rehost | +1 per started 5 images |
 

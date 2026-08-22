@@ -1,5 +1,10 @@
 # Platform API
 
+Revision note (2026-08-22): Engine `cf-browser` renamed to `browser` (clean break, pre-launch;
+enum is now `fetch | browser | proxy-fetch | proxy-browser`). Proxy provider references made
+generic. Documented the actual results envelope (`{ jobId, status, results, cursor? }`) and
+that success responses carry no `region` field. Official clients: `@webforai/platform` and the
+`webforai` CLI (`--engine`/`--region` against this API).
 Revision note (2026-08-12): Added the `region` option to scrape/batch/crawl (egress
 geo-targeting, honoured by the proxy engines only) and the public `POST /v1/demo/scrape`
 endpoint (no API key, rate limited, not billed).
@@ -16,8 +21,8 @@ Runs on the plain Worker (fast, not durable). With `"async": true` it instead en
 ```jsonc
 {
   "url": "https://example.com/article",
-  "engine": "fetch",            // fetch | proxy-fetch | proxy-browser | cf-browser
-  "screenshot": false,           // proxy-browser / cf-browser only (400 otherwise)
+  "engine": "fetch",            // fetch | browser | proxy-fetch | proxy-browser
+  "screenshot": false,           // browser / proxy-browser only (400 otherwise)
   "rehostImages": false,
   "region": "auto",             // auto | us | eu | uk | jp | asia — proxy engines only
   "async": false,
@@ -30,9 +35,9 @@ Runs on the plain Worker (fast, not durable). With `"async": true` it instead en
 ```
 
 `region` picks a coarse egress location for `proxy-fetch` / `proxy-browser` by pinning the
-Webshare exit IP to one **representative** country per region — `us`→US, `eu`→DE, `uk`→GB,
+proxy exit IP to one **representative** country per region — `us`→US, `eu`→DE, `uk`→GB,
 `jp`→JP, `asia`→SG (`src/core/regions.ts` is the source of truth). `auto` (the default) does no
-geo-targeting. `fetch` and `cf-browser` egress from Cloudflare and ignore the field rather than
+geo-targeting. `fetch` and `browser` egress from Cloudflare and ignore the field rather than
 failing, so one default can be set for a mixed-engine workload. Pricing is unaffected.
 
 200:
@@ -86,9 +91,10 @@ fragment-stripped, same-origin filtered, BFS by depth until `limit`. Returns `20
 
 ## GET /v1/jobs/:id/results?cursor=...
 
-Paged page-results; each item mirrors the sync scrape response plus
-`{ "status": "ok" | "error", "error": {...} }`. Large markdown may be replaced by
-`{ "resultUrl": "<expiring R2 url>" }`.
+`{ "jobId": "...", "status": "running", "results": [...], "cursor": "..." }` — `cursor` is
+absent on the last page, page size 20. Each item mirrors the sync scrape response plus
+`{ "status": "ok" | "error", "error": {...} }`. Large markdown (>100 KiB) is replaced by
+`{ "status": "ok", "url", "engine", "credits", "resultUrl": "<expiring R2 url>" }`.
 
 ## POST /v1/demo/scrape — public demo (no API key)
 
@@ -128,7 +134,7 @@ fail-closed — a KV failure denies rather than allows):
 { "error": { "code": "rate_limited", "message": "...", "retryAfter": 600 } }
 ```
 
-A deployment without Webshare credentials answers `503 engine_unavailable`. Constants live in
+A deployment without proxy settings answers `503 engine_unavailable`. Constants live in
 `src/routes/demo.ts`.
 
 ## Dashboard API (session cookie, not API key)

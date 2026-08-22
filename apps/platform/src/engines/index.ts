@@ -8,7 +8,7 @@ import {
 	PlatformError,
 } from "../core/types";
 import type { AppConfig } from "../env";
-import { cfBrowserEngine } from "./cf-browser";
+import { browserEngine } from "./browser";
 import { proxyBrowser, proxyFetch } from "./node.container";
 import { workersFetchEngine } from "./workers-fetch";
 
@@ -60,7 +60,7 @@ const callContainer = async <T>(engine: Engine, run: () => Promise<T>): Promise<
 
 const requireProxy = (config: AppConfig, engine: Engine): void => {
 	if (!config.proxyEnabled) {
-		throw new EngineUnavailableError(engine, "WEBSHARE_PROXY_USERNAME/PASSWORD are not configured");
+		throw new EngineUnavailableError(engine, "PROXY_URL/PROXY_USERNAME/PROXY_PASSWORD are not configured");
 	}
 };
 
@@ -74,15 +74,17 @@ const decodeBase64 = (value: string): Uint8Array => {
 };
 
 /**
- * The API's coarse region resolved to the ISO code Webshare wants. Done Worker-side so the
- * container never imports `core/`, and so `auto` (the default) crosses the RPC as `undefined`.
+ * The API's coarse region resolved to the ISO code the proxy gateway wants. Done Worker-side so
+ * the container never imports `core/`, and so `auto` (the default) crosses the RPC as `undefined`.
  */
 const countryFor = (region: EngineFetchParams["region"]): string | undefined => regionToCountry(region ?? "auto");
 
 export const createEngines = (env: Env, config: AppConfig): EngineSet => ({
-	// `fetch` and `cf-browser` egress from Cloudflare and cannot be geo-targeted, so they ignore
+	// `fetch` and `browser` egress from Cloudflare and cannot be geo-targeted, so they ignore
 	// `region` rather than silently pretending to honour it.
 	fetch: workersFetchEngine,
+
+	browser: (params) => browserEngine(env.BROWSER, params),
 
 	"proxy-fetch": async ({ url, region }): Promise<FetchedPage> => {
 		requireProxy(config, "proxy-fetch");
@@ -102,6 +104,4 @@ export const createEngines = (env: Env, config: AppConfig): EngineSet => ({
 			screenshot: page.screenshotBase64 ? decodeBase64(page.screenshotBase64) : undefined,
 		};
 	},
-
-	"cf-browser": (params) => cfBrowserEngine(env.BROWSER, params),
 });

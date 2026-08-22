@@ -1,5 +1,8 @@
 # Platform Scope
 
+Revision note (2026-08-22): Engine `cf-browser` renamed to `browser`; proxy provider named
+generically (configuration moved to provider-neutral `PROXY_*` secrets). Official clients
+added: `@webforai/platform` (TypeScript) and the `webforai` CLI's platform loader.
 Revision note (2026-08-10): Initial version.
 
 ## What
@@ -22,17 +25,17 @@ webforai's crawl→Markdown conversion as a metered HTTP API, deployed entirely 
 | engine | runtime | proxy | screenshot |
 |---|---|---|---|
 | `fetch` | Workers `fetch()` | no | no |
-| `proxy-fetch` | Node fn in Cloudflare Container (create-nodejs-fn), undici | Webshare | no |
-| `proxy-browser` | Node fn in Container, Playwright | Webshare | yes |
-| `cf-browser` | Cloudflare Browser Rendering | no | yes |
+| `browser` | Cloudflare Browser Rendering | no | yes |
+| `proxy-fetch` | Node fn in Cloudflare Container (create-nodejs-fn), undici | rotating proxy | no |
+| `proxy-browser` | Node fn in Container, Playwright | rotating proxy | yes |
 
 ## Options
 
-- `screenshot` (engines `proxy-browser` / `cf-browser`): PNG stored in R2, expiring URL returned.
+- `screenshot` (engines `browser` / `proxy-browser`): PNG stored in R2, expiring URL returned.
 - `rehostImages`: download images referenced by the resulting Markdown, re-upload to R2 with a
   TTL (lifecycle rule), rewrite Markdown URLs to the R2-hosted copies.
 - `region` (`auto` | `us` | `eu` | `uk` | `jp` | `asia`): coarse egress location, applied by
-  pinning the Webshare exit IP to a representative country. Proxy engines only; the other two
+  pinning the proxy exit IP to a representative country. Proxy engines only; the other two
   egress from Cloudflare and ignore it. No price difference.
 - Extraction options passed through to webforai (`extractor` preset, `frontmatter`, ...).
 

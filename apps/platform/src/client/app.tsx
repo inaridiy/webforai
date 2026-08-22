@@ -6,7 +6,6 @@ import type { SessionState } from "./lib/use-session";
 import { useSession } from "./lib/use-session";
 import { LoginPage, SignupPage } from "./pages/auth";
 import { DashboardPage } from "./pages/dashboard";
-import { DocsPage } from "./pages/docs";
 import { LandingPage } from "./pages/landing";
 import { NotFoundPage } from "./pages/not-found";
 import { PlaygroundPage } from "./pages/playground";
@@ -23,8 +22,6 @@ const renderRoute = (path: string, session: SessionState, reloadSession: () => v
 			return <DashboardPage session={session} />;
 		case "/playground":
 			return <PlaygroundPage session={session} />;
-		case "/docs":
-			return <DocsPage />;
 		default:
 			return <NotFoundPage path={path} />;
 	}

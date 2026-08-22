@@ -31,7 +31,7 @@ const fakeEngines = (overrides: Partial<Record<Engine, (params: EngineFetchParam
 		fetch: overrides.fetch ?? base("fetch"),
 		"proxy-fetch": overrides["proxy-fetch"] ?? base("proxy-fetch"),
 		"proxy-browser": overrides["proxy-browser"] ?? base("proxy-browser"),
-		"cf-browser": overrides["cf-browser"] ?? base("cf-browser"),
+		browser: overrides.browser ?? base("browser"),
 	} satisfies EngineSet;
 };
 
@@ -148,7 +148,7 @@ describe("scrapePage", () => {
 	it("uploads the screenshot and charges for it", async () => {
 		const { artifacts, calls } = fakeArtifacts();
 		const engines = fakeEngines({
-			"cf-browser": (params) =>
+			browser: (params) =>
 				Promise.resolve({
 					html: PAGE_HTML,
 					url: params.url,
@@ -157,7 +157,7 @@ describe("scrapePage", () => {
 				}),
 		});
 
-		const result = await scrapePage(deps(engines, artifacts), request({ engine: "cf-browser", screenshot: true }));
+		const result = await scrapePage(deps(engines, artifacts), request({ engine: "browser", screenshot: true }));
 
 		expect(result.screenshotUrl).toBe("https://cdn.example.com/shot.png");
 		expect(calls).toEqual([{ kind: "screenshot", hint: "https://example.com/article", bytes: 5 }]);
@@ -167,11 +167,11 @@ describe("scrapePage", () => {
 	it("fails loudly when a screenshot engine returns no screenshot", async () => {
 		const { artifacts } = fakeArtifacts();
 		const engines = fakeEngines({
-			"cf-browser": (params) => Promise.resolve({ html: PAGE_HTML, url: params.url, status: 200 }),
+			browser: (params) => Promise.resolve({ html: PAGE_HTML, url: params.url, status: 200 }),
 		});
 
 		await expect(
-			scrapePage(deps(engines, artifacts), request({ engine: "cf-browser", screenshot: true })),
+			scrapePage(deps(engines, artifacts), request({ engine: "browser", screenshot: true })),
 		).rejects.toMatchObject({ code: "screenshot_failed", status: 502 });
 	});
 

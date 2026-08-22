@@ -193,7 +193,7 @@ describe("demo rate limit", () => {
 	/**
 	 * The demo endpoint is public and keyless; `DEMO_IP_LIMIT = 5` per 10 min per IP.
 	 *
-	 * With (fake) Webshare creds set in the harness, `proxyEnabled` is true, so the limiter runs.
+	 * With fake proxy settings set in the harness, `proxyEnabled` is true, so the limiter runs.
 	 * The actual proxy fetch has no egress locally, so the *allowed* calls come back as an error
 	 * (502/503) rather than 200 — that is expected and fine: the counter is incremented before the
 	 * scrape runs, so what we assert is the limiter, not the proxy.

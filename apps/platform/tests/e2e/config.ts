@@ -16,7 +16,7 @@ export const BASE_URL = `http://localhost:${PORT}`;
  *
  * - `BETTER_AUTH_SECRET` is a fixed ≥32-char dev string.
  * - `BASE_URL` matches the dev-server port so Better Auth accepts a same-origin `Origin` header.
- * - Fake `WEBSHARE_*` credentials set `proxyEnabled=true`. That matters for the demo test: with
+ * - Fake `PROXY_*` settings set `proxyEnabled=true`. That matters for the demo test: with
  *   proxy disabled the demo endpoint returns 503 *before* the rate limiter runs, so the limiter
  *   would never engage. With (fake) creds present the limiter runs; the actual proxy fetch fails
  *   (no egress) which is fine — the demo test asserts the limiter, not the proxy.
@@ -25,7 +25,8 @@ export const devVarsContent = (): string =>
 	[
 		"BETTER_AUTH_SECRET=e2e-throwaway-secret-0123456789abcdef0123456789",
 		`BASE_URL=${BASE_URL}`,
-		"WEBSHARE_PROXY_USERNAME=e2e-fake-user",
-		"WEBSHARE_PROXY_PASSWORD=e2e-fake-pass",
+		"PROXY_URL=http://127.0.0.1:9",
+		"PROXY_USERNAME=e2e-fake-user",
+		"PROXY_PASSWORD=e2e-fake-pass",
 		"",
 	].join("\n");

@@ -14,8 +14,9 @@ const envSchema = z.object({
 	STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 	STRIPE_METERED_PRICE_ID: z.string().startsWith("price_").optional(),
 
-	WEBSHARE_PROXY_USERNAME: z.string().optional(),
-	WEBSHARE_PROXY_PASSWORD: z.string().optional(),
+	PROXY_URL: z.string().url().optional(),
+	PROXY_USERNAME: z.string().optional(),
+	PROXY_PASSWORD: z.string().optional(),
 
 	GITHUB_CLIENT_ID: z.string().optional(),
 	GITHUB_CLIENT_SECRET: z.string().optional(),
@@ -24,7 +25,7 @@ const envSchema = z.object({
 export type AppConfig = z.infer<typeof envSchema> & {
 	/** Stripe fully configured — when false, only the free allowance is served. */
 	billingEnabled: boolean;
-	/** Webshare credentials present — gates `proxy-fetch` / `proxy-browser`. */
+	/** Rotating-proxy gateway configured — gates `proxy-fetch` / `proxy-browser`. */
 	proxyEnabled: boolean;
 	githubLoginEnabled: boolean;
 };
@@ -35,7 +36,7 @@ export const loadConfig = (env: Env): AppConfig => {
 	return {
 		...parsed,
 		billingEnabled: Boolean(parsed.STRIPE_SECRET_KEY && parsed.STRIPE_WEBHOOK_SECRET && parsed.STRIPE_METERED_PRICE_ID),
-		proxyEnabled: Boolean(parsed.WEBSHARE_PROXY_USERNAME && parsed.WEBSHARE_PROXY_PASSWORD),
+		proxyEnabled: Boolean(parsed.PROXY_URL && parsed.PROXY_USERNAME && parsed.PROXY_PASSWORD),
 		githubLoginEnabled: Boolean(parsed.GITHUB_CLIENT_ID && parsed.GITHUB_CLIENT_SECRET),
 	};
 };

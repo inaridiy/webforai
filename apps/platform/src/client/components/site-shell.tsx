@@ -60,9 +60,9 @@ export const SiteShell = ({ path, session, onSignOut, children }: SiteShellProps
 					</span>
 				</Link>
 				<nav className="hidden items-center gap-1 sm:flex">
-					<Link href="/docs" className={navLinkClass(path === "/docs")}>
+					<a href="https://webforai.dev/platform/api-reference" className={navLinkClass(false)}>
 						API reference
-					</Link>
+					</a>
 					<Link href="/#pricing" className={navLinkClass(false)}>
 						Pricing
 					</Link>
@@ -77,9 +77,9 @@ export const SiteShell = ({ path, session, onSignOut, children }: SiteShellProps
 			<div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-8 text-muted-foreground text-sm sm:flex-row sm:items-center sm:justify-between">
 				<p>webforai platform — open source, self-hostable, deployed on Cloudflare Workers.</p>
 				<div className="flex items-center gap-4">
-					<Link href="/docs" className="hover:text-foreground">
+					<a href="https://webforai.dev/platform/api-reference" className="hover:text-foreground">
 						API reference
-					</Link>
+					</a>
 					<a href="https://github.com/inaridiy/webforai" className="hover:text-foreground" rel="noreferrer">
 						GitHub
 					</a>

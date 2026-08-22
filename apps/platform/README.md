@@ -3,11 +3,16 @@
 Crawl→Markdown SaaS on Cloudflare, built on [webforai](../../packages/webforai). One Worker
 serves the metered HTTP API (`/v1`), the Better Auth accounts + API keys, the Stripe
 usage-based billing, and the React dashboard. Async jobs run on Cloudflare Workflows;
-Webshare-proxied fetching and Playwright run in a Cloudflare Container via
+proxied fetching and Playwright run in a Cloudflare Container via
 [create-nodejs-fn](https://github.com/inaridiy/create-nodejs-fn).
 
 Design ledger: [`docs/specs/platform/`](../../docs/specs/platform/) (scope, architecture,
-API, billing). Everything here is OSS and self-hostable on your own Cloudflare account.
+API, billing). User documentation lives on the docs site:
+[webforai.dev/platform](https://webforai.dev/platform) (overview, API reference, billing) —
+the SPA intentionally has no docs page of its own. Everything here is OSS and self-hostable
+on your own Cloudflare account. Official clients: the
+[`@webforai/platform`](../../packages/platform) TypeScript client and the `webforai` CLI
+(`npx webforai <url> --engine browser`).
 
 ## API in one minute
 
@@ -19,7 +24,7 @@ curl -X POST https://<your-host>/v1/scrape \
 
 # Rendered in a real browser with screenshot (5+1 credits)
 curl -X POST https://<your-host>/v1/scrape \
-  -d '{ "url": "https://example.com", "engine": "cf-browser", "screenshot": true }' ...
+  -d '{ "url": "https://example.com", "engine": "browser", "screenshot": true }' ...
 
 # Async jobs (Workflows; results retained 7 days)
 curl -X POST https://<your-host>/v1/batch -d '{ "urls": ["https://a", "https://b"] }' ...
@@ -28,9 +33,9 @@ curl https://<your-host>/v1/jobs/<jobId>          # status
 curl https://<your-host>/v1/jobs/<jobId>/results  # paged results
 ```
 
-Engines: `fetch` (Workers fetch, 1 credit), `proxy-fetch` (Webshare rotating proxy via
-container, 2), `proxy-browser` (Playwright + Webshare in container, 5, screenshots),
-`cf-browser` (Cloudflare Browser Run, 5, screenshots). `rehostImages: true` re-uploads the
+Engines: `fetch` (Workers fetch, 1 credit), `browser` (Browser Run rendering, 5,
+screenshots), `proxy-fetch` (rotating proxy via container, 2), `proxy-browser`
+(Playwright behind the proxy in container, 5, screenshots). `rehostImages: true` re-uploads the
 page's images to R2 behind expiring signed URLs. `"region": "us" | "eu" | "uk" | "jp" | "asia"`
 picks the proxy egress country (`auto` by default; ignored by the two non-proxy engines).
 Full contract: `docs/specs/platform/03_api.md`.
@@ -56,12 +61,13 @@ pnpm dev                                      # vite dev (first run builds the c
 ```
 
 - `.dev.vars` (gitignored) supplies secrets locally:
-  `BETTER_AUTH_SECRET` (required, ≥32 chars), `WEBSHARE_PROXY_USERNAME`/`_PASSWORD`
-  (enables proxy engines), `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_METERED_PRICE_ID`
+  `BETTER_AUTH_SECRET` (required, ≥32 chars), `PROXY_URL`/`PROXY_USERNAME`/`PROXY_PASSWORD`
+  (an HTTP rotating-proxy gateway, e.g. `PROXY_URL=http://host:port` — enables the proxy
+  engines), `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_METERED_PRICE_ID`
   (enables billing), `GITHUB_CLIENT_ID`/`_SECRET` (enables GitHub login).
   Missing optional secrets degrade explicitly: proxy engines return
   `503 engine_unavailable`, billing runs in free-allowance-only mode.
-- `cf-browser` needs a real Browser Run session (`wrangler dev --remote` semantics); the
+- `browser` needs a real Browser Run session (`wrangler dev --remote` semantics); the
   other three engines work fully locally.
 
 Manual walkthrough: open http://localhost:5173, sign up, create an API key on the
@@ -90,7 +96,10 @@ dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer
 2. `pnpm db:migrate:remote`.
 3. Billing (optional): `STRIPE_SECRET_KEY=sk_... pnpm stripe:setup`, then point a Stripe
    webhook at `https://<host>/api/auth/stripe/webhook`.
-4. Secrets: `wrangler secret put` each secret listed above; set `BASE_URL` var to your host.
+4. Secrets: `wrangler secret put` each secret listed above (proxy engines need `PROXY_URL`,
+   `PROXY_USERNAME` and `PROXY_PASSWORD` — any HTTP rotating-proxy gateway works; instances
+   deployed before 2026-08-22 must re-put these under the new names); set `BASE_URL` var to
+   your host.
 5. R2 lifecycle (artifact TTL): `wrangler r2 bucket lifecycle add webforai-platform-artifacts`
    with prefix rules for `screenshots/`, `images/`, `results/` (e.g. expire after 7 days).
 6. `pnpm deploy` (Workers Paid plan needed for Containers/Workflows/Browser Run).
@@ -98,8 +107,8 @@ dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer
 ## Billing model
 
 Single Stripe Billing Meter denominated in credits; the schedule lives in
-`src/billing/credits.ts` (engines 1/2/5/5, +1 screenshot, +1 per started 5 rehosted
-images). 500 credits/month free without a subscription; the metered subscription uses
+`src/billing/credits.ts` (`fetch` 1, `browser` 5, `proxy-fetch` 2, `proxy-browser` 5,
++1 screenshot, +1 per started 5 rehosted images). 500 credits/month free without a subscription; the metered subscription uses
 graduated tiers (first 500 at $0, then per-credit). Usage is recorded in D1
 (`usage_events`, ULID id) and mirrored to Stripe meter events with that id as the
 idempotency `identifier`; unreported rows are retried by a 15-minute cron.

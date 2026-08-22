@@ -19,8 +19,6 @@ import { FETCH_TIMEOUT_MS, HTML_REQUEST_HEADERS, MAX_HTML_BYTES, PLATFORM_USER_A
  * with the right HTTP status. Do not throw bare errors from these functions.
  */
 
-const WEBSHARE_PROXY_SERVER = "http://p.webshare.io:80";
-
 /** Error codes understood by `engines/index.ts`. Keep the two files in sync. */
 export type ContainerErrorCode =
 	| "invalid_url"
@@ -40,20 +38,21 @@ const readEnv = (name: string): string | undefined =>
 	(globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[name];
 
 /**
- * Webshare rotates the egress IP per request when the username carries the `-rotate` suffix, and
- * pins it to a country when the username carries `-{CC}-rotate`.
+ * The rotating-proxy gateway rotates the egress IP per request when the username carries the
+ * `-rotate` suffix, and pins it to a country when the username carries `-{CC}-rotate`.
  *
  * The country arrives as a plain ISO code because everything crossing the container RPC boundary
  * must be serialisable — the Worker resolves the API's coarse region to a code (`core/regions.ts`)
  * so the container never imports `core/`.
  */
-const proxyCredentials = (country?: string): { username: string; password: string } => {
-	const username = readEnv("WEBSHARE_PROXY_USERNAME");
-	const password = readEnv("WEBSHARE_PROXY_PASSWORD");
-	if (!(username && password)) {
-		throw containerError("engine_unavailable", "Webshare credentials are not present in the container environment");
+const proxyConfig = (country?: string): { server: string; username: string; password: string } => {
+	const server = readEnv("PROXY_URL");
+	const username = readEnv("PROXY_USERNAME");
+	const password = readEnv("PROXY_PASSWORD");
+	if (!(server && username && password)) {
+		throw containerError("engine_unavailable", "proxy settings are not present in the container environment");
 	}
-	return { username: buildProxyUsername(username, country), password };
+	return { server, username: buildProxyUsername(username, country), password };
 };
 
 /**
@@ -118,14 +117,17 @@ export interface ProxyBrowserResult extends ProxyFetchResult {
 }
 
 /**
- * `proxy-fetch` engine: undici through the Webshare rotating HTTP proxy.
+ * `proxy-fetch` engine: undici through the rotating HTTP proxy configured via `PROXY_URL`.
  *
  * `country` is an ISO 3166-1 alpha-2 code or `undefined` for no geo-targeting.
  */
 export const proxyFetch = nodejsFn(async (url: string, country?: string): Promise<ProxyFetchResult> => {
 	const target = assertAllowedUrl(url);
-	const { username, password } = proxyCredentials(country);
-	const proxyUri = `http://${encodeURIComponent(username)}:${encodeURIComponent(password)}@p.webshare.io:80`;
+	const { server, username, password } = proxyConfig(country);
+	const gateway = new URL(server);
+	const proxyUri = `${gateway.protocol}//${encodeURIComponent(username)}:${encodeURIComponent(password)}@${
+		gateway.host
+	}`;
 	const agent = new ProxyAgent(proxyUri);
 
 	try {
@@ -170,14 +172,14 @@ const gotoWithFallback = async (page: Page, url: string) => {
 	}
 };
 
-/** `proxy-browser` engine: Playwright Chromium behind the same Webshare proxy. */
+/** `proxy-browser` engine: Playwright Chromium behind the same rotating proxy. */
 export const proxyBrowser = nodejsFn(
 	async (url: string, screenshot: boolean, country?: string): Promise<ProxyBrowserResult> => {
 		const target = assertAllowedUrl(url);
-		const { username, password } = proxyCredentials(country);
+		const { server, username, password } = proxyConfig(country);
 		const browser = await chromium.launch({
 			headless: true,
-			proxy: { server: WEBSHARE_PROXY_SERVER, username, password },
+			proxy: { server, username, password },
 		});
 
 		try {

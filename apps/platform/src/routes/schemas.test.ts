@@ -42,7 +42,7 @@ describe("scrape body", () => {
 	});
 
 	it("accepts a screenshot on the browser engines", () => {
-		for (const engine of ["proxy-browser", "cf-browser"]) {
+		for (const engine of ["proxy-browser", "browser"]) {
 			const result = scrapeBodySchema.safeParse({ url: "https://example.com/a", engine, screenshot: true });
 			expect(result.success).toBe(true);
 		}
@@ -90,7 +90,7 @@ describe("playground body", () => {
 	});
 
 	it("accepts a screenshot on the browser engines", () => {
-		for (const engine of ["proxy-browser", "cf-browser"]) {
+		for (const engine of ["proxy-browser", "browser"]) {
 			expect(playgroundBodySchema.safeParse({ url: "https://example.com/a", engine, screenshot: true }).success).toBe(
 				true,
 			);

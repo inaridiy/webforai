@@ -1,5 +1,9 @@
 # Platform Architecture
 
+Revision note (2026-08-22): Engine `cf-browser` renamed to `browser`. Proxy secrets are now
+provider-neutral: `PROXY_URL` (gateway, e.g. `http://host:port`), `PROXY_USERNAME`,
+`PROXY_PASSWORD` replace the former vendor-named username/password pair, and the gateway host
+is no longer hardcoded. All three must be present for the proxy engines to be available.
 Revision note (2026-08-10): Initial version.
 
 ## One Worker, one deployable
@@ -10,7 +14,7 @@ Revision note (2026-08-10): Initial version.
   (session-authenticated dashboard API), Stripe webhook route.
 - **React SPA dashboard** served as static assets (Workers Assets) with SPA fallback.
 - **create-nodejs-fn** Vite plugin provides `*.container.ts` functions that run in a
-  Cloudflare Container (Node.js) — used for Webshare-proxied fetch and Playwright, because
+  Cloudflare Container (Node.js) — used for proxied fetch and Playwright, because
   Workers `fetch()` cannot use third-party egress proxies and Workers cannot run full
   Playwright.
 - **Workflows**: `crawl-workflow` (WorkflowEntrypoint in the same Worker) executes async jobs
@@ -18,7 +22,7 @@ Revision note (2026-08-10): Initial version.
   retries; terminal failure still writes a `failed` job record (unhappy path is explicit).
   Step return values are capped at 1 MiB — steps therefore persist page results to KV/R2
   *inside* the step and return only small summaries (url, status, credits).
-- **Browser Run** (formerly Browser Rendering) binding for the `cf-browser` engine, via
+- **Browser Run** (formerly Browser Rendering) binding for the `browser` engine, via
   `@cloudflare/playwright`.
 
 ## Bindings
@@ -28,12 +32,12 @@ Revision note (2026-08-10): Initial version.
 | `DB` | D1 | users/sessions/api keys (Better Auth), jobs, usage ledger |
 | `JOBS_KV` | KV | job results (TTL), rate/quota counters |
 | `ARTIFACTS` | R2 | screenshots, rehosted images, oversized results (lifecycle TTL) |
-| `BROWSER` | Browser Rendering | `cf-browser` engine |
+| `BROWSER` | Browser Rendering | `browser` engine |
 | `CRAWL_WORKFLOW` | Workflows | async jobs |
 | `NODEJS_FN` | Container/DO | create-nodejs-fn runtime |
 
 Secrets: `BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
-`WEBSHARE_PROXY_USERNAME`, `WEBSHARE_PROXY_PASSWORD`, optional `GITHUB_CLIENT_ID/SECRET`.
+`PROXY_URL`, `PROXY_USERNAME`, `PROXY_PASSWORD`, optional `GITHUB_CLIENT_ID/SECRET`.
 Typed access via a zod-validated `env.ts` (fail-closed: engines whose secrets are missing are
 reported `unavailable`, not silently downgraded).
 

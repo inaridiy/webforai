@@ -10,7 +10,7 @@ import { describeZodError, onPlatformError } from "./errors";
  * The public, unauthenticated demo (`POST /v1/demo/scrape`).
  *
  * It exists so the docs site can show a real conversion without asking for a key, which makes it
- * the one route where a stranger can make us spend Webshare bandwidth. Three rules follow:
+ * the one route where a stranger can make us spend proxy bandwidth. Three rules follow:
  *
  * 1. Both rate limits are checked **before** the proxy runs, so a rejected request costs nothing.
  * 2. The limiter is **fail-closed**: a KV read or write we cannot complete denies the request
@@ -56,7 +56,7 @@ export interface DemoKv {
 
 export interface DemoDeps {
 	kv: DemoKv;
-	/** Gates the whole endpoint: without Webshare credentials there is no demo to serve. */
+	/** Gates the whole endpoint: without a configured proxy there is no demo to serve. */
 	proxyEnabled: boolean;
 	/** Runs the fixed demo scrape. Injected so tests exercise the limiter without proxy egress. */
 	runScrape(request: ScrapeRequest): Promise<ScrapeSuccess>;
@@ -248,10 +248,10 @@ export const demoRoutes = (createDeps: DemoDepsFactory) => {
 		const deps = createDeps(c.env);
 		const body = parseDemoBody(await readJson(c.req.raw));
 
-		// Before the limiter: a deployment without Webshare credentials has nothing to protect,
+		// Before the limiter: a deployment without a configured proxy has nothing to protect,
 		// and a misconfiguration must not consume the caller's demo allowance.
 		if (!deps.proxyEnabled) {
-			throw new EngineUnavailableError(DEMO_ENGINE, "the demo requires Webshare credentials");
+			throw new EngineUnavailableError(DEMO_ENGINE, "the demo requires a configured proxy");
 		}
 
 		const now = deps.now();

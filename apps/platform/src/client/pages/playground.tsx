@@ -15,20 +15,19 @@ import { LoadingRow, Spinner } from "../ui/spinner";
 
 const ENGINE_OPTIONS: SelectOption[] = [
 	{ value: "fetch", label: "fetch" },
+	{ value: "browser", label: "browser" },
 	{ value: "proxy-fetch", label: "proxy-fetch" },
 	{ value: "proxy-browser", label: "proxy-browser" },
-	{ value: "cf-browser", label: "cf-browser" },
 ];
 
 /** Shown under the engine select so the cost is visible before pressing Run. */
 const ENGINE_HINTS: Record<string, string> = {
-	fetch: "Cloudflare egress · 1 credit",
+	fetch: "Plain fetch · 1 credit",
+	browser: "Browser rendering · 5 credits",
 	// biome-ignore lint/style/useNamingConvention: engine ids are kebab-case API values
-	"proxy-fetch": "Webshare egress · 2 credits",
+	"proxy-fetch": "Rotating-proxy egress · 2 credits",
 	// biome-ignore lint/style/useNamingConvention: engine ids are kebab-case API values
 	"proxy-browser": "Headless browser via proxy · 5 credits",
-	// biome-ignore lint/style/useNamingConvention: engine ids are kebab-case API values
-	"cf-browser": "Cloudflare Browser Rendering · 5 credits",
 };
 
 const REGION_OPTIONS: SelectOption[] = [
@@ -47,7 +46,7 @@ const EXTRACTOR_OPTIONS: SelectOption[] = [
 	{ value: "none", label: "none" },
 ];
 
-const SCREENSHOT_ENGINES = new Set(["proxy-browser", "cf-browser"]);
+const SCREENSHOT_ENGINES = new Set(["browser", "proxy-browser"]);
 const PROXY_ENGINES = new Set(["proxy-fetch", "proxy-browser"]);
 
 type FormState = {

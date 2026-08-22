@@ -144,7 +144,7 @@ describe("demo scrape", () => {
 		const { app } = harness();
 		expect((await post(app, { url: "https://example.com/a", region: "mars" })).status).toBe(400);
 		expect((await post(app, { url: "not a url" })).status).toBe(400);
-		expect((await post(app, { url: "https://example.com/a", engine: "cf-browser" })).status).toBe(400);
+		expect((await post(app, { url: "https://example.com/a", engine: "browser" })).status).toBe(400);
 	});
 
 	it("is 503 when the proxy is not configured, and costs no allowance", async () => {

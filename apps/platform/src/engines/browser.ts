@@ -5,7 +5,7 @@ import { type EngineFetchParams, type FetchedPage, PlatformError } from "../core
 import { FETCH_TIMEOUT_MS, PLATFORM_USER_AGENT } from "./workers-fetch";
 
 /**
- * The `cf-browser` engine: Cloudflare Browser Run via `@cloudflare/playwright`.
+ * The `browser` engine: managed browser rendering via `@cloudflare/playwright`.
  *
  * Runs inside the Worker, so screenshot bytes need no base64 round-trip (unlike the
  * container-hosted `proxy-browser`). No proxy: egress is Cloudflare's.
@@ -28,7 +28,7 @@ const gotoWithFallback = async (page: BrowserPage, url: string) => {
 	}
 };
 
-export const cfBrowserEngine = async (binding: Env["BROWSER"], params: EngineFetchParams): Promise<FetchedPage> => {
+export const browserEngine = async (binding: Env["BROWSER"], params: EngineFetchParams): Promise<FetchedPage> => {
 	const target = assertPublicHttpUrl(params.url);
 	const browser = await launch(binding);
 
