@@ -14,7 +14,7 @@ amount; nothing else is counted — no per-seat pricing, no request tiers, no mi
 | scrape via `fetch` | 1 |
 | scrape via `proxy-fetch` | 2 |
 | scrape via `proxy-browser` | 5 |
-| scrape via `cf-browser` | 5 |
+| scrape via `browser` | 5 |
 | `screenshot` option | +1 |
 | `rehostImages` option | +1 per started 5 images |
 
@@ -56,6 +56,6 @@ the free allowance rather than disabling the account.
 
 Billing is optional. Running your own instance without `STRIPE_SECRET_KEY` starts the platform in
 free-allowance-only mode — everything works, nothing is metered externally, and you pay Cloudflare
-and Webshare directly instead. If you do want metering, `pnpm stripe:setup` creates the meter and
+and your proxy provider directly instead. If you do want metering, `pnpm stripe:setup` creates the meter and
 the metered price for you. See the
 [`apps/platform` README](https://github.com/inaridiy/webforai/tree/main/apps/platform#deploying-your-own-instance).

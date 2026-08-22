@@ -56,7 +56,7 @@ data. Versions verified against registry.npmjs.org on 2026-08-10.
   { waitUntil: "networkidle" }); await page.content(); await page.screenshot({ type: "png",
   fullPage: true })`. Local dev needs remote mode. Paid: 10 browser-hrs/mo incl, $0.09/hr,
   3→120 concurrent.
-- Workers fetch(): NO third-party proxy support (hence containers for Webshare).
+- Workers fetch(): NO third-party proxy support (hence containers for the egress proxy).
 - Workflows: `import { WorkflowEntrypoint, WorkflowStep, WorkflowEvent } from
   "cloudflare:workers"`; `NonRetryableError` from `cloudflare:workflows`. Step return ≤ 1 MiB
   → persist page results to KV inside the step, return small summaries. `step.do(name,
@@ -74,11 +74,12 @@ data. Versions verified against registry.npmjs.org on 2026-08-10.
   configured in vite.config.ts (`mcr.microsoft.com/playwright:v1.62.1-noble`, matches
   `playwright@1.62.1`). Env vars listed in `workerEnvVars` reach the container.
 
-## Webshare
+## Rotating proxy gateway (provider-neutral)
 
-- Rotating endpoint: `p.webshare.io:80` (HTTP; also 1080/3128/9999-19999), auth
-  `username:password`, append `-rotate` to username for per-request IP rotation.
-- undici: `new ProxyAgent("http://user-rotate:pass@p.webshare.io:80")` → pass as
+- Gateway endpoint comes from `PROXY_URL` (e.g. `http://<gateway-host>:<port>`), auth
+  `username:password`; providers commonly append `-rotate` to the username for per-request
+  IP rotation and `-{CC}-rotate` for country pinning.
+- undici: `new ProxyAgent("http://user-rotate:pass@<gateway-host>:<port>")` → pass as
   `dispatcher` to undici `fetch`/`request`.
-- Playwright: `chromium.launch({ proxy: { server: "http://p.webshare.io:80", username:
+- Playwright: `chromium.launch({ proxy: { server: "<PROXY_URL>", username:
   "user-rotate", password: "pass" } })`.

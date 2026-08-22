@@ -50,8 +50,8 @@ It expresses a coarse geographic preference for the egress location:
 | `jp` | Japan |
 | `asia` | Asia |
 
-It only affects the proxy engines (`proxy-fetch`, `proxy-browser`), which select a Webshare exit
-node in the requested area. The `fetch` and `cf-browser` engines egress from Cloudflare's own
+It only affects the proxy engines (`proxy-fetch`, `proxy-browser`), which select a proxy exit
+node in the requested area. The `fetch` and `browser` engines egress from Cloudflare's own
 network and ignore the field. A region is a preference, not a guarantee — if no exit node is
 available there, the request falls back to `auto`, and the response always reports the region that
 was actually used.
@@ -67,9 +67,9 @@ instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and retu
 ```jsonc
 {
   "url": "https://example.com/article",
-  "engine": "fetch",             // fetch | proxy-fetch | proxy-browser | cf-browser
+  "engine": "fetch",             // fetch | browser | proxy-fetch | proxy-browser
   "region": "auto",              // auto | us | eu | uk | jp | asia (proxy engines only)
-  "screenshot": false,           // proxy-browser / cf-browser only (400 otherwise)
+  "screenshot": false,           // browser / proxy-browser only (400 otherwise)
   "rehostImages": false,
   "async": false,
   "convert": {                   // passthrough to webforai (all optional)

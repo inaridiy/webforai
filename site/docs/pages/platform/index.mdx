@@ -39,9 +39,9 @@ they egress through a proxy, and what they cost in credits.
 | engine | how it fetches | proxy | screenshot | credits |
 | --- | --- | --- | --- | --- |
 | `fetch` | Workers `fetch()` | no | no | 1 |
-| `proxy-fetch` | Node + undici in a Cloudflare Container | Webshare | no | 2 |
-| `proxy-browser` | Playwright in a Cloudflare Container | Webshare | yes | 5 |
-| `cf-browser` | Cloudflare Browser Rendering | no | yes | 5 |
+| `browser` | Browser rendering | no | yes | 5 |
+| `proxy-fetch` | Plain fetch through a rotating proxy | yes | no | 2 |
+| `proxy-browser` | Browser rendering behind the rotating proxy | yes | yes | 5 |
 
 Use `fetch` for static HTML, the `proxy-*` engines when a site blocks datacenter IPs or you need
 [a specific region](/platform/api-reference#region), and either browser engine when the content
@@ -50,7 +50,7 @@ only exists after JavaScript runs.
 ## Options
 
 - `screenshot` — PNG of the rendered page, stored in R2 and returned as an expiring URL.
-  Browser engines only (`proxy-browser`, `cf-browser`).
+  Browser engines only (`browser`, `proxy-browser`).
 - `rehostImages` — downloads the images referenced by the resulting Markdown, re-uploads them to
   R2 with a TTL, and rewrites the Markdown to point at those copies.
 - `convert` — extraction options passed straight through to webforai (`extractor` preset,
@@ -65,7 +65,7 @@ see [Billing](/platform/billing) for the full schedule.
 ## Self-hosting
 
 Nothing here is proprietary. Deploy your own instance on your own Cloudflare account —
-D1, KV, R2, Workflows and Browser Rendering bindings, plus your own Webshare and Stripe
+D1, KV, R2, Workflows and Browser Rendering bindings, plus your own rotating-proxy and Stripe
 credentials. The setup steps live in the
 [`apps/platform` README](https://github.com/inaridiy/webforai/tree/main/apps/platform#deploying-your-own-instance).
 

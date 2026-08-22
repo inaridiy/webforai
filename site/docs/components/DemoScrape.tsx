@@ -169,8 +169,8 @@ export const DemoScrape = () => {
 			) : null}
 
 			<div className="text-[13px] opacity-60">
-				Rate-limited public demo (5 requests / 10 min per IP) running the Webshare <code>proxy-fetch</code> engine. No
-				API key required.
+				Rate-limited public demo (5 requests / 10 min per IP) running the <code>proxy-fetch</code> engine. No API key
+				required.
 			</div>
 		</div>
 	);

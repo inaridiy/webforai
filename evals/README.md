@@ -34,8 +34,8 @@ Roughly 60 captures, about 25 MB. Fetching takes a few minutes.
 Some publishers block datacenter egress. Create a gitignored `.env` at the repository root:
 
 ```sh
-# A Webshare "Proxy List" download endpoint; the harness caches and rotates the list.
-WEBFORAI_PROXY_LIST_URL=https://proxy.webshare.io/api/v2/proxy/list/download/<token>/...
+# A proxy-list download endpoint (`ip:port:user:pass` lines); the harness caches and rotates the list.
+WEBFORAI_PROXY_LIST_URL=https://<your-proxy-provider>/list/download/<token>/...
 
 # Or a single proxy.
 WEBFORAI_PROXY_URL=http://user:pass@198.51.100.7:6540

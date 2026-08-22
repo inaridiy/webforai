@@ -13,7 +13,7 @@ Four user-visible outcomes:
    link on the platform points at webforai.dev. The site docs gain a real "how to use the
    platform" guide (key creation → curl → client → CLI) and their factual drift against the
    deployed code is fixed.
-2. **No vendor / internal-operations words in the repo.** "Webshare" (the proxy vendor) is
+2. **No vendor / internal-operations words in the repo.** The egress-proxy vendor's name is
    removed everywhere — copy, comments, env var names, specs, evals, reference notes, plan
    history — replaced by provider-neutral wording and provider-neutral configuration
    (`PROXY_URL` / `PROXY_USERNAME` / `PROXY_PASSWORD` secrets). The engine id `cf-browser` is
@@ -30,18 +30,19 @@ Four user-visible outcomes:
 
 To see it working at the end: `pnpm build && node packages/webforai/dist/bin.js https://example.com`
 prints Markdown; `node packages/webforai/dist/bin.js https://example.com --json | jq .markdown`
-works; `webforai skill` prints a SKILL.md; `rg -i webshare` over tracked files returns nothing;
+works; `webforai skill` prints a SKILL.md; a case-insensitive grep for the proxy vendor's name
+over tracked files returns nothing;
 `pnpm --filter platform test` and the site build stay green.
 
 ## Progress
 
 - [x] (2026-08-22) Survey: docs site map, platform API surface map, CLI/current library API,
-      all `webshare` / `cf-browser` occurrences enumerated. Plan authored.
+      all vendor-name / `cf-browser` occurrences enumerated. Plan authored.
 - [ ] M1 platform: engine rename `cf-browser`→`browser`, proxy env genericization
       (`PROXY_URL`/`PROXY_USERNAME`/`PROXY_PASSWORD`), SPA `/docs` removal + external doc
       links, landing/playground copy, README. Gates green.
 - [ ] M2 prose sweep: specs revision notes, `docs/references`, evals, plan history,
-      root/package READMEs. `git grep -i webshare` clean.
+      root/package READMEs. Vendor-name grep clean.
 - [ ] M3 `packages/platform` (@webforai/platform) client + unit tests + README + changeset.
 - [ ] M4 CLI overhaul + `webforai skill` + tests + changeset + package README.
 - [ ] M5 site docs: `/cli` page, platform section rewrite (+ client page, usage guide),
@@ -79,12 +80,12 @@ works; `webforai skill` prints a SKILL.md; `rg -i webshare` over tracked files r
   mode, no external users). Old `usage_events.operation` rows keep the old string; the
   dashboard renders it as-is, which is acceptable audit history.
 - 2026-08-22: **Proxy configuration is provider-neutral**: secrets `PROXY_URL` (e.g.
-  `http://host:port`), `PROXY_USERNAME`, `PROXY_PASSWORD` replace `WEBSHARE_PROXY_USERNAME` /
-  `WEBSHARE_PROXY_PASSWORD` and the hardcoded `p.webshare.io` server. `proxyEnabled` now
+  `http://host:port`), `PROXY_USERNAME`, `PROXY_PASSWORD` replace the former vendor-named
+  username/password secret pair and the hardcoded gateway hostname. `proxyEnabled` now
   requires all three. The username suffix convention (`-{CC}`, `-rotate`) stays implemented
   but is described generically ("gateway encodes per-request options as username suffixes").
   **Operator migration (before next deploy): `wrangler secret put PROXY_URL` /
-  `PROXY_USERNAME` / `PROXY_PASSWORD`, then delete the old `WEBSHARE_*` secrets.**
+  `PROXY_USERNAME` / `PROXY_PASSWORD`, then delete the two old vendor-named secrets.**
 - 2026-08-22: Vendor words are scrubbed from *history* files too (`.agents/execplans/`,
   `docs/references/`) because the repo is public and the words are the secret, not the
   decisions. Reference facts that were vendor-specific are rewritten with placeholders.
@@ -177,10 +178,10 @@ ids). Update `apps/platform/README.md` (same commit: env vars, engine table, lin
 migration note). Gates: `pnpm --filter platform test|typecheck|build`.
 
 **M2 — prose sweep.** `docs/specs/platform/01..04` engine/vendor wording + revision notes;
-`docs/references/platform-research-2026-08.md` §Webshare → provider-neutral with placeholder
-hosts; `evals/src/config.ts`, `evals/src/proxy.ts`, `evals/README.md`;
+`docs/references/platform-research-2026-08.md` proxy-vendor section → provider-neutral with
+placeholder hosts; `evals/src/config.ts`, `evals/src/proxy.ts`, `evals/README.md`;
 `.agents/execplans/2026-08-10-platform.md` vendor words; root `README.md` +
-`packages/webforai/README.md` platform blurbs. Acceptance: `git grep -i webshare` → empty.
+`packages/webforai/README.md` platform blurbs. Acceptance: vendor-name grep → empty.
 
 **M3 — packages/platform.** Scaffold package (package.json name `@webforai/platform`,
 version 0.0.0, exports ESM+CJS+types, build via esbuild script mirroring webforai's
@@ -217,7 +218,8 @@ README drift pass; retrospective; final commit.
 
 ## Validation and Acceptance
 
-- `git grep -i webshare` on tracked files → no hits; `git grep -w cf-browser` → no hits.
+- case-insensitive vendor-name grep on tracked files → no hits; `git grep -w cf-browser` →
+  hits only in dated revision notes that record the rename itself.
 - `pnpm --filter platform test` green; `pnpm test` (root) green; `pnpm typecheck`,
   `pnpm build`, `pnpm --filter platform build`, `pnpm --filter site build` green;
   `pnpm format` + `pnpm lint` + `pnpm lint:repo` clean.
