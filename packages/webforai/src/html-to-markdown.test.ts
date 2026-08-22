@@ -1,7 +1,6 @@
 import { distance } from "fastest-levenshtein";
 import { describe, expect, it } from "vitest";
 import { htmlToMarkdown } from "./html-to-markdown";
-import { loadHtml } from "./loaders/fetch";
 
 const html = `
 <h1>Hello, world!</h1>
@@ -120,17 +119,6 @@ describe("htmlToMarkdown", () => {
 	});
 });
 
-describe("htmlToMarkdown E2E", () => {
-	it("Converting for good", async () => {
-		const html1 = await loadHtml("https://www.npmjs.com/package/webforai");
-		const markdown1 = htmlToMarkdown(html1, { linkAsText: true, hideImage: true });
-
-		const html2 = await loadHtml("https://github.com/inaridiy/webforai");
-		const markdown2 = htmlToMarkdown(html2, { linkAsText: true, hideImage: true });
-
-		// @ts-ignore
-
-		const d = distance(markdown1, markdown2);
-		expect(d).lte(2500); // I'd like to optimise more!
-	});
-});
+// Conversion quality on real pages is measured by the recorded-corpus suite in `evals/`
+// (see evals/src/corpus.test.ts). The old "Converting for good" test here compared two live
+// sites by edit distance, which drifted red whenever either site shipped a redesign.
