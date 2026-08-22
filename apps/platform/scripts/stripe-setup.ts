@@ -60,6 +60,10 @@ const ensureProduct = async (stripe: Stripe): Promise<Stripe.Product> => {
 	const product = await stripe.products.create({
 		name: PRODUCT_NAME,
 		description: "Usage-based crawl-to-Markdown API, billed in credits.",
+		// SaaS (business use). Accounts with Managed Payments (the default on new Stripe
+		// accounts) refuse Checkout line items whose product has no tax code.
+		// biome-ignore lint/style/useNamingConvention: Stripe API field name
+		tax_code: "txcd_10103000",
 		metadata: { [MARKER_KEY]: "true" },
 	});
 	log(`product: created ${product.id}`);

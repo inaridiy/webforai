@@ -84,6 +84,20 @@ over tracked files returns nothing;
       the same-day pivot decision — the client shipped as a subpath instead, so there is no
       second package to publish.)
 
+- [x] (2026-08-22) **Stripe live-mode cutover** (new Stripe account): `pnpm stripe:setup`
+      with the live key created meter/product/price (price_1U7Crd...); webhook endpoint
+      created via API (checkout/subscription/invoice events) with its whsec captured from
+      the creation response; live `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/
+      `STRIPE_METERED_PRICE_ID` put on the Worker. Prod D1 cleaned: 4 smoke accounts (and
+      related rows) deleted, the owner account re-linked to a freshly created live customer.
+      Live verification: signup auto-created a live customer (Worker ↔ live Stripe proven),
+      scrape billed 1 credit; checkout blocked only by the account's pending activation
+      ("cannot currently make live charges") — after Stripe approves, no further changes
+      are needed. Gotcha: new Stripe accounts default to Managed Payments, which requires a
+      product `tax_code` — set `txcd_10103000` (SaaS, business use) on the live product and
+      baked it into `stripe-setup.ts`. The live secret key transited the chat; owner should
+      roll it and re-put the Worker secret.
+
 ## Surprises & Discoveries
 
 - The platform SPA's `/docs` page and `site/docs/pages/platform/api-reference.mdx` had both
