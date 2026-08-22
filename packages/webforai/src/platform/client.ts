@@ -1,5 +1,5 @@
-import { PlatformApiError } from "./error.js";
-import { type FetchLike, type FetchResponseLike, resolveFetch } from "./fetch.js";
+import { PlatformApiError } from "./error";
+import { type FetchLike, type FetchResponseLike, resolveFetch } from "./fetch";
 import {
 	type BatchOptions,
 	type CrawlOptions,
@@ -13,7 +13,7 @@ import {
 	type ScrapeOptions,
 	type ScrapeResult,
 	isStoredPageStub,
-} from "./types.js";
+} from "./types";
 
 export const DEFAULT_BASE_URL = "https://platform.webforai.dev";
 

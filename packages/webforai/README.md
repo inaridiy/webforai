@@ -108,8 +108,8 @@ See the [changeset](/.changeset) for the full list, including the breaking chang
 [`apps/platform`](https://github.com/inaridiy/webforai/tree/main/apps/platform) is an OSS,
 self-hostable SaaS built on this library: a metered crawl→Markdown HTTP API on Cloudflare
 (Workers + Workflows + Containers + Browser Run) with Better Auth accounts/API keys and
-Stripe usage-based billing. Use it through the typed
-[`@webforai/platform`](https://www.npmjs.com/package/@webforai/platform) client or the CLI
+Stripe usage-based billing. Use it through the typed `webforai/platform` client
+(`import { createPlatformClient } from "webforai/platform"`) or the CLI
 (`npx webforai <url> --engine browser`); docs live at
 [webforai.dev/platform](https://webforai.dev/platform). See its README and the design ledger
 in `docs/specs/platform`.

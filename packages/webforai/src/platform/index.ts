@@ -5,9 +5,9 @@ export {
 	type PlatformClient,
 	type PlatformClientOptions,
 	type WaitForJobOptions,
-} from "./client.js";
-export { PlatformApiError } from "./error.js";
-export type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch.js";
+} from "./client";
+export { PlatformApiError } from "./error";
+export type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch";
 export {
 	ENGINES,
 	REGIONS,
@@ -33,4 +33,4 @@ export {
 	type ScrapeOptions,
 	type ScrapeResult,
 	type StoredPageStub,
-} from "./types.js";
+} from "./types";

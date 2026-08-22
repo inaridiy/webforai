@@ -32,11 +32,11 @@ Try it without an account on the [live demo](/#demo), or read the full [API refe
 
 ## Clients
 
-- **TypeScript** — [`@webforai/platform`](/platform/client): typed, dependency-free, with job
-  polling and result paging built in.
+- **TypeScript** — [`webforai/platform`](/platform/client), a subpath of the `webforai`
+  package: typed, dependency-free, with job polling and result paging built in.
 
   ```ts
-  import { createPlatformClient } from "@webforai/platform";
+  import { createPlatformClient } from "webforai/platform";
 
   const platform = createPlatformClient({ apiKey: process.env.WEBFORAI_API_KEY });
   const { markdown } = await platform.scrape({ url: "https://example.com", engine: "browser" });

@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { createPlatformClient } from "@webforai/platform";
 import { htmlToMarkdownWithMetadata, minimalFilter, takumiExtractor } from "../../../index";
 import type { HtmlToMarkdownOptions } from "../../../index";
+import { createPlatformClient } from "../../../platform";
 import { isUrl } from "../../utils";
 import { loadHtml } from "./loadHtml";
 import type { ResolvedRun, RunEnvelope } from "./options";

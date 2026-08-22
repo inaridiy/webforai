@@ -188,6 +188,16 @@ over tracked files returns nothing;
   error (commander's `exitOverride` mapped). No `--mode`+`--extractor` conflict handling —
   both pass through (`mode` maps to link/table/image toggles, `extractor` to the pipeline).
 
+- 2026-08-22 (publish): **`@webforai/platform` abandoned as a separate npm package** — the
+  `@webforai` npm scope could not be created (org name unavailable), publish returned E404.
+  Reversal of the earlier "client is a separate package" decision: the client now lives at
+  `packages/webforai/src/platform/` and is published as the **`webforai/platform` subpath
+  export** of the `webforai` package (exports + typesVersions entries; CLI imports it
+  relatively and bundles it into `dist/bin.js`). One published package instead of two; the
+  workspace package `packages/platform` is deleted and its 0.1.0 changelog entry folded into
+  webforai 3.0.0. `pnpm pack` had verified the workspace:^ → ^0.1.0 translation, which is
+  now moot.
+
 ## Context and Orientation
 
 Monorepo (pnpm 9, biome, vitest at root, changesets). Key paths:

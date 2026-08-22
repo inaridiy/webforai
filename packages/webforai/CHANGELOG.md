@@ -12,7 +12,7 @@
   - **`--json`** emits a machine-readable envelope (`source`, `loader`, `url`, `markdown`,
     `metadata`, plus platform fields).
   - **Platform loader**: `-l platform` (or just `--engine`/`--region`) converts via the hosted
-    webforai platform using the new `@webforai/platform` client; API key from `--api-key` or
+    webforai platform using the new `webforai/platform` client; API key from `--api-key` or
     `WEBFORAI_API_KEY`, self-hosted deployments via `--platform-url`/`WEBFORAI_PLATFORM_URL`.
   - **Agent Skills**: `webforai skill` prints an Agent Skill for this CLI; `webforai skill
 --install` installs it through Vercel's `skills` CLI (`npx skills add`), and
@@ -196,10 +196,13 @@
   - Extractors may mutate their input when `owned` is set. The library only sets it for trees it
     parsed itself, so callers passing their own HAST are unaffected unless they opt in.
 
-### Patch Changes
-
-- Updated dependencies [[`e0a6428`](https://github.com/inaridiy/webforai/commit/e0a642840f7e180d71f56b10f4cc0e56c73d6f9e)]:
-  - @webforai/platform@0.1.0
+- [`e0a6428`](https://github.com/inaridiy/webforai/commit/e0a642840f7e180d71f56b10f4cc0e56c73d6f9e) Thanks [@inaridiy](https://github.com/inaridiy)! - New `webforai/platform` subpath: a typed, dependency-free client for the hosted
+  webforai platform API. Covers `scrape` (sync and async), `batch`, `crawl`, job
+  status/results with cursor paging, `waitForJob` polling, a `jobResults` async iterator
+  that transparently downloads spilled results, and the keyless `demoScrape`. Errors
+  surface as `PlatformApiError` with the API's `code`/`status`/`retryAfter`. All I/O goes
+  through an injectable, structurally-typed `fetch` (`FetchLike`) so the client runs
+  unchanged behind Cloudflare Workers service bindings, undici/node-fetch, or test stubs.
 
 ## 2.1.1
 

@@ -2,7 +2,9 @@
 
 Revision note (2026-08-22): Engine `cf-browser` renamed to `browser`; proxy provider named
 generically (configuration moved to provider-neutral `PROXY_*` secrets). Official clients
-added: `@webforai/platform` (TypeScript) and the `webforai` CLI's platform loader.
+added: the `webforai/platform` TypeScript client (subpath export of the `webforai` npm
+package — the npm scope `@webforai` was unavailable) and the `webforai` CLI's platform
+loader.
 Revision note (2026-08-10): Initial version.
 
 ## What

@@ -10,9 +10,9 @@ Design ledger: [`docs/specs/platform/`](../../docs/specs/platform/) (scope, arch
 API, billing). User documentation lives on the docs site:
 [webforai.dev/platform](https://webforai.dev/platform) (overview, API reference, billing) —
 the SPA intentionally has no docs page of its own. Everything here is OSS and self-hostable
-on your own Cloudflare account. Official clients: the
-[`@webforai/platform`](../../packages/platform) TypeScript client and the `webforai` CLI
-(`npx webforai <url> --engine browser`).
+on your own Cloudflare account. Official clients: the `webforai/platform` TypeScript
+client (a subpath of the [`webforai`](../../packages/webforai) package) and the `webforai`
+CLI (`npx webforai <url> --engine browser`).
 
 ## API in one minute
 

@@ -362,29 +362,11 @@ importers:
         specifier: ^3.81.0
         version: 3.81.0(@cloudflare/workers-types@4.20241018.0)
 
-  packages/platform:
-    devDependencies:
-      '@tsconfig/recommended':
-        specifier: ^1.0.3
-        version: 1.0.7
-      '@types/node':
-        specifier: ^20.14.10
-        version: 20.14.10
-      rimraf:
-        specifier: ^5.0.5
-        version: 5.0.9
-      typescript:
-        specifier: ^5.4.5
-        version: 5.9.3
-
   packages/webforai:
     dependencies:
       '@clack/prompts':
         specifier: ^0.7.0
         version: 0.7.0
-      '@webforai/platform':
-        specifier: workspace:^
-        version: link:../platform
       boxen:
         specifier: ^8.0.1
         version: 8.0.1

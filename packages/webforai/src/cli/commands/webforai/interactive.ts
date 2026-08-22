@@ -1,7 +1,7 @@
 import { intro, log, outro, select, spinner, text } from "@clack/prompts";
-import { ENGINES, REGIONS } from "@webforai/platform";
 import pc from "picocolors";
 import packageInfo from "../../../../package.json";
+import { ENGINES, REGIONS } from "../../../platform";
 import { API_KEY_ENV } from "../../constants";
 import { assertContinue } from "../../helpers/assertContinue";
 import { inputOutputPath } from "../../helpers/inputOutputPath";

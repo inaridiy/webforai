@@ -2,20 +2,21 @@
 title: Platform Client (TypeScript)
 ---
 
-# TypeScript client — `@webforai/platform`
+# TypeScript client — `webforai/platform`
 
-[`@webforai/platform`](https://www.npmjs.com/package/@webforai/platform) is the official
-typed client for the platform API. It has zero dependencies and runs anywhere `fetch`
-exists: Node ≥18, browsers, Cloudflare Workers and other edge runtimes.
+The official typed client for the platform API ships **inside the `webforai` package** as
+the `webforai/platform` subpath — nothing extra to install. The module pulls in no runtime
+dependencies of its own and runs anywhere `fetch` exists: Node ≥18, browsers, Cloudflare
+Workers and other edge runtimes.
 
 ```bash
-npm i @webforai/platform
+npm i webforai
 ```
 
 ## Scrape
 
 ```ts
-import { createPlatformClient } from "@webforai/platform";
+import { createPlatformClient } from "webforai/platform";
 
 const platform = createPlatformClient({ apiKey: process.env.WEBFORAI_API_KEY });
 
@@ -72,7 +73,7 @@ Every non-2xx response throws a `PlatformApiError` carrying the API's error `cod
 on its own.
 
 ```ts
-import { PlatformApiError } from "@webforai/platform";
+import { PlatformApiError } from "webforai/platform";
 
 try {
   await platform.scrape({ url });
@@ -97,7 +98,7 @@ does not depend on lib.dom, `@types/node` or `@cloudflare/workers-types` agreein
 `fetch` is:
 
 ```ts
-import { createPlatformClient, type FetchLike } from "@webforai/platform";
+import { createPlatformClient, type FetchLike } from "webforai/platform";
 
 // Cloudflare Workers: route the client through a service binding
 const platform = createPlatformClient({

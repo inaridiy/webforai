@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createPlatformClient } from "./client.js";
-import { PlatformApiError } from "./error.js";
-import type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch.js";
-import { isStoredPageStub } from "./types.js";
+import { createPlatformClient } from "./client";
+import { PlatformApiError } from "./error";
+import type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch";
+import { isStoredPageStub } from "./types";
 
 /** Records every request and answers from a scripted queue (or a router function). */
 const stubFetch = (

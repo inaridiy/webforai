@@ -3,8 +3,9 @@
 Revision note (2026-08-22): Engine `cf-browser` renamed to `browser` (clean break, pre-launch;
 enum is now `fetch | browser | proxy-fetch | proxy-browser`). Proxy provider references made
 generic. Documented the actual results envelope (`{ jobId, status, results, cursor? }`) and
-that success responses carry no `region` field. Official clients: `@webforai/platform` and the
-`webforai` CLI (`--engine`/`--region` against this API).
+that success responses carry no `region` field. Official clients: `webforai/platform`
+(subpath export of the `webforai` package) and the `webforai` CLI (`--engine`/`--region`
+against this API).
 Revision note (2026-08-12): Added the `region` option to scrape/batch/crawl (egress
 geo-targeting, honoured by the proxy engines only) and the public `POST /v1/demo/scrape`
 endpoint (no API key, rate limited, not billed).

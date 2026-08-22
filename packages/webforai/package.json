@@ -46,6 +46,11 @@
 			"import": "./dist/index.js",
 			"require": "./dist/cjs/index.js"
 		},
+		"./platform": {
+			"types": "./dist/types/platform/index.d.ts",
+			"import": "./dist/platform/index.js",
+			"require": "./dist/cjs/platform/index.js"
+		},
 		"./loaders/playwright": {
 			"types": "./dist/types/loaders/playwright.d.ts",
 			"import": "./dist/loaders/playwright.js",
@@ -83,6 +88,9 @@
 			],
 			"loaders/puppeteer": [
 				"./dist/types/loaders/puppeteer.d.ts"
+			],
+			"platform": [
+				"./dist/types/platform/index.d.ts"
 			]
 		}
 	},
@@ -104,7 +112,6 @@
 	},
 	"dependencies": {
 		"@clack/prompts": "^0.7.0",
-		"@webforai/platform": "workspace:^",
 		"boxen": "^8.0.1",
 		"commander": "^12.1.0",
 		"hast-util-from-html": "^2.0.3",

@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { ENGINES, REGIONS } from "@webforai/platform";
+import { ENGINES, REGIONS } from "../../../platform";
 import { API_KEY_ENV, EXTRACTORS, LOADERS, MODES, PLATFORM_URL_ENV } from "../../constants";
 import type { ExtractorName, Loader, Mode } from "../../constants";
 import { isUrl } from "../../utils";
