@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { API_KEY_ENV, PLATFORM_URL_ENV } from "../../constants";
 import { UsageError, resolveRunOptions } from "./options";
 
 const FIXTURE = fileURLToPath(new URL("../../__fixtures__/sample.html", import.meta.url));
@@ -29,12 +30,12 @@ describe("resolveRunOptions", () => {
 	it("--engine implies the platform loader and requires an API key", () => {
 		expect(() => resolveRunOptions(URL_SOURCE, { engine: "browser" }, {})).toThrow(/WEBFORAI_API_KEY/);
 
-		const run = resolveRunOptions(URL_SOURCE, { engine: "browser" }, { WEBFORAI_API_KEY: "wfa_env" });
+		const run = resolveRunOptions(URL_SOURCE, { engine: "browser" }, { [API_KEY_ENV]: "wfa_env" });
 		expect(run).toMatchObject({ loader: "platform", engine: "browser", apiKey: "wfa_env" });
 	});
 
 	it("--region implies the platform loader too, and --api-key beats the environment", () => {
-		const run = resolveRunOptions(URL_SOURCE, { region: "jp", apiKey: "wfa_flag" }, { WEBFORAI_API_KEY: "wfa_env" });
+		const run = resolveRunOptions(URL_SOURCE, { region: "jp", apiKey: "wfa_flag" }, { [API_KEY_ENV]: "wfa_env" });
 		expect(run).toMatchObject({ loader: "platform", region: "jp", apiKey: "wfa_flag" });
 	});
 
@@ -51,14 +52,14 @@ describe("resolveRunOptions", () => {
 		const fromEnv = resolveRunOptions(
 			URL_SOURCE,
 			{ loader: "platform" },
-			{ WEBFORAI_API_KEY: "k", WEBFORAI_PLATFORM_URL: "https://self.example" },
+			{ [API_KEY_ENV]: "k", [PLATFORM_URL_ENV]: "https://self.example" },
 		);
 		expect(fromEnv.platformUrl).toBe("https://self.example");
 
 		const fromFlag = resolveRunOptions(
 			URL_SOURCE,
 			{ loader: "platform", platformUrl: "https://flag.example" },
-			{ WEBFORAI_API_KEY: "k", WEBFORAI_PLATFORM_URL: "https://env.example" },
+			{ [API_KEY_ENV]: "k", [PLATFORM_URL_ENV]: "https://env.example" },
 		);
 		expect(fromFlag.platformUrl).toBe("https://flag.example");
 	});

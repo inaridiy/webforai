@@ -6,10 +6,10 @@ import { isStoredPageStub } from "./types.js";
 /** Records every request and answers from a scripted queue (or a router function). */
 const stubFetch = (handler: (url: string, init?: RequestInit) => Response | Promise<Response>) => {
 	const calls: { url: string; init?: RequestInit }[] = [];
-	const impl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+	const impl = ((input: RequestInfo | URL, init?: RequestInit) => {
 		const url = String(input);
 		calls.push({ url, init });
-		return handler(url, init);
+		return Promise.resolve(handler(url, init));
 	}) as typeof fetch;
 	return { impl, calls };
 };
