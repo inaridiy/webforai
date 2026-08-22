@@ -69,9 +69,7 @@ export const signUp = async (email = uniqueEmail()): Promise<Account> => {
 		throw new Error(`sign-up failed (${res.status}): ${raw}`);
 	}
 	const parsed = JSON.parse(raw) as { user: { id: string } };
-	const cookie = (res.headers.getSetCookie?.() ?? [])
-		.map((c) => c.split(";")[0])
-		.join("; ");
+	const cookie = (res.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
 	if (!cookie) {
 		throw new Error(`sign-up returned no session cookie: ${raw}`);
 	}

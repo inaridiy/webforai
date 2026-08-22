@@ -82,6 +82,7 @@ const isPrivateIpv4 = (parts: number[]): boolean => {
 	return false;
 };
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: a flat list of prefix checks; splitting the guard would obscure it
 const isPrivateIpv6 = (host: string): boolean => {
 	const normalized = host.toLowerCase();
 	if (normalized === "::" || normalized === "::1") return true;

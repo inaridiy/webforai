@@ -26,7 +26,9 @@ const log = (message: string): void => {
 
 const findMeter = async (stripe: Stripe): Promise<Stripe.Billing.Meter | undefined> => {
 	for await (const meter of stripe.billing.meters.list({ status: "active", limit: 100 })) {
-		if (meter.event_name === METER_EVENT_NAME) return meter;
+		if (meter.event_name === METER_EVENT_NAME) {
+			return meter;
+		}
 	}
 	return undefined;
 };
@@ -90,7 +92,9 @@ const ensurePrice = async (stripe: Stripe, product: Stripe.Product, meterId: str
 
 const main = async (): Promise<void> => {
 	const secretKey = process.env.STRIPE_SECRET_KEY;
-	if (!secretKey) throw new Error("STRIPE_SECRET_KEY is required (never commit it).");
+	if (!secretKey) {
+		throw new Error("STRIPE_SECRET_KEY is required (never commit it).");
+	}
 
 	const stripe = new Stripe(secretKey);
 	const meter = await ensureMeter(stripe);
@@ -111,7 +115,6 @@ const main = async (): Promise<void> => {
 };
 
 main().catch((error: unknown) => {
-	// biome-ignore lint/suspicious/noConsoleLog: this is a CLI script
 	console.error(error instanceof Error ? error.message : error);
 	process.exitCode = 1;
 });

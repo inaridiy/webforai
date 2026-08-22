@@ -103,7 +103,7 @@ describe("batch (async job on Workflows)", () => {
 		expect(results.body.results).toHaveLength(2);
 		for (const r of results.body.results) {
 			expect(r.status).toBe("ok");
-			expect(r.markdown && r.markdown.length).toBeGreaterThan(0);
+			expect(r.markdown?.length).toBeGreaterThan(0);
 		}
 	});
 });
@@ -136,7 +136,11 @@ describe("dashboard usage", () => {
 		const account = await signUp();
 		const key = await createApiKey(account);
 
-		const scrape = await api("/v1/scrape", { method: "POST", headers: bearer(key), json: { url: "https://example.com/" } });
+		const scrape = await api("/v1/scrape", {
+			method: "POST",
+			headers: bearer(key),
+			json: { url: "https://example.com/" },
+		});
 		expect(scrape.status).toBe(200);
 
 		const usage = await api<{ monthCredits: number; freeAllowance: number }>("/api/dashboard/usage", {
@@ -201,7 +205,9 @@ describe("demo rate limit", () => {
 	 * that clients cannot spoof) in production.
 	 */
 	it("allows the first 5 (non-429) then returns 429 with Retry-After", async () => {
-		const ip = `${100 + Math.floor(Math.random() * 100)}.${Math.floor(Math.random() * 250) + 1}.${Math.floor(Math.random() * 250) + 1}.${Math.floor(Math.random() * 250) + 1}`;
+		const ip = `${100 + Math.floor(Math.random() * 100)}.${Math.floor(Math.random() * 250) + 1}.${
+			Math.floor(Math.random() * 250) + 1
+		}.${Math.floor(Math.random() * 250) + 1}`;
 		const call = () =>
 			api<{ error?: { code: string; retryAfter?: number } }>("/v1/demo/scrape", {
 				method: "POST",

@@ -22,7 +22,7 @@
 		"format:fix": "pnpm format --write .",
 		"lint": "biome check .",
 		"lint:fix": "pnpm lint --apply",
-		"lint:repo": "sherif",
+		"lint:repo": "sherif -p ./site -p ./evals -p \"./examples/*\"",
 		"typecheck": "pnpm run --filter \"./packages/**\" typecheck",
 		"ci:prepublish": "pnpm run build",
 		"ci:version": "changeset version",

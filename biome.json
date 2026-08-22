@@ -5,7 +5,9 @@
 			"worker-configuration.d.ts",
 			"package.json",
 			"apps/platform/drizzle/**",
-			"apps/platform/wrangler.jsonc"
+			"apps/platform/wrangler.jsonc",
+			"apps/platform/src/__generated__/**",
+			"apps/platform/.create-nodejs-fn/**"
 		]
 	},
 	"vcs": {
