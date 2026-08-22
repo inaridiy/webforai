@@ -8,10 +8,10 @@ import { useAsyncResult } from "../../lib/use-async";
 import { Alert } from "../../ui/alert";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import { Input } from "../../ui/input";
 import { LoadingRow } from "../../ui/spinner";
-import { TBody, TD, TH, THead, TR, Table, TableEmpty } from "../../ui/table";
+import { TBody, TD, TH, THead, TR, Table } from "../../ui/table";
 
 const listKeys = async (): Promise<Result<ApiKeySummary[]>> => {
 	try {
@@ -29,7 +29,7 @@ const RevealedKey = ({ value, onDismiss }: { value: string; onDismiss: () => voi
 	const [copied, setCopied] = useState(false);
 
 	return (
-		<div className="rounded-lg border border-accent/40 bg-accent-subtle p-4">
+		<div className="rounded-lg border border-foreground/25 bg-muted p-4">
 			<p className="font-medium text-foreground text-sm">Copy this key now — it will not be shown again.</p>
 			<div className="mt-3 flex flex-wrap items-center gap-2">
 				<code className="flex-1 overflow-x-auto rounded-md border border-border bg-card px-3 py-2 font-mono text-[0.8125rem] text-foreground">
@@ -112,7 +112,7 @@ const KeyRow = ({ apiKey, onRevoked }: { apiKey: ApiKeySummary; onRevoked: () =>
 	);
 };
 
-const CreateKeyForm = ({ onCreated }: { onCreated: (key: string) => void }) => {
+const CreateKeyForm = ({ onCreated, onCancel }: { onCreated: (key: string) => void; onCancel: () => void }) => {
 	const [name, setName] = useState("");
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -147,16 +147,20 @@ const CreateKeyForm = ({ onCreated }: { onCreated: (key: string) => void }) => {
 		<div className="flex flex-col gap-2">
 			<form className="flex flex-wrap gap-2" onSubmit={onSubmit}>
 				<Input
-					className="max-w-xs flex-1"
+					className="h-8 max-w-xs flex-1 text-[0.8125rem]"
 					id="api-key-name"
 					name="api-key-name"
 					value={name}
 					placeholder="Key name, e.g. production"
 					maxLength={64}
+					autoFocus={true}
 					onChange={(event) => setName(event.target.value)}
 				/>
-				<Button type="submit" disabled={pending}>
+				<Button size="sm" type="submit" disabled={pending}>
 					{pending ? "Creating" : "Create key"}
+				</Button>
+				<Button size="sm" variant="ghost" onClick={onCancel} disabled={pending}>
+					Cancel
 				</Button>
 			</form>
 			{error === null ? null : <Alert tone="error">{error}</Alert>}
@@ -164,57 +168,94 @@ const CreateKeyForm = ({ onCreated }: { onCreated: (key: string) => void }) => {
 	);
 };
 
-export const ApiKeysSection = () => {
+const KeysEmpty = ({ onCreate }: { onCreate: () => void }) => (
+	<div className="flex flex-col items-center gap-2 border-border/70 border-t px-5 pt-9 pb-11 text-center">
+		<p className="font-medium text-sm">No API keys yet</p>
+		<p className="text-[0.8125rem] text-muted-foreground">Create a key to start calling the data API.</p>
+		<Button size="sm" className="mt-1" onClick={onCreate}>
+			Create your first key
+		</Button>
+	</div>
+);
+
+export const ApiKeysSection = ({ className }: { className?: string }) => {
 	const { state, reload } = useAsyncResult(listKeys);
 	const [revealed, setRevealed] = useState<string | null>(null);
+	const [creating, setCreating] = useState(false);
+
+	const empty = state.status === "ready" && state.value.length === 0;
+	const showHeaderCreate = !(creating || empty);
+	const hasNotices = creating || revealed !== null || state.status === "error";
 
 	return (
-		<Card>
+		<Card className={className}>
 			<CardHeader>
-				<CardTitle>API keys</CardTitle>
-				<CardDescription>
-					Authenticate the data API with <span className="font-mono">Authorization: Bearer wfa_…</span>
-				</CardDescription>
+				<div className="flex flex-wrap items-start justify-between gap-4">
+					<div className="flex flex-col gap-1">
+						<CardTitle>API keys</CardTitle>
+						<CardDescription>
+							Authenticate the data API with <span className="font-mono">Authorization: Bearer wfa_…</span>
+						</CardDescription>
+					</div>
+					{showHeaderCreate ? (
+						<Button size="sm" onClick={() => setCreating(true)}>
+							Create key
+						</Button>
+					) : null}
+				</div>
 			</CardHeader>
-			<CardContent className="flex flex-col gap-4">
-				<CreateKeyForm
-					onCreated={(key) => {
-						setRevealed(key);
-						reload();
-					}}
-				/>
-				{revealed === null ? null : <RevealedKey value={revealed} onDismiss={() => setRevealed(null)} />}
-				{state.status === "loading" ? <LoadingRow label="Loading keys" /> : null}
-				{state.status === "error" ? (
-					<Alert tone="error">
-						{state.error}{" "}
-						<button type="button" className="underline" onClick={reload}>
-							Retry
-						</button>
-					</Alert>
-				) : null}
-				{state.status === "ready" ? (
+			{hasNotices ? (
+				<div className="flex flex-col gap-3 px-5 pb-4">
+					{creating ? (
+						<CreateKeyForm
+							onCreated={(key) => {
+								setCreating(false);
+								setRevealed(key);
+								reload();
+							}}
+							onCancel={() => setCreating(false)}
+						/>
+					) : null}
+					{revealed === null ? null : <RevealedKey value={revealed} onDismiss={() => setRevealed(null)} />}
+					{state.status === "error" ? (
+						<Alert tone="error">
+							{state.error}{" "}
+							<button type="button" className="underline" onClick={reload}>
+								Retry
+							</button>
+						</Alert>
+					) : null}
+				</div>
+			) : null}
+			{state.status === "loading" ? (
+				<div className="px-5 pb-4">
+					<LoadingRow label="Loading keys" />
+				</div>
+			) : null}
+			{empty && !creating ? <KeysEmpty onCreate={() => setCreating(true)} /> : null}
+			{state.status === "ready" && state.value.length > 0 ? (
+				<div className="pb-2">
 					<Table>
 						<THead>
 							<TR>
 								<TH>Name</TH>
-								<TH>Prefix</TH>
+								<TH>Key</TH>
 								<TH>Created</TH>
 								<TH className="text-right">Requests</TH>
-								<TH>State</TH>
-								<TH className="text-right">Actions</TH>
+								<TH>Status</TH>
+								<TH className="text-right">
+									<span className="sr-only">Actions</span>
+								</TH>
 							</TR>
 						</THead>
 						<TBody>
-							{state.value.length === 0 ? (
-								<TableEmpty colSpan={6}>No keys yet. Create one to start calling the API.</TableEmpty>
-							) : (
-								state.value.map((apiKey) => <KeyRow key={apiKey.id} apiKey={apiKey} onRevoked={reload} />)
-							)}
+							{state.value.map((apiKey) => (
+								<KeyRow key={apiKey.id} apiKey={apiKey} onRevoked={reload} />
+							))}
 						</TBody>
 					</Table>
-				) : null}
-			</CardContent>
+				</div>
+			) : null}
 		</Card>
 	);
 };

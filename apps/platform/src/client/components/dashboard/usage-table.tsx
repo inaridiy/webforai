@@ -3,13 +3,13 @@ import { formatDateTime, formatNumber } from "../../lib/format";
 import { Card, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import { TBody, TD, TH, THead, TR, Table, TableEmpty } from "../../ui/table";
 
-export const UsageTable = ({ events }: { events: UsageEvent[] }) => (
-	<Card>
+export const UsageTable = ({ events, className }: { events: UsageEvent[]; className?: string }) => (
+	<Card className={className}>
 		<CardHeader>
 			<CardTitle>Recent usage</CardTitle>
-			<CardDescription>Ledger entries written after an operation succeeded. Failures are never billed.</CardDescription>
+			<CardDescription>Ledger entries from successful operations. Failures are never billed.</CardDescription>
 		</CardHeader>
-		<div className="px-5 pb-4">
+		<div className="pb-2">
 			<Table>
 				<THead>
 					<TR>

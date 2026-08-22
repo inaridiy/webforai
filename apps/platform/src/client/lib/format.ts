@@ -20,6 +20,13 @@ export const formatDateTime = (value: string | Date | null | undefined): string 
 	}).format(date);
 };
 
+/** Billing-period label for the usage card, e.g. "Aug 2026 · resets Sep 1". */
+export const formatPeriodLabel = (now: Date = new Date()): string => {
+	const monthFormat = new Intl.DateTimeFormat("en-US", { month: "short" });
+	const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+	return `${monthFormat.format(now)} ${now.getFullYear()} · resets ${monthFormat.format(nextMonth)} 1`;
+};
+
 export const copyToClipboard = async (value: string): Promise<boolean> => {
 	try {
 		await navigator.clipboard.writeText(value);

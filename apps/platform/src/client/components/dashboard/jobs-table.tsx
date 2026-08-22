@@ -22,15 +22,15 @@ const toneFor = (status: JobStatus): BadgeTone => {
 	return "neutral";
 };
 
-export const JobsTable = () => {
+export const JobsTable = ({ className }: { className?: string }) => {
 	const { state, reload } = useAsyncResult(fetchJobs);
 	// A non-200 here means the jobs endpoint is not served yet — show the empty state, not an error.
 	const jobs = state.status === "ready" ? state.value : [];
 
 	return (
-		<Card>
+		<Card className={className}>
 			<CardHeader>
-				<div className="flex items-center justify-between gap-2">
+				<div className="flex items-start justify-between gap-2">
 					<div className="flex flex-col gap-1">
 						<CardTitle>Jobs</CardTitle>
 						<CardDescription>Batch and crawl runs from the last 30 days.</CardDescription>
@@ -40,29 +40,34 @@ export const JobsTable = () => {
 					</Button>
 				</div>
 			</CardHeader>
-			<div className="px-5 pb-4">
+			<div className="pb-2">
 				{state.status === "loading" ? (
-					<LoadingRow label="Loading jobs" />
+					<div className="px-5">
+						<LoadingRow label="Loading jobs" />
+					</div>
 				) : (
 					<Table>
 						<THead>
 							<TR>
 								<TH>Job</TH>
-								<TH>Type</TH>
 								<TH>Status</TH>
 								<TH className="text-right">Pages</TH>
 								<TH className="text-right">Credits</TH>
-								<TH>Started</TH>
+								<TH className="text-right">Started</TH>
 							</TR>
 						</THead>
 						<TBody>
 							{jobs.length === 0 ? (
-								<TableEmpty colSpan={6}>No batch or crawl jobs yet.</TableEmpty>
+								<TableEmpty colSpan={5}>No batch or crawl jobs yet.</TableEmpty>
 							) : (
 								jobs.map((job) => (
 									<TR key={job.id}>
-										<TD className="font-mono text-muted-foreground text-xs">{job.id}</TD>
-										<TD className="text-xs uppercase tracking-wide">{job.type}</TD>
+										<TD>
+											<div className="flex flex-col gap-0.5">
+												<span className="font-medium text-[0.8125rem] capitalize">{job.type}</span>
+												<span className="font-mono text-[0.6875rem] text-muted-foreground">{job.id}</span>
+											</div>
+										</TD>
 										<TD>
 											<Badge tone={toneFor(job.status)}>{job.status}</Badge>
 										</TD>
@@ -73,7 +78,7 @@ export const JobsTable = () => {
 											) : null}
 										</TD>
 										<TD className="text-right font-mono tabular">{formatNumber(job.creditsUsed)}</TD>
-										<TD className="text-muted-foreground text-xs">{formatDateTime(job.createdAt)}</TD>
+										<TD className="text-right text-muted-foreground text-xs">{formatDateTime(job.createdAt)}</TD>
 									</TR>
 								))
 							)}

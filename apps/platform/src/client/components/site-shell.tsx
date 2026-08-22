@@ -3,7 +3,7 @@ import { cn } from "../lib/cn";
 import { Link, navigate } from "../lib/router";
 import type { SessionState } from "../lib/use-session";
 import { buttonClass } from "../ui/button";
-import { Logo } from "./logo";
+import { Wordmark } from "./logo";
 
 export type SiteShellProps = {
 	path: string;
@@ -28,7 +28,7 @@ const HeaderActions = ({ session, onSignOut }: { session: SessionState; onSignOu
 				<Link href="/playground" className={buttonClass("ghost", "sm")}>
 					Playground
 				</Link>
-				<Link href="/dashboard" className={buttonClass("outline", "sm")}>
+				<Link href="/dashboard" className={buttonClass("outline", "sm", "hidden sm:inline-flex")}>
 					Dashboard
 				</Link>
 				<button type="button" onClick={onSignOut} className={buttonClass("ghost", "sm")}>
@@ -53,9 +53,8 @@ export const SiteShell = ({ path, session, onSignOut, children }: SiteShellProps
 	<div className="flex min-h-screen flex-col">
 		<header className="sticky top-0 z-20 border-border border-b bg-background/85 backdrop-blur">
 			<div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-5">
-				<Link href="/" className="flex items-center gap-2 text-foreground" aria-label="webforai platform home">
-					<Logo />
-					<span className="font-mono font-semibold text-[0.9375rem] tracking-tight">webforai</span>
+				<Link href="/" className="flex items-center gap-2.5 text-foreground" aria-label="webforai platform home">
+					<Wordmark className="h-5 w-auto" />
 					<span className="hidden rounded border border-border px-1.5 py-0.5 font-mono text-[0.625rem] text-muted-foreground uppercase tracking-wider sm:inline">
 						platform
 					</span>

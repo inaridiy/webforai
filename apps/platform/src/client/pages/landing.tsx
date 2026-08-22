@@ -93,7 +93,7 @@ const Engines = () => (
 				The engine decides how the HTML is fetched; extraction and Markdown conversion are identical across all of them.
 				Pick the cheapest one that gets past the origin.
 			</p>
-			<div className="mt-8 rounded-xl border border-border bg-card px-5 py-2">
+			<div className="mt-8 rounded-xl border border-border bg-card py-2">
 				<Table>
 					<THead>
 						<TR>

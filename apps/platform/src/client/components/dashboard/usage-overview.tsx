@@ -1,12 +1,13 @@
 import { useState } from "react";
 import type { SubscriptionStatus, UsageSummary } from "../../lib/api";
 import { openBillingPortal, startCheckout } from "../../lib/api";
-import { formatNumber } from "../../lib/format";
+import { cn } from "../../lib/cn";
+import { formatNumber, formatPeriodLabel } from "../../lib/format";
 import { Alert } from "../../ui/alert";
 import type { BadgeTone } from "../../ui/badge";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../ui/card";
 import { Progress } from "../../ui/progress";
 import { Spinner } from "../../ui/spinner";
 
@@ -34,7 +35,7 @@ const statusCopy: Record<SubscriptionStatus, string> = {
 	canceled: "The subscription was canceled. Only the free allowance is served.",
 };
 
-const CreditsCard = ({ usage }: { usage: UsageSummary }) => {
+export const CreditsCard = ({ usage, className }: { usage: UsageSummary; className?: string }) => {
 	const used = usage.monthCredits;
 	const allowance = usage.freeAllowance;
 	const remaining = Math.max(0, allowance - used);
@@ -42,15 +43,19 @@ const CreditsCard = ({ usage }: { usage: UsageSummary }) => {
 	const tone = overAllowance ? "destructive" : used / Math.max(1, allowance) > 0.8 ? "warning" : "accent";
 
 	return (
-		<Card>
+		<Card className={cn("flex flex-col", className)}>
 			<CardHeader>
-				<CardTitle>Credits this month</CardTitle>
-				<CardDescription>Calendar month, counted from the local usage ledger.</CardDescription>
+				<div className="flex flex-wrap items-baseline justify-between gap-3">
+					<CardTitle>Credits this month</CardTitle>
+					<span className="font-mono text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
+						{formatPeriodLabel()}
+					</span>
+				</div>
 			</CardHeader>
-			<CardContent className="flex flex-col gap-4">
-				<div className="flex items-baseline gap-2">
-					<span className="font-mono text-4xl tabular tracking-tight">{formatNumber(used)}</span>
-					<span className="font-mono text-muted-foreground text-sm tabular">/ {formatNumber(allowance)} free</span>
+			<CardContent className="flex flex-1 flex-col justify-end gap-4">
+				<div className="flex items-baseline gap-2.5">
+					<span className="font-mono text-5xl tracking-tight">{formatNumber(used)}</span>
+					<span className="font-mono text-muted-foreground text-sm">/ {formatNumber(allowance)} free</span>
 				</div>
 				<Progress value={used} max={allowance} tone={tone} />
 				<p className="text-muted-foreground text-sm">
@@ -63,7 +68,7 @@ const CreditsCard = ({ usage }: { usage: UsageSummary }) => {
 	);
 };
 
-const BillingCard = ({ usage }: { usage: UsageSummary }) => {
+export const BillingCard = ({ usage, className }: { usage: UsageSummary; className?: string }) => {
 	const [pending, setPending] = useState<"none" | "checkout" | "portal">("none");
 	const [error, setError] = useState<string | null>(null);
 
@@ -82,7 +87,7 @@ const BillingCard = ({ usage }: { usage: UsageSummary }) => {
 	};
 
 	return (
-		<Card>
+		<Card className={cn("flex flex-col", className)}>
 			<CardHeader>
 				<div className="flex items-center gap-2">
 					<CardTitle>Subscription</CardTitle>
@@ -90,7 +95,7 @@ const BillingCard = ({ usage }: { usage: UsageSummary }) => {
 				</div>
 				<CardDescription>{statusCopy[usage.subscriptionStatus]}</CardDescription>
 			</CardHeader>
-			<CardContent className="flex flex-col gap-3">
+			<CardContent className="flex flex-1 flex-col gap-3">
 				{usage.billingEnabled ? null : (
 					<Alert tone="info">
 						Billing is not configured on this deployment. Only the free allowance is served — no Stripe keys are set.
@@ -100,6 +105,7 @@ const BillingCard = ({ usage }: { usage: UsageSummary }) => {
 				<div className="flex flex-wrap gap-2">
 					{usage.subscriptionStatus === "active" || usage.subscriptionStatus === "past_due" ? (
 						<Button
+							size="sm"
 							variant="outline"
 							onClick={() => go("portal")}
 							disabled={pending !== "none" || !usage.billingEnabled}
@@ -108,29 +114,24 @@ const BillingCard = ({ usage }: { usage: UsageSummary }) => {
 							Manage billing
 						</Button>
 					) : (
-						<Button onClick={() => go("checkout")} disabled={pending !== "none" || !usage.billingEnabled}>
+						<Button size="sm" onClick={() => go("checkout")} disabled={pending !== "none" || !usage.billingEnabled}>
 							{pending === "checkout" ? <Spinner /> : null}
 							Subscribe
 						</Button>
 					)}
 					{usage.subscriptionStatus === "none" || !usage.billingEnabled ? null : (
-						<Button variant="ghost" onClick={() => go("portal")} disabled={pending !== "none"}>
+						<Button size="sm" variant="ghost" onClick={() => go("portal")} disabled={pending !== "none"}>
 							Invoices
 						</Button>
 					)}
 				</div>
+			</CardContent>
+			<CardFooter>
 				<p className="text-muted-foreground text-xs">
 					<span className="font-mono tabular">$0.002</span> per credit past the first{" "}
 					<span className="font-mono tabular">{formatNumber(usage.freeAllowance)}</span> each month.
 				</p>
-			</CardContent>
+			</CardFooter>
 		</Card>
 	);
 };
-
-export const UsageOverview = ({ usage }: { usage: UsageSummary }) => (
-	<div className="grid gap-4 md:grid-cols-2">
-		<CreditsCard usage={usage} />
-		<BillingCard usage={usage} />
-	</div>
-);

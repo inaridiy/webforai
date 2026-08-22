@@ -24,7 +24,7 @@ export const TH = ({
 	children,
 	...rest
 }: ThHTMLAttributes<HTMLTableCellElement> & { children: ReactNode }) => (
-	<th className={cn("px-3 py-2 font-medium text-xs uppercase tracking-wide first:pl-0 last:pr-0", className)} {...rest}>
+	<th className={cn("px-3 py-2 font-medium text-xs uppercase tracking-wide first:pl-5 last:pr-5", className)} {...rest}>
 		{children}
 	</th>
 );
@@ -34,14 +34,14 @@ export const TD = ({
 	children,
 	...rest
 }: TdHTMLAttributes<HTMLTableCellElement> & { children: ReactNode }) => (
-	<td className={cn("px-3 py-2.5 align-middle first:pl-0 last:pr-0", className)} {...rest}>
+	<td className={cn("px-3 py-2.5 align-middle first:pl-5 last:pr-5", className)} {...rest}>
 		{children}
 	</td>
 );
 
 export const TableEmpty = ({ colSpan, children }: { colSpan: number; children: ReactNode }) => (
 	<tr>
-		<td className="px-3 py-10 text-center text-muted-foreground text-sm first:pl-0 last:pr-0" colSpan={colSpan}>
+		<td className="px-3 py-10 text-center text-muted-foreground text-sm first:pl-5 last:pr-5" colSpan={colSpan}>
 			{children}
 		</td>
 	</tr>
