@@ -1,4 +1,5 @@
 import { PlatformApiError } from "./error.js";
+import { type FetchLike, type FetchResponseLike, resolveFetch } from "./fetch.js";
 import {
 	type BatchOptions,
 	type CrawlOptions,
@@ -26,8 +27,14 @@ export interface PlatformClientOptions {
 	apiKey?: string;
 	/** Origin of the platform deployment; point this at your own instance when self-hosting. */
 	baseUrl?: string;
-	/** Custom fetch implementation (testing, instrumentation). Defaults to the global fetch. */
-	fetch?: typeof fetch;
+	/**
+	 * Custom fetch implementation. Defaults to the global fetch (bound to `globalThis`).
+	 *
+	 * The type is structural ({@link FetchLike}), so it works in environments whose fetch
+	 * typings differ from lib.dom — pass a Cloudflare Workers service binding
+	 * (`(url, init) => env.PLATFORM.fetch(url, init)`), undici/node-fetch, or a test stub.
+	 */
+	fetch?: FetchLike;
 }
 
 export interface WaitForJobOptions {
@@ -80,7 +87,7 @@ const sleep = (ms: number, signal?: AbortSignal): Promise<void> =>
 		signal?.addEventListener("abort", onAbort, { once: true });
 	});
 
-const parseRetryAfter = (body: unknown, response: Response): number | undefined => {
+const parseRetryAfter = (body: unknown, response: FetchResponseLike): number | undefined => {
 	const fromBody = (body as { error?: { retryAfter?: unknown } } | undefined)?.error?.retryAfter;
 	if (typeof fromBody === "number") {
 		return fromBody;
@@ -89,7 +96,7 @@ const parseRetryAfter = (body: unknown, response: Response): number | undefined 
 	return Number.isFinite(header) && header > 0 ? header : undefined;
 };
 
-const toApiError = (response: Response, body: unknown): PlatformApiError => {
+const toApiError = (response: FetchResponseLike, body: unknown): PlatformApiError => {
 	const envelope = body as { error?: { code?: unknown; message?: unknown } } | undefined;
 	const code = typeof envelope?.error?.code === "string" ? envelope.error.code : "invalid_response";
 	const message =
@@ -101,7 +108,7 @@ const toApiError = (response: Response, body: unknown): PlatformApiError => {
 
 export const createPlatformClient = (options: PlatformClientOptions = {}): PlatformClient => {
 	const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
-	const fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
+	const fetchImpl = resolveFetch(options.fetch);
 
 	const request = async <T>(path: string, init: { method: "GET" | "POST"; body?: unknown; auth: boolean }) => {
 		const headers: Record<string, string> = { accept: "application/json" };

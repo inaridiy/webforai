@@ -54,6 +54,14 @@ over tracked files returns nothing;
 - [x] (2026-08-22) M5 site docs: new `/cli` and `/platform/client` pages, platform overview
       quickstart + clients section, API-reference drift fixes, getting-started/installation
       rewrites, sidebar/nav, footer license fix. vocs build green. Commit b448ce8.
+- [x] (2026-08-22) Post-close-out follow-up (user request): `@webforai/platform`'s fetch
+      injection made robust for special runtimes (Cloudflare Workers etc.) — `options.fetch`
+      is now the structural `FetchLike` (own `src/fetch.ts`; `FetchRequestInit` /
+      `FetchResponseLike` exported) instead of `typeof fetch`, so the published d.ts no
+      longer depends on lib.dom / @types/node / workers-types agreeing; missing global fetch
+      fails at client creation with a clear message; service-binding-style plain-object test
+      added (12 client tests) and CJS runtime verified with a structural stub. Docs
+      (client.mdx + package README) and the pending changeset updated.
 - [x] (2026-08-22) M6 close-out: format/lint/lint:repo/typecheck/build green; root vitest
       305/305; platform unit 124/124; platform **e2e 16/16 against a live dev server**
       (Docker available — real D1/KV/workerd, new `PROXY_*` names and the `browser` engine id
@@ -142,6 +150,11 @@ over tracked files returns nothing;
 - 2026-08-22: M1 addendum — `landing.tsx` hero sub-copy and `index.html` meta description
   reworded ("proxied fetch, proxied browser, browser rendering"); playground engine hint for
   `browser` says "Browser rendering · 5 credits" (no "Cloudflare"): capability wording only.
+- 2026-08-22 (follow-up): fetch injection is typed structurally (`FetchLike`), not as
+  `typeof fetch` — `typeof fetch` in a published d.ts resolves against the *consumer's*
+  globals and the DOM/Node/workers-types declarations disagree; a structural
+  (url, {method, headers?, body?}) → {ok, status, headers.get, json} contract accepts the
+  global fetch, bound service bindings, undici/node-fetch and plain-object stubs everywhere.
 - 2026-08-22: M3 API shape — factory `createPlatformClient(options)` returning a plain object
   (matches repo's function-record style): `scrape`, `scrapeAsync`, `batch`, `crawl`, `getJob`,
   `getJobResults`, `waitForJob`, `jobResults` (async generator, auto-fetches R2-spilled

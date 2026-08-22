@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { createPlatformClient } from "./client.js";
 import { PlatformApiError } from "./error.js";
+import type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch.js";
 import { isStoredPageStub } from "./types.js";
 
 /** Records every request and answers from a scripted queue (or a router function). */
-const stubFetch = (handler: (url: string, init?: RequestInit) => Response | Promise<Response>) => {
-	const calls: { url: string; init?: RequestInit }[] = [];
-	const impl = ((input: RequestInfo | URL, init?: RequestInit) => {
-		const url = String(input);
+const stubFetch = (
+	handler: (url: string, init?: FetchRequestInit) => FetchResponseLike | Promise<FetchResponseLike>,
+) => {
+	const calls: { url: string; init?: FetchRequestInit }[] = [];
+	const impl: FetchLike = (url, init) => {
 		calls.push({ url, init });
 		return Promise.resolve(handler(url, init));
-	}) as typeof fetch;
+	};
 	return { impl, calls };
 };
 
@@ -46,6 +48,23 @@ describe("createPlatformClient", () => {
 		await client.scrape({ url: "https://example.com" });
 
 		expect(calls[0]?.url).toBe("https://self.example/v1/scrape");
+	});
+
+	it("accepts a minimal structural fetch — no Response class, service-binding style", async () => {
+		// Nothing DOM-shaped: exactly the FetchResponseLike surface, as a plain object. This is
+		// what a wrapped Cloudflare service binding or a bespoke edge runtime can look like.
+		const impl: FetchLike = (_url, _init) =>
+			Promise.resolve({
+				ok: true,
+				status: 200,
+				headers: { get: () => null },
+				json: () => Promise.resolve(SCRAPE_OK),
+			});
+		const client = createPlatformClient({ apiKey: "k", fetch: impl });
+
+		const result = await client.scrape({ url: "https://example.com" });
+
+		expect(result.credits).toBe(1);
 	});
 
 	it("sends async: true for scrapeAsync", async () => {

@@ -42,6 +42,22 @@ Self-hosting the platform? Point the client at your deployment:
 const platform = createPlatformClient({ apiKey, baseUrl: "https://platform.your.domain" });
 ```
 
+## Custom fetch (Cloudflare Workers, proxies, tests)
+
+All I/O goes through one injectable `fetch`; the expected `FetchLike` type is structural, so
+it is independent of lib.dom / @types/node / workers-types:
+
+```ts
+// Cloudflare Workers: send the client's requests through a service binding
+const platform = createPlatformClient({
+  apiKey: env.WEBFORAI_API_KEY,
+  fetch: (url, init) => env.PLATFORM.fetch(url, init),
+});
+```
+
+Anything accepting `(url, { method, headers?, body? })` and resolving to `{ ok, status,
+headers.get(), json() }` works — undici, node-fetch, or a plain-object stub in tests.
+
 ## Errors
 
 Every non-2xx API response throws a `PlatformApiError` with `code`, `status` and optional

@@ -89,6 +89,35 @@ try {
 
 The full list of codes and shapes lives in the [API reference](/platform/api-reference).
 
+## Custom fetch (Cloudflare Workers and other special runtimes)
+
+All I/O goes through a single injectable `fetch`. By default the client binds the global
+fetch, but you can supply your own — the expected type (`FetchLike`) is **structural**, so it
+does not depend on lib.dom, `@types/node` or `@cloudflare/workers-types` agreeing about what
+`fetch` is:
+
+```ts
+import { createPlatformClient, type FetchLike } from "@webforai/platform";
+
+// Cloudflare Workers: route the client through a service binding
+const platform = createPlatformClient({
+  apiKey: env.WEBFORAI_API_KEY,
+  fetch: (url, init) => env.PLATFORM.fetch(url, init),
+});
+
+// Or wrap for instrumentation / retries / a corporate proxy (undici, node-fetch, …)
+const logged: FetchLike = async (url, init) => {
+  console.log(init.method, url);
+  return fetch(url, init);
+};
+```
+
+Anything that accepts `(url: string, init: { method, headers?, body? })` and resolves to an
+object with `ok`, `status`, `headers.get()` and `json()` qualifies — a plain object is fine,
+no `Response` class required. The same injection point is what the client's own test suite
+uses. On runtimes without a global fetch, constructing a client without `fetch` throws a
+clear error instead of failing inside the first request.
+
 ## Demo endpoint
 
 The public, keyless demo endpoint is available too (rate-limited, truncated output):

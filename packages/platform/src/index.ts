@@ -7,6 +7,7 @@ export {
 	type WaitForJobOptions,
 } from "./client.js";
 export { PlatformApiError } from "./error.js";
+export type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch.js";
 export {
 	ENGINES,
 	REGIONS,
