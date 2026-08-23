@@ -97,6 +97,11 @@ over tracked files returns nothing;
       product `tax_code` — set `txcd_10103000` (SaaS, business use) on the live product and
       baked it into `stripe-setup.ts`. The live secret key transited the chat; owner should
       roll it and re-put the Worker secret.
+- [x] (2026-08-23) Stripe account activation approved; verified live: checkout returns a
+      real `cs_live_` URL on checkout.stripe.com and the billing portal opens on
+      billing.stripe.com. Billing is fully live. Verification account removed from D1; its
+      auto-created Stripe customer (cus_V7qHr5p1lNV1Fc, no payment method) can be deleted
+      from the Stripe dashboard if desired.
 
 ## Surprises & Discoveries
 
