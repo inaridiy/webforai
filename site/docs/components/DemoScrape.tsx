@@ -13,7 +13,7 @@ type DemoError = {
 	error?: { code?: string; message?: string; retryAfter?: number };
 };
 
-const DEFAULT_URL = "https://example.com";
+const DEFAULT_URL = "https://webforai.dev";
 
 const REGION_LABELS: Record<PlatformRegion, string> = {
 	auto: "auto (nearest)",
