@@ -110,6 +110,11 @@ page returns its (mostly empty) result with a top-level `warning` explaining tha
 JavaScript. The same `warning` appears when `auto` could not escalate (for example on a
 deployment without a browser binding).
 
+Independently of `auto`, every fetch-tier acquisition follows `<meta http-equiv="refresh">`
+redirect stubs — HTTP 200 pages whose only content is "Redirecting…" — like ordinary redirects:
+up to 3 hops, http(s) targets only, each target passing the same SSRF guard as the requested
+URL, billed as one operation. The response `url` is the final page.
+
 ### Example
 
 ```bash
@@ -248,7 +253,8 @@ curl "https://platform.webforai.dev/v1/jobs/job_.../results?cursor=..." \
 
 The public, unauthenticated endpoint behind the [demo on the home page](/#demo). No API key, no
 account, no credits — it always runs the [`auto` engine](#the-auto-engine) and truncates the
-output.
+output near 8,000 characters, cutting at a paragraph boundary and appending a visible
+`…truncated (N more characters)` notice inside the markdown.
 
 ### Request
 

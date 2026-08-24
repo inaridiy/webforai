@@ -45,7 +45,9 @@ Exit codes: `0` success, `1` runtime failure, `2` usage error.
 
 ## Loaders
 
-- **fetch** — plain HTTP fetch. Fast, no JavaScript execution.
+- **fetch** — plain HTTP fetch. Fast, no JavaScript execution. Follows
+  `<meta http-equiv="refresh">` redirect stubs (an HTTP 200 "Redirecting…" page) like
+  ordinary redirects, up to 3 hops.
 - **playwright** — renders the page in local headless Chromium first. Install it once with
   `npx playwright install chromium`.
 - **platform** — the [hosted webforai platform](/platform) fetches and converts server-side.

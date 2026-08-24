@@ -38,7 +38,10 @@ Fixes, both user-approved:
   (same engine, 1 op, SSRF per hop, cap 3; browser tier untouched) — 5 new tests, 25 green
 - [x] (2026-08-24 12:03Z) M3: demo truncation cuts at the last blank line within 500 chars
   of the limit and appends an in-markdown notice with the omitted count — 18 demo tests green
-- [ ] M4: docs (specs revision notes, platform README, site pages), full gates
+- [x] (2026-08-24 12:06Z) M4: 03_api.md revision note + behavioural rules, platform README,
+  site api-reference/cli pages; gates green (biome at the 106-warning baseline, root
+  typecheck, 202 library/eval tests, 139 platform tests, platform build + prerender gate,
+  site build)
 
 ## Surprises & discoveries
 
@@ -142,4 +145,21 @@ No new npm dependencies.
 
 ## Outcomes & retrospective
 
-(To be filled at close-out.)
+(2026-08-24, close-out) Four milestones, four commits. Acceptance holds on the final tree:
+
+- `node packages/webforai/dist/bin.js https://delight.sfc.wide.ad.jp/` — the exact command
+  that produced only "Redirecting…" — now prints the full page (25 portraits, `## メンバー`
+  present, no warning; `--json` shows the requested URL and complete markdown).
+- Platform tests prove the stub re-fetches on the same engine for 1 credit, the hop cap
+  holds, private hop targets are rejected, and browser engines are untouched.
+- Demo truncation tests prove the cut lands exactly on a blank line of the original
+  document with the omitted-count notice appended.
+
+Retrospective: (1) the reported symptom ("the extractor loses the member list") was two
+acquisition/presentation problems wearing an extraction costume — the diagnosis pass that
+ran the extractor directly against captured HTML before touching any heuristic saved a
+pointless tuning exercise; (2) meta-refresh following slotted in cleanly *because* redirect
+semantics were already a first-class concept (SSRF redirect policy, final-URL reporting) —
+the change is a redirect, not a fallback, so the no-substitution invariant needed no
+exception; (3) the truncation fix encodes the misdiagnosis risk itself (a cut must be
+visible in the artifact, not only in a flag beside it).

@@ -1,5 +1,13 @@
 # Platform API
 
+Revision note (2026-08-24, later): Fetch-tier acquisition (`fetch`, `proxy-fetch`, and
+`auto` before any escalation) now follows meta-refresh redirects: an HTTP 200 page whose
+`<meta http-equiv="refresh">` names an http(s) target (delay ≤ 10s, not the page itself)
+is re-fetched on the same engine, up to 3 hops, each hop target passing the SSRF guard.
+Billed as one operation, like HTTP redirects; the response `url` is the final page.
+Browser engines follow refreshes natively. The demo's teaser truncation now cuts at the
+last blank line within 500 chars of the 8000-char limit and appends an in-markdown notice
+naming the omitted character count (`truncated` flag unchanged).
 Revision note (2026-08-24): Added `engine: "auto"` and made it the request default
 (pre-launch change). `auto` runs the cheapest engine that can satisfy the request and, when
 the fetched HTML is a client-rendered shell (`webforai.detectClientShell`: SPA shell,
@@ -133,7 +141,7 @@ showing an empty body), no screenshot, no image rehosting, default conversion.
 
 ```jsonc
 { "url": "https://example.com/article", "region": "auto",
-  "markdown": "# ...",          // truncated to 8000 chars
+  "markdown": "# ...",          // cut near 8000 chars at a blank line, with an in-markdown notice
   "truncated": false,
   "title": "...",               // when the page has one
   "metadata": { "title": "..." } }
@@ -168,6 +176,9 @@ proxy. Constants live in `src/routes/demo.ts`.
   (per-page in async jobs — a failed page is not billed).
 - SSRF guard: public http(s) URLs only — private IP ranges, localhost, and non-standard
   ports are rejected at validation time for every engine, and re-checked in the container
-  fetcher (redirect targets included).
+  fetcher (redirect targets included). Meta-refresh hop targets pass the same guard.
+- Meta-refresh redirects: fetch-tier engines follow `<meta http-equiv="refresh">` stubs
+  (≤ 3 hops, delay ≤ 10s, http(s) targets only) before shell detection, so an HTTP 200
+  redirect page converts as its destination rather than as "Redirecting…".
 - Rate limit: per-key requests/min via Better Auth apiKey rate limiting (initial),
   plus job-level caps above.

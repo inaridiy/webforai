@@ -38,14 +38,16 @@ Engines: `auto` (default — cheapest first, escalates to browser rendering on
 client-rendered shells, bills the engine that ran, 1–5 credits), `fetch` (Workers fetch,
 1 credit), `browser` (Browser Run rendering, 5, screenshots), `proxy-fetch` (rotating proxy
 via container, 2), `proxy-browser` (Playwright behind the proxy in container, 5,
-screenshots). Responses carry a `warning` when a fetch-tier result looks like an unrendered
-shell. `rehostImages: true` re-uploads the page's images to R2 behind expiring signed URLs.
+screenshots). Fetch-tier engines follow `<meta http-equiv="refresh">` redirect stubs like
+HTTP redirects (≤ 3 hops, SSRF-guarded, one operation). Responses carry a `warning` when a
+fetch-tier result looks like an unrendered shell. `rehostImages: true` re-uploads the page's images to R2 behind expiring signed URLs.
 `"region": "us" | "eu" | "uk" | "jp" | "asia"` picks the proxy egress country (`auto` by
 default; pins `engine: "auto"` to the proxy tier, ignored by the two non-proxy engines).
 Full contract: `docs/specs/platform/03_api.md`.
 
 `POST /v1/demo/scrape` is a public, keyless, unbilled demo (fixed `auto` engine, markdown
-truncated to 8000 chars) behind both the docs-site demo and the platform landing's own
+cut near 8000 chars at a paragraph boundary with an in-markdown notice) behind both the
+docs-site demo and the platform landing's own
 "Live demo" section (raw Markdown + rendered preview side by side), limited to 5 requests /
 10 min per IP and 500 / day globally:
 

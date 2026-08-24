@@ -59,9 +59,10 @@ export const extractMetaRefresh = (html: string, baseUrl?: string): MetaRefreshT
 		if (!value) {
 			continue;
 		}
+		// The pattern's `(\d+(?:\.\d+)?)` guarantees a finite parse.
 		const delaySeconds = Number.parseFloat(value[1] ?? "");
 		const raw = (value[2] ?? value[3] ?? value[4] ?? "").trim();
-		if (!raw || !Number.isFinite(delaySeconds) || delaySeconds > MAX_META_REFRESH_DELAY_SECONDS) {
+		if (!raw || delaySeconds > MAX_META_REFRESH_DELAY_SECONDS) {
 			continue;
 		}
 

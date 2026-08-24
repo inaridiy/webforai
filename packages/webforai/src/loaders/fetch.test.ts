@@ -5,13 +5,13 @@ const stubOf = (target: string) =>
 	`<html><head><meta http-equiv="refresh" content="0; url=${target}"></head><body>Redirecting…</body></html>`;
 
 const fakeFetch = (pages: Record<string, string>) =>
-	vi.fn(async (input: RequestInfo | URL) => {
+	vi.fn((input: RequestInfo | URL) => {
 		const url = String(input);
 		const body = pages[url];
 		if (body === undefined) {
-			throw new Error(`unexpected fetch: ${url}`);
+			return Promise.reject(new Error(`unexpected fetch: ${url}`));
 		}
-		return new Response(body, { status: 200, headers: { "content-type": "text/html" } });
+		return Promise.resolve(new Response(body, { status: 200, headers: { "content-type": "text/html" } }));
 	});
 
 describe("Fetch loader", () => {
