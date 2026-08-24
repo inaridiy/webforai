@@ -39,7 +39,8 @@ export default defineConfig({
 	topNav: [
 		{ text: "Getting Started", link: "/getting-started" },
 		{ text: "Cookbook", link: "/cookbook" },
-		{ text: "Platform", link: "/platform" },
+		// The header entry opens the product itself; the docs stay reachable from the sidebar.
+		{ text: "Platform", link: "https://platform.webforai.dev" },
 		{
 			text: version, // <= should update automatically
 			items: [
