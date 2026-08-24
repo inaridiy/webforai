@@ -19,10 +19,9 @@ export default defineConfig({
 		text: "Suggest changes to this page",
 	},
 	theme: {
-		accentColor: {
-			light: "#1f8fff",
-			dark: "#4db8ff",
-		},
+		// Light-only: the demo's rendered-Markdown preview is built for the light palette.
+		colorScheme: "light",
+		accentColor: "#1f8fff",
 	},
 	ogImageUrl: {
 		"/": "https://webforai.dev/api/ogp?logo=%logo&title=%title&description=%description",

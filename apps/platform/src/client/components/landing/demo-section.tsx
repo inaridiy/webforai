@@ -82,13 +82,13 @@ const DemoResultView = ({ result }: { result: DemoResult }) => {
 			<div className="grid grid-cols-1 border-border border-t md:grid-cols-2">
 				<div className="flex min-w-0 flex-col border-border border-b md:border-r md:border-b-0">
 					<PaneHeader label="markdown" action={<CopyAction text={result.markdown} />} />
-					<pre className="max-h-[28rem] flex-1 overflow-auto px-4 py-3 font-mono text-[0.8125rem] leading-relaxed">
+					<pre className="max-h-[42rem] flex-1 overflow-auto px-4 py-3 font-mono text-[0.8125rem] leading-relaxed">
 						<code>{result.markdown.length > 0 ? result.markdown : "(empty result)"}</code>
 					</pre>
 				</div>
 				<div className="flex min-w-0 flex-col">
 					<PaneHeader label="preview" />
-					<div className="max-h-[28rem] flex-1 overflow-auto px-5 py-4">
+					<div className="max-h-[42rem] flex-1 overflow-auto px-5 py-4">
 						{frontmatter.length === 0 ? null : (
 							<div className="mb-4 overflow-x-auto rounded-md border border-border bg-muted/50 px-3.5 py-2.5 font-mono text-muted-foreground text-xs leading-relaxed">
 								{frontmatter.map((line) => (
@@ -98,7 +98,7 @@ const DemoResultView = ({ result }: { result: DemoResult }) => {
 								))}
 							</div>
 						)}
-						<Streamdown className="text-sm">{body}</Streamdown>
+						<Streamdown className="md-preview">{body}</Streamdown>
 					</div>
 				</div>
 			</div>

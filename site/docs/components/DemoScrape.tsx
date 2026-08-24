@@ -58,13 +58,13 @@ const DemoResult = ({ result, title }: { result: DemoSuccess; title: string | un
 			<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
 				<div className="min-w-0">
 					<div className="mb-1 font-mono text-[11px] uppercase tracking-wider opacity-60">markdown</div>
-					<pre className="max-h-[420px] overflow-auto rounded-lg border border-black/10 bg-black/5 p-3 text-[13px] leading-relaxed dark:border-white/20 dark:bg-white/5">
+					<pre className="max-h-[640px] overflow-auto rounded-lg border border-black/10 bg-black/5 p-3 text-[13px] leading-relaxed dark:border-white/20 dark:bg-white/5">
 						<code>{result.markdown || "(empty result)"}</code>
 					</pre>
 				</div>
 				<div className="min-w-0">
 					<div className="mb-1 font-mono text-[11px] uppercase tracking-wider opacity-60">preview</div>
-					<div className="max-h-[420px] overflow-auto rounded-lg border border-black/10 bg-white/60 px-4 py-3 dark:border-white/20 dark:bg-black/40">
+					<div className="max-h-[640px] overflow-auto rounded-lg border border-black/10 bg-white/60 px-4 py-3 dark:border-white/20 dark:bg-black/40">
 						{frontmatter.length === 0 ? null : (
 							<div className="mb-3 overflow-x-auto rounded-lg border border-black/10 bg-black/5 p-2.5 font-mono text-[12px] leading-relaxed opacity-80 dark:border-white/20 dark:bg-white/5">
 								{frontmatter.map((line) => (

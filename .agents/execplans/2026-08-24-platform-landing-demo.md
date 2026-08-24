@@ -52,7 +52,16 @@ copy verified in the deployed bundles.
       own document CSS does the typography. Both demos split YAML frontmatter off before
       rendering (raw remark mangles it) and show it as a mono metadata strip. Docs demo
       also gained the same side-by-side raw/preview layout. Platform client bundle grows
-      285→786 kB (89→240 kB gz) — code-splitting the demo section is a known follow-up. Platform version `5f77bd2f` on
+      285→786 kB (89→240 kB gz) — code-splitting the demo section is a known follow-up.
+- [x] (2026-08-24) Polish round per user feedback: demo pane height caps loosened
+      (platform 28rem→42rem, docs 420px→640px); platform gained `typography.css` (a
+      token-based type scale scoped to `.md-preview`, applied to the Streamdown pane —
+      Streamdown brings structure, this brings the type); and BOTH sites are now
+      deliberately light-only because the preview collapsed in dark mode — platform drops
+      the dark token block (`app.css`, restorable from git history), rebinds Tailwind's
+      `dark:` variant to a never-present class and ships `color-scheme: light`; the docs
+      site sets vocs `theme.colorScheme: "light"` (accentColor is now the single light
+      value). Platform version `5f77bd2f` on
       platform.webforai.dev: deployed JS bundle contains "Try the live demo" / "No conversion
       yet", deployed CSS carries `--accent:oklch(65% .191 253.6)` (light) and
       `oklch(75.1% .141 241.4)` (dark); one live `POST /v1/demo/scrape` for
