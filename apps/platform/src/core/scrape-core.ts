@@ -17,6 +17,7 @@ import {
 	type ConvertOptions,
 	type Engine,
 	type EngineSet,
+	type FetchedPage,
 	PlatformError,
 	SCREENSHOT_ENGINES,
 	type ScrapeRequest,
@@ -75,6 +76,43 @@ const resolveAuto = (req: ScrapeRequest): { base: Engine; escalation?: Engine } 
 	return proxied ? { base: "proxy-fetch", escalation: "proxy-browser" } : { base: "fetch", escalation: "browser" };
 };
 
+/**
+ * Upstream statuses after which browser rendering plausibly succeeds where a plain fetch
+ * failed: bot walls (403/406/429), challenge pages served as 503, and the Cloudflare edge
+ * 52x/530 range. Plain origin errors (404, 410, 500, 502) look identical to a browser, so
+ * escalating on those would only add cost.
+ */
+const ESCALATABLE_UPSTREAM_STATUS = new Set([403, 406, 429, 503, 520, 521, 522, 523, 524, 525, 526, 530]);
+
+/**
+ * Both fetch engines phrase upstream failures as `upstream responded <status> for <url>`
+ * (`engines/workers-fetch.ts`, `engines/node.container.ts`); the phrase is the contract
+ * this policy reads, because the container RPC flattens errors to their message.
+ */
+const UPSTREAM_STATUS_PATTERN = /upstream responded (\d{3})\b/;
+
+const isEscalatableFetchFailure = (error: unknown): boolean => {
+	if (!(error instanceof PlatformError) || error.code !== "fetch_failed") {
+		return false;
+	}
+	const status = UPSTREAM_STATUS_PATTERN.exec(error.message)?.[1];
+	// No parseable status means the request itself died (network error, timeout) — cases
+	// where the browser's different egress and fingerprint regularly get through.
+	return status === undefined || ESCALATABLE_UPSTREAM_STATUS.has(Number(status));
+};
+
+const escalationFailed = (base: Engine, cause: unknown, escalation: Engine, error: unknown): PlatformError => {
+	const causeMessage = cause instanceof Error ? cause.message : String(cause);
+	const code = error instanceof PlatformError ? error.code : "engine_failed";
+	const status = error instanceof PlatformError ? error.status : 502;
+	const detail = error instanceof Error ? error.message : String(error);
+	return new PlatformError(
+		code,
+		`engine "${base}" failed (${causeMessage}); escalation to "${escalation}" also failed: ${detail}`,
+		status,
+	);
+};
+
 const SHELL_DESCRIPTION: Record<ClientShellReason, string> = {
 	"spa-shell": "a client-side app shell whose content is built by JavaScript after load",
 	"noscript-only": "a page that requires JavaScript to show its content",
@@ -116,24 +154,44 @@ export const fetchForScrape = async (deps: ScrapeDeps, req: ScrapeRequest): Prom
 	const { base, escalation } = req.engine === "auto" ? resolveAuto(req) : { base: req.engine, escalation: undefined };
 	const params = { url: target.href, screenshot: req.screenshot, region: req.region };
 
-	let page = await deps.engines[base](params);
 	if (supportsScreenshot(base)) {
 		// Browser engines already ran the page's JavaScript; there is nothing to detect, and
 		// they follow meta refreshes themselves.
+		const page = await deps.engines[base](params);
 		return { ...page, engine: base };
 	}
 
-	// An HTTP 200 "Redirecting…" stub (`<meta http-equiv="refresh">`) is a redirect in all
-	// but status code. Follow it on the same engine — exactly like the HTTP redirects every
-	// engine already follows, and billed the same way: one operation. Each hop target passes
-	// the same SSRF guard as the requested URL.
-	for (let hop = 0; hop < MAX_META_REFRESH_HOPS; hop++) {
-		const refresh = extractMetaRefresh(page.html, page.url);
-		if (!refresh) {
-			break;
+	let page: FetchedPage;
+	try {
+		page = await deps.engines[base](params);
+
+		// An HTTP 200 "Redirecting…" stub (`<meta http-equiv="refresh">`) is a redirect in all
+		// but status code. Follow it on the same engine — exactly like the HTTP redirects every
+		// engine already follows, and billed the same way: one operation. Each hop target passes
+		// the same SSRF guard as the requested URL.
+		for (let hop = 0; hop < MAX_META_REFRESH_HOPS; hop++) {
+			const refresh = extractMetaRefresh(page.html, page.url);
+			if (!refresh) {
+				break;
+			}
+			const next = assertPublicHttpUrl(refresh.url);
+			page = await deps.engines[base]({ ...params, url: next.href });
 		}
-		const next = assertPublicHttpUrl(refresh.url);
-		page = await deps.engines[base]({ ...params, url: next.href });
+	} catch (error) {
+		// The fetch tier produced nothing at all. When the failure is one a real browser
+		// regularly gets past (bot wall, challenge, edge 52x, network refusal), `auto`
+		// escalates instead of failing — starting again from the requested URL, since the
+		// browser follows redirects itself. Anything else (plain 404s, SSRF-refused hops,
+		// oversized or non-HTML responses) is rethrown untouched.
+		if (escalation === undefined || !isEscalatableFetchFailure(error)) {
+			throw error;
+		}
+		try {
+			const rendered = await deps.engines[escalation](params);
+			return { ...rendered, engine: escalation };
+		} catch (escalationError) {
+			throw escalationFailed(base, error, escalation, escalationError);
+		}
 	}
 
 	const verdict = detectClientShell(page.html);

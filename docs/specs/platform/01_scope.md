@@ -1,5 +1,12 @@
 # Platform Scope
 
+Revision note (2026-08-24, later): `auto` also escalates on fetch-tier *failures* a browser
+plausibly gets past — bot walls (403/406/429), challenges served as 503, Cloudflare edge
+52x/530, and network-level refusals — reversing the earlier same-day decision to escalate
+on shell detection only. Owner-directed: any Cloudflare-fronted site can refuse a plain
+fetch that a browser passes, so failing hard there loses to competitors. Plain origin
+errors (404/410/500/502) still fail without escalation, and explicit engines never
+substitute.
 Revision note (2026-08-24): JS-rendering heuristics ("auto engine") promoted from non-goal
 to shipped, by owner decision: a fetch-tier scrape of a client-rendered site returned an
 empty body — including for platform.webforai.dev itself — which competitors (Firecrawl)
@@ -65,9 +72,7 @@ concrete engine that produced them.
 
 - Multi-region routing of the platform itself (the `region` option above is proxy egress
   geo-targeting, not infrastructure placement), org/team accounts, webhooks on job
-  completion (nice-to-have later), PDF conversion. Error-triggered engine fallback (base
-  engine *fails* → try the browser sibling) is deliberately still out: `auto` escalates on
-  shell detection only, so failure semantics stay single-engine.
+  completion (nice-to-have later), PDF conversion.
 
 ## Licensing / OSS
 

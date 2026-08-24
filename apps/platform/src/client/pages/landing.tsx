@@ -35,7 +35,7 @@ const scrapeSnippet = (origin: string): string => {
 const engines: { id: string; how: string; proxy: string; screenshot: string; credits: string }[] = [
 	{
 		id: "auto",
-		how: "Cheapest engine first, escalates to browser rendering when the page needs JavaScript",
+		how: "Cheapest engine first, escalates to browser rendering when the page needs JavaScript or blocks plain fetches",
 		proxy: "with region",
 		screenshot: "yes",
 		credits: "1–5",
@@ -131,7 +131,8 @@ const Engines = () => (
 			<p className="mt-2 max-w-2xl text-muted-foreground text-sm leading-relaxed">
 				The engine decides how the HTML is fetched; extraction and Markdown conversion are identical across all of them.
 				The default <span className="font-mono">auto</span> starts cheap and escalates to browser rendering when a page
-				turns out to be a client-side shell — you are billed for the engine that produced the result.
+				turns out to be a client-side shell or refuses the plain fetch — you are billed for the engine that produced the
+				result.
 			</p>
 			<div className="mt-8 rounded-xl border border-border bg-card py-2">
 				<Table>

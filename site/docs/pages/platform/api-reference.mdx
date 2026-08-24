@@ -100,10 +100,13 @@ instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and retu
 
 `auto` (the default) starts with the cheapest engine that can satisfy the request — `fetch`, or
 `proxy-fetch` when a non-`auto` [region](#region) is set, or a browser engine directly when a
-`screenshot` is requested. When the fetched HTML turns out to be a client-rendered shell (an
-empty SPA mount point, a noscript-only page, or an anti-bot interstitial), the request reruns on
-the browser sibling and returns that result. `engine` and `credits` in the response always
-reflect the engine that actually produced it, and only that engine is billed.
+`screenshot` is requested. It escalates to the browser sibling in two cases: when the fetched
+HTML turns out to be a client-rendered shell (an empty SPA mount point, a noscript-only page,
+or an anti-bot interstitial), and when the plain fetch is *refused* in a way a real browser
+regularly gets past — a bot wall (403/406/429), a challenge served as 503, a Cloudflare edge
+`52x` error, or a network-level failure. Plain origin errors (404, 500, …) are returned as
+errors without escalation: a browser would see the same thing. `engine` and `credits` in the
+response always reflect the engine that actually produced it, and only that engine is billed.
 
 Explicitly chosen engines never substitute: a `fetch`/`proxy-fetch` scrape of a client-rendered
 page returns its (mostly empty) result with a top-level `warning` explaining that the page needs

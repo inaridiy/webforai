@@ -78,6 +78,12 @@ Seeing it work: `pnpm --filter platform test` covers escalation/billing/warning 
   fallback in this iteration: error-fallback doubles the failure-semantics surface (which
   error do you report when both engines fail?) and is separable. Recorded as a future
   extension. (2026-08-24, agent)
+  - **Revised same day, owner-directed**: `auto` now also escalates on fetch-tier
+    *failures* a browser plausibly passes (403/406/429/503/520–526/530, or network-level
+    failures with no upstream status) — any Cloudflare-fronted site can refuse a plain
+    fetch that a browser serves. Plain origin errors (404/410/500/502) still fail without
+    escalation; when both tiers fail the error names both. See 01_scope.md /
+    03_api.md revision notes (2026-08-24, later). (2026-08-24)
 - **`auto` is the new default engine** for `/v1/scrape|batch|crawl`, the playground and the
   demo. The platform is pre-launch (see 03_api.md revision 2026-08-22 "clean break,
   pre-launch"), and Firecrawl-parity means the default must not return empty bodies on

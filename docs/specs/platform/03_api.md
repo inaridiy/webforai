@@ -75,11 +75,22 @@ failing, so one default can be set for a mixed-engine workload. Pricing is unaff
 ```
 
 `engine: "auto"` semantics: start with `fetch` (`proxy-fetch` when `region` ≠ `auto`;
-`browser`/`proxy-browser` directly when `screenshot` is true). If the fetched HTML is a
-client-rendered shell, rerun on the browser sibling and return that result; if the
-escalation itself fails, return the unrendered result with a `warning` instead of failing.
-Billing follows the returned `engine`. Explicitly chosen engines never substitute — a
-fetch-tier engine that hits a shell returns its result with a `warning`.
+`browser`/`proxy-browser` directly when `screenshot` is true). Two escalation triggers,
+both rerunning on the browser sibling:
+
+- **Shell**: the fetched HTML is a client-rendered shell. If this escalation itself fails,
+  the unrendered result is returned with a `warning` instead of failing.
+- **Blocked fetch** (revision 2026-08-24): the fetch tier *threw*, and the failure is one a
+  real browser regularly gets past — upstream 403/406/429/503/520–526/530, or a
+  network-level failure with no upstream status (timeout, refused connection). Plain
+  origin errors (404, 410, 500, 502), SSRF-refused targets, oversized and non-HTML
+  responses are rethrown without escalation — a browser would see the same thing. If the
+  escalation also fails, the error names both failures.
+
+Billing follows the returned `engine` — a scrape that only succeeded via the browser bills
+5, and a scrape that failed on both tiers bills nothing. Explicitly chosen engines never
+substitute — a fetch-tier engine that hits a shell returns its result with a `warning`,
+and one that hits a blocked fetch fails.
 
 ## POST /v1/batch — asynchronous, URL list
 

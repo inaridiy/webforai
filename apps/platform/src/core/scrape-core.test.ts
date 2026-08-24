@@ -402,11 +402,14 @@ describe("meta-refresh redirects", () => {
 		expect(result.warning).toBeDefined();
 	});
 
-	it("rejects a hop target that fails the SSRF guard", async () => {
+	it("rejects a hop target that fails the SSRF guard, without escalating to a browser", async () => {
 		const { artifacts } = fakeArtifacts();
 		const engines = fakeEngines({ fetch: stubServingEngine("fetch", { "/article": "http://127.0.0.1/admin" }) });
 
-		await expect(scrapePage(deps(engines, artifacts), request())).rejects.toBeInstanceOf(PlatformError);
+		await expect(scrapePage(deps(engines, artifacts), request({ engine: "auto" }))).rejects.toBeInstanceOf(
+			PlatformError,
+		);
+		expect(engineCalls.filter((call) => call.engine === "browser")).toHaveLength(0);
 	});
 
 	it("does not follow stubs returned by browser engines — they follow refreshes themselves", async () => {
@@ -417,5 +420,91 @@ describe("meta-refresh redirects", () => {
 
 		expect(engineCalls).toHaveLength(1);
 		expect(result.engine).toBe("browser");
+	});
+});
+
+const upstreamFailure = (status: number): PlatformError =>
+	new PlatformError("fetch_failed", `upstream responded ${status} for https://example.com/article`, 502);
+
+const failingFetch =
+	(error: PlatformError) =>
+	(params: EngineFetchParams): Promise<FetchedPage> => {
+		engineCalls.push({ engine: "fetch", params });
+		return Promise.reject(error);
+	};
+
+describe("auto engine: failure escalation", () => {
+	it("escalates a bot-blocked fetch (522) to the browser and bills the browser", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({ fetch: failingFetch(upstreamFailure(522)) });
+
+		const result = await scrapePage(deps(engines, artifacts), request({ engine: "auto" }));
+
+		expect(engineCalls.map((call) => call.engine)).toEqual(["fetch", "browser"]);
+		expect(result.engine).toBe("browser");
+		expect(result.credits).toBe(5);
+		expect(result.markdown).toContain("First paragraph");
+	});
+
+	it("escalates network-level failures that carry no upstream status", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({
+			fetch: failingFetch(new PlatformError("fetch_failed", "timed out after 30000ms: https://example.com", 504)),
+		});
+
+		const result = await scrapePage(deps(engines, artifacts), request({ engine: "auto" }));
+		expect(result.engine).toBe("browser");
+	});
+
+	it("does not escalate plain origin errors — a browser sees the same 404", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({ fetch: failingFetch(upstreamFailure(404)) });
+
+		await expect(scrapePage(deps(engines, artifacts), request({ engine: "auto" }))).rejects.toMatchObject({
+			code: "fetch_failed",
+		});
+		expect(engineCalls.map((call) => call.engine)).toEqual(["fetch"]);
+	});
+
+	it("never falls back for an explicitly chosen engine", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({ fetch: failingFetch(upstreamFailure(522)) });
+
+		await expect(scrapePage(deps(engines, artifacts), request({ engine: "fetch" }))).rejects.toMatchObject({
+			code: "fetch_failed",
+		});
+		expect(engineCalls.map((call) => call.engine)).toEqual(["fetch"]);
+	});
+
+	it("reports both failures when the escalation also fails", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({
+			fetch: failingFetch(upstreamFailure(522)),
+			browser: () => Promise.reject(new PlatformError("engine_failed", "render crashed", 502)),
+		});
+
+		await expect(scrapePage(deps(engines, artifacts), request({ engine: "auto" }))).rejects.toMatchObject({
+			code: "engine_failed",
+			message: expect.stringContaining('escalation to "browser" also failed'),
+		});
+	});
+
+	it("escalates from the originally requested URL when a meta-refresh hop is blocked", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({
+			fetch: (params) => {
+				engineCalls.push({ engine: "fetch", params });
+				if (new URL(params.url).pathname === "/article") {
+					return Promise.resolve({ html: redirectStubTo("/ja/"), url: params.url, status: 200 });
+				}
+				return Promise.reject(upstreamFailure(522));
+			},
+		});
+
+		const result = await scrapePage(deps(engines, artifacts), request({ engine: "auto" }));
+
+		expect(result.engine).toBe("browser");
+		const browserCall = engineCalls.find((call) => call.engine === "browser");
+		expect(browserCall?.params.url).toBe("https://example.com/article");
 	});
 });

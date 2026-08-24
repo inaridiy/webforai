@@ -23,7 +23,7 @@ const ENGINE_OPTIONS: SelectOption[] = [
 
 /** Shown under the engine select so the cost is visible before pressing Run. */
 const ENGINE_HINTS: Record<string, string> = {
-	auto: "Cheapest first, renders when the page needs JavaScript · 1–5 credits",
+	auto: "Cheapest first, renders when the page needs JavaScript or blocks fetches · 1–5 credits",
 	fetch: "Plain fetch · 1 credit",
 	browser: "Browser rendering · 5 credits",
 	// biome-ignore lint/style/useNamingConvention: engine ids are kebab-case API values
