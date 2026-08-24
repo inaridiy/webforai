@@ -36,7 +36,8 @@ Fixes, both user-approved:
   now prints the full member list (25 portraits; was 0)
 - [x] (2026-08-24 12:02Z) M2: fetch-tier engines follow meta refresh in `fetchForScrape`
   (same engine, 1 op, SSRF per hop, cap 3; browser tier untouched) — 5 new tests, 25 green
-- [ ] M3: demo truncation at a safe boundary with notice + tests
+- [x] (2026-08-24 12:03Z) M3: demo truncation cuts at the last blank line within 500 chars
+  of the limit and appends an in-markdown notice with the omitted count — 18 demo tests green
 - [ ] M4: docs (specs revision notes, platform README, site pages), full gates
 
 ## Surprises & discoveries

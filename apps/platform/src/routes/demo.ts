@@ -220,10 +220,34 @@ export interface DemoResponse {
 	metadata: Record<string, unknown>;
 }
 
-const truncate = (markdown: string): { markdown: string; truncated: boolean } =>
-	markdown.length > DEMO_MARKDOWN_LIMIT
-		? { markdown: markdown.slice(0, DEMO_MARKDOWN_LIMIT), truncated: true }
-		: { markdown, truncated: false };
+/** How far back from the limit a blank line may be and still serve as the cut point. */
+const TRUNCATION_BOUNDARY_WINDOW = 500;
+
+/**
+ * Cuts at the last blank line before the limit and says so inside the markdown itself.
+ *
+ * A hard character cut can land mid-image-tag right after a section heading, which reads as
+ * an extraction failure rather than a teaser limit — a real bug report came from exactly
+ * that. Cutting at a paragraph boundary and appending a visible notice keeps the cut honest
+ * in both the raw pane and the rendered preview; the `truncated` flag is unchanged.
+ */
+const truncate = (markdown: string): { markdown: string; truncated: boolean } => {
+	if (markdown.length <= DEMO_MARKDOWN_LIMIT) {
+		return { markdown, truncated: false };
+	}
+	const hard = markdown.slice(0, DEMO_MARKDOWN_LIMIT);
+	const boundary = hard.lastIndexOf("\n\n");
+	const kept = (
+		boundary >= DEMO_MARKDOWN_LIMIT - TRUNCATION_BOUNDARY_WINDOW ? hard.slice(0, boundary) : hard
+	).trimEnd();
+	const omitted = markdown.length - kept.length;
+	return {
+		markdown: `${kept}\n\n_…truncated (${omitted.toLocaleString(
+			"en-US",
+		)} more characters). Get an API key for the full document._`,
+		truncated: true,
+	};
+};
 
 type DemoEnv = { Bindings: Env };
 

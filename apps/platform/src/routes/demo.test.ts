@@ -128,7 +128,28 @@ describe("demo scrape", () => {
 		expect(requests[0]?.region).toBe("auto");
 	});
 
-	it("truncates long markdown and says so", async () => {
+	it("truncates long markdown at a paragraph boundary with a visible notice", async () => {
+		const long = Array.from({ length: 300 }, (_, index) => `paragraph ${index} ${"word ".repeat(10).trim()}`).join(
+			"\n\n",
+		);
+		expect(long.length).toBeGreaterThan(DEMO_MARKDOWN_LIMIT);
+		const { app } = harness({ runScrape: (request) => Promise.resolve(scrapeResult(request, long)) });
+
+		const body = (await (await post(app, { url: "https://example.com/a" })).json()) as {
+			markdown: string;
+			truncated: boolean;
+		};
+
+		expect(body.truncated).toBe(true);
+		const [kept] = body.markdown.split("\n\n_…truncated (");
+		expect(body.markdown).toContain("more characters). Get an API key for the full document._");
+		// The cut lands exactly on a blank line of the original document — never mid-paragraph.
+		expect(long.startsWith(kept as string)).toBe(true);
+		expect(long.slice((kept as string).length, (kept as string).length + 2)).toBe("\n\n");
+		expect((kept as string).length).toBeLessThanOrEqual(DEMO_MARKDOWN_LIMIT);
+	});
+
+	it("falls back to a hard cut when no blank line is near the limit", async () => {
 		const long = "x".repeat(DEMO_MARKDOWN_LIMIT + 500);
 		const { app } = harness({ runScrape: (request) => Promise.resolve(scrapeResult(request, long)) });
 
@@ -138,7 +159,8 @@ describe("demo scrape", () => {
 		};
 
 		expect(body.truncated).toBe(true);
-		expect(body.markdown).toHaveLength(DEMO_MARKDOWN_LIMIT);
+		expect(body.markdown.startsWith("x".repeat(DEMO_MARKDOWN_LIMIT))).toBe(true);
+		expect(body.markdown).toContain("_…truncated (");
 	});
 
 	it("rejects an unknown region, a bad URL and unknown keys", async () => {
