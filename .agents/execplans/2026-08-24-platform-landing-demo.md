@@ -40,4 +40,11 @@ copy verified in the deployed bundles.
       direct link to platform.webforai.dev.
 - [x] (2026-08-24) Gates green (biome format+lint clean, platform typecheck OK, 131 platform
       tests passing incl. 7 new parser tests, platform build OK, site build OK).
-- [ ] (2026-08-24) Deploy both and verify live.
+- [x] (2026-08-24) Deploy both and verify live. Platform version `5f77bd2f` on
+      platform.webforai.dev: deployed JS bundle contains "Try the live demo" / "No conversion
+      yet", deployed CSS carries `--accent:oklch(65% .191 253.6)` (light) and
+      `oklch(75.1% .141 241.4)` (dark); one live `POST /v1/demo/scrape` for
+      https://webforai.dev returned 200 with frontmattered Markdown (which the preview also
+      renders). Site version `4a59e959`: prerendered webforai.dev HTML shows the demo section
+      at `max-w-screen-lg`, input prefilled with `https://webforai.dev`, and the new
+      "Open the platform" button.
