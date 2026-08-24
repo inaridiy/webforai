@@ -1,33 +1,20 @@
-import { type FormEvent, type ReactNode, useState } from "react";
-import { Streamdown } from "streamdown";
+import { type FormEvent, useState } from "react";
 import { type DemoResult, type Result, runDemoScrape } from "../../lib/api";
-import { copyToClipboard } from "../../lib/format";
 import { Link } from "../../lib/router";
 import { Alert } from "../../ui/alert";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Select, type SelectOption } from "../../ui/select";
 import { LoadingRow, Spinner } from "../../ui/spinner";
-import "streamdown/styles.css";
+import { MarkdownPanes } from "../markdown-panes";
 
 /**
  * The public top-page demo: one URL through the unauthenticated `POST /v1/demo/scrape`
  * (fixed `auto` engine, per-IP rate limit, truncated output), shown as raw Markdown
- * and a rendered preview side by side. The preview is Streamdown (security-hardened,
- * GFM-complete); its Tailwind utilities compile via the `@source` line in `app.css` and it
- * consumes the same shadcn-style tokens the rest of the app runs on.
+ * and a rendered preview side by side (`MarkdownPanes`, shared with the playground).
  */
 
 const INITIAL_URL = "https://platform.webforai.dev";
-
-/**
- * Streamdown has no frontmatter support, and raw remark renders a leading `---` block as a
- * broken mix of headings and rules — so drop it from the preview (the raw pane shows it).
- */
-const stripFrontmatter = (markdown: string): string => {
-	const match = /^---\n[\s\S]*?\n---\n?/.exec(markdown);
-	return match === null ? markdown : markdown.slice(match[0].length);
-};
 
 const REGION_OPTIONS: SelectOption[] = [
 	{ value: "auto", label: "auto (nearest)" },
@@ -44,50 +31,10 @@ type RunState =
 	| { status: "done"; result: DemoResult }
 	| { status: "error"; error: Extract<Result<never>, { ok: false }> };
 
-const PaneHeader = ({ label, action }: { label: string; action?: ReactNode }) => (
-	// Fixed height: with the copy button on only one pane, content-driven heights diverge.
-	<div className="flex h-8 shrink-0 items-center justify-between border-border border-b bg-muted/60 px-3">
-		<span className="font-mono text-[0.6875rem] text-muted-foreground uppercase tracking-wider">{label}</span>
-		{action}
-	</div>
-);
-
-const CopyAction = ({ text }: { text: string }) => {
-	const [copied, setCopied] = useState(false);
-	return (
-		<button
-			type="button"
-			onClick={() => {
-				copyToClipboard(text).then((success) => {
-					setCopied(success);
-					window.setTimeout(() => setCopied(false), 1600);
-				});
-			}}
-			className="rounded px-1.5 py-0.5 font-mono text-[0.6875rem] text-muted-foreground uppercase tracking-wider hover:text-foreground"
-		>
-			{copied ? "copied" : "copy"}
-		</button>
-	);
-};
-
 const DemoResultView = ({ result }: { result: DemoResult }) => {
-	const body = stripFrontmatter(result.markdown);
 	return (
 		<>
-			<div className="grid grid-cols-1 border-border border-t md:grid-cols-2">
-				<div className="flex min-w-0 flex-col border-border border-b md:border-r md:border-b-0">
-					<PaneHeader label="markdown" action={<CopyAction text={result.markdown} />} />
-					<pre className="max-h-[42rem] flex-1 overflow-auto px-4 py-3 font-mono text-[0.8125rem] leading-relaxed">
-						<code>{result.markdown.length > 0 ? result.markdown : "(empty result)"}</code>
-					</pre>
-				</div>
-				<div className="flex min-w-0 flex-col">
-					<PaneHeader label="preview" />
-					<div className="max-h-[42rem] flex-1 overflow-auto px-5 py-4">
-						<Streamdown className="md-preview">{body}</Streamdown>
-					</div>
-				</div>
-			</div>
+			<MarkdownPanes markdown={result.markdown} className="border-border border-t" />
 			{result.truncated ? (
 				<div className="border-border border-t bg-muted/60 px-5 py-2 text-center text-muted-foreground text-xs">
 					Demo output is truncated —{" "}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { MarkdownPanes } from "../components/markdown-panes";
 import { type PlaygroundRequest, type PlaygroundResult, type Result, runPlaygroundScrape } from "../lib/api";
 import { cn } from "../lib/cn";
 import { copyToClipboard } from "../lib/format";
@@ -8,7 +9,6 @@ import { Alert } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { CodeBlock } from "../ui/code-block";
 import { Field, Input } from "../ui/input";
 import { Select, type SelectOption } from "../ui/select";
 import { LoadingRow, Spinner } from "../ui/spinner";
@@ -177,27 +177,15 @@ const RunError = ({ error }: { error: Extract<Result<never>, { ok: false }> }) =
 
 const ResultView = ({ result }: { result: PlaygroundResult }) => {
 	const title = metadataTitle(result.metadata);
-	const [copied, setCopied] = useState(false);
 
 	return (
 		<div className="flex flex-col gap-3">
-			<div className="flex flex-wrap items-center justify-between gap-3">
-				<div className="flex flex-wrap items-center gap-2">
-					<Badge tone="success">
-						{result.credits} credit{result.credits === 1 ? "" : "s"} used
-					</Badge>
-					<Badge tone="neutral">{result.engine}</Badge>
-					{title === undefined ? null : <span className="font-medium text-foreground text-sm">{title}</span>}
-				</div>
-				<Button
-					size="sm"
-					variant="outline"
-					onClick={() => {
-						copyToClipboard(result.markdown).then(setCopied);
-					}}
-				>
-					{copied ? "Copied" : "Copy markdown"}
-				</Button>
+			<div className="flex flex-wrap items-center gap-2">
+				<Badge tone="success">
+					{result.credits} credit{result.credits === 1 ? "" : "s"} used
+				</Badge>
+				<Badge tone="neutral">{result.engine}</Badge>
+				{title === undefined ? null : <span className="font-medium text-foreground text-sm">{title}</span>}
 			</div>
 			{result.warning === undefined ? null : (
 				<Alert tone="warning" title="Degraded result">
@@ -218,7 +206,9 @@ const ResultView = ({ result }: { result: PlaygroundResult }) => {
 					</CardContent>
 				</Card>
 			)}
-			<CodeBlock label="markdown" code={result.markdown} className="[&_pre]:max-h-[32rem] [&_pre]:overflow-auto" />
+			<div className="overflow-hidden rounded-xl border border-border bg-card text-card-foreground">
+				<MarkdownPanes markdown={result.markdown} />
+			</div>
 			{result.images === undefined || result.images.length === 0 ? null : (
 				<Card>
 					<CardHeader>
