@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { htmlToMarkdownWithMetadata, minimalFilter, takumiExtractor } from "../../../index";
+import { detectClientShell, htmlToMarkdownWithMetadata, minimalFilter, takumiExtractor } from "../../../index";
 import type { HtmlToMarkdownOptions } from "../../../index";
 import { createPlatformClient } from "../../../platform";
 import { isUrl } from "../../utils";
@@ -33,7 +33,7 @@ const convertViaPlatform = async (run: ResolvedRun): Promise<RunEnvelope> => {
 	if (run.mode !== "default") {
 		console.error("[webforai] --mode is applied by local conversion only and is ignored by the platform loader");
 	}
-	debugLog(run.debug, `platform scrape: ${run.source} (engine=${run.engine ?? "fetch"})`);
+	debugLog(run.debug, `platform scrape: ${run.source} (engine=${run.engine ?? "auto"})`);
 
 	const result = await platform.scrape({
 		url: run.source,
@@ -53,6 +53,7 @@ const convertViaPlatform = async (run: ResolvedRun): Promise<RunEnvelope> => {
 		metadata: result.metadata,
 		credits: result.credits,
 		screenshotUrl: result.screenshotUrl,
+		warning: result.warning,
 	};
 };
 
@@ -68,12 +69,20 @@ const convertLocally = async (run: ResolvedRun): Promise<RunEnvelope> => {
 		...(run.mode === "ai" ? AI_MODE_OPTIONS : {}),
 	});
 
+	// The plain-fetch loader cannot run JavaScript; when the document is a client-rendered
+	// shell, say so instead of silently printing an empty body.
+	const shell = run.loader === "fetch" ? detectClientShell(html) : undefined;
+	const warning = shell?.isShell
+		? "This page looks like it renders client-side; the fetched HTML has no readable content. Try --engine auto (hosted platform, renders JavaScript) or --loader playwright."
+		: undefined;
+
 	return {
 		source: run.source,
 		loader: run.loader,
 		url: sourceUrl,
 		markdown,
 		metadata: metadata as unknown as Record<string, unknown>,
+		warning,
 	};
 };
 
@@ -108,6 +117,9 @@ export const runCommand = async (run: ResolvedRun): Promise<void> => {
 		process.stdout.write(envelope.markdown.endsWith("\n") ? envelope.markdown : `${envelope.markdown}\n`);
 	}
 
+	if (envelope.warning) {
+		console.error(`[webforai] warning: ${envelope.warning}`);
+	}
 	if (envelope.screenshotUrl) {
 		console.error(`[webforai] screenshot (expires ~24h): ${envelope.screenshotUrl}`);
 	}

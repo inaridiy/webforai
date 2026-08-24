@@ -35,8 +35,11 @@ Seeing it work: `pnpm --filter platform test` covers escalation/billing/warning 
 - [x] (2026-08-24 11:05Z) M2: platform `auto` engine — types, schemas, scrape-core escalation,
   billing operation fix, `warning` — + tests (132 platform tests green; shell→browser bills 5,
   explicit fetch on a shell bills 1 + `warning`, failed escalation degrades with `warning`)
-- [ ] M3: demo route on `auto`; landing + playground UI options/copy
-- [ ] M4: client surface — platform wire types, CLI `--engine auto`, CLI shell hint, skill content
+- [x] (2026-08-24 11:15Z) M3: demo route on `auto` (proxy required only for geo-targeted
+  regions); landing engines table/copy, playground `auto` option + warning alert
+- [x] (2026-08-24 11:15Z) M4: client surface — `RequestedEngine` + `warning` in wire types,
+  CLI `--engine auto`, CLI shell hint on plain-fetch conversions, skill content + SKILL.md
+  regenerated (drift test caught it, as designed)
 - [ ] M5: landing prerender + hydration + build gate
 - [ ] M6: docs/specs + README/site sync, full gates (biome, typecheck, tests, build)
 

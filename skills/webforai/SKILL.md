@@ -29,9 +29,11 @@ npx webforai https://example.com --json             # machine-readable envelope 
   (`none` converts the whole page).
 - `--frontmatter` — prepend YAML front matter (title, author, canonical URL, ...).
 - `--json` — print a JSON envelope to stdout instead of raw Markdown.
-- `--engine <fetch|browser|proxy-fetch|proxy-browser>` — platform acquisition engine
-  (implies `-l platform`). `browser`/`proxy-browser` render JavaScript; `proxy-*` engines
-  egress through rotating proxies for bot-protected sites.
+- `--engine <auto|fetch|browser|proxy-fetch|proxy-browser>` — platform acquisition engine
+  (implies `-l platform`). `auto` (the platform default) starts with a plain fetch and
+  escalates to browser rendering when the page is a client-rendered shell;
+  `browser`/`proxy-browser` always render JavaScript; `proxy-*` engines egress through
+  rotating proxies for bot-protected sites.
 - `--region <auto|us|eu|uk|jp|asia>` — platform proxy egress region (implies `-l platform`).
 - `--screenshot` — platform browser engines only; the envelope carries an expiring
   `screenshotUrl`.
@@ -58,7 +60,9 @@ npx webforai https://example.com --json             # machine-readable envelope 
 ```
 
 `engine`/`region`/`credits`/`screenshotUrl` appear only for the platform loader; `output`
-only when `-o` also wrote a file.
+only when `-o` also wrote a file. A `warning` field appears when the result is probably
+degraded — most commonly a client-rendered shell fetched without JavaScript; rerun with
+`--engine auto` (or `-l playwright`) when you see one.
 
 ## Hosted platform
 
@@ -66,11 +70,12 @@ For JavaScript-heavy or bot-protected pages, the hosted platform fetches server-
 
 ```bash
 export WEBFORAI_API_KEY=wfa_...       # from https://platform.webforai.dev/dashboard
-npx webforai https://example.com --engine browser --json
+npx webforai https://example.com --engine auto --json
 ```
 
 `WEBFORAI_PLATFORM_URL` overrides the host for self-hosted deployments. Requests are metered
-in credits (fetch 1, proxy-fetch 2, browser/proxy-browser 5); failures are never billed.
+in credits (fetch 1, proxy-fetch 2, browser/proxy-browser 5; `auto` bills the engine that
+actually ran); failures are never billed.
 
 ## Exit codes
 

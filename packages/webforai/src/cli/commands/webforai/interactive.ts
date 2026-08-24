@@ -1,7 +1,7 @@
 import { intro, log, outro, select, spinner, text } from "@clack/prompts";
 import pc from "picocolors";
 import packageInfo from "../../../../package.json";
-import { ENGINES, REGIONS } from "../../../platform";
+import { REGIONS, REQUESTED_ENGINES } from "../../../platform";
 import { API_KEY_ENV } from "../../constants";
 import { assertContinue } from "../../helpers/assertContinue";
 import { inputOutputPath } from "../../helpers/inputOutputPath";
@@ -12,7 +12,8 @@ import { isUrl } from "../../utils";
 import type { CliFlags, ResolvedRun } from "./options";
 import { executeRun, writeOutputFile } from "./run";
 
-const ENGINE_HINTS: Record<(typeof ENGINES)[number], string> = {
+const ENGINE_HINTS: Record<(typeof REQUESTED_ENGINES)[number], string> = {
+	auto: "Cheapest first, renders when the page needs JavaScript · 1–5 credits",
 	fetch: "Plain fetch · 1 credit",
 	browser: "Browser rendering, screenshots · 5 credits",
 	"proxy-fetch": "Rotating-proxy egress · 2 credits",
@@ -24,8 +25,8 @@ const promptPlatformOptions = async (flags: CliFlags, env: Record<string, string
 		flags.engine ??
 		(await select({
 			message: "Select platform engine:",
-			initialValue: "fetch",
-			options: ENGINES.map((value) => ({ value: value as string, label: value, hint: ENGINE_HINTS[value] })),
+			initialValue: "auto",
+			options: REQUESTED_ENGINES.map((value) => ({ value: value as string, label: value, hint: ENGINE_HINTS[value] })),
 		}));
 	assertContinue(engine);
 

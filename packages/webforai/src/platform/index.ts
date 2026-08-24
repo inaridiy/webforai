@@ -11,6 +11,7 @@ export type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch";
 export {
 	ENGINES,
 	REGIONS,
+	REQUESTED_ENGINES,
 	isStoredPageStub,
 	type BatchOptions,
 	type ConvertOptions,
@@ -30,6 +31,7 @@ export {
 	type PageResult,
 	type PageSuccess,
 	type Region,
+	type RequestedEngine,
 	type ScrapeOptions,
 	type ScrapeResult,
 	type StoredPageStub,

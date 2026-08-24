@@ -34,6 +34,13 @@ describe("resolveRunOptions", () => {
 		expect(run).toMatchObject({ loader: "platform", engine: "browser", apiKey: "wfa_env" });
 	});
 
+	it("accepts --engine auto and rejects engines the platform does not know", () => {
+		const run = resolveRunOptions(URL_SOURCE, { engine: "auto" }, { [API_KEY_ENV]: "wfa_env" });
+		expect(run).toMatchObject({ loader: "platform", engine: "auto" });
+
+		expect(() => resolveRunOptions(URL_SOURCE, { engine: "warp" }, { [API_KEY_ENV]: "wfa_env" })).toThrow(/auto/);
+	});
+
 	it("--region implies the platform loader too, and --api-key beats the environment", () => {
 		const run = resolveRunOptions(URL_SOURCE, { region: "jp", apiKey: "wfa_flag" }, { [API_KEY_ENV]: "wfa_env" });
 		expect(run).toMatchObject({ loader: "platform", region: "jp", apiKey: "wfa_flag" });

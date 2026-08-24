@@ -13,7 +13,7 @@ Examples:
   $ webforai ./page.html --extractor none             convert a local file, no extraction
   $ webforai https://example.com --json | jq .markdown
   $ webforai https://spa.example.com -l playwright    render JS in local Chromium
-  $ webforai https://example.com --engine browser     render via the hosted platform
+  $ webforai https://example.com --engine auto        hosted platform, renders JS when needed
   $ webforai -i                                       guided interactive mode
   $ webforai skill --install                          install the Agent Skill for this CLI
 
@@ -43,7 +43,10 @@ program
 	.option("--extractor <extractor>", `main-content extraction preset (${EXTRACTORS.join(" | ")})`, undefined)
 	.option("--frontmatter", "prepend YAML front matter built from the page metadata")
 	.option("--json", "print a JSON envelope {source, loader, url, markdown, metadata, ...} to stdout")
-	.option("--engine <engine>", "platform engine (fetch | browser | proxy-fetch | proxy-browser); implies -l platform")
+	.option(
+		"--engine <engine>",
+		"platform engine (auto | fetch | browser | proxy-fetch | proxy-browser); implies -l platform",
+	)
 	.option("--region <region>", "platform proxy egress region (auto | us | eu | uk | jp | asia); implies -l platform")
 	.option("--screenshot", "platform browser engines: also capture a screenshot (expiring URL)")
 	.option("--api-key <key>", `platform API key (defaults to $${API_KEY_ENV})`)

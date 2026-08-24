@@ -10,6 +10,14 @@
 export const ENGINES = ["fetch", "browser", "proxy-fetch", "proxy-browser"] as const;
 export type Engine = (typeof ENGINES)[number];
 
+/**
+ * What a request may ask for: a concrete engine, or `auto` (the server default) — the
+ * cheapest engine for the request, escalated to browser rendering when the fetched HTML is
+ * a client-rendered shell. Responses report the concrete engine that ran.
+ */
+export const REQUESTED_ENGINES = [...ENGINES, "auto"] as const;
+export type RequestedEngine = (typeof REQUESTED_ENGINES)[number];
+
 /** Coarse egress location, honoured by the proxy engines only. */
 export const REGIONS = ["auto", "us", "eu", "uk", "jp", "asia"] as const;
 export type Region = (typeof REGIONS)[number];
@@ -26,8 +34,8 @@ export interface ConvertOptions {
 }
 
 interface CommonRequestOptions {
-	/** Defaults to `fetch` server-side. */
-	engine?: Engine;
+	/** Defaults to `auto` server-side. */
+	engine?: RequestedEngine;
 	/** Browser engines only (`browser`, `proxy-browser`); +1 credit. */
 	screenshot?: boolean;
 	/** Re-upload the page's images behind expiring URLs; +1 credit per started 5 images. */
@@ -61,6 +69,7 @@ export interface CrawlOptions extends CommonRequestOptions {
 export interface ScrapeResult {
 	/** Final URL after redirects. */
 	url: string;
+	/** The engine that produced the result — `auto` requests resolve to a concrete one. */
 	engine: Engine;
 	markdown: string;
 	metadata: Record<string, unknown>;
@@ -69,6 +78,8 @@ export interface ScrapeResult {
 	screenshotUrl?: string;
 	/** Present when `rehostImages` was requested. */
 	images?: { original: string; rehosted: string }[];
+	/** Present when the result is probably degraded (e.g. an unrendered client-side shell). */
+	warning?: string;
 }
 
 export interface JobRef {
@@ -102,7 +113,8 @@ export type PageSuccess = ScrapeResult & { status: "ok" };
 export interface PageFailure {
 	status: "error";
 	url: string;
-	engine: Engine;
+	/** As requested — a failed `auto` page never resolved to a concrete engine. */
+	engine: RequestedEngine;
 	error: PageError;
 }
 
@@ -117,7 +129,7 @@ export type PageResult = PageSuccess | PageFailure;
 export interface StoredPageStub {
 	status: "ok";
 	url: string;
-	engine: Engine;
+	engine: RequestedEngine;
 	credits: number;
 	resultUrl: string;
 }

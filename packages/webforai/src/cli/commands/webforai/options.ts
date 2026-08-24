@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { ENGINES, REGIONS } from "../../../platform";
+import { REGIONS, REQUESTED_ENGINES } from "../../../platform";
 import { API_KEY_ENV, EXTRACTORS, LOADERS, MODES, PLATFORM_URL_ENV } from "../../constants";
 import type { ExtractorName, Loader, Mode } from "../../constants";
 import { isUrl } from "../../utils";
@@ -32,7 +32,7 @@ export interface ResolvedRun {
 	json: boolean;
 	debug: boolean;
 	/** Platform-loader fields; undefined otherwise. */
-	engine?: (typeof ENGINES)[number];
+	engine?: (typeof REQUESTED_ENGINES)[number];
 	region?: (typeof REGIONS)[number];
 	screenshot: boolean;
 	apiKey?: string;
@@ -72,7 +72,7 @@ const assertUsableLocalSource = (source: string, loader: Loader, flags: CliFlags
 };
 
 const applyPlatformFields = (resolved: ResolvedRun, flags: CliFlags, env: Record<string, string | undefined>): void => {
-	resolved.engine = flags.engine ? oneOf("engine", flags.engine, ENGINES) : undefined;
+	resolved.engine = flags.engine ? oneOf("engine", flags.engine, REQUESTED_ENGINES) : undefined;
 	resolved.region = flags.region ? oneOf("region", flags.region, REGIONS) : undefined;
 	resolved.apiKey = flags.apiKey ?? env[API_KEY_ENV];
 	resolved.platformUrl = flags.platformUrl ?? env[PLATFORM_URL_ENV];
@@ -132,6 +132,8 @@ export interface RunEnvelope {
 	metadata: Record<string, unknown>;
 	credits?: number;
 	screenshotUrl?: string;
+	/** Present when the result is probably degraded (e.g. an unrendered client-side shell). */
+	warning?: string;
 	/** Present when the markdown was also written to a file. */
 	output?: string;
 }
