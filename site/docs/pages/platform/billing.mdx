@@ -18,6 +18,10 @@ amount; nothing else is counted — no per-seat pricing, no request tiers, no mi
 | `screenshot` option | +1 |
 | `rehostImages` option | +1 per started 5 images |
 
+The default [`auto` engine](/platform/api-reference#the-auto-engine) has no price of its own: the
+operation bills the engine that actually produced the result (so 1 credit when a plain fetch
+sufficed, 5 when the page needed browser rendering), and only that engine.
+
 Batch and crawl jobs bill **per successfully converted page** using the same schedule. A page that
 fails is not billed, and neither is a request that errors before the conversion runs.
 

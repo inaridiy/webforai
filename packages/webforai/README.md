@@ -40,7 +40,7 @@ npx webforai@latest https://example.com/article
 
 # machine-readable output, hosted-platform fetching, agent installation
 npx webforai@latest https://example.com --json
-npx webforai@latest https://example.com --engine browser   # platform, renders JS
+npx webforai@latest https://example.com --engine auto      # platform, renders JS when needed
 npx webforai@latest skill --install                        # Agent Skill via `npx skills add`
 ```
 
@@ -110,7 +110,7 @@ self-hostable SaaS built on this library: a metered crawl→Markdown HTTP API on
 (Workers + Workflows + Containers + Browser Run) with Better Auth accounts/API keys and
 Stripe usage-based billing. Use it through the typed `webforai/platform` client
 (`import { createPlatformClient } from "webforai/platform"`) or the CLI
-(`npx webforai <url> --engine browser`); docs live at
+(`npx webforai <url> --engine auto`); docs live at
 [webforai.dev/platform](https://webforai.dev/platform). See its README and the design ledger
 in `docs/specs/platform`.
 

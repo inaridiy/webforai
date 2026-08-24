@@ -1,5 +1,15 @@
 # Platform API
 
+Revision note (2026-08-24): Added `engine: "auto"` and made it the request default
+(pre-launch change). `auto` runs the cheapest engine that can satisfy the request and, when
+the fetched HTML is a client-rendered shell (`webforai.detectClientShell`: SPA shell,
+noscript-only, empty body, anti-bot interstitial), reruns on the browser sibling —
+`fetch`→`browser`, or `proxy-fetch`→`proxy-browser` when a region is set; `screenshot`
+starts directly at the browser tier. The response `engine` and `credits` always reflect the
+engine that actually produced the result. Explicit engines never substitute; a fetch-tier
+result that looks like a shell (or an `auto` escalation that failed) carries a top-level
+`warning` string. The demo endpoint now runs `auto` and requires a configured proxy only
+for geo-targeted (`region` ≠ `auto`) requests.
 Revision note (2026-08-22): Engine `cf-browser` renamed to `browser` (clean break, pre-launch;
 enum is now `fetch | browser | proxy-fetch | proxy-browser`). Proxy provider references made
 generic. Documented the actual results envelope (`{ jobId, status, results, cursor? }`) and
@@ -22,8 +32,8 @@ Runs on the plain Worker (fast, not durable). With `"async": true` it instead en
 ```jsonc
 {
   "url": "https://example.com/article",
-  "engine": "fetch",            // fetch | browser | proxy-fetch | proxy-browser
-  "screenshot": false,           // browser / proxy-browser only (400 otherwise)
+  "engine": "auto",             // auto (default) | fetch | browser | proxy-fetch | proxy-browser
+  "screenshot": false,           // auto / browser / proxy-browser only (400 otherwise)
   "rehostImages": false,
   "region": "auto",             // auto | us | eu | uk | jp | asia — proxy engines only
   "async": false,
@@ -46,19 +56,27 @@ failing, so one default can be set for a mixed-engine workload. Pricing is unaff
 ```jsonc
 {
   "url": "https://example.com/article",
-  "engine": "fetch",
+  "engine": "fetch",            // the engine that ran — `auto` resolves to a concrete one
   "markdown": "# ...",
   "metadata": { "title": "..." },
   "screenshotUrl": "https://...r2...", // when requested; expires
   "images": [{ "original": "https://...", "rehosted": "https://..." }],
-  "credits": 1
+  "credits": 1,
+  "warning": "..."              // only when the result is probably degraded (unrendered shell)
 }
 ```
+
+`engine: "auto"` semantics: start with `fetch` (`proxy-fetch` when `region` ≠ `auto`;
+`browser`/`proxy-browser` directly when `screenshot` is true). If the fetched HTML is a
+client-rendered shell, rerun on the browser sibling and return that result; if the
+escalation itself fails, return the unrendered result with a `warning` instead of failing.
+Billing follows the returned `engine`. Explicitly chosen engines never substitute — a
+fetch-tier engine that hits a shell returns its result with a `warning`.
 
 ## POST /v1/batch — asynchronous, URL list
 
 ```jsonc
-{ "urls": ["https://a", "https://b"], "engine": "fetch", "screenshot": false,
+{ "urls": ["https://a", "https://b"], "engine": "auto", "screenshot": false,
   "rehostImages": false, "region": "auto", "convert": { } }
 ```
 
@@ -69,7 +87,7 @@ Limits: ≤100 URLs per job (initial). Returns `202 { "jobId": "job_..." }`.
 ```jsonc
 {
   "url": "https://docs.example.com/",
-  "engine": "fetch",
+  "engine": "auto",
   "maxDepth": 2,                 // ≤ 5
   "limit": 50,                   // pages, ≤ 500
   "includePaths": ["^/docs"],   // regex on pathname, optional
@@ -108,8 +126,8 @@ so no key is required. Nothing is billed and no usage is recorded.
 { "url": "https://example.com/article", "region": "auto" }   // strict: no other keys
 ```
 
-Everything else is fixed: engine `proxy-fetch`, no screenshot, no image rehosting, default
-conversion.
+Everything else is fixed: engine `auto` (so the demo renders client-side pages instead of
+showing an empty body), no screenshot, no image rehosting, default conversion.
 
 200:
 
@@ -135,8 +153,9 @@ fail-closed — a KV failure denies rather than allows):
 { "error": { "code": "rate_limited", "message": "...", "retryAfter": 600 } }
 ```
 
-A deployment without proxy settings answers `503 engine_unavailable`. Constants live in
-`src/routes/demo.ts`.
+A deployment without proxy settings answers `503 engine_unavailable` only for geo-targeted
+requests (`region` ≠ `auto`); auto-region requests run on the plain engines and need no
+proxy. Constants live in `src/routes/demo.ts`.
 
 ## Dashboard API (session cookie, not API key)
 

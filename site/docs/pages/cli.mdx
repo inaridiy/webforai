@@ -33,7 +33,7 @@ npx webforai@latest https://example.com --json | jq -r .markdown
 | `--extractor <name>` | Main-content extraction preset: `auto` (default), `takumi`, `minimal`, or `none` for the whole page. |
 | `--frontmatter` | Prepend YAML front matter built from the page metadata (title, author, canonical URL, …). |
 | `--json` | Print a JSON envelope instead of raw Markdown (below). |
-| `--engine <engine>` | Platform engine: `fetch`, `browser`, `proxy-fetch`, `proxy-browser`. Implies `-l platform`. |
+| `--engine <engine>` | Platform engine: `auto` (renders JavaScript only when the page needs it), `fetch`, `browser`, `proxy-fetch`, `proxy-browser`. Implies `-l platform`. |
 | `--region <region>` | Platform proxy egress region: `auto`, `us`, `eu`, `uk`, `jp`, `asia`. Implies `-l platform`. |
 | `--screenshot` | Platform browser engines only: also capture a screenshot (expiring URL). |
 | `--api-key <key>` | Platform API key; defaults to `$WEBFORAI_API_KEY`. |
@@ -54,7 +54,7 @@ Exit codes: `0` success, `1` runtime failure, `2` usage error.
 
 ```bash
 export WEBFORAI_API_KEY=wfa_...   # from https://platform.webforai.dev/dashboard
-npx webforai@latest https://spa.example.com --engine browser
+npx webforai@latest https://spa.example.com --engine auto
 npx webforai@latest https://blocked.example.com --engine proxy-fetch --region jp
 ```
 
@@ -78,7 +78,9 @@ npx webforai@latest https://blocked.example.com --engine proxy-fetch --region jp
 ```
 
 `engine`, `region`, `credits` and `screenshotUrl` appear only when the platform loader ran;
-`output` only when `-o` also wrote a file.
+`output` only when `-o` also wrote a file. A `warning` appears when the result is probably
+degraded — most commonly a client-rendered page fetched without JavaScript; rerun with
+`--engine auto` or `-l playwright` when you see one.
 
 ## For AI agents
 

@@ -133,8 +133,9 @@ const markdown = htmlToMarkdown(html, { baseUrl: url }); // [!code hl]
 
 Don't want to run the browsers, proxies and queues yourself? **webforai platform** is an OSS, self-hostable
 crawl→Markdown API built on this library — scrape, batch and crawl over four engines
-(`fetch` / `browser` / `proxy-fetch` / `proxy-browser`, 1 / 5 / 2 / 5 credits per page),
-with **500 credits per month free**. Use it over HTTP, through the typed
+(`fetch` / `browser` / `proxy-fetch` / `proxy-browser`, 1 / 5 / 2 / 5 credits per page) with an
+`auto` default that escalates to browser rendering only when a page needs JavaScript, and
+**500 credits per month free**. Use it over HTTP, through the typed
 [`webforai/platform`](/platform/client) client, or straight from the [CLI](/cli).
 
 <div className="flex flex-wrap gap-2 mt-6">

@@ -69,12 +69,16 @@ they egress through a proxy, and what they cost in credits.
 
 | engine | how it fetches | proxy | screenshot | credits |
 | --- | --- | --- | --- | --- |
+| `auto` (default) | Cheapest first, escalates to browser rendering when the page needs JavaScript | with region | yes | 1–5 |
 | `fetch` | Workers `fetch()` | no | no | 1 |
 | `browser` | Browser rendering | no | yes | 5 |
 | `proxy-fetch` | Plain fetch through a rotating proxy | yes | no | 2 |
 | `proxy-browser` | Browser rendering behind the rotating proxy | yes | yes | 5 |
 
-Use `fetch` for static HTML, the `proxy-*` engines when a site blocks datacenter IPs or you need
+The default `auto` starts with a plain fetch and reruns in a browser only when the fetched HTML
+turns out to be a client-rendered shell (or an anti-bot interstitial) — you are billed for the
+engine that produced the result, and the response names it. Pin `fetch` for static HTML at a
+guaranteed 1 credit, the `proxy-*` engines when a site blocks datacenter IPs or you need
 [a specific region](/platform/api-reference#region), and either browser engine when the content
 only exists after JavaScript runs.
 

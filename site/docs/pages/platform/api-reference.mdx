@@ -51,7 +51,8 @@ It expresses a coarse geographic preference for the egress location:
 | `asia` | Asia |
 
 It only affects the proxy engines (`proxy-fetch`, `proxy-browser`), which select a proxy exit
-node in the requested area. The `fetch` and `browser` engines egress from Cloudflare's own
+node in the requested area; a non-`auto` region also pins `engine: "auto"` to the proxy tier so
+the preference can be honoured. The `fetch` and `browser` engines egress from Cloudflare's own
 network and ignore the field rather than failing, so one default can be set for a mixed-engine
 workload. A region is a preference for a representative exit country, not a guarantee. Pricing
 is unaffected.
@@ -67,9 +68,9 @@ instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and retu
 ```jsonc
 {
   "url": "https://example.com/article",
-  "engine": "fetch",             // fetch | browser | proxy-fetch | proxy-browser
+  "engine": "auto",              // auto (default) | fetch | browser | proxy-fetch | proxy-browser
   "region": "auto",              // auto | us | eu | uk | jp | asia (proxy engines only)
-  "screenshot": false,           // browser / proxy-browser only (400 otherwise)
+  "screenshot": false,           // auto / browser / proxy-browser only (400 otherwise)
   "rehostImages": false,
   "async": false,
   "convert": {                   // passthrough to webforai (all optional)
@@ -85,14 +86,29 @@ instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and retu
 ```jsonc
 {
   "url": "https://example.com/article",      // final URL after redirects
-  "engine": "fetch",
+  "engine": "fetch",             // the engine that ran — "auto" resolves to a concrete one
   "markdown": "# ...",
   "metadata": { "title": "..." },
+  "warning": "...",              // only when the result is probably degraded (unrendered shell)
   "screenshotUrl": "https://...r2...", // when requested; expires
   "images": [{ "original": "https://...", "rehosted": "https://..." }],
   "credits": 1
 }
 ```
+
+### The `auto` engine
+
+`auto` (the default) starts with the cheapest engine that can satisfy the request — `fetch`, or
+`proxy-fetch` when a non-`auto` [region](#region) is set, or a browser engine directly when a
+`screenshot` is requested. When the fetched HTML turns out to be a client-rendered shell (an
+empty SPA mount point, a noscript-only page, or an anti-bot interstitial), the request reruns on
+the browser sibling and returns that result. `engine` and `credits` in the response always
+reflect the engine that actually produced it, and only that engine is billed.
+
+Explicitly chosen engines never substitute: a `fetch`/`proxy-fetch` scrape of a client-rendered
+page returns its (mostly empty) result with a top-level `warning` explaining that the page needs
+JavaScript. The same `warning` appears when `auto` could not escalate (for example on a
+deployment without a browser binding).
 
 ### Example
 
@@ -114,7 +130,7 @@ Asynchronous, a list of URLs. Limit: **100 URLs per job**.
 ```jsonc
 {
   "urls": ["https://a", "https://b"],
-  "engine": "fetch",
+  "engine": "auto",
   "region": "auto",
   "screenshot": false,
   "rehostImages": false,
@@ -142,7 +158,7 @@ Asynchronous, recursive same-origin crawl from a seed URL.
 ```jsonc
 {
   "url": "https://docs.example.com/",
-  "engine": "fetch",
+  "engine": "auto",
   "region": "auto",
   "maxDepth": 2,                 // ≤ 5
   "limit": 50,                   // pages, ≤ 500
@@ -231,7 +247,8 @@ curl "https://platform.webforai.dev/v1/jobs/job_.../results?cursor=..." \
 ## POST /v1/demo/scrape
 
 The public, unauthenticated endpoint behind the [demo on the home page](/#demo). No API key, no
-account, no credits — it always runs the `proxy-fetch` engine and truncates the output.
+account, no credits — it always runs the [`auto` engine](#the-auto-engine) and truncates the
+output.
 
 ### Request
 

@@ -69,8 +69,8 @@ const main = async (): Promise<void> => {
 	}
 
 	fs.writeFileSync(indexPath, patched);
-	console.log("prerender: landing markup injected into dist/client/index.html");
-	console.log(`prerender: self-extraction gate passed (${body.length} chars of markdown body)`);
+	console.info("prerender: landing markup injected into dist/client/index.html");
+	console.info(`prerender: self-extraction gate passed (${body.length} chars of markdown body)`);
 };
 
 await main();

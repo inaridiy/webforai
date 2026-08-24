@@ -44,7 +44,11 @@ Seeing it work: `pnpm --filter platform test` covers escalation/billing/warning 
   "self-extraction gate passed (3714 chars of markdown body)"; headless-Chromium check on the
   built output: prerendered hero visible, hydration effect rewrites the curl origin, demo
   interactive, `/login` deep link cleared, zero console errors
-- [ ] M6: docs/specs + README/site sync, full gates (biome, typecheck, tests, build)
+- [x] (2026-08-24 11:23Z) M6: specs (01_scope: auto promoted from non-goal with revision
+  note; 03_api: auto semantics + `warning` + demo; 04_billing: bill-resolved-engine),
+  platform/root/package READMEs, 6 site pages; gates all green — biome (baseline warnings
+  only), root typecheck, 192 library/eval tests, 133 platform tests, platform build with
+  prerender gate, vocs site build
 
 ## Surprises & discoveries
 
@@ -276,4 +280,24 @@ No new npm dependencies anywhere.
 
 ## Outcomes & retrospective
 
-(To be filled at milestones and close-out.)
+(2026-08-24, close-out) All six milestones landed as separate commits. The
+outcome-anchored checks hold on the final tree:
+
+- The real platform.webforai.dev shell HTML judges `spa-shell` in the detector; a
+  default-engine scrape of a shell resolves `engine: "browser"` / 5 credits, while an
+  explicit `fetch` stays at 1 credit and carries a `warning` (scrape-core tests).
+- `pnpm --filter platform build` prerenders the landing page and fails by construction if
+  webforai cannot extract it — the gate currently reports 3714 chars of markdown body, and
+  a headless-Chromium pass confirmed hydration (interactive demo, no console errors, deep
+  links cleared).
+- Full gates green: biome (repo-baseline warnings only), root + platform typecheck,
+  192 library/eval tests, 133 platform tests, platform and site builds.
+
+Retrospective: (1) the engines composition root's "no silent fallback" invariant survived
+by *typing* the substitution into the product surface (`auto`, resolved engine in the
+response, billing follows it) rather than weakening the invariant — a pattern worth
+repeating. (2) The prerender self-extraction gate turns the original complaint into a
+permanent regression test; cheapest possible dogfooding. (3) Known gap vs Firecrawl,
+recorded in 01_scope non-goals: error-triggered fallback (base engine *fails* → try the
+browser sibling) — the natural next iteration. (4) The committed SKILL.md drift test fired
+exactly as designed when the CLI's flag docs changed.

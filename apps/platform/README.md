@@ -12,12 +12,13 @@ API, billing). User documentation lives on the docs site:
 the SPA intentionally has no docs page of its own. Everything here is OSS and self-hostable
 on your own Cloudflare account. Official clients: the `webforai/platform` TypeScript
 client (a subpath of the [`webforai`](../../packages/webforai) package) and the `webforai`
-CLI (`npx webforai <url> --engine browser`).
+CLI (`npx webforai <url> --engine auto`).
 
 ## API in one minute
 
 ```bash
-# Markdown from a URL (sync, plain Workers fetch — 1 credit)
+# Markdown from a URL (sync; default engine "auto" — plain fetch, escalated to browser
+# rendering when the page turns out to be a client-side shell — 1 or 5 credits)
 curl -X POST https://<your-host>/v1/scrape \
   -H "Authorization: Bearer wfa_..." -H "content-type: application/json" \
   -d '{ "url": "https://example.com/article" }'
@@ -33,14 +34,17 @@ curl https://<your-host>/v1/jobs/<jobId>          # status
 curl https://<your-host>/v1/jobs/<jobId>/results  # paged results
 ```
 
-Engines: `fetch` (Workers fetch, 1 credit), `browser` (Browser Run rendering, 5,
-screenshots), `proxy-fetch` (rotating proxy via container, 2), `proxy-browser`
-(Playwright behind the proxy in container, 5, screenshots). `rehostImages: true` re-uploads the
-page's images to R2 behind expiring signed URLs. `"region": "us" | "eu" | "uk" | "jp" | "asia"`
-picks the proxy egress country (`auto` by default; ignored by the two non-proxy engines).
+Engines: `auto` (default — cheapest first, escalates to browser rendering on
+client-rendered shells, bills the engine that ran, 1–5 credits), `fetch` (Workers fetch,
+1 credit), `browser` (Browser Run rendering, 5, screenshots), `proxy-fetch` (rotating proxy
+via container, 2), `proxy-browser` (Playwright behind the proxy in container, 5,
+screenshots). Responses carry a `warning` when a fetch-tier result looks like an unrendered
+shell. `rehostImages: true` re-uploads the page's images to R2 behind expiring signed URLs.
+`"region": "us" | "eu" | "uk" | "jp" | "asia"` picks the proxy egress country (`auto` by
+default; pins `engine: "auto"` to the proxy tier, ignored by the two non-proxy engines).
 Full contract: `docs/specs/platform/03_api.md`.
 
-`POST /v1/demo/scrape` is a public, keyless, unbilled demo (fixed `proxy-fetch`, markdown
+`POST /v1/demo/scrape` is a public, keyless, unbilled demo (fixed `auto` engine, markdown
 truncated to 8000 chars) behind both the docs-site demo and the platform landing's own
 "Live demo" section (raw Markdown + rendered preview side by side), limited to 5 requests /
 10 min per IP and 500 / day globally:
@@ -82,7 +86,7 @@ dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer
 | `pnpm dev` | vite dev server (Worker + SPA + container) |
 | `pnpm test` | vitest unit tests (pure logic; no network/Docker) |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm build` | production build (Worker + client assets + container image) |
+| `pnpm build` | production build (Worker + client assets + container image), then prerenders the landing page into `dist/client/index.html` and fails if webforai cannot extract it (`scripts/prerender.ts`) |
 | `pnpm db:generate` | drizzle-kit migration from `src/db/schema.ts` |
 | `pnpm db:migrate:local` / `:remote` | apply migrations to D1 |
 | `pnpm stripe:setup` | create Stripe meter + metered price (prints ids) |

@@ -22,7 +22,7 @@ const platform = createPlatformClient({ apiKey: process.env.WEBFORAI_API_KEY });
 
 const page = await platform.scrape({
   url: "https://example.com/article",
-  engine: "browser",              // fetch | browser | proxy-fetch | proxy-browser
+  engine: "browser",              // auto (default) | fetch | browser | proxy-fetch | proxy-browser
   convert: { frontmatter: true },
 });
 

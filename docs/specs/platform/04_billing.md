@@ -1,5 +1,9 @@
 # Billing
 
+Revision note (2026-08-24): `engine: "auto"` (the new request default) has no price of its
+own — the operation bills the engine that actually produced the returned result (1, 2 or
+5), and only that engine: an escalated run does not also bill the discarded fetch. The
+`usage_events` operation column records the resolved engine.
 Revision note (2026-08-22): Engine `cf-browser` renamed to `browser` in the credit schedule
 (same 5-credit price).
 Revision note (2026-08-10): Initial version.
