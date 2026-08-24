@@ -2,6 +2,7 @@ import {
 	type ClientShellReason,
 	type ExtractorSelectors,
 	detectClientShell,
+	extractMetaRefresh,
 	htmlToMarkdownWithMetadata,
 	minimalFilter,
 	takumiExtractor,
@@ -60,6 +61,9 @@ export const resolveExtractors = (preset: ConvertOptions["extractor"]): Extracto
 
 const supportsScreenshot = (engine: Engine): boolean => SCREENSHOT_ENGINES.includes(engine);
 
+/** Meta-refresh chains deeper than this are loops, not redirects. */
+const MAX_META_REFRESH_HOPS = 3;
+
 /** The base engine an `auto` request starts with, and the browser sibling it may escalate to. */
 const resolveAuto = (req: ScrapeRequest): { base: Engine; escalation?: Engine } => {
 	// Only the proxy engines can honour geo-targeting, so an explicit region pins `auto` to
@@ -112,10 +116,24 @@ export const fetchForScrape = async (deps: ScrapeDeps, req: ScrapeRequest): Prom
 	const { base, escalation } = req.engine === "auto" ? resolveAuto(req) : { base: req.engine, escalation: undefined };
 	const params = { url: target.href, screenshot: req.screenshot, region: req.region };
 
-	const page = await deps.engines[base](params);
+	let page = await deps.engines[base](params);
 	if (supportsScreenshot(base)) {
-		// Browser engines already ran the page's JavaScript; there is nothing to detect.
+		// Browser engines already ran the page's JavaScript; there is nothing to detect, and
+		// they follow meta refreshes themselves.
 		return { ...page, engine: base };
+	}
+
+	// An HTTP 200 "Redirecting…" stub (`<meta http-equiv="refresh">`) is a redirect in all
+	// but status code. Follow it on the same engine — exactly like the HTTP redirects every
+	// engine already follows, and billed the same way: one operation. Each hop target passes
+	// the same SSRF guard as the requested URL.
+	for (let hop = 0; hop < MAX_META_REFRESH_HOPS; hop++) {
+		const refresh = extractMetaRefresh(page.html, page.url);
+		if (!refresh) {
+			break;
+		}
+		const next = assertPublicHttpUrl(refresh.url);
+		page = await deps.engines[base]({ ...params, url: next.href });
 	}
 
 	const verdict = detectClientShell(page.html);

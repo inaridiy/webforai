@@ -338,3 +338,84 @@ describe("auto engine", () => {
 		expect(result.warning).toBeUndefined();
 	});
 });
+
+/** An HTTP 200 language-redirect stub, the shape GitHub Pages serves for site roots. */
+const redirectStubTo = (target: string): string =>
+	`<html><head><title>Redirecting…</title><meta http-equiv="refresh" content="0; url=${target}"></head><body>Redirecting…</body></html>`;
+
+/** Serves redirect stubs by path and real content everywhere else, recording every call. */
+const stubServingEngine =
+	(engine: Engine, stubs: Record<string, string>) =>
+	(params: EngineFetchParams): Promise<FetchedPage> => {
+		engineCalls.push({ engine, params });
+		const path = new URL(params.url).pathname;
+		const target = stubs[path];
+		return Promise.resolve({
+			html: target === undefined ? PAGE_HTML : redirectStubTo(target),
+			url: params.url,
+			status: 200,
+		});
+	};
+
+describe("meta-refresh redirects", () => {
+	it("follows a redirect stub on the same engine and bills one operation", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({ fetch: stubServingEngine("fetch", { "/article": "/ja/" }) });
+
+		const result = await scrapePage(deps(engines, artifacts), request());
+
+		expect(engineCalls.map((call) => [call.engine, call.params.url])).toEqual([
+			["fetch", "https://example.com/article"],
+			["fetch", "https://example.com/ja/"],
+		]);
+		expect(result.engine).toBe("fetch");
+		expect(result.credits).toBe(1);
+		expect(result.url).toBe("https://example.com/ja/");
+		expect(result.markdown).toContain("First paragraph");
+		expect(result.warning).toBeUndefined();
+	});
+
+	it("keeps auto on the fetch tier when the stub's target has real content", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({ fetch: stubServingEngine("fetch", { "/article": "/ja/" }) });
+
+		const result = await scrapePage(deps(engines, artifacts), request({ engine: "auto" }));
+
+		expect(engineCalls.map((call) => call.engine)).toEqual(["fetch", "fetch"]);
+		expect(result.engine).toBe("fetch");
+		expect(result.credits).toBe(1);
+	});
+
+	it("stops at the hop cap instead of looping", async () => {
+		const { artifacts } = fakeArtifacts();
+		// /a → /b → /a → … : every page is a stub, so only the cap ends the chain.
+		const engines = fakeEngines({ fetch: stubServingEngine("fetch", { "/a": "/b", "/b": "/a" }) });
+
+		const result = await scrapePage(
+			deps(engines, artifacts),
+			request({ url: "https://example.com/a", engine: "fetch" }),
+		);
+
+		// initial fetch + 3 hops; the leftover stub then reads as a shell and warns.
+		expect(engineCalls).toHaveLength(4);
+		expect(result.credits).toBe(1);
+		expect(result.warning).toBeDefined();
+	});
+
+	it("rejects a hop target that fails the SSRF guard", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({ fetch: stubServingEngine("fetch", { "/article": "http://127.0.0.1/admin" }) });
+
+		await expect(scrapePage(deps(engines, artifacts), request())).rejects.toBeInstanceOf(PlatformError);
+	});
+
+	it("does not follow stubs returned by browser engines — they follow refreshes themselves", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({ browser: stubServingEngine("browser", { "/article": "/ja/" }) });
+
+		const result = await scrapePage(deps(engines, artifacts), request({ engine: "browser" }));
+
+		expect(engineCalls).toHaveLength(1);
+		expect(result.engine).toBe("browser");
+	});
+});

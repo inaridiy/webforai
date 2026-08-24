@@ -34,7 +34,8 @@ Fixes, both user-approved:
 - [x] (2026-08-24 11:52Z) M1: `extractMetaRefresh` + 8 parser tests; fetch loader follows
   with hop cap (stubbed-fetch tests). Acceptance: `bin.js https://delight.sfc.wide.ad.jp/`
   now prints the full member list (25 portraits; was 0)
-- [ ] M2: platform fetch-tier engines follow meta refresh in `fetchForScrape` + tests
+- [x] (2026-08-24 12:02Z) M2: fetch-tier engines follow meta refresh in `fetchForScrape`
+  (same engine, 1 op, SSRF per hop, cap 3; browser tier untouched) — 5 new tests, 25 green
 - [ ] M3: demo truncation at a safe boundary with notice + tests
 - [ ] M4: docs (specs revision notes, platform README, site pages), full gates
 
