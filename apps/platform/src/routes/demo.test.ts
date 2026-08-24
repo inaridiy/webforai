@@ -49,7 +49,8 @@ const NOW = new Date("2026-08-12T09:30:00.000Z");
 
 const scrapeResult = (request: ScrapeRequest, markdown = "# Demo\n\nbody"): ScrapeSuccess => ({
 	url: request.url,
-	engine: request.engine,
+	// The fake stands in for scrape-core, which resolves `auto` to a concrete engine.
+	engine: request.engine === "auto" ? "fetch" : request.engine,
 	markdown,
 	metadata: { title: "Demo page" },
 	credits: 2,

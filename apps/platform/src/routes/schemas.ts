@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { REGIONS } from "../core/regions";
-import { ENGINES, SCREENSHOT_ENGINES } from "../core/types";
+import { REQUESTED_ENGINES, SCREENSHOT_ENGINES } from "../core/types";
 
 /**
  * Request schemas for `/v1` (docs/specs/platform/03_api.md).
@@ -30,7 +30,12 @@ const convertSchema = z
 	.strict()
 	.default({});
 
-const engineSchema = z.enum(ENGINES).default("fetch");
+/**
+ * `auto` is the default: it starts at the cheapest engine that can satisfy the request and
+ * escalates to browser rendering when the fetched HTML is a client-side shell, so the
+ * default never returns an empty body for a JavaScript-rendered site.
+ */
+const engineSchema = z.enum(REQUESTED_ENGINES).default("auto");
 
 /**
  * Fields every scrape-shaped request carries.
@@ -47,12 +52,15 @@ const commonFields = {
 	convert: convertSchema,
 };
 
-/** A screenshot on a non-browser engine is a request error, not a silently dropped option. */
-const requireScreenshotCapableEngine = <T extends { engine: (typeof ENGINES)[number]; screenshot: boolean }>(
+/**
+ * A screenshot on a non-browser engine is a request error, not a silently dropped option.
+ * `auto` is screenshot-capable: it resolves straight to a browser engine for the render.
+ */
+const requireScreenshotCapableEngine = <T extends { engine: (typeof REQUESTED_ENGINES)[number]; screenshot: boolean }>(
 	value: T,
 	ctx: z.RefinementCtx,
 ): void => {
-	if (value.screenshot && !SCREENSHOT_ENGINES.includes(value.engine)) {
+	if (value.screenshot && value.engine !== "auto" && !SCREENSHOT_ENGINES.includes(value.engine)) {
 		ctx.addIssue({
 			code: "custom",
 			path: ["screenshot"],

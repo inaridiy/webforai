@@ -1,6 +1,6 @@
 import type { ArtifactStore } from "../artifacts/store";
 import { createArtifactStore } from "../artifacts/store";
-import type { Engine, ScrapeSuccess } from "../core/types";
+import type { RequestedEngine, ScrapeSuccess } from "../core/types";
 import type { AppConfig } from "../env";
 import type { JobStatus, JobType } from "./repo";
 
@@ -43,7 +43,8 @@ export type PageSuccess = ScrapeSuccess & { status: "ok" };
 export interface PageFailure {
 	status: "error";
 	url: string;
-	engine: Engine;
+	/** As requested — a failed `auto` page never resolved to a concrete engine. */
+	engine: RequestedEngine;
 	error: PageError;
 }
 
@@ -52,7 +53,7 @@ export type PageResult = PageSuccess | PageFailure;
 /** What a listing returns: the stored result, or a pointer to the R2 copy of an oversized one. */
 export type StoredPageResult =
 	| PageResult
-	| { status: "ok"; url: string; engine: Engine; credits: number; resultUrl: string };
+	| { status: "ok"; url: string; engine: RequestedEngine; credits: number; resultUrl: string };
 
 export interface JobMeta {
 	jobId: string;

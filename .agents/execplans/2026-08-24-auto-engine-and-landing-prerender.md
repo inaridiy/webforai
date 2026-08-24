@@ -32,7 +32,9 @@ Seeing it work: `pnpm --filter platform test` covers escalation/billing/warning 
 
 - [x] (2026-08-24 11:00Z) M1: `detectClientShell` in `packages/webforai` + tests (9 tests; the
   real fetched platform HTML judges `{"isShell":true,"reason":"spa-shell","visibleTextLength":0}`)
-- [ ] M2: platform `auto` engine — types, schemas, scrape-core escalation, billing operation fix, `warning` — + tests
+- [x] (2026-08-24 11:05Z) M2: platform `auto` engine — types, schemas, scrape-core escalation,
+  billing operation fix, `warning` — + tests (132 platform tests green; shell→browser bills 5,
+  explicit fetch on a shell bills 1 + `warning`, failed escalation degrades with `warning`)
 - [ ] M3: demo route on `auto`; landing + playground UI options/copy
 - [ ] M4: client surface — platform wire types, CLI `--engine auto`, CLI shell hint, skill content
 - [ ] M5: landing prerender + hydration + build gate

@@ -4,6 +4,14 @@ import type { Region } from "./regions";
 export const ENGINES = ["fetch", "browser", "proxy-fetch", "proxy-browser"] as const;
 export type Engine = (typeof ENGINES)[number];
 
+/**
+ * What a request may ask for: a concrete engine, or `auto` — the cheapest engine that can
+ * satisfy the request, escalated to its browser sibling when the fetched HTML turns out to
+ * be a client-rendered shell. Responses always report a concrete `Engine`.
+ */
+export const REQUESTED_ENGINES = [...ENGINES, "auto"] as const;
+export type RequestedEngine = (typeof REQUESTED_ENGINES)[number];
+
 /** Engines that render pages in a real browser and can produce screenshots. */
 export const SCREENSHOT_ENGINES: readonly Engine[] = ["browser", "proxy-browser"];
 
@@ -15,7 +23,7 @@ export interface ConvertOptions {
 
 export interface ScrapeRequest {
 	url: string;
-	engine: Engine;
+	engine: RequestedEngine;
 	screenshot: boolean;
 	rehostImages: boolean;
 	convert: ConvertOptions;
@@ -32,6 +40,13 @@ export interface FetchedPage {
 	/** PNG bytes, present only when the request asked for a screenshot and the engine supports it. */
 	screenshot?: Uint8Array;
 }
+
+/**
+ * A fetched page bound to the engine that actually produced it. `engine` can differ from
+ * the request's when that asked for `auto`; `warning` explains a result that is probably
+ * not what the caller wanted (a client-rendered shell fetched without rendering).
+ */
+export type AcquiredPage = FetchedPage & { engine: Engine; warning?: string };
 
 export interface EngineFetchParams {
 	url: string;
@@ -54,10 +69,13 @@ export interface ScrapeArtifacts {
 
 export interface ScrapeSuccess extends ScrapeArtifacts {
 	url: string;
+	/** The engine that produced the result — `auto` requests resolve to a concrete one. */
 	engine: Engine;
 	markdown: string;
 	metadata: Record<string, unknown>;
 	credits: number;
+	/** Present when the result is probably degraded (e.g. an unrendered client-side shell). */
+	warning?: string;
 }
 
 export class PlatformError extends Error {

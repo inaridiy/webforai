@@ -204,6 +204,12 @@ describe("scrapePage", () => {
 		expect(result.credits).toBe(1);
 	});
 
+	it("keeps explicit engines out of shell detection warnings when content is real", async () => {
+		const { artifacts } = fakeArtifacts();
+		const result = await scrapePage(deps(fakeEngines(), artifacts), request());
+		expect(result.warning).toBeUndefined();
+	});
+
 	it("propagates engine failures instead of falling back to another engine", async () => {
 		const { artifacts } = fakeArtifacts();
 		const engines = fakeEngines({
@@ -214,5 +220,121 @@ describe("scrapePage", () => {
 			code: "fetch_failed",
 		});
 		expect(engineCalls).toEqual([]);
+	});
+});
+
+/** What a client-rendered SPA answers to a plain fetch: an empty mount point, no content. */
+const SHELL_HTML = `<!doctype html>
+<html lang="en"><head><title>Shell</title></head>
+<body><div id="root"></div><script src="/assets/index.js"></script></body></html>`;
+
+const shellThenRendered = (base: "fetch" | "proxy-fetch", rendered: "browser" | "proxy-browser") =>
+	fakeEngines({
+		[base]: (params: EngineFetchParams) => {
+			engineCalls.push({ engine: base, params });
+			return Promise.resolve({ html: SHELL_HTML, url: params.url, status: 200 });
+		},
+		[rendered]: (params: EngineFetchParams) => {
+			engineCalls.push({ engine: rendered, params });
+			return Promise.resolve({ html: PAGE_HTML, url: params.url, status: 200 });
+		},
+	});
+
+describe("auto engine", () => {
+	it("stays on plain fetch (1 credit) when the fetched HTML has real content", async () => {
+		const { artifacts } = fakeArtifacts();
+		const result = await scrapePage(deps(fakeEngines(), artifacts), request({ engine: "auto" }));
+
+		expect(engineCalls.map((call) => call.engine)).toEqual(["fetch"]);
+		expect(result.engine).toBe("fetch");
+		expect(result.credits).toBe(1);
+		expect(result.warning).toBeUndefined();
+	});
+
+	it("escalates a client-shell result to the browser and bills the browser price", async () => {
+		const { artifacts } = fakeArtifacts();
+		const result = await scrapePage(
+			deps(shellThenRendered("fetch", "browser"), artifacts),
+			request({ engine: "auto" }),
+		);
+
+		expect(engineCalls.map((call) => call.engine)).toEqual(["fetch", "browser"]);
+		expect(result.engine).toBe("browser");
+		expect(result.credits).toBe(5);
+		expect(result.markdown).toContain("First paragraph");
+		expect(result.warning).toBeUndefined();
+	});
+
+	it("uses the proxy pair when a region is set", async () => {
+		const { artifacts } = fakeArtifacts();
+		const result = await scrapePage(
+			deps(shellThenRendered("proxy-fetch", "proxy-browser"), artifacts),
+			request({ engine: "auto", region: "jp" }),
+		);
+
+		expect(engineCalls.map((call) => call.engine)).toEqual(["proxy-fetch", "proxy-browser"]);
+		expect(result.engine).toBe("proxy-browser");
+		expect(result.credits).toBe(5);
+	});
+
+	it("starts at the browser when a screenshot is requested", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({
+			browser: (params) =>
+				Promise.resolve({ html: PAGE_HTML, url: params.url, status: 200, screenshot: new Uint8Array([1, 2, 3]) }),
+		});
+
+		const result = await scrapePage(deps(engines, artifacts), request({ engine: "auto", screenshot: true }));
+
+		expect(engineCalls).toEqual([]);
+		expect(result.engine).toBe("browser");
+		expect(result.credits).toBe(6);
+		expect(result.screenshotUrl).toBe("https://cdn.example.com/shot.png");
+	});
+
+	it("returns the unrendered result with a warning when escalation fails", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({
+			fetch: (params) => {
+				engineCalls.push({ engine: "fetch", params });
+				return Promise.resolve({ html: SHELL_HTML, url: params.url, status: 200 });
+			},
+			browser: () => Promise.reject(new PlatformError("engine_unavailable", "no browser binding", 503)),
+		});
+
+		const result = await scrapePage(deps(engines, artifacts), request({ engine: "auto" }));
+
+		expect(result.engine).toBe("fetch");
+		expect(result.credits).toBe(1);
+		expect(result.warning).toContain('escalating to engine "browser" failed');
+	});
+
+	it("warns instead of escalating when a fetch-tier engine was chosen explicitly", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({
+			fetch: (params) => {
+				engineCalls.push({ engine: "fetch", params });
+				return Promise.resolve({ html: SHELL_HTML, url: params.url, status: 200 });
+			},
+		});
+
+		const result = await scrapePage(deps(engines, artifacts), request({ engine: "fetch" }));
+
+		expect(engineCalls.map((call) => call.engine)).toEqual(["fetch"]);
+		expect(result.engine).toBe("fetch");
+		expect(result.credits).toBe(1);
+		expect(result.warning).toContain("client-side app shell");
+	});
+
+	it("never runs shell detection on explicit browser engines", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({
+			browser: (params) => Promise.resolve({ html: SHELL_HTML, url: params.url, status: 200 }),
+		});
+
+		const result = await scrapePage(deps(engines, artifacts), request({ engine: "browser" }));
+
+		expect(result.engine).toBe("browser");
+		expect(result.warning).toBeUndefined();
 	});
 });

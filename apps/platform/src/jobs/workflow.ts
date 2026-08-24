@@ -164,7 +164,8 @@ export const runPage = async (deps: JobDeps, params: RunPageParams): Promise<Pag
 			userId: params.userId,
 			jobId: params.jobId,
 			credits: result.credits,
-			operation: request.engine,
+			// The engine that actually ran — an `auto` request resolves per page.
+			operation: result.engine,
 		});
 
 		return { url: result.url, ok: true, credits: result.credits, links };

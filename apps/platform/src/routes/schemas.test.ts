@@ -19,7 +19,7 @@ describe("scrape body", () => {
 		const parsed = scrapeBodySchema.parse({ url: "https://example.com/a" });
 		expect(parsed).toEqual({
 			url: "https://example.com/a",
-			engine: "fetch",
+			engine: "auto",
 			screenshot: false,
 			rehostImages: false,
 			region: "auto",
@@ -41,8 +41,8 @@ describe("scrape body", () => {
 		expect(result.success === false && issuePaths(result.error)).toEqual(["screenshot"]);
 	});
 
-	it("accepts a screenshot on the browser engines", () => {
-		for (const engine of ["proxy-browser", "browser"]) {
+	it("accepts a screenshot on the browser engines and on auto (which resolves to one)", () => {
+		for (const engine of ["proxy-browser", "browser", "auto"]) {
 			const result = scrapeBodySchema.safeParse({ url: "https://example.com/a", engine, screenshot: true });
 			expect(result.success).toBe(true);
 		}
@@ -66,7 +66,7 @@ describe("playground body", () => {
 		const parsed = playgroundBodySchema.parse({ url: "https://example.com/a" });
 		expect(parsed).toEqual({
 			url: "https://example.com/a",
-			engine: "fetch",
+			engine: "auto",
 			screenshot: false,
 			rehostImages: false,
 			region: "auto",
@@ -113,8 +113,9 @@ describe("batch body", () => {
 		expect(result.success === false && issuePaths(result.error)).toEqual(["urls"]);
 	});
 
-	it("rejects a screenshot on the fetch engine", () => {
-		expect(batchBodySchema.safeParse({ urls: [url(1)], screenshot: true }).success).toBe(false);
+	it("rejects a screenshot on the fetch engine, but not on the auto default", () => {
+		expect(batchBodySchema.safeParse({ urls: [url(1)], engine: "fetch", screenshot: true }).success).toBe(false);
+		expect(batchBodySchema.safeParse({ urls: [url(1)], screenshot: true }).success).toBe(true);
 	});
 });
 

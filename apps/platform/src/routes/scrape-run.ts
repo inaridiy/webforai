@@ -74,7 +74,9 @@ export const runSyncScrape = async (
 			stripe: createStripe(config),
 			waitUntil: waitUntilOf(c),
 		},
-		{ userId: params.userId, stripeCustomerId, operation: params.request.engine, credits: result.credits },
+		// `result.engine`, not the requested one: an `auto` request must record the engine that
+		// actually ran (and whose price `result.credits` reflects).
+		{ userId: params.userId, stripeCustomerId, operation: result.engine, credits: result.credits },
 	);
 
 	return result;
