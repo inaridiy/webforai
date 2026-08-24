@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { DemoSection } from "../components/landing/demo-section";
 import { Link } from "../lib/router";
 import { Badge } from "../ui/badge";
@@ -6,9 +7,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui
 import { CodeBlock } from "../ui/code-block";
 import { TBody, TD, TH, THead, TR, Table } from "../ui/table";
 
+const CANONICAL_ORIGIN = "https://platform.webforai.dev";
+
+/**
+ * The deployment's own origin, hydration-safe: the build-time prerender and the first client
+ * render both use the canonical origin, then an effect corrects it for self-hosted origins.
+ * Reading `window.location` during render would make the prerendered markup mismatch.
+ */
+const useDeploymentOrigin = (): string => {
+	const [origin, setOrigin] = useState(CANONICAL_ORIGIN);
+	useEffect(() => setOrigin(window.location.origin), []);
+	return origin;
+};
+
 /** The curl sample advertises this very deployment, like the playground's equivalent-curl strip. */
-const scrapeSnippet = (): string => {
-	const origin = typeof window === "undefined" ? "https://<your-deployment>" : window.location.origin;
+const scrapeSnippet = (origin: string): string => {
 	return `curl -X POST ${origin}/v1/scrape \\
   -H "Authorization: Bearer wfa_..." \\
   -H "Content-Type: application/json" \\
@@ -57,36 +70,41 @@ const capabilities: { title: string; body: string; tag: string }[] = [
 	},
 ];
 
-const Hero = () => (
-	<section className="relative overflow-hidden border-border border-b">
-		<div className="dot-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_at_top,black,transparent_72%)]" />
-		<div className="relative mx-auto grid w-full max-w-6xl gap-12 px-5 py-20 sm:py-24 lg:grid-cols-[minmax(0,1fr)_28.75rem] lg:items-center">
-			<div>
-				<Badge tone="accent">crawl to markdown api</Badge>
-				<h1 className="mt-5 max-w-3xl text-balance font-semibold text-4xl leading-[1.08] tracking-tight sm:text-5xl">
-					Any URL, converted to Markdown an LLM can actually read.
-				</h1>
-				<p className="mt-5 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-					webforai platform wraps the webforai extraction library in a metered HTTP API. Four acquisition engines —
-					plain fetch, browser rendering, proxied fetch, proxied browser — behind one request body, and an{" "}
-					<span className="font-mono">auto</span> default that renders client-side pages only when they need it.
-				</p>
-				<div className="mt-8 flex flex-wrap items-center gap-3">
-					<Link href="/signup" className={buttonClass("primary", "lg")}>
-						Get an API key
-					</Link>
-					<a href="#demo" className={buttonClass("outline", "lg")}>
-						Try the live demo
-					</a>
+const Hero = () => {
+	const origin = useDeploymentOrigin();
+	return (
+		<section className="relative overflow-hidden border-border border-b">
+			<div className="dot-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_at_top,black,transparent_72%)]" />
+			<div className="relative mx-auto grid w-full max-w-6xl gap-12 px-5 py-20 sm:py-24 lg:grid-cols-[minmax(0,1fr)_28.75rem] lg:items-center">
+				<div>
+					<Badge tone="accent">crawl to markdown api</Badge>
+					<h1 className="mt-5 max-w-3xl text-balance font-semibold text-4xl leading-[1.08] tracking-tight sm:text-5xl">
+						Any URL, converted to Markdown an LLM can actually read.
+					</h1>
+					<p className="mt-5 max-w-2xl text-lg text-muted-foreground leading-relaxed">
+						webforai platform wraps the webforai extraction library in a metered HTTP API. Four acquisition engines —
+						plain fetch, browser rendering, proxied fetch, proxied browser — behind one request body, and an{" "}
+						<span className="font-mono">auto</span> default that renders client-side pages only when they need it.
+					</p>
+					<div className="mt-8 flex flex-wrap items-center gap-3">
+						<Link href="/signup" className={buttonClass("primary", "lg")}>
+							Get an API key
+						</Link>
+						<a href="#demo" className={buttonClass("outline", "lg")}>
+							Try the live demo
+						</a>
+					</div>
+					<p className="mt-4 text-[0.8125rem] text-muted-foreground">
+						500 free credits every month — no card required.
+					</p>
 				</div>
-				<p className="mt-4 text-[0.8125rem] text-muted-foreground">500 free credits every month — no card required.</p>
+				<div className="min-w-0">
+					<CodeBlock code={scrapeSnippet(origin)} label="curl" />
+				</div>
 			</div>
-			<div className="min-w-0">
-				<CodeBlock code={scrapeSnippet()} label="curl" />
-			</div>
-		</div>
-	</section>
-);
+		</section>
+	);
+};
 
 const Capabilities = () => (
 	<section className="mx-auto w-full max-w-6xl px-5 py-16">

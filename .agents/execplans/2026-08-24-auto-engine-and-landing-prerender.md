@@ -40,7 +40,10 @@ Seeing it work: `pnpm --filter platform test` covers escalation/billing/warning 
 - [x] (2026-08-24 11:15Z) M4: client surface — `RequestedEngine` + `warning` in wire types,
   CLI `--engine auto`, CLI shell hint on plain-fetch conversions, skill content + SKILL.md
   regenerated (drift test caught it, as designed)
-- [ ] M5: landing prerender + hydration + build gate
+- [x] (2026-08-24 11:25Z) M5: landing prerender + hydration + build gate — `pnpm build` prints
+  "self-extraction gate passed (3714 chars of markdown body)"; headless-Chromium check on the
+  built output: prerendered hero visible, hydration effect rewrites the curl origin, demo
+  interactive, `/login` deep link cleared, zero console errors
 - [ ] M6: docs/specs + README/site sync, full gates (biome, typecheck, tests, build)
 
 ## Surprises & discoveries
@@ -56,7 +59,13 @@ Seeing it work: `pnpm --filter platform test` covers escalation/billing/warning 
   string `auto` while credits vary 1–5. Must switch to the resolved `result.engine`.
 - A previous build's `dist/` shows the layout: `dist/client` (assets, incl. `index.html`)
   and `dist/webforai_platform` (worker) — the prerender patch targets
-  `dist/client/index.html`. Verify after the first fresh build in M5.
+  `dist/client/index.html`. Confirmed on a fresh build in M5.
+- (M5) A config-less `createServer({ configFile: false, root: appDir })` + `ssrLoadModule`
+  renders the landing entry with no react plugin: Vite's default esbuild `jsx: "automatic"`
+  handles `.tsx`, and the `streamdown/styles.css` import becomes a no-op module in SSR.
+- (M5) Playwright 1.62.1 (a platform dependency for the proxy-browser container) has a local
+  Chromium at `~/.cache/ms-playwright`, which made a real hydration check of the built output
+  cheap — worth remembering for future UI verification.
 
 ## Decision log
 
@@ -225,6 +234,23 @@ Reproduction of the defeat (2026-08-24):
     $ node --input-type=module -e "import { htmlToMarkdownWithMetadata } from './packages/webforai/dist/index.js'; ..."
     markdown: "# webforai platform — crawl to Markdown API\n\n"
     metadata: {"title":"webforai platform — crawl to Markdown API","description":"Turn any URL into clean Markdown. ...","lang":"en"}
+
+M5 verification (2026-08-24):
+
+    $ pnpm --filter platform build
+    ...
+    prerender: landing markup injected into dist/client/index.html
+    prerender: self-extraction gate passed (3714 chars of markdown body)
+    $ node hydration-check.mjs   # serves dist/client, drives headless Chromium
+    hero visible: true
+    curl origin rewritten by hydration effect: true
+    demo button disabled on empty URL (interactive): true
+    landing markup leaked into /login: false
+    console errors: none
+    hydration check PASSED
+
+    Converting dist/client/index.html with webforai now yields the full landing copy
+    (hero, curl sample, capabilities, engines table, pricing — 3.7k chars).
 
 ## Interfaces and dependencies
 
