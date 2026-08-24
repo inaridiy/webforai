@@ -60,6 +60,9 @@ export const SiteShell = ({ path, session, onSignOut, children }: SiteShellProps
 					</span>
 				</Link>
 				<nav className="hidden items-center gap-1 sm:flex">
+					<a href="https://webforai.dev" className={navLinkClass(false)}>
+						Docs
+					</a>
 					<a href="https://webforai.dev/platform/api-reference" className={navLinkClass(false)}>
 						API reference
 					</a>
@@ -77,6 +80,9 @@ export const SiteShell = ({ path, session, onSignOut, children }: SiteShellProps
 			<div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-8 text-muted-foreground text-sm sm:flex-row sm:items-center sm:justify-between">
 				<p>webforai platform — open source, self-hostable, deployed on Cloudflare Workers.</p>
 				<div className="flex items-center gap-4">
+					<a href="https://webforai.dev" className="hover:text-foreground">
+						Docs
+					</a>
 					<a href="https://webforai.dev/platform/api-reference" className="hover:text-foreground">
 						API reference
 					</a>

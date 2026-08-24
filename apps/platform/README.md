@@ -41,8 +41,9 @@ picks the proxy egress country (`auto` by default; ignored by the two non-proxy 
 Full contract: `docs/specs/platform/03_api.md`.
 
 `POST /v1/demo/scrape` is a public, keyless, unbilled demo (fixed `proxy-fetch`, markdown
-truncated to 8000 chars) for the docs site, limited to 5 requests / 10 min per IP and 500 / day
-globally:
+truncated to 8000 chars) behind both the docs-site demo and the platform landing's own
+"Live demo" section (raw Markdown + rendered preview side by side), limited to 5 requests /
+10 min per IP and 500 / day globally:
 
 ```bash
 curl -X POST https://<your-host>/v1/demo/scrape \

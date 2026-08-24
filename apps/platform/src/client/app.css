@@ -15,9 +15,10 @@
 	--input: oklch(1 0 0);
 	--primary: oklch(0.21 0.006 285.885);
 	--primary-foreground: oklch(0.985 0 0);
-	--accent: oklch(0.21 0.006 285.885);
+	/* The docs site's brand blue (#1f8fff) — ties platform.webforai.dev to webforai.dev. */
+	--accent: oklch(0.65 0.191 253.6);
 	--accent-foreground: oklch(0.985 0 0);
-	--accent-subtle: oklch(0.92 0.004 286.32);
+	--accent-subtle: oklch(0.94 0.035 253);
 	--destructive: oklch(0.54 0.2 27);
 	--destructive-foreground: oklch(0.99 0 0);
 	--destructive-subtle: oklch(0.96 0.03 27);
@@ -42,9 +43,10 @@
 		--input: oklch(0.21 0.006 285.885);
 		--primary: oklch(0.985 0 0);
 		--primary-foreground: oklch(0.21 0.006 285.885);
-		--accent: oklch(0.985 0 0);
-		--accent-foreground: oklch(0.141 0.005 285.823);
-		--accent-subtle: oklch(0.37 0.013 285.805);
+		/* The docs site's dark-mode brand blue (#4db8ff). */
+		--accent: oklch(0.751 0.141 241.4);
+		--accent-foreground: oklch(0.18 0.03 250);
+		--accent-subtle: oklch(0.32 0.06 250);
 		--destructive: oklch(0.64 0.19 26);
 		--destructive-foreground: oklch(0.16 0.01 26);
 		--destructive-subtle: oklch(0.29 0.06 26);

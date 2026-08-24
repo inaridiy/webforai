@@ -1,3 +1,4 @@
+import { DemoSection } from "../components/landing/demo-section";
 import { Link } from "../lib/router";
 import { Badge } from "../ui/badge";
 import { buttonClass } from "../ui/button";
@@ -5,7 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui
 import { CodeBlock } from "../ui/code-block";
 import { TBody, TD, TH, THead, TR, Table } from "../ui/table";
 
-const scrapeSnippet = `curl -X POST https://<your-deployment>/v1/scrape \\
+/** The curl sample advertises this very deployment, like the playground's equivalent-curl strip. */
+const scrapeSnippet = (): string => {
+	const origin = typeof window === "undefined" ? "https://<your-deployment>" : window.location.origin;
+	return `curl -X POST ${origin}/v1/scrape \\
   -H "Authorization: Bearer wfa_..." \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -13,6 +17,7 @@ const scrapeSnippet = `curl -X POST https://<your-deployment>/v1/scrape \\
     "engine": "fetch",
     "convert": { "extractor": "auto", "frontmatter": true }
   }'`;
+};
 
 const engines: { id: string; how: string; proxy: string; screenshot: string; credits: string }[] = [
 	{ id: "fetch", how: "Plain HTTP fetch from the edge", proxy: "no", screenshot: "no", credits: "1" },
@@ -48,26 +53,29 @@ const capabilities: { title: string; body: string; tag: string }[] = [
 const Hero = () => (
 	<section className="relative overflow-hidden border-border border-b">
 		<div className="dot-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_at_top,black,transparent_72%)]" />
-		<div className="relative mx-auto w-full max-w-6xl px-5 py-20 sm:py-28">
-			<Badge tone="accent">crawl to markdown api</Badge>
-			<h1 className="mt-5 max-w-3xl text-balance font-semibold text-4xl leading-[1.08] tracking-tight sm:text-5xl">
-				Any URL, converted to Markdown an LLM can actually read.
-			</h1>
-			<p className="mt-5 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-				webforai platform wraps the webforai extraction library in a metered HTTP API. Four acquisition engines — plain
-				fetch, browser rendering, proxied fetch, proxied browser — behind one request body, with async batch and crawl
-				jobs that survive retries.
-			</p>
-			<div className="mt-8 flex flex-wrap items-center gap-3">
-				<Link href="/signup" className={buttonClass("primary", "lg")}>
-					Get an API key
-				</Link>
-				<a href="https://webforai.dev/platform/api-reference" className={buttonClass("outline", "lg")}>
-					Read the API reference
-				</a>
+		<div className="relative mx-auto grid w-full max-w-6xl gap-12 px-5 py-20 sm:py-24 lg:grid-cols-[minmax(0,1fr)_28.75rem] lg:items-center">
+			<div>
+				<Badge tone="accent">crawl to markdown api</Badge>
+				<h1 className="mt-5 max-w-3xl text-balance font-semibold text-4xl leading-[1.08] tracking-tight sm:text-5xl">
+					Any URL, converted to Markdown an LLM can actually read.
+				</h1>
+				<p className="mt-5 max-w-2xl text-lg text-muted-foreground leading-relaxed">
+					webforai platform wraps the webforai extraction library in a metered HTTP API. Four acquisition engines —
+					plain fetch, browser rendering, proxied fetch, proxied browser — behind one request body, with async batch and
+					crawl jobs that survive retries.
+				</p>
+				<div className="mt-8 flex flex-wrap items-center gap-3">
+					<Link href="/signup" className={buttonClass("primary", "lg")}>
+						Get an API key
+					</Link>
+					<a href="#demo" className={buttonClass("outline", "lg")}>
+						Try the live demo
+					</a>
+				</div>
+				<p className="mt-4 text-[0.8125rem] text-muted-foreground">500 free credits every month — no card required.</p>
 			</div>
-			<div className="mt-12 max-w-3xl">
-				<CodeBlock code={scrapeSnippet} label="curl" />
+			<div className="min-w-0">
+				<CodeBlock code={scrapeSnippet()} label="curl" />
 			</div>
 		</div>
 	</section>
@@ -194,6 +202,7 @@ const Closing = () => (
 export const LandingPage = () => (
 	<>
 		<Hero />
+		<DemoSection />
 		<Capabilities />
 		<Engines />
 		<Pricing />

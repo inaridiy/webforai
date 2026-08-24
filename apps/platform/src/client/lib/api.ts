@@ -145,3 +145,22 @@ export const runPlaygroundScrape = (request: PlaygroundRequest): Promise<Result<
 		method: "POST",
 		body: JSON.stringify(request),
 	});
+
+export type DemoResult = {
+	url: string;
+	region: string;
+	markdown: string;
+	truncated: boolean;
+	title?: string;
+	metadata: Record<string, unknown>;
+};
+
+/**
+ * Runs the public, unauthenticated landing-page demo (`POST /v1/demo/scrape`): fixed
+ * proxy-fetch engine, rate-limited per IP, truncated output. Nothing is billed.
+ */
+export const runDemoScrape = (url: string, region: string): Promise<Result<DemoResult>> =>
+	requestJson<DemoResult>("/v1/demo/scrape", {
+		method: "POST",
+		body: JSON.stringify({ url, region }),
+	});
