@@ -37,5 +37,12 @@ export {
 	type SiteAdapter,
 } from "./adapters";
 
+export {
+	detectClientShell,
+	SHELL_EMPTY_THRESHOLD,
+	SHELL_SUSPICION_THRESHOLD,
+	type ClientShellReason,
+	type ClientShellVerdict,
+} from "./detect-client-shell";
 export { extractMetadata, toFrontmatter, type PageMetadata } from "./metadata";
 export { normalizeHast, type NormalizeOptions } from "./normalize";
