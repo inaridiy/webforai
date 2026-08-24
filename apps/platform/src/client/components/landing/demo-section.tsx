@@ -45,7 +45,8 @@ type RunState =
 	| { status: "error"; error: Extract<Result<never>, { ok: false }> };
 
 const PaneHeader = ({ label, action }: { label: string; action?: ReactNode }) => (
-	<div className="flex items-center justify-between border-border border-b bg-muted/60 px-3 py-1.5">
+	// Fixed height: with the copy button on only one pane, content-driven heights diverge.
+	<div className="flex h-8 shrink-0 items-center justify-between border-border border-b bg-muted/60 px-3">
 		<span className="font-mono text-[0.6875rem] text-muted-foreground uppercase tracking-wider">{label}</span>
 		{action}
 	</div>
