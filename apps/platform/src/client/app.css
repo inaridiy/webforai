@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Streamdown (the landing demo's Markdown preview) styles itself with Tailwind utilities. */
+@source "../../node_modules/streamdown/dist/*.js";
+
 /*
  * Design tokens. Only semantic names are consumed by components — never raw colors.
  * Light is the default; dark follows the operating system preference.
@@ -81,6 +84,9 @@
 	--color-warning: var(--warning);
 	--color-warning-subtle: var(--warning-subtle);
 	--color-ring: var(--ring);
+	/* Streamdown's components reference shadcn sidebar tokens; alias them to the card surface. */
+	--color-sidebar: var(--card);
+	--color-sidebar-foreground: var(--card-foreground);
 
 	--radius-sm: calc(var(--radius) - 3px);
 	--radius-md: calc(var(--radius) - 1px);

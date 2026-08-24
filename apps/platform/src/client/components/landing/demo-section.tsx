@@ -1,21 +1,39 @@
 import { type FormEvent, type ReactNode, useState } from "react";
+import { Streamdown } from "streamdown";
 import { type DemoResult, type Result, runDemoScrape } from "../../lib/api";
 import { copyToClipboard } from "../../lib/format";
 import { Link } from "../../lib/router";
 import { Alert } from "../../ui/alert";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
-import { MarkdownPreview } from "../../ui/markdown-preview";
 import { Select, type SelectOption } from "../../ui/select";
 import { LoadingRow, Spinner } from "../../ui/spinner";
+import "streamdown/styles.css";
 
 /**
  * The public top-page demo: one URL through the unauthenticated `POST /v1/demo/scrape`
  * (fixed proxy-fetch engine, per-IP rate limit, truncated output), shown as raw Markdown
- * and a rendered preview side by side.
+ * and a rendered preview side by side. The preview is Streamdown (security-hardened,
+ * GFM-complete); its Tailwind utilities compile via the `@source` line in `app.css` and it
+ * consumes the same shadcn-style tokens the rest of the app runs on.
  */
 
 const INITIAL_URL = "https://platform.webforai.dev";
+
+/**
+ * Streamdown has no frontmatter support, and raw remark renders a leading `---` block as a
+ * broken mix of headings and rules — so split it off and show it as a plain metadata strip.
+ */
+const splitFrontmatter = (markdown: string): { frontmatter: string[]; body: string } => {
+	const match = /^---\n([\s\S]*?)\n---\n?/.exec(markdown);
+	if (match === null) {
+		return { frontmatter: [], body: markdown };
+	}
+	return {
+		frontmatter: (match[1] ?? "").split("\n").filter((line) => line.trim().length > 0),
+		body: markdown.slice(match[0].length),
+	};
+};
 
 const REGION_OPTIONS: SelectOption[] = [
 	{ value: "auto", label: "auto (nearest)" },
@@ -57,33 +75,45 @@ const CopyAction = ({ text }: { text: string }) => {
 	);
 };
 
-const DemoResultView = ({ result }: { result: DemoResult }) => (
-	<>
-		<div className="grid grid-cols-1 border-border border-t md:grid-cols-2">
-			<div className="flex min-w-0 flex-col border-border border-b md:border-r md:border-b-0">
-				<PaneHeader label="markdown" action={<CopyAction text={result.markdown} />} />
-				<pre className="max-h-[28rem] flex-1 overflow-auto px-4 py-3 font-mono text-[0.8125rem] leading-relaxed">
-					<code>{result.markdown.length > 0 ? result.markdown : "(empty result)"}</code>
-				</pre>
-			</div>
-			<div className="flex min-w-0 flex-col">
-				<PaneHeader label="preview" />
-				<div className="max-h-[28rem] flex-1 overflow-auto px-5 py-4">
-					<MarkdownPreview markdown={result.markdown} />
+const DemoResultView = ({ result }: { result: DemoResult }) => {
+	const { frontmatter, body } = splitFrontmatter(result.markdown);
+	return (
+		<>
+			<div className="grid grid-cols-1 border-border border-t md:grid-cols-2">
+				<div className="flex min-w-0 flex-col border-border border-b md:border-r md:border-b-0">
+					<PaneHeader label="markdown" action={<CopyAction text={result.markdown} />} />
+					<pre className="max-h-[28rem] flex-1 overflow-auto px-4 py-3 font-mono text-[0.8125rem] leading-relaxed">
+						<code>{result.markdown.length > 0 ? result.markdown : "(empty result)"}</code>
+					</pre>
+				</div>
+				<div className="flex min-w-0 flex-col">
+					<PaneHeader label="preview" />
+					<div className="max-h-[28rem] flex-1 overflow-auto px-5 py-4">
+						{frontmatter.length === 0 ? null : (
+							<div className="mb-4 overflow-x-auto rounded-md border border-border bg-muted/50 px-3.5 py-2.5 font-mono text-muted-foreground text-xs leading-relaxed">
+								{frontmatter.map((line) => (
+									<div key={line} className="whitespace-pre">
+										{line}
+									</div>
+								))}
+							</div>
+						)}
+						<Streamdown className="text-sm">{body}</Streamdown>
+					</div>
 				</div>
 			</div>
-		</div>
-		{result.truncated ? (
-			<div className="border-border border-t bg-muted/60 px-5 py-2 text-center text-muted-foreground text-xs">
-				Demo output is truncated —{" "}
-				<Link href="/signup" className="text-accent hover:underline">
-					create an account
-				</Link>{" "}
-				for full results and every engine.
-			</div>
-		) : null}
-	</>
-);
+			{result.truncated ? (
+				<div className="border-border border-t bg-muted/60 px-5 py-2 text-center text-muted-foreground text-xs">
+					Demo output is truncated —{" "}
+					<Link href="/signup" className="text-accent hover:underline">
+						create an account
+					</Link>{" "}
+					for full results and every engine.
+				</div>
+			) : null}
+		</>
+	);
+};
 
 const DemoError = ({ error }: { error: Extract<Result<never>, { ok: false }> }) => (
 	<div className="border-border border-t p-4 sm:p-5">

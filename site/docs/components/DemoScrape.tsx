@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { Streamdown } from "streamdown";
 import { PLATFORM_DEMO_ENDPOINT, PLATFORM_REGIONS, type PlatformRegion } from "./platform";
+import "streamdown/styles.css";
 
 type DemoSuccess = {
 	url: string;
@@ -14,6 +16,62 @@ type DemoError = {
 };
 
 const DEFAULT_URL = "https://webforai.dev";
+
+/**
+ * Streamdown has no frontmatter support, and raw remark renders a leading `---` block as a
+ * broken mix of headings and rules — so split it off and show it as a plain metadata strip.
+ */
+const splitFrontmatter = (markdown: string): { frontmatter: string[]; body: string } => {
+	const match = /^---\n([\s\S]*?)\n---\n?/.exec(markdown);
+	if (match === null) {
+		return { frontmatter: [], body: markdown };
+	}
+	return {
+		frontmatter: (match[1] ?? "").split("\n").filter((line) => line.trim().length > 0),
+		body: markdown.slice(match[0].length),
+	};
+};
+
+/**
+ * Raw Markdown and a rendered preview side by side. Streamdown does the rendering
+ * (security-hardened, GFM-complete); the `vp-doc` wrapper hands typography to the site's
+ * own document styles so the preview looks native, and controls are off because their
+ * chrome expects a Tailwind 4 + shadcn pipeline this site does not run.
+ */
+const DemoResult = ({ result, title }: { result: DemoSuccess; title: string | undefined }) => {
+	const { frontmatter, body } = splitFrontmatter(result.markdown);
+	return (
+		<div className="space-y-2">
+			{title ? <div className="text-[15px] font-medium">{title}</div> : null}
+			<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+				<div className="min-w-0">
+					<div className="mb-1 font-mono text-[11px] uppercase tracking-wider opacity-60">markdown</div>
+					<pre className="max-h-[420px] overflow-auto rounded-lg border border-black/10 bg-black/5 p-3 text-[13px] leading-relaxed dark:border-white/20 dark:bg-white/5">
+						<code>{result.markdown || "(empty result)"}</code>
+					</pre>
+				</div>
+				<div className="min-w-0">
+					<div className="mb-1 font-mono text-[11px] uppercase tracking-wider opacity-60">preview</div>
+					<div className="max-h-[420px] overflow-auto rounded-lg border border-black/10 bg-white/60 px-4 py-3 dark:border-white/20 dark:bg-black/40">
+						{frontmatter.length === 0 ? null : (
+							<div className="mb-3 overflow-x-auto rounded-lg border border-black/10 bg-black/5 p-2.5 font-mono text-[12px] leading-relaxed opacity-80 dark:border-white/20 dark:bg-white/5">
+								{frontmatter.map((line) => (
+									<div key={line} className="whitespace-pre">
+										{line}
+									</div>
+								))}
+							</div>
+						)}
+						<div className="vp-doc">
+							<Streamdown controls={false}>{body}</Streamdown>
+						</div>
+					</div>
+				</div>
+			</div>
+			{result.truncated ? <div className="text-[13px] opacity-60">Output truncated by the demo endpoint.</div> : null}
+		</div>
+	);
+};
 
 const REGION_LABELS: Record<PlatformRegion, string> = {
 	auto: "auto (nearest)",
@@ -156,17 +214,7 @@ export const DemoScrape = () => {
 				</div>
 			) : null}
 
-			{result ? (
-				<div className="space-y-2">
-					{title ? <div className="text-[15px] font-medium">{title}</div> : null}
-					<pre className="max-h-[360px] overflow-auto rounded-lg border border-black/10 bg-black/5 p-3 text-[13px] leading-relaxed dark:border-white/20 dark:bg-white/5">
-						<code>{result.markdown || "(empty result)"}</code>
-					</pre>
-					{result.truncated ? (
-						<div className="text-[13px] opacity-60">Output truncated by the demo endpoint.</div>
-					) : null}
-				</div>
-			) : null}
+			{result ? <DemoResult result={result} title={title} /> : null}
 
 			<div className="text-[13px] opacity-60">
 				Rate-limited public demo (5 requests / 10 min per IP) running the <code>proxy-fetch</code> engine. No API key

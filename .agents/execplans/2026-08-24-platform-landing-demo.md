@@ -40,7 +40,19 @@ copy verified in the deployed bundles.
       direct link to platform.webforai.dev.
 - [x] (2026-08-24) Gates green (biome format+lint clean, platform typecheck OK, 131 platform
       tests passing incl. 7 new parser tests, platform build OK, site build OK).
-- [x] (2026-08-24) Deploy both and verify live. Platform version `5f77bd2f` on
+- [x] (2026-08-24) Deploy both and verify live.
+- [x] (2026-08-24) Follow-up per user feedback ("don't hand-roll the previewer"): the
+      hand-rolled Markdown parser/renderer (`lib/markdown-preview.ts` + test +
+      `ui/markdown-preview.tsx`) is deleted and both demos render with `streamdown@2.5.0`
+      (+ its `streamdown/styles.css` animation preset). Platform: Tailwind 4 compiles
+      Streamdown's utilities via `@source "../../node_modules/streamdown/dist/*.js"` in
+      `app.css`, and the app's existing shadcn-named tokens feed it directly (plus new
+      `--color-sidebar[-foreground]` aliases). Docs site (Tailwind 3, no shadcn tokens):
+      the preview wraps `<Streamdown controls={false}>` in a `vp-doc` container so vocs'
+      own document CSS does the typography. Both demos split YAML frontmatter off before
+      rendering (raw remark mangles it) and show it as a mono metadata strip. Docs demo
+      also gained the same side-by-side raw/preview layout. Platform client bundle grows
+      285→786 kB (89→240 kB gz) — code-splitting the demo section is a known follow-up. Platform version `5f77bd2f` on
       platform.webforai.dev: deployed JS bundle contains "Try the live demo" / "No conversion
       yet", deployed CSS carries `--accent:oklch(65% .191 253.6)` (light) and
       `oklch(75.1% .141 241.4)` (dark); one live `POST /v1/demo/scrape` for
