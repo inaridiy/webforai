@@ -18,6 +18,18 @@ type DemoError = {
 const DEFAULT_URL = "https://webforai.dev";
 
 /**
+ * This site is on React 18 while streamdown's typings resolve against the workspace's
+ * hoisted `@types/react` 19, so TS rejects it as a JSX component even though the runtime
+ * is compatible (streamdown declares `react: ^18 || ^19`). Narrow cast over the props
+ * this file actually uses.
+ */
+const StreamdownPreview = Streamdown as unknown as (props: {
+	children?: string;
+	className?: string;
+	controls?: boolean;
+}) => JSX.Element;
+
+/**
  * Streamdown has no frontmatter support, and raw remark renders a leading `---` block as a
  * broken mix of headings and rules — so split it off and show it as a plain metadata strip.
  */
@@ -63,7 +75,7 @@ const DemoResult = ({ result, title }: { result: DemoSuccess; title: string | un
 							</div>
 						)}
 						<div className="vp-doc">
-							<Streamdown controls={false}>{body}</Streamdown>
+							<StreamdownPreview controls={false}>{body}</StreamdownPreview>
 						</div>
 					</div>
 				</div>
