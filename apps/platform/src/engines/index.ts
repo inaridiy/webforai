@@ -81,8 +81,9 @@ const countryFor = (region: EngineFetchParams["region"]): string | undefined => 
 
 export const createEngines = (env: Env, config: AppConfig): EngineSet => ({
 	// `fetch` and `browser` egress from Cloudflare and cannot be geo-targeted, so they ignore
-	// `region` rather than silently pretending to honour it.
-	fetch: workersFetchEngine,
+	// `region` rather than silently pretending to honour it. Requests for this deployment's
+	// own pages are served from the assets binding — a Worker cannot fetch its own zone.
+	fetch: (params) => workersFetchEngine(params, { self: { host: new URL(config.BASE_URL).host, assets: env.ASSETS } }),
 
 	browser: (params) => browserEngine(env.BROWSER, params),
 

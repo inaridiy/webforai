@@ -100,8 +100,29 @@ export const readCappedBytes = async (
 
 const describe = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
-const request = async (url: string): Promise<Response> => {
+/**
+ * The deployment's own host and its static-assets binding.
+ *
+ * A Worker cannot `fetch()` a URL on its own zone — Cloudflare answers the looping
+ * subrequest with a 522 — so a scrape of our own pages must be served from the assets
+ * binding instead. The assets are the same bytes the public URL serves (the prerendered
+ * SPA, with its single-page-application fallback), so the result is what any outside
+ * fetcher would see.
+ */
+export interface SelfServing {
+	host: string;
+	assets: { fetch(input: string): Promise<Response> };
+}
+
+export interface WorkersFetchOptions {
+	self?: SelfServing;
+}
+
+const request = async (url: string, self: SelfServing | undefined): Promise<Response> => {
 	try {
+		if (self && new URL(url).host === self.host) {
+			return await self.assets.fetch(url);
+		}
 		return await fetch(url, {
 			method: "GET",
 			redirect: "follow",
@@ -120,9 +141,12 @@ const request = async (url: string): Promise<Response> => {
  * `screenshot` is ignored here: this engine cannot produce one, and `scrape-core` rejects the
  * combination before any engine runs.
  */
-export const workersFetchEngine = async ({ url }: EngineFetchParams): Promise<FetchedPage> => {
+export const workersFetchEngine = async (
+	{ url }: EngineFetchParams,
+	options: WorkersFetchOptions = {},
+): Promise<FetchedPage> => {
 	const target = assertPublicHttpUrl(url);
-	const response = await request(target.href);
+	const response = await request(target.href, options.self);
 
 	// Redirects are followed by the runtime, so the only place a private target can appear is
 	// the final URL — re-check it before the body is trusted.

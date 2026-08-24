@@ -180,5 +180,10 @@ proxy. Constants live in `src/routes/demo.ts`.
 - Meta-refresh redirects: fetch-tier engines follow `<meta http-equiv="refresh">` stubs
   (≤ 3 hops, delay ≤ 10s, http(s) targets only) before shell detection, so an HTTP 200
   redirect page converts as its destination rather than as "Redirecting…".
+- Self-scrapes: the `fetch` engine serves URLs on the deployment's own host (from
+  `BASE_URL`) out of the Workers assets binding — a Worker cannot `fetch()` its own zone
+  (Cloudflare answers the looping subrequest with a 522). Same bytes as the public URL,
+  same pricing. (Revision note 2026-08-24: added after the deployed demo answered
+  `fetch_failed: upstream responded 522` for platform.webforai.dev itself.)
 - Rate limit: per-key requests/min via Better Auth apiKey rate limiting (initial),
   plus job-level caps above.
