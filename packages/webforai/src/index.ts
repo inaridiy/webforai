@@ -44,5 +44,10 @@ export {
 	type ClientShellReason,
 	type ClientShellVerdict,
 } from "./detect-client-shell";
+export {
+	extractMetaRefresh,
+	MAX_META_REFRESH_DELAY_SECONDS,
+	type MetaRefreshTarget,
+} from "./extract-meta-refresh";
 export { extractMetadata, toFrontmatter, type PageMetadata } from "./metadata";
 export { normalizeHast, type NormalizeOptions } from "./normalize";
