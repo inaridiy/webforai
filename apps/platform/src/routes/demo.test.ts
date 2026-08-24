@@ -95,7 +95,7 @@ const seedWindow = (kv: FakeKv, key: string, count: number, resetAt: number) => 
 };
 
 describe("demo scrape", () => {
-	it("runs a proxy-fetch scrape with the requested region and no billing", async () => {
+	it("runs an auto-engine scrape with the requested region and no billing", async () => {
 		const { app, requests } = harness();
 
 		const response = await post(app, { url: "https://example.com/a", region: "jp" });
@@ -105,7 +105,7 @@ describe("demo scrape", () => {
 		expect(requests).toEqual([
 			{
 				url: "https://example.com/a",
-				engine: "proxy-fetch",
+				engine: "auto",
 				screenshot: false,
 				rehostImages: false,
 				region: "jp",
@@ -148,15 +148,23 @@ describe("demo scrape", () => {
 		expect((await post(app, { url: "https://example.com/a", engine: "browser" })).status).toBe(400);
 	});
 
-	it("is 503 when the proxy is not configured, and costs no allowance", async () => {
+	it("is 503 for a geo-targeted request when the proxy is not configured, and costs no allowance", async () => {
 		const { app, kv } = harness({ proxyEnabled: false });
-		const response = await post(app, { url: "https://example.com/a" });
+		const response = await post(app, { url: "https://example.com/a", region: "jp" });
 
 		expect(response.status).toBe(503);
 		expect((await response.json()) as { error: { code: string } }).toMatchObject({
 			error: { code: "engine_unavailable" },
 		});
 		expect(kv.store.size).toBe(0);
+	});
+
+	it("serves auto-region requests without a proxy — the plain engines need none", async () => {
+		const { app, requests } = harness({ proxyEnabled: false });
+		const response = await post(app, { url: "https://example.com/a" });
+
+		expect(response.status).toBe(200);
+		expect(requests[0]?.engine).toBe("auto");
 	});
 
 	it("answers CORS preflight for a cross-origin docs site", async () => {

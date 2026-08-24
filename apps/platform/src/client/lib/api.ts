@@ -128,12 +128,15 @@ export type PlaygroundRequest = {
 
 export type PlaygroundResult = {
 	url: string;
+	/** The engine that actually ran — an `auto` request resolves to a concrete one. */
 	engine: string;
 	markdown: string;
 	metadata: Record<string, unknown>;
 	credits: number;
 	screenshotUrl?: string;
 	images?: { original: string; rehosted: string }[];
+	/** Present when the result is probably degraded (e.g. an unrendered client-side shell). */
+	warning?: string;
 };
 
 /**
@@ -156,8 +159,9 @@ export type DemoResult = {
 };
 
 /**
- * Runs the public, unauthenticated landing-page demo (`POST /v1/demo/scrape`): fixed
- * proxy-fetch engine, rate-limited per IP, truncated output. Nothing is billed.
+ * Runs the public, unauthenticated landing-page demo (`POST /v1/demo/scrape`): fixed `auto`
+ * engine (renders client-side pages when needed), rate-limited per IP, truncated output.
+ * Nothing is billed.
  */
 export const runDemoScrape = (url: string, region: string): Promise<Result<DemoResult>> =>
 	requestJson<DemoResult>("/v1/demo/scrape", {

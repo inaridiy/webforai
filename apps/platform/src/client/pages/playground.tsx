@@ -14,6 +14,7 @@ import { Select, type SelectOption } from "../ui/select";
 import { LoadingRow, Spinner } from "../ui/spinner";
 
 const ENGINE_OPTIONS: SelectOption[] = [
+	{ value: "auto", label: "auto" },
 	{ value: "fetch", label: "fetch" },
 	{ value: "browser", label: "browser" },
 	{ value: "proxy-fetch", label: "proxy-fetch" },
@@ -22,6 +23,7 @@ const ENGINE_OPTIONS: SelectOption[] = [
 
 /** Shown under the engine select so the cost is visible before pressing Run. */
 const ENGINE_HINTS: Record<string, string> = {
+	auto: "Cheapest first, renders when the page needs JavaScript · 1–5 credits",
 	fetch: "Plain fetch · 1 credit",
 	browser: "Browser rendering · 5 credits",
 	// biome-ignore lint/style/useNamingConvention: engine ids are kebab-case API values
@@ -46,8 +48,10 @@ const EXTRACTOR_OPTIONS: SelectOption[] = [
 	{ value: "none", label: "none" },
 ];
 
-const SCREENSHOT_ENGINES = new Set(["browser", "proxy-browser"]);
-const PROXY_ENGINES = new Set(["proxy-fetch", "proxy-browser"]);
+// `auto` renders in a browser when asked for a screenshot, and pins to the proxy tier when a
+// region is set — so both toggles stay live for it.
+const SCREENSHOT_ENGINES = new Set(["auto", "browser", "proxy-browser"]);
+const PROXY_ENGINES = new Set(["auto", "proxy-fetch", "proxy-browser"]);
 
 type FormState = {
 	url: string;
@@ -61,7 +65,7 @@ type FormState = {
 
 const INITIAL_FORM: FormState = {
 	url: "https://example.com",
-	engine: "fetch",
+	engine: "auto",
 	region: "auto",
 	extractor: "auto",
 	frontmatter: true,
@@ -195,6 +199,11 @@ const ResultView = ({ result }: { result: PlaygroundResult }) => {
 					{copied ? "Copied" : "Copy markdown"}
 				</Button>
 			</div>
+			{result.warning === undefined ? null : (
+				<Alert tone="warning" title="Degraded result">
+					{result.warning}
+				</Alert>
+			)}
 			{result.screenshotUrl === undefined ? null : (
 				<Card>
 					<CardHeader>

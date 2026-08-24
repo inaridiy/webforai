@@ -12,7 +12,7 @@ import "streamdown/styles.css";
 
 /**
  * The public top-page demo: one URL through the unauthenticated `POST /v1/demo/scrape`
- * (fixed proxy-fetch engine, per-IP rate limit, truncated output), shown as raw Markdown
+ * (fixed `auto` engine, per-IP rate limit, truncated output), shown as raw Markdown
  * and a rendered preview side by side. The preview is Streamdown (security-hardened,
  * GFM-complete); its Tailwind utilities compile via the `@source` line in `app.css` and it
  * consumes the same shadcn-style tokens the rest of the app runs on.
@@ -139,8 +139,8 @@ export const DemoSection = () => {
 			<h2 className="mt-2 font-semibold text-2xl tracking-tight">Try it on any URL</h2>
 			<p className="mt-2 max-w-2xl text-muted-foreground text-sm leading-relaxed">
 				The same conversion pipeline as <span className="font-mono">POST /v1/scrape</span>, running the{" "}
-				<span className="font-mono">proxy-fetch</span> engine. No account needed — rate-limited to 5 requests per 10
-				minutes.
+				<span className="font-mono">auto</span> engine — plain fetch, escalating to browser rendering when the page
+				needs JavaScript. No account needed — rate-limited to 5 requests per 10 minutes.
 			</p>
 			<div className="mt-6 overflow-hidden rounded-xl border border-border bg-card text-card-foreground">
 				<form onSubmit={onSubmit} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:px-5">

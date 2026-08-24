@@ -10,9 +10,10 @@ import { describeZodError, onPlatformError } from "./errors";
  * The public, unauthenticated demo (`POST /v1/demo/scrape`).
  *
  * It exists so the docs site can show a real conversion without asking for a key, which makes it
- * the one route where a stranger can make us spend proxy bandwidth. Three rules follow:
+ * the one route where a stranger can make us spend proxy bandwidth or browser renders. Three
+ * rules follow:
  *
- * 1. Both rate limits are checked **before** the proxy runs, so a rejected request costs nothing.
+ * 1. Both rate limits are checked **before** any engine runs, so a rejected request costs nothing.
  * 2. The limiter is **fail-closed**: a KV read or write we cannot complete denies the request
  *    rather than letting an unmetered flood through.
  * 3. Nothing is billed — there is no user to bill — so the caps below are the only spend bound.
@@ -22,8 +23,12 @@ import { describeZodError, onPlatformError } from "./errors";
  * in unit tests, and `engines/` pulls in Workers-only modules.
  */
 
-/** The demo is a fixed product: one engine, no artifacts, default conversion. */
-export const DEMO_ENGINE = "proxy-fetch" as const;
+/**
+ * The demo is a fixed product: the `auto` engine (so a client-rendered site still shows real
+ * markdown — the demo must never lose to its own landing page), no artifacts, default
+ * conversion. The caller chooses only the URL and the region.
+ */
+export const DEMO_ENGINE = "auto" as const;
 
 /** Per-IP fixed window. */
 export const DEMO_IP_LIMIT = 5;
@@ -248,10 +253,11 @@ export const demoRoutes = (createDeps: DemoDepsFactory) => {
 		const deps = createDeps(c.env);
 		const body = parseDemoBody(await readJson(c.req.raw));
 
-		// Before the limiter: a deployment without a configured proxy has nothing to protect,
-		// and a misconfiguration must not consume the caller's demo allowance.
-		if (!deps.proxyEnabled) {
-			throw new EngineUnavailableError(DEMO_ENGINE, "the demo requires a configured proxy");
+		// Before the limiter: a request we cannot serve must not consume the caller's demo
+		// allowance. Only geo-targeted requests need the proxy tier — `auto` regions run on the
+		// plain engines, so a proxy-less deployment still serves the demo.
+		if (body.region !== "auto" && !deps.proxyEnabled) {
+			throw new EngineUnavailableError("proxy-fetch", "geo-targeted demo requests require a configured proxy");
 		}
 
 		const now = deps.now();

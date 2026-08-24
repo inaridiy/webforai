@@ -14,12 +14,19 @@ const scrapeSnippet = (): string => {
   -H "Content-Type: application/json" \\
   -d '{
     "url": "https://example.com/article",
-    "engine": "fetch",
+    "engine": "auto",
     "convert": { "extractor": "auto", "frontmatter": true }
   }'`;
 };
 
 const engines: { id: string; how: string; proxy: string; screenshot: string; credits: string }[] = [
+	{
+		id: "auto",
+		how: "Cheapest engine first, escalates to browser rendering when the page needs JavaScript",
+		proxy: "with region",
+		screenshot: "yes",
+		credits: "1–5",
+	},
 	{ id: "fetch", how: "Plain HTTP fetch from the edge", proxy: "no", screenshot: "no", credits: "1" },
 	{ id: "browser", how: "Headless browser rendering", proxy: "no", screenshot: "yes", credits: "5" },
 	{ id: "proxy-fetch", how: "HTTP fetch through a rotating proxy", proxy: "yes", screenshot: "no", credits: "2" },
@@ -61,8 +68,8 @@ const Hero = () => (
 				</h1>
 				<p className="mt-5 max-w-2xl text-lg text-muted-foreground leading-relaxed">
 					webforai platform wraps the webforai extraction library in a metered HTTP API. Four acquisition engines —
-					plain fetch, browser rendering, proxied fetch, proxied browser — behind one request body, with async batch and
-					crawl jobs that survive retries.
+					plain fetch, browser rendering, proxied fetch, proxied browser — behind one request body, and an{" "}
+					<span className="font-mono">auto</span> default that renders client-side pages only when they need it.
 				</p>
 				<div className="mt-8 flex flex-wrap items-center gap-3">
 					<Link href="/signup" className={buttonClass("primary", "lg")}>
@@ -102,10 +109,11 @@ const Capabilities = () => (
 const Engines = () => (
 	<section className="border-border border-y bg-muted/40">
 		<div className="mx-auto w-full max-w-6xl px-5 py-16">
-			<h2 className="font-semibold text-2xl tracking-tight">Four acquisition engines</h2>
+			<h2 className="font-semibold text-2xl tracking-tight">Four acquisition engines, one auto mode</h2>
 			<p className="mt-2 max-w-2xl text-muted-foreground text-sm leading-relaxed">
 				The engine decides how the HTML is fetched; extraction and Markdown conversion are identical across all of them.
-				Pick the cheapest one that gets past the origin.
+				The default <span className="font-mono">auto</span> starts cheap and escalates to browser rendering when a page
+				turns out to be a client-side shell — you are billed for the engine that produced the result.
 			</p>
 			<div className="mt-8 rounded-xl border border-border bg-card py-2">
 				<Table>
