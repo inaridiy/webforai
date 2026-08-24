@@ -31,27 +31,20 @@ const StreamdownPreview = Streamdown as unknown as (props: {
 
 /**
  * Streamdown has no frontmatter support, and raw remark renders a leading `---` block as a
- * broken mix of headings and rules — so split it off and show it as a plain metadata strip.
+ * broken mix of headings and rules — so drop it from the preview (the raw pane shows it).
  */
-const splitFrontmatter = (markdown: string): { frontmatter: string[]; body: string } => {
-	const match = /^---\n([\s\S]*?)\n---\n?/.exec(markdown);
-	if (match === null) {
-		return { frontmatter: [], body: markdown };
-	}
-	return {
-		frontmatter: (match[1] ?? "").split("\n").filter((line) => line.trim().length > 0),
-		body: markdown.slice(match[0].length),
-	};
+const stripFrontmatter = (markdown: string): string => {
+	const match = /^---\n[\s\S]*?\n---\n?/.exec(markdown);
+	return match === null ? markdown : markdown.slice(match[0].length);
 };
 
 /**
  * Raw Markdown and a rendered preview side by side. Streamdown does the rendering
- * (security-hardened, GFM-complete); the `vp-doc` wrapper hands typography to the site's
- * own document styles so the preview looks native, and controls are off because their
- * chrome expects a Tailwind 4 + shadcn pipeline this site does not run.
+ * (security-hardened, GFM-complete) and its utility classes compile via the streamdown
+ * entry in tailwind.config.js; `.md-preview` (docs/styles.css) provides the type scale.
  */
 const DemoResult = ({ result, title }: { result: DemoSuccess; title: string | undefined }) => {
-	const { frontmatter, body } = splitFrontmatter(result.markdown);
+	const body = stripFrontmatter(result.markdown);
 	return (
 		<div className="space-y-2">
 			{title ? <div className="text-[15px] font-medium">{title}</div> : null}
@@ -65,18 +58,9 @@ const DemoResult = ({ result, title }: { result: DemoSuccess; title: string | un
 				<div className="min-w-0">
 					<div className="mb-1 font-mono text-[11px] uppercase tracking-wider opacity-60">preview</div>
 					<div className="max-h-[640px] overflow-auto rounded-lg border border-black/10 bg-white/60 px-4 py-3 dark:border-white/20 dark:bg-black/40">
-						{frontmatter.length === 0 ? null : (
-							<div className="mb-3 overflow-x-auto rounded-lg border border-black/10 bg-black/5 p-2.5 font-mono text-[12px] leading-relaxed opacity-80 dark:border-white/20 dark:bg-white/5">
-								{frontmatter.map((line) => (
-									<div key={line} className="whitespace-pre">
-										{line}
-									</div>
-								))}
-							</div>
-						)}
-						<div className="vp-doc">
-							<StreamdownPreview controls={false}>{body}</StreamdownPreview>
-						</div>
+						<StreamdownPreview className="md-preview" controls={false}>
+							{body}
+						</StreamdownPreview>
 					</div>
 				</div>
 			</div>

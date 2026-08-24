@@ -61,7 +61,18 @@ copy verified in the deployed bundles.
       the dark token block (`app.css`, restorable from git history), rebinds Tailwind's
       `dark:` variant to a never-present class and ships `color-scheme: light`; the docs
       site sets vocs `theme.colorScheme: "light"` (accentColor is now the single light
-      value). Platform version `5f77bd2f` on
+      value).
+- [x] (2026-08-24) Preview quality round (user screenshot showed the docs preview broken):
+      frontmatter is no longer displayed in the preview pane on either site (still stripped
+      before rendering); `.md-preview img` gains a 14rem height cap. Root cause of "no
+      typography" on docs: vocs ships precompiled styles and nothing in the pipeline carried
+      a `@tailwind` directive, so site/tailwind.config.js was never consumed and
+      Streamdown's utility classes stayed uncompiled. Fix: `docs/styles.css` (auto-loaded by
+      vocs as rootDir/styles.css) now carries `@tailwind utilities` (no `base` — vocs has
+      its own preflight), tailwind.config.js scans `node_modules/streamdown/dist/*.js` and
+      defines the shadcn-style color names on `--demo-*` channel triplets, and the preview
+      wrapper switched from `vp-doc` to the same `.md-preview` type scale as the platform.
+      Verified in the built CSS: `bg-muted/80` → `rgb(var(--demo-muted) / .8)` etc. Platform version `5f77bd2f` on
       platform.webforai.dev: deployed JS bundle contains "Try the live demo" / "No conversion
       yet", deployed CSS carries `--accent:oklch(65% .191 253.6)` (light) and
       `oklch(75.1% .141 241.4)` (dark); one live `POST /v1/demo/scrape` for

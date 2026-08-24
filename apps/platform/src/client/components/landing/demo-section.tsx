@@ -22,17 +22,11 @@ const INITIAL_URL = "https://platform.webforai.dev";
 
 /**
  * Streamdown has no frontmatter support, and raw remark renders a leading `---` block as a
- * broken mix of headings and rules — so split it off and show it as a plain metadata strip.
+ * broken mix of headings and rules — so drop it from the preview (the raw pane shows it).
  */
-const splitFrontmatter = (markdown: string): { frontmatter: string[]; body: string } => {
-	const match = /^---\n([\s\S]*?)\n---\n?/.exec(markdown);
-	if (match === null) {
-		return { frontmatter: [], body: markdown };
-	}
-	return {
-		frontmatter: (match[1] ?? "").split("\n").filter((line) => line.trim().length > 0),
-		body: markdown.slice(match[0].length),
-	};
+const stripFrontmatter = (markdown: string): string => {
+	const match = /^---\n[\s\S]*?\n---\n?/.exec(markdown);
+	return match === null ? markdown : markdown.slice(match[0].length);
 };
 
 const REGION_OPTIONS: SelectOption[] = [
@@ -76,7 +70,7 @@ const CopyAction = ({ text }: { text: string }) => {
 };
 
 const DemoResultView = ({ result }: { result: DemoResult }) => {
-	const { frontmatter, body } = splitFrontmatter(result.markdown);
+	const body = stripFrontmatter(result.markdown);
 	return (
 		<>
 			<div className="grid grid-cols-1 border-border border-t md:grid-cols-2">
@@ -89,15 +83,6 @@ const DemoResultView = ({ result }: { result: DemoResult }) => {
 				<div className="flex min-w-0 flex-col">
 					<PaneHeader label="preview" />
 					<div className="max-h-[42rem] flex-1 overflow-auto px-5 py-4">
-						{frontmatter.length === 0 ? null : (
-							<div className="mb-4 overflow-x-auto rounded-md border border-border bg-muted/50 px-3.5 py-2.5 font-mono text-muted-foreground text-xs leading-relaxed">
-								{frontmatter.map((line) => (
-									<div key={line} className="whitespace-pre">
-										{line}
-									</div>
-								))}
-							</div>
-						)}
 						<Streamdown className="md-preview">{body}</Streamdown>
 					</div>
 				</div>
