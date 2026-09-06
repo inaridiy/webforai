@@ -3,7 +3,7 @@
  * generated from the Better Auth config (`npx auth generate`) and live in ./auth-schema.ts;
  * this file adds the platform's own tables and re-exports everything for drizzle-kit.
  */
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export * from "./auth-schema";
 
@@ -28,6 +28,24 @@ export const jobs = sqliteTable(
 	(table) => [index("jobs_user_idx").on(table.userId, table.createdAt)],
 );
 
+/** Immutable page commits. Full results and crawl links live in the referenced R2 object. */
+export const jobPages = sqliteTable(
+	"job_pages",
+	{
+		id: text("id").primaryKey(),
+		jobId: text("job_id")
+			.notNull()
+			.references(() => jobs.id, { onDelete: "cascade" }),
+		pageIndex: integer("page_index").notNull(),
+		resultKey: text("result_key").notNull(),
+		status: text("status", { enum: ["ok", "error"] }).notNull(),
+		engine: text("engine").notNull(),
+		credits: integer("credits").notNull(),
+		createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+	},
+	(table) => [uniqueIndex("job_pages_job_index").on(table.jobId, table.pageIndex)],
+);
+
 /**
  * Mirror of the Stripe subscription state for the metered price.
  *
@@ -50,7 +68,7 @@ export const billingState = sqliteTable("billing_state", {
 export const usageEvents = sqliteTable(
 	"usage_events",
 	{
-		/** ULID; doubles as the Stripe meter-event `identifier` for idempotency. */
+		/** ULID for sync requests, deterministic page id for jobs; also Stripe's meter identifier. */
 		id: text("id").primaryKey(),
 		userId: text("user_id").notNull(),
 		jobId: text("job_id"),

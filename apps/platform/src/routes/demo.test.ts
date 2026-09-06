@@ -94,6 +94,15 @@ const seedWindow = (kv: FakeKv, key: string, count: number, resetAt: number) => 
 	kv.store.set(key, { value: JSON.stringify({ count, resetAt }) });
 };
 
+it("rejects a private demo target before consuming rate-limit allowance", async () => {
+	const { app, kv, requests } = harness();
+	const response = await post(app, { url: "http://169.254.169.254/" });
+	expect(response.status).toBe(400);
+	expect(await response.json()).toMatchObject({ error: { code: "invalid_url" } });
+	expect(kv.store.size).toBe(0);
+	expect(requests).toEqual([]);
+});
+
 describe("demo scrape", () => {
 	it("runs an auto-engine scrape with the requested region and no billing", async () => {
 		const { app, requests } = harness();

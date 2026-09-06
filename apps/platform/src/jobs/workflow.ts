@@ -1,21 +1,25 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 import { NonRetryableError } from "cloudflare:workflows";
 
+import { eq } from "drizzle-orm";
 import { createArtifactStore } from "../artifacts/store";
 import { type BillingDeps, ensureSpendable } from "../billing/guard";
 import { createBillingRepo } from "../billing/repo";
 import { createStripe } from "../billing/stripe";
-import { recordUsage } from "../billing/usage";
-import { type CrawlScope, discoverLinks } from "../core/links";
-import { type ScrapeDeps, convertFetchedPage, fetchForScrape } from "../core/scrape-core";
+import { reportToStripe } from "../billing/usage";
+import type { CrawlScope } from "../core/links";
 import { PlatformError, type ScrapeRequest } from "../core/types";
 import { createDb } from "../db/client";
+import { usageEvents } from "../db/schema";
 import { createEngines } from "../engines";
 import { loadConfig } from "../env";
 import type { BatchRequest, CrawlRequest } from "../routes/schemas";
 import { traverseCrawl } from "./crawl-plan";
+import { type PageDeps, type PageOutcome, type RunPageParams, recordPageFailure, runPage } from "./page";
+import { createPageAccountingRepo } from "./page-accounting";
+import { createPageArchiveStore } from "./page-archive";
 import { type JobsRepo, createJobsRepo } from "./repo";
-import { type JobResultsDeps, type PageResult, createJobResultsDeps, putJobMeta, putPageResult } from "./results";
+import { createJobResultsDeps, putJobMeta } from "./results";
 
 /**
  * The async job engine.
@@ -51,30 +55,12 @@ const PAGE_STEP_CONFIG = {
 	timeout: "2 minutes",
 } as const;
 
-/** Cap on links returned from a step, so a link farm cannot blow the 1 MiB step-return limit. */
-export const MAX_LINKS_PER_PAGE = 200;
-
 /** The one failure that must abort the whole job, carried on both the error's name and message. */
 const PAYMENT_REQUIRED = "payment_required";
 const PAYMENT_REQUIRED_NAME = "PaymentRequired";
 
-/** What a page step returns. Deliberately tiny — the result itself is already in KV. */
-export interface PageOutcome {
-	url: string;
-	ok: boolean;
-	credits: number;
-	/** Crawl only; empty for batch pages and for failures. */
-	links: string[];
-}
-
-/** Everything a page step touches, injected so the step body is testable without Cloudflare. */
-export interface JobDeps {
-	scrape: ScrapeDeps;
-	results: JobResultsDeps;
+interface JobDeps extends PageDeps {
 	jobsRepo: JobsRepo;
-	/** Throws `NonRetryableError` when the user cannot spend — see `spendGuard`. */
-	guard: (userId: string) => Promise<void>;
-	recordPageUsage: (params: { userId: string; jobId: string; credits: number; operation: string }) => Promise<void>;
 }
 
 const buildDeps = (env: Env, params: JobParams): JobDeps => {
@@ -88,12 +74,20 @@ const buildDeps = (env: Env, params: JobParams): JobDeps => {
 		results: createJobResultsDeps(env, config),
 		jobsRepo: createJobsRepo(db),
 		guard: (userId) => spendGuard({ repo: billingRepo, config }, userId),
-		// No `waitUntil` here: a Workflow step must not outlive itself, so the meter call is
-		// awaited and any failure is left to `retryUnreportedUsage`.
-		recordPageUsage: async ({ userId, jobId, credits, operation }) => {
-			await recordUsage(
+		accounting: createPageAccountingRepo(db),
+		archives: createPageArchiveStore(env.ARTIFACTS),
+		now: () => new Date(),
+		reportUsage: async (page) => {
+			if (!(config.billingEnabled && stripe && params.stripeCustomerId)) return;
+			const [usage] = await db.select().from(usageEvents).where(eq(usageEvents.id, page.id)).limit(1);
+			if (!usage || usage.reportedAt) return;
+			await reportToStripe(
 				{ repo: billingRepo, config, stripe },
-				{ userId, stripeCustomerId: params.stripeCustomerId ?? null, jobId, operation, credits },
+				{
+					id: page.id,
+					stripeCustomerId: params.stripeCustomerId,
+					credits: usage.credits,
+				},
 			);
 		},
 	};
@@ -121,81 +115,6 @@ const messageOf = (error: unknown): string => (error instanceof Error ? error.me
 const isPaymentRequired = (error: unknown): boolean =>
 	(error instanceof Error && error.name === PAYMENT_REQUIRED_NAME) || messageOf(error).startsWith(PAYMENT_REQUIRED);
 
-/**
- * A page failure that no retry can fix: a client-side error (bad URL, unsupported combination)
- * is recorded as a failed page. Everything else is rethrown so Workflows retries the step.
- */
-const isTerminalPageError = (error: unknown): boolean =>
-	error instanceof PlatformError && error.status >= 400 && error.status < 500;
-
-export interface RunPageParams {
-	jobId: string;
-	userId: string;
-	index: number;
-	request: ScrapeRequest;
-	/** Present for crawls: link discovery runs on the raw HTML, before extraction. */
-	scope?: CrawlScope;
-	/** Crawl pages grow the job's total as they are discovered; batch pages know it upfront. */
-	countsTowardsTotal: boolean;
-}
-
-/**
- * The body of one page step. Exported for the Workflow only — everything it touches is
- * injected, so it is the unit under test rather than the entrypoint class.
- */
-export const runPage = async (deps: JobDeps, params: RunPageParams): Promise<PageOutcome> => {
-	const { request } = params;
-	await deps.guard(params.userId);
-
-	try {
-		const page = await fetchForScrape(deps.scrape, request);
-		const links = params.scope ? discoverLinks(page.html, page.url, params.scope).slice(0, MAX_LINKS_PER_PAGE) : [];
-		const result = await convertFetchedPage(deps.scrape, request, page);
-
-		await putPageResult(deps.results, params.jobId, params.index, { status: "ok", ...result });
-		await deps.jobsRepo.incrementCounters(params.jobId, {
-			succeeded: 1,
-			creditsUsed: result.credits,
-			...(params.countsTowardsTotal ? { total: 1 } : {}),
-		});
-		// Last, so a retry of anything before it cannot double-bill: `recordUsage` only throws
-		// when the ledger insert itself failed, which is precisely when it must be retried.
-		await deps.recordPageUsage({
-			userId: params.userId,
-			jobId: params.jobId,
-			credits: result.credits,
-			// The engine that actually ran — an `auto` request resolves per page.
-			operation: result.engine,
-		});
-
-		return { url: result.url, ok: true, credits: result.credits, links };
-	} catch (error) {
-		if (!isTerminalPageError(error)) {
-			throw error;
-		}
-		await recordPageFailure(deps, params, error);
-		return { url: request.url, ok: false, credits: 0, links: [] };
-	}
-};
-
-/** Persists a failed page and its counter. Never bills — a failed page is not a product. */
-const recordPageFailure = async (deps: JobDeps, params: RunPageParams, error: unknown): Promise<void> => {
-	const failure: PageResult = {
-		status: "error",
-		url: params.request.url,
-		engine: params.request.engine,
-		error: {
-			code: error instanceof PlatformError ? error.code : "page_failed",
-			message: messageOf(error),
-		},
-	};
-	await putPageResult(deps.results, params.jobId, params.index, failure);
-	await deps.jobsRepo.incrementCounters(params.jobId, {
-		failed: 1,
-		...(params.countsTowardsTotal ? { total: 1 } : {}),
-	});
-};
-
 /** The per-page `ScrapeRequest` a job's stored request expands to for one URL. */
 const scrapeRequestFor = (params: JobParams, url: string): ScrapeRequest => ({
 	url,
@@ -211,11 +130,21 @@ export class CrawlWorkflow extends WorkflowEntrypoint<Env, JobParams> {
 		const params = event.payload;
 		const deps = buildDeps(this.env, params);
 
-		await step.do("start", () => markRunning(deps, params));
-
-		const summary = params.type === "batch" ? await runBatch(deps, step, params) : await runCrawl(deps, step, params);
-
-		await step.do("finalize", () => finalize(deps, params, summary));
+		try {
+			await step.do("start", () => markRunning(deps, params));
+			const summary = params.type === "batch" ? await runBatch(deps, step, params) : await runCrawl(deps, step, params);
+			await step.do("finalize", () => finalize(deps, params, summary));
+		} catch (error) {
+			// Publication/storage failures can exhaust both the page step and its recovery
+			// step. Expose that terminal failure instead of leaving D1 running forever.
+			await step.do("workflow failed", async () => {
+				console.error("job_workflow_failed", { jobId: params.jobId, error });
+				await deps.jobsRepo.updateStatus(params.jobId, "failed", {
+					error: "The job could not finish. Please retry later.",
+				});
+			});
+			throw error;
+		}
 	}
 }
 
@@ -228,7 +157,7 @@ interface JobSummary {
 }
 
 const markRunning = async (deps: JobDeps, params: JobParams): Promise<{ jobId: string }> => {
-	await deps.jobsRepo.updateStatus(params.jobId, "running");
+	await deps.jobsRepo.updateStatus(params.jobId, "running", { error: null });
 	return { jobId: params.jobId };
 };
 
@@ -319,12 +248,7 @@ const runPageStep = async (
 		if (isPaymentRequired(error)) {
 			return undefined;
 		}
-		const message = messageOf(error);
-		await step.do(`${name} (failed)`, async () => {
-			await recordPageFailure(deps, pageParams, new PlatformError("page_failed", message, 502));
-			return { recorded: true };
-		});
-		return { url: pageParams.request.url, ok: false, credits: 0, links: [] };
+		return step.do(`${name} (failed)`, () => recordPageFailure(deps, pageParams, error));
 	}
 };
 

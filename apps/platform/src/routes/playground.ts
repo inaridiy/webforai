@@ -4,8 +4,9 @@ import { type AuthVariables, requireSession } from "../auth/middleware";
 import { ensureSpendable } from "../billing/guard";
 import type { ScrapeRequest } from "../core/types";
 import { loadConfig } from "../env";
-import { onPlatformError, parseBody } from "./errors";
+import { onPlatformError } from "./errors";
 import { type PlaygroundBody, playgroundBodySchema } from "./schemas";
+import { parseScrapeBody } from "./scrape-body";
 import { billingDeps, runSyncScrape } from "./scrape-run";
 
 /**
@@ -25,7 +26,7 @@ export const playgroundRoutes = () => {
 	app.use("*", requireSession);
 
 	app.post("/playground/scrape", async (c) => {
-		const body: PlaygroundBody = await parseBody(c.req.json(), playgroundBodySchema);
+		const body: PlaygroundBody = await parseScrapeBody(c.req.json(), playgroundBodySchema);
 		// biome-ignore lint/style/noNonNullAssertion: requireSession guarantees a user
 		const sessionUser = c.get("user")!;
 		const config = loadConfig(c.env);

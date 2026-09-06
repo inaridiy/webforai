@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { z } from "zod";
 
 import { REGIONS, type Region } from "../core/regions";
+import { assertPublicHttpUrl } from "../core/ssrf";
 import { EngineUnavailableError, PlatformError, type ScrapeRequest, type ScrapeSuccess } from "../core/types";
 import { describeZodError, onPlatformError } from "./errors";
 
@@ -276,6 +277,7 @@ export const demoRoutes = (createDeps: DemoDepsFactory) => {
 	app.post("/scrape", async (c) => {
 		const deps = createDeps(c.env);
 		const body = parseDemoBody(await readJson(c.req.raw));
+		assertPublicHttpUrl(body.url);
 
 		// Before the limiter: a request we cannot serve must not consume the caller's demo
 		// allowance. Only geo-targeted requests need the proxy tier — `auto` regions run on the

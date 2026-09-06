@@ -53,7 +53,7 @@ export const CreditsCard = ({ usage, className }: { usage: UsageSummary; classNa
 				</div>
 			</CardHeader>
 			<CardContent className="flex flex-1 flex-col justify-end gap-4">
-				<div className="flex items-baseline gap-2.5">
+				<div className="flex flex-wrap items-baseline gap-2.5">
 					<span className="font-mono text-5xl tracking-tight">{formatNumber(used)}</span>
 					<span className="font-mono text-muted-foreground text-sm">/ {formatNumber(allowance)} free</span>
 				</div>
@@ -97,9 +97,7 @@ export const BillingCard = ({ usage, className }: { usage: UsageSummary; classNa
 			</CardHeader>
 			<CardContent className="flex flex-1 flex-col gap-3">
 				{usage.billingEnabled ? null : (
-					<Alert tone="info">
-						Billing is not configured on this deployment. Only the free allowance is served — no Stripe keys are set.
-					</Alert>
+					<Alert tone="info">Subscriptions are currently unavailable. You can use the free monthly allowance.</Alert>
 				)}
 				{error === null ? null : <Alert tone="error">{error}</Alert>}
 				<div className="flex flex-wrap gap-2">

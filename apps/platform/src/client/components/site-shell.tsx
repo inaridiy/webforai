@@ -6,7 +6,6 @@ import { buttonClass } from "../ui/button";
 import { Wordmark } from "./logo";
 
 export type SiteShellProps = {
-	path: string;
 	session: SessionState;
 	onSignOut: () => void;
 	children: ReactNode;
@@ -28,7 +27,7 @@ const HeaderActions = ({ session, onSignOut }: { session: SessionState; onSignOu
 				<Link href="/playground" className={buttonClass("ghost", "sm")}>
 					Playground
 				</Link>
-				<Link href="/dashboard" className={buttonClass("outline", "sm", "hidden sm:inline-flex")}>
+				<Link href="/dashboard" className={buttonClass("outline", "sm")}>
 					Dashboard
 				</Link>
 				<button type="button" onClick={onSignOut} className={buttonClass("ghost", "sm")}>
@@ -49,10 +48,10 @@ const HeaderActions = ({ session, onSignOut }: { session: SessionState; onSignOu
 	);
 };
 
-export const SiteShell = ({ path, session, onSignOut, children }: SiteShellProps) => (
+export const SiteShell = ({ session, onSignOut, children }: SiteShellProps) => (
 	<div className="flex min-h-screen flex-col">
 		<header className="sticky top-0 z-20 border-border border-b bg-background/85 backdrop-blur">
-			<div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-5">
+			<div className="mx-auto flex min-h-14 w-full max-w-6xl flex-wrap items-center gap-3 px-5 py-2 sm:gap-6">
 				<Link href="/" className="flex items-center gap-2.5 text-foreground" aria-label="webforai platform home">
 					<Wordmark className="h-5 w-auto" />
 					<span className="hidden rounded border border-border px-1.5 py-0.5 font-mono text-[0.625rem] text-muted-foreground uppercase tracking-wider sm:inline">

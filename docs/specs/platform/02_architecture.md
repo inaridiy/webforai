@@ -1,5 +1,7 @@
 # Platform Architecture
 
+Revision note (2026-09-06): Async pages now commit immutable `job_pages` identities, counters, and successful usage atomically in a D1 batch. Immutable R2 attempt archives hold full results and crawl links; KV is a recoverable projection. Authenticated result reads use D1/R2 for marked jobs, so a KV outage cannot hide a committed paid page. Workflow instance ids are persisted before scheduling.
+
 Revision note (2026-08-22): Engine `cf-browser` renamed to `browser`. Proxy secrets are now
 provider-neutral: `PROXY_URL` (gateway, e.g. `http://host:port`), `PROXY_USERNAME`,
 `PROXY_PASSWORD` replace the former vendor-named username/password pair, and the gateway host
@@ -29,7 +31,7 @@ Revision note (2026-08-10): Initial version.
 
 | binding | type | purpose |
 |---|---|---|
-| `DB` | D1 | users/sessions/api keys (Better Auth), jobs, usage ledger |
+| `DB` | D1 | users/sessions/api keys (Better Auth), jobs, page commits, usage ledger |
 | `JOBS_KV` | KV | job results (TTL), rate/quota counters |
 | `ARTIFACTS` | R2 | screenshots, rehosted images, oversized results (lifecycle TTL) |
 | `BROWSER` | Browser Rendering | `browser` engine |
@@ -70,9 +72,29 @@ per URL inside `step.do`. Container functions and Browser Rendering are injected
 
 ## Job results
 
+New jobs persist one `job_pages` marker per `(job_id, page_index)`, referring to an
+immutable R2 archive under `results/job-pages/`. The archive is written before the D1
+batch. Successful usage, counters, and the marker then commit in one serialized
+transaction. Retries first consult the marker, reuse its canonical result, and repair KV;
+failed attempts may leave unreferenced R2 objects that expire under the results lifecycle.
+A failed marker insert rolls back its preceding accounting writes.
+
+The results API reads marked jobs from D1/R2, ordered by page index. KV remains the legacy
+source for jobs without markers. Each marked page expires seven days after its original
+commit; reads never renew retention. Missing unexpired archives return a retryable 503.
+Archive reads and oversized-result serialization run one page at a time to bound Worker
+memory; the returned page holds only inline results or small URL stubs.
+Drain old in-flight workflows before upgrading: historical page usage has random ids
+and cannot be retrospectively deduplicated. The generated migration and matching Worker
+must be deployed together; see the platform README rollout procedure.
+
+
 - KV `job:<id>:meta` (status snapshot for cheap polling) + `job:<id>:<n>` per-page result,
   TTL 7 days. Results >1 MiB (KV value ceiling 25 MiB, but we cap early) go to R2 with a
   presigned/expiring URL in the KV record.
+
+The Markdown preview renderer is a deferred client chunk. Dashboard/landing startup does
+not load it; a local preview error boundary preserves raw Markdown if that chunk fails.
 
 ## Repo integration
 

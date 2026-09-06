@@ -10,7 +10,7 @@ Start revision: `9dd0fe2`. The user's untracked `screen-shot.png` is preserved.
 
 - [x] (2026-09-06) Review the four areas and establish concrete defects and regression criteria.
 - [x] (2026-09-06) Improve library conversion and CLI behavior, with regressions and documentation.
-- [ ] Improve platform API and dashboard behavior, with regressions and documentation.
+- [x] (2026-09-06) Improve platform API and dashboard behavior, with regressions and documentation.
 - [ ] Validate the integrated change, review design drift, and record remaining limitations.
 
 Each completed step ends in a conventional commit, staging explicit paths only.

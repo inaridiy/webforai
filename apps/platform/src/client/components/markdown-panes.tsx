@@ -1,8 +1,28 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
-import { Streamdown } from "streamdown";
+import { Component, Suspense, lazy, useState } from "react";
 import { copyToClipboard } from "../lib/format";
-import "streamdown/styles.css";
+import { Alert } from "../ui/alert";
+import { LoadingRow } from "../ui/spinner";
+
+const MarkdownPreview = lazy(() =>
+	import("./markdown-preview").then((module) => ({ default: module.MarkdownPreview })),
+);
+
+class PreviewBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+	state = { failed: false };
+	static getDerivedStateFromError() {
+		return { failed: true };
+	}
+	render() {
+		return this.state.failed ? (
+			<Alert tone="warning" title="Preview unavailable">
+				The Markdown is available in the raw pane. Reload the page to retry the preview.
+			</Alert>
+		) : (
+			this.props.children
+		);
+	}
+}
 
 /**
  * Raw Markdown and its rendered preview, side by side — the result surface shared by the
@@ -59,7 +79,11 @@ export const MarkdownPanes = ({ markdown, className }: { markdown: string; class
 			<div className="flex min-w-0 flex-col">
 				<PaneHeader label="preview" />
 				<div className="max-h-[42rem] flex-1 overflow-auto px-5 py-4">
-					<Streamdown className="md-preview">{body}</Streamdown>
+					<PreviewBoundary>
+						<Suspense fallback={<LoadingRow label="Loading preview" />}>
+							<MarkdownPreview markdown={body} />
+						</Suspense>
+					</PreviewBoundary>
 				</div>
 			</div>
 		</div>

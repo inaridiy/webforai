@@ -55,7 +55,7 @@ describe("scrape (sync, fetch engine)", () => {
 		const res = await api<{ error: { code: string } }>("/v1/scrape", {
 			method: "POST",
 			headers: bearer(key),
-			json: { url: "https://example.com/", screenshot: true },
+			json: { url: "https://example.com/", engine: "fetch", screenshot: true },
 		});
 		expect(res.status).toBe(400);
 		expect(res.body.error.code).toBe("invalid_request");

@@ -18,7 +18,7 @@ import { LandingPage } from "./pages/landing";
 export const renderLandingHtml = (): string =>
 	renderToString(
 		<StrictMode>
-			<SiteShell path="/" session={{ status: "loading" }} onSignOut={() => undefined}>
+			<SiteShell session={{ status: "loading" }} onSignOut={() => undefined}>
 				<LandingPage />
 			</SiteShell>
 		</StrictMode>,

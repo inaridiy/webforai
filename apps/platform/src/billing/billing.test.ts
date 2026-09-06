@@ -5,7 +5,7 @@ import { FREE_MONTHLY_CREDITS } from "./credits";
 import { ensureSpendable, monthStart } from "./guard";
 import type { BillingRepo, UnreportedUsage, UsageEventRow } from "./repo";
 import type { BillingState } from "./state";
-import { recordUsage, retryUnreportedUsage } from "./usage";
+import { recordUsage, reportToStripe, retryUnreportedUsage } from "./usage";
 
 const baseConfig = {
 	BASE_URL: "https://example.test",
@@ -95,6 +95,19 @@ describe("ensureSpendable", () => {
 });
 
 describe("recordUsage", () => {
+	it("reports a committed page with its durable identifier and creates no replacement ledger row", async () => {
+		const { repo, inserted, reported } = fakeRepo();
+		const { stripe, create } = meterStub();
+		const page = { id: "job_1:page:2", stripeCustomerId: "cus_1", credits: 5 };
+		await reportToStripe({ repo, config: baseConfig, stripe }, page);
+		expect(create).toHaveBeenCalledWith({
+			event_name: "webforai_credits",
+			identifier: page.id,
+			payload: { stripe_customer_id: "cus_1", value: "5" },
+		});
+		expect(inserted).toEqual([]);
+		expect(reported).toMatchObject([{ id: page.id }]);
+	});
 	it("writes a ledger row and reports it to the meter", async () => {
 		const { repo, inserted, reported } = fakeRepo();
 		const { stripe, create } = meterStub();

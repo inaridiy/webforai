@@ -6,6 +6,9 @@ import { PlatformError, type ScrapeRequest } from "../core/types";
 import { ulid } from "../core/ulid";
 import { createDb } from "../db/client";
 import { loadConfig } from "../env";
+import { listCanonicalPageResults } from "../jobs/canonical-results";
+import { createPageAccountingRepo } from "../jobs/page-accounting";
+import { createPageArchiveStore } from "../jobs/page-archive";
 import { type JobRow, createJobsRepo } from "../jobs/repo";
 import {
 	DEFAULT_RESULTS_PAGE_SIZE,
@@ -14,8 +17,9 @@ import {
 	getJobMeta,
 	listPageResults,
 } from "../jobs/results";
+import { startJob as scheduleJob } from "../jobs/start";
 import type { JobParams } from "../jobs/workflow";
-import { onPlatformError, parseBody } from "./errors";
+import { onPlatformError } from "./errors";
 import {
 	type BatchRequest,
 	type CrawlRequest,
@@ -24,6 +28,7 @@ import {
 	crawlBodySchema,
 	scrapeBodySchema,
 } from "./schemas";
+import { parseScrapeBody } from "./scrape-body";
 import { billingDeps, customerIdOf, runSyncScrape } from "./scrape-run";
 
 /**
@@ -75,36 +80,25 @@ export const v1Routes = () => {
 		const jobsRepo = createJobsRepo(createDb(env));
 		const stripeCustomerId = await customerIdOf(env, params.userId);
 
-		await jobsRepo.createJob({
-			id: jobId,
-			userId: params.userId,
-			type: params.type,
-			request: params.request,
-			total: params.total,
-		});
-
 		const identity = { jobId, userId: params.userId, ...(stripeCustomerId ? { stripeCustomerId } : {}) };
 		const jobParams: JobParams =
 			params.type === "batch"
 				? { ...identity, type: "batch", request: params.request }
 				: { ...identity, type: "crawl", request: params.request };
 
-		try {
-			const instance = await env.CRAWL_WORKFLOW.create({ id: jobId, params: jobParams });
-			await jobsRepo.updateStatus(jobId, "queued", { workflowInstanceId: instance.id });
-		} catch (error) {
-			// The row must not linger as `queued` for a job nothing will ever run.
-			await jobsRepo.updateStatus(jobId, "failed", {
-				error: error instanceof Error ? error.message : String(error),
-			});
-			throw new PlatformError("job_start_failed", "The job could not be scheduled; nothing was charged.", 502);
-		}
-
-		return jobId;
+		return scheduleJob(
+			{
+				jobs: jobsRepo,
+				schedule: (id, job) => env.CRAWL_WORKFLOW.create({ id, params: job }),
+				confirmScheduled: async (id) => (await env.CRAWL_WORKFLOW.get(id)).status(),
+			},
+			jobParams,
+			params.total,
+		);
 	};
 
 	app.post("/scrape", async (c) => {
-		const body: ScrapeBody = await parseBody(c.req.json(), scrapeBodySchema);
+		const body: ScrapeBody = await parseScrapeBody(c.req.json(), scrapeBodySchema);
 		const userId = c.get("apiKeyUserId");
 		const config = loadConfig(c.env);
 
@@ -138,7 +132,7 @@ export const v1Routes = () => {
 	});
 
 	app.post("/batch", async (c) => {
-		const body = await parseBody(c.req.json(), batchBodySchema);
+		const body = await parseScrapeBody(c.req.json(), batchBodySchema);
 		const userId = c.get("apiKeyUserId");
 		await ensureSpendable(billingDeps(c.env, loadConfig(c.env)), userId);
 
@@ -147,7 +141,7 @@ export const v1Routes = () => {
 	});
 
 	app.post("/crawl", async (c) => {
-		const body = await parseBody(c.req.json(), crawlBodySchema);
+		const body = await parseScrapeBody(c.req.json(), crawlBodySchema);
 		const userId = c.get("apiKeyUserId");
 		await ensureSpendable(billingDeps(c.env, loadConfig(c.env)), userId);
 
@@ -179,7 +173,18 @@ export const v1Routes = () => {
 		const row = await requireJob(c.env, c.req.param("id"), c.get("apiKeyUserId"));
 		const cursor = c.req.query("cursor");
 
-		const page = await listPageResults(createJobResultsDeps(c.env, config), row.id, cursor, DEFAULT_RESULTS_PAGE_SIZE);
+		const resultsDeps = createJobResultsDeps(c.env, config);
+		const canonical = await listCanonicalPageResults(
+			{
+				accounting: createPageAccountingRepo(createDb(c.env)),
+				archives: createPageArchiveStore(c.env.ARTIFACTS),
+				artifacts: resultsDeps.artifacts,
+			},
+			row.id,
+			cursor,
+			new Date(),
+		);
+		const page = canonical ?? (await listPageResults(resultsDeps, row.id, cursor, DEFAULT_RESULTS_PAGE_SIZE));
 
 		return c.json({
 			jobId: row.id,

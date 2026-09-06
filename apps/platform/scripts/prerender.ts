@@ -31,7 +31,7 @@ const renderLandingMarkup = async (): Promise<string> => {
 		configFile: false,
 		root: appDir,
 		logLevel: "error",
-		server: { middlewareMode: true },
+		server: { middlewareMode: true, hmr: false, watch: null },
 		appType: "custom",
 	});
 	try {

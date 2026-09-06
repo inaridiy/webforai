@@ -2,6 +2,7 @@ import { fetchJobs } from "../../lib/api";
 import type { JobStatus } from "../../lib/api";
 import { formatDateTime, formatNumber } from "../../lib/format";
 import { useAsyncResult } from "../../lib/use-async";
+import { Alert } from "../../ui/alert";
 import type { BadgeTone } from "../../ui/badge";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
@@ -24,7 +25,6 @@ const toneFor = (status: JobStatus): BadgeTone => {
 
 export const JobsTable = ({ className }: { className?: string }) => {
 	const { state, reload } = useAsyncResult(fetchJobs);
-	// A non-200 here means the jobs endpoint is not served yet — show the empty state, not an error.
 	const jobs = state.status === "ready" ? state.value : [];
 
 	return (
@@ -33,9 +33,9 @@ export const JobsTable = ({ className }: { className?: string }) => {
 				<div className="flex items-start justify-between gap-2">
 					<div className="flex flex-col gap-1">
 						<CardTitle>Jobs</CardTitle>
-						<CardDescription>Batch and crawl runs from the last 30 days.</CardDescription>
+						<CardDescription>Your most recent batch and crawl runs.</CardDescription>
 					</div>
-					<Button size="sm" variant="ghost" onClick={reload}>
+					<Button size="sm" variant="ghost" onClick={reload} disabled={state.status === "loading"}>
 						Refresh
 					</Button>
 				</div>
@@ -44,6 +44,15 @@ export const JobsTable = ({ className }: { className?: string }) => {
 				{state.status === "loading" ? (
 					<div className="px-5">
 						<LoadingRow label="Loading jobs" />
+					</div>
+				) : state.status === "error" ? (
+					<div className="px-5 pb-3">
+						<Alert tone="error" title="Jobs could not be loaded">
+							<p className="break-words">{state.error}</p>
+							<Button className="mt-2" size="sm" variant="outline" onClick={reload}>
+								Retry
+							</Button>
+						</Alert>
 					</div>
 				) : (
 					<Table>

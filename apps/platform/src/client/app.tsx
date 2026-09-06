@@ -19,7 +19,7 @@ const renderRoute = (path: string, session: SessionState, reloadSession: () => v
 		case "/signup":
 			return <SignupPage onAuthenticated={reloadSession} />;
 		case "/dashboard":
-			return <DashboardPage session={session} />;
+			return <DashboardPage session={session} reloadSession={reloadSession} />;
 		case "/playground":
 			return <PlaygroundPage session={session} />;
 		default:
@@ -50,7 +50,7 @@ export const App = () => {
 	};
 
 	return (
-		<SiteShell path={path} session={state} onSignOut={onSignOut}>
+		<SiteShell session={state} onSignOut={onSignOut}>
 			{renderRoute(path, state, reload)}
 		</SiteShell>
 	);

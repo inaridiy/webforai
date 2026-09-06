@@ -1,5 +1,7 @@
 # Billing
 
+Revision note (2026-09-06): Successful async usage uses a deterministic job/page identifier. A D1 batch atomically writes usage, counters, and an immutable completion marker; replay and concurrent attempts reuse that record. Sync usage retains ULIDs. This guarantees local accounting uniqueness; Stripe meter reconciliation still relies on the provider’s finite deduplication window, so it is not an unlimited exactly-once external billing guarantee.
+
 Revision note (2026-08-24): `engine: "auto"` (the new request default) has no price of its
 own — the operation bills the engine that actually produced the returned result (1, 2 or
 5), and only that engine: an escalated run does not also bill the discarded fetch. The
@@ -48,7 +50,7 @@ simplest OSS-reproducible primitive — we use Billing Meters deliberately.
 2. No active subscription → allow only within the free allowance, tracked against the local
    D1 `usage_events` ledger for the current calendar month; beyond it → `402 payment_required`.
 3. Active subscription → proceed; optional user-set monthly hard cap later.
-4. Execute operation. On success only: insert `usage_events` row (ULID id) and send a Stripe
+4. Execute operation. On success only: insert `usage_events` row (ULID for sync requests; deterministic page id for jobs) and send a Stripe
    meter event with `identifier = usage_events.id` (idempotent retry-safe). Meter event
    failures are retried via `ctx.waitUntil`/workflow step; the D1 row is the reconciliation
    source.

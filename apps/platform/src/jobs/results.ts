@@ -110,23 +110,37 @@ export const putPageResult = async (
 	ttlSeconds: number = JOB_RESULT_TTL_SECONDS,
 ): Promise<void> => {
 	const key = pageResultKey(jobId, index);
-	const json = JSON.stringify(result);
-	const options = { expirationTtl: ttlOf(ttlSeconds) };
+	const stored = await preparePageResult(deps.artifacts, jobId, index, result);
+	await deps.kv.put(key, JSON.stringify(stored), { expirationTtl: ttlOf(ttlSeconds) });
+};
 
-	if (encoder.encode(json).byteLength <= MAX_INLINE_RESULT_BYTES) {
-		await deps.kv.put(key, json, options);
-		return;
+/** Shared by KV publication and canonical reads, preserving the existing inline/stub contract. */
+export const preparePageResult = async (
+	artifacts: ArtifactStore,
+	jobId: string,
+	index: number,
+	result: PageResult,
+	urlTtlSeconds?: number,
+): Promise<StoredPageResult> => {
+	const json = JSON.stringify(result);
+
+	if (result.status === "error" || encoder.encode(json).byteLength <= MAX_INLINE_RESULT_BYTES) {
+		return result;
 	}
 
-	const resultUrl = await deps.artifacts.putResult(json, `${jobId}/${String(index).padStart(PAGE_INDEX_DIGITS, "0")}`);
+	const resultUrl = await artifacts.putResult(
+		json,
+		`${jobId}/${String(index).padStart(PAGE_INDEX_DIGITS, "0")}`,
+		urlTtlSeconds,
+	);
 	const stub: StoredPageResult = {
 		status: "ok",
 		url: result.url,
 		engine: result.engine,
-		credits: result.status === "ok" ? result.credits : 0,
+		credits: result.credits,
 		resultUrl,
 	};
-	await deps.kv.put(key, JSON.stringify(stub), options);
+	return stub;
 };
 
 export const putJobMeta = async (

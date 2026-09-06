@@ -1,5 +1,7 @@
 # Platform API
 
+Revision note (2026-09-06): Public target validation precedes job creation and demo counters; invalid crawl regexes return `400 invalid_request`. Internal/configuration failures expose stable generic messages while logs retain diagnostics. Dashboard jobs and usage validate response shapes, distinguish errors from empty state, and support retry. SDK polling deadlines cover active requests and bodies; cancellation propagates to transports.
+
 Revision note (2026-08-24, later): Fetch-tier acquisition (`fetch`, `proxy-fetch`, and
 `auto` before any escalation) now follows meta-refresh redirects: an HTTP 200 page whose
 `<meta http-equiv="refresh">` names an http(s) target (delay ≤ 10s, not the page itself)
@@ -119,6 +121,12 @@ Limits: ≤100 URLs per job (initial). Returns `202 { "jobId": "job_..." }`.
 Link discovery: `<a href>` from the fetched HTML (before extraction), normalized, deduped,
 fragment-stripped, same-origin filtered, BFS by depth until `limit`. Returns `202 { jobId }`.
 
+If Workflow creation throws, the server checks the persisted instance id before deciding
+whether it was accepted. If both scheduling and lookup are inconclusive, it returns
+`503 scheduling_unknown` with the job id in the message, preserves the queued row, and
+records the ambiguity. Query that job and reconcile its Workflow instance before submitting
+a replacement; the server cannot promise that the first attempt had no side effects.
+
 ## GET /v1/jobs/:id
 
 ```jsonc
@@ -133,6 +141,10 @@ fragment-stripped, same-origin filtered, BFS by depth until `limit`. Returns `20
 absent on the last page, page size 20. Each item mirrors the sync scrape response plus
 `{ "status": "ok" | "error", "error": {...} }`. Large markdown (>100 KiB) is replaced by
 `{ "status": "ok", "url", "engine", "credits", "resultUrl": "<expiring R2 url>" }`.
+
+Marked jobs read results from canonical D1/R2 records even if KV publication failed.
+Cursors are opaque and must be returned unchanged. A missing unexpired archive returns
+`503 result_unavailable`; expired pages are omitted after the original seven-day retention.
 
 ## POST /v1/demo/scrape — public demo (no API key)
 
@@ -179,7 +191,10 @@ proxy. Constants live in `src/routes/demo.ts`.
 ## Dashboard API (session cookie, not API key)
 
 `/api/dashboard/usage` (period usage from D1 ledger), key CRUD via Better Auth client,
-`/api/dashboard/billing/checkout` + `/billing/portal` (Stripe redirects).
+`/api/dashboard/billing/checkout` + `/billing/portal` (Stripe redirects), and
+`/api/dashboard/jobs` (the latest 50 jobs; no 30-day filter). Jobs fetch errors are surfaced
+with Retry. Authentication service errors keep the dashboard open rather than treating
+an outage as a signed-out session.
 
 ## Behavioural rules
 

@@ -15,32 +15,36 @@ export const useAsyncResult = <T>(
 	setValue: (value: T) => void;
 } => {
 	const [state, setState] = useState<AsyncState<T>>({ status: "loading" });
-	const mounted = useRef(true);
+	const generation = useRef(0);
 	const loaderRef = useRef(loader);
 	loaderRef.current = loader;
 
-	useEffect(() => {
-		mounted.current = true;
-		return () => {
-			mounted.current = false;
-		};
-	}, []);
-
 	const reload = useCallback(() => {
+		const request = ++generation.current;
 		setState({ status: "loading" });
-		loaderRef.current().then((result) => {
-			if (!mounted.current) {
-				return;
-			}
-			setState(result.ok ? { status: "ready", value: result.value } : { status: "error", error: result.error });
-		});
+		Promise.resolve()
+			.then(() => loaderRef.current())
+			.then((result) => {
+				if (request !== generation.current) return;
+				setState(result.ok ? { status: "ready", value: result.value } : { status: "error", error: result.error });
+			})
+			.catch(() => {
+				if (request !== generation.current) return;
+				setState({ status: "error", error: "The request could not be completed. Please retry." });
+			});
 	}, []);
 
 	useEffect(() => {
 		reload();
+		return () => {
+			generation.current++;
+		};
 	}, [reload]);
 
-	const setValue = useCallback((value: T) => setState({ status: "ready", value }), []);
+	const setValue = useCallback((value: T) => {
+		generation.current++;
+		setState({ status: "ready", value });
+	}, []);
 
 	return { state, reload, setValue };
 };

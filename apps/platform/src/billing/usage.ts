@@ -22,7 +22,7 @@ export interface RecordUsageParams {
 }
 
 /** Reports one ledger row to the Stripe meter and marks it reported on success. */
-const reportToStripe = async (
+export const reportToStripe = async (
 	deps: UsageDeps,
 	params: { id: string; stripeCustomerId: string; credits: number },
 ): Promise<void> => {

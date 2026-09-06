@@ -20,13 +20,13 @@ const DashboardBody = ({ session }: { session: Session }) => {
 			<header className="mb-8 flex flex-wrap items-start justify-between gap-4">
 				<div>
 					<h1 className="font-semibold text-2xl tracking-tight">Dashboard</h1>
-					<p className="mt-1.5 text-muted-foreground text-sm">{session.user.email}</p>
+					<p className="mt-1.5 break-all text-muted-foreground text-sm">{session.user.email}</p>
 				</div>
 				<Link href="/playground" className={buttonClass("primary", "sm")}>
 					Open playground
 				</Link>
 			</header>
-			<div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+			<div className="grid grid-cols-1 gap-4 md:grid-cols-12 [&>*]:min-w-0">
 				{usage.state.status === "loading" ? (
 					<div className="md:col-span-12">
 						<LoadingRow label="Loading usage" />
@@ -60,7 +60,7 @@ const DashboardBody = ({ session }: { session: Session }) => {
 	);
 };
 
-export const DashboardPage = ({ session }: { session: SessionState }) => {
+export const DashboardPage = ({ session, reloadSession }: { session: SessionState; reloadSession: () => void }) => {
 	const anonymous = session.status === "anonymous";
 
 	useEffect(() => {
@@ -82,6 +82,11 @@ export const DashboardPage = ({ session }: { session: SessionState }) => {
 			<div className="mx-auto w-full max-w-2xl px-5 py-16">
 				<Alert tone="error" title="Session unavailable">
 					{session.error}
+					<div className="mt-3">
+						<Button size="sm" variant="outline" onClick={reloadSession}>
+							Retry
+						</Button>
+					</div>
 				</Alert>
 			</div>
 		);

@@ -52,20 +52,22 @@ export const describeZodError = (error: ZodError): string =>
  */
 const CONFIG_MESSAGE = "Worker configuration is invalid; check the deployment's vars and secrets.";
 
-export const toErrorResponse = (error: unknown, path: string): { body: ErrorBody; status: ContentfulStatusCode } => {
+export const toErrorResponse = (error: unknown): { body: ErrorBody; status: ContentfulStatusCode } => {
 	if (error instanceof PlatformError) {
 		return { body: errorBody(error.code, error.message), status: error.status as ContentfulStatusCode };
 	}
 	if (error instanceof ZodError) {
 		// Request bodies are validated explicitly in the routes, so a ZodError reaching the
 		// handler comes from `loadConfig`.
-		return { body: errorBody("invalid_configuration", `${CONFIG_MESSAGE} (${describeZodError(error)})`), status: 500 };
+		return { body: errorBody("invalid_configuration", CONFIG_MESSAGE), status: 500 };
 	}
-	const message = error instanceof Error ? error.message : String(error);
-	return { body: errorBody("internal_error", `Unhandled error while serving ${path}: ${message}`), status: 500 };
+	return { body: errorBody("internal_error", "An unexpected error occurred. Please retry later."), status: 500 };
 };
 
 export const onPlatformError = (error: unknown, c: Context): Response => {
-	const { body, status } = toErrorResponse(error, c.req.path);
+	const { body, status } = toErrorResponse(error);
+	if (!(error instanceof PlatformError)) {
+		console.error("platform_request_failed", { path: c.req.path, error });
+	}
 	return c.json(body, status);
 };

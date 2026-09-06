@@ -1,12 +1,11 @@
-import { and, desc, eq, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, notInArray } from "drizzle-orm";
 import type { PlatformDb } from "../db/client";
 import { jobs } from "../db/schema";
 
 /**
  * D1 access for async jobs.
  *
- * Counters are updated with SQL increments rather than read-modify-write: the Workflow runs one
- * step per page and steps may overlap with retries, so a read-then-write would lose counts.
+ * Page counters and usage are committed atomically by `page-accounting.ts`.
  * Status transitions are monotonic — once a job is `completed`/`failed` nothing rewrites it,
  * which keeps a late-arriving retry from resurrecting a terminal job.
  */
@@ -39,6 +38,8 @@ export interface CreateJobParams {
 	type: JobType;
 	/** The validated request body, stored verbatim for reproducibility and the dashboard. */
 	request: unknown;
+	/** Known before scheduling because the caller chooses the Workflow instance id. */
+	workflowInstanceId?: string;
 	/** Known upfront for batch; a crawl discovers its pages and grows this as it runs. */
 	total?: number;
 	now?: Date;
@@ -51,19 +52,11 @@ export interface UpdateStatusPatch {
 	now?: Date;
 }
 
-export interface CounterDelta {
-	succeeded?: number;
-	failed?: number;
-	creditsUsed?: number;
-	total?: number;
-}
-
 export interface JobsRepo {
 	createJob(params: CreateJobParams): Promise<JobRow>;
 	/** Scoped by owner: a job id from another account must be indistinguishable from a missing one. */
 	getJob(id: string, userId: string): Promise<JobRow | undefined>;
 	updateStatus(id: string, status: JobStatus, patch?: UpdateStatusPatch): Promise<void>;
-	incrementCounters(id: string, delta: CounterDelta): Promise<void>;
 	listJobsByUser(userId: string, limit?: number): Promise<JobRow[]>;
 }
 
@@ -82,7 +75,7 @@ export const createJobsRepo = (db: PlatformDb): JobsRepo => ({
 			succeeded: 0,
 			failed: 0,
 			creditsUsed: 0,
-			workflowInstanceId: null,
+			workflowInstanceId: params.workflowInstanceId ?? null,
 			error: null,
 			createdAt: now,
 			updatedAt: now,
@@ -110,20 +103,12 @@ export const createJobsRepo = (db: PlatformDb): JobsRepo => ({
 				...(patch.workflowInstanceId === undefined ? {} : { workflowInstanceId: patch.workflowInstanceId }),
 				...(patch.total === undefined ? {} : { total: patch.total }),
 			})
-			.where(and(eq(jobs.id, id), notInArray(jobs.status, TERMINAL_STATUSES)));
-	},
-
-	incrementCounters: async (id, delta) => {
-		await db
-			.update(jobs)
-			.set({
-				updatedAt: new Date(),
-				...(delta.succeeded ? { succeeded: sql`${jobs.succeeded} + ${delta.succeeded}` } : {}),
-				...(delta.failed ? { failed: sql`${jobs.failed} + ${delta.failed}` } : {}),
-				...(delta.creditsUsed ? { creditsUsed: sql`${jobs.creditsUsed} + ${delta.creditsUsed}` } : {}),
-				...(delta.total ? { total: sql`${jobs.total} + ${delta.total}` } : {}),
-			})
-			.where(eq(jobs.id, id));
+			.where(
+				and(
+					eq(jobs.id, id),
+					status === "queued" ? eq(jobs.status, "queued") : notInArray(jobs.status, TERMINAL_STATUSES),
+				),
+			);
 	},
 
 	listJobsByUser: async (userId, limit = DEFAULT_JOB_LIST_LIMIT) => {

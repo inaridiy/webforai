@@ -17,7 +17,7 @@ export interface ArtifactStore {
 	/** Stores a rehosted image; returns a signed, expiring URL. */
 	putImage(bytes: Uint8Array, contentType: string, keyHint: string): Promise<string>;
 	/** Stores a JSON result under `results/<key>`; returns a signed, expiring URL. */
-	putResult(json: string, key: string): Promise<string>;
+	putResult(json: string, key: string, ttlSeconds?: number): Promise<string>;
 }
 
 /** Only the two fields the signing scheme needs — keeps `signArtifactUrl` cheap to test. */
@@ -136,12 +136,18 @@ const normalizeResultKey = (key: string): string => {
 };
 
 export const createArtifactStore = (env: Env, config: ArtifactUrlConfig): ArtifactStore => {
-	const store = async (key: string, body: Uint8Array | string, contentType: string, keyHint: string) => {
+	const store = async (
+		key: string,
+		body: Uint8Array | string,
+		contentType: string,
+		keyHint: string,
+		ttlSeconds?: number,
+	) => {
 		await env.ARTIFACTS.put(key, body, {
 			httpMetadata: { contentType },
 			customMetadata: hintMetadata(keyHint),
 		});
-		return signArtifactUrl(key, config);
+		return signArtifactUrl(key, config, ttlSeconds);
 	};
 
 	return {
@@ -152,6 +158,7 @@ export const createArtifactStore = (env: Env, config: ArtifactUrlConfig): Artifa
 			store(`images/${datePart(Date.now())}/${ulid()}.${imageExtension(contentType)}`, bytes, contentType, keyHint),
 
 		// `async` so a rejected key surfaces as a rejected promise rather than a synchronous throw.
-		putResult: async (json, key) => store(`results/${normalizeResultKey(key)}`, json, "application/json", key),
+		putResult: async (json, key, ttlSeconds) =>
+			store(`results/${normalizeResultKey(key)}`, json, "application/json", key, ttlSeconds),
 	};
 };

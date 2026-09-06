@@ -14,7 +14,9 @@
 		"db:migrate:local": "wrangler d1 migrations apply platform --local",
 		"db:migrate:remote": "wrangler d1 migrations apply platform --remote",
 		"stripe:setup": "tsx scripts/stripe-setup.ts",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"test:browser": "tsx tests/browser/dashboard.ts",
+		"test:integration": "tsx tests/integration/page-accounting.ts"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "1.6.26",

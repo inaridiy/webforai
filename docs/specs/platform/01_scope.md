@@ -1,5 +1,7 @@
 # Platform Scope
 
+Revision note (2026-09-06): Quality review preserves the existing product scope. Conversion now retains literal code, valid formula fallbacks, and caller-owned HAST; dashboard failures remain visible and retryable. Async page accounting and result recovery are specified in `02_architecture.md` and `04_billing.md`.
+
 Revision note (2026-08-24, later): `auto` also escalates on fetch-tier *failures* a browser
 plausibly gets past — bot walls (403/406/429), challenges served as 503, Cloudflare edge
 52x/530, and network-level refusals — reversing the earlier same-day decision to escalate

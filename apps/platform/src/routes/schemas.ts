@@ -21,6 +21,15 @@ export const DEFAULT_CRAWL_PAGES = 50;
 
 const urlSchema = z.string().url();
 
+const pathPatternSchema = z.string().refine((pattern) => {
+	try {
+		new RegExp(pattern);
+		return true;
+	} catch {
+		return false;
+	}
+}, "must be a valid regular expression");
+
 const convertSchema = z
 	.object({
 		extractor: z.enum(["auto", "takumi", "minimal", "none"]).optional(),
@@ -94,8 +103,8 @@ export const crawlBodySchema = z
 		url: urlSchema,
 		maxDepth: z.number().int().min(0).max(MAX_CRAWL_DEPTH).default(DEFAULT_CRAWL_DEPTH),
 		limit: z.number().int().min(1).max(MAX_CRAWL_PAGES).default(DEFAULT_CRAWL_PAGES),
-		includePaths: z.array(z.string()).optional(),
-		excludePaths: z.array(z.string()).optional(),
+		includePaths: z.array(pathPatternSchema).optional(),
+		excludePaths: z.array(pathPatternSchema).optional(),
 		// Cross-origin crawling is a non-goal for now; accepting only `true` keeps a client that
 		// asks for it from believing it was honoured.
 		sameOrigin: z.literal(true).default(true),

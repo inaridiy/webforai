@@ -26,27 +26,32 @@ const listKeys = async (): Promise<Result<ApiKeySummary[]>> => {
 };
 
 const RevealedKey = ({ value, onDismiss }: { value: string; onDismiss: () => void }) => {
-	const [copied, setCopied] = useState(false);
+	const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
 	return (
 		<div className="rounded-lg border border-foreground/25 bg-muted p-4">
 			<p className="font-medium text-foreground text-sm">Copy this key now — it will not be shown again.</p>
 			<div className="mt-3 flex flex-wrap items-center gap-2">
-				<code className="flex-1 overflow-x-auto rounded-md border border-border bg-card px-3 py-2 font-mono text-[0.8125rem] text-foreground">
+				<code className="min-w-0 flex-1 overflow-x-auto rounded-md border border-border bg-card px-3 py-2 font-mono text-[0.8125rem] text-foreground">
 					{value}
 				</code>
 				<Button
 					size="sm"
 					onClick={() => {
-						copyToClipboard(value).then(setCopied);
+						copyToClipboard(value).then((success) => setCopyState(success ? "copied" : "failed"));
 					}}
 				>
-					{copied ? "Copied" : "Copy"}
+					{copyState === "copied" ? "Copied" : "Copy"}
 				</Button>
 				<Button size="sm" variant="ghost" onClick={onDismiss}>
 					Dismiss
 				</Button>
 			</div>
+			{copyState === "failed" ? (
+				<p role="status" className="mt-2 text-destructive text-xs">
+					Could not copy. Select the key above and copy it manually.
+				</p>
+			) : null}
 			<p className="mt-3 text-muted-foreground text-xs">
 				Send it as <span className="font-mono">Authorization: Bearer &lt;key&gt;</span>. Anyone holding it can spend
 				your credits.
@@ -146,6 +151,9 @@ const CreateKeyForm = ({ onCreated, onCancel }: { onCreated: (key: string) => vo
 	return (
 		<div className="flex flex-col gap-2">
 			<form className="flex flex-wrap gap-2" onSubmit={onSubmit}>
+				<label className="sr-only" htmlFor="api-key-name">
+					Key name
+				</label>
 				<Input
 					className="h-8 max-w-xs flex-1 text-[0.8125rem]"
 					id="api-key-name"
@@ -216,7 +224,9 @@ export const ApiKeysSection = ({ className }: { className?: string }) => {
 							onCancel={() => setCreating(false)}
 						/>
 					) : null}
-					{revealed === null ? null : <RevealedKey value={revealed} onDismiss={() => setRevealed(null)} />}
+					{revealed === null ? null : (
+						<RevealedKey key={revealed} value={revealed} onDismiss={() => setRevealed(null)} />
+					)}
 					{state.status === "error" ? (
 						<Alert tone="error">
 							{state.error}{" "}

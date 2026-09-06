@@ -87,6 +87,8 @@ dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer
 |---|---|
 | `pnpm dev` | vite dev server (Worker + SPA + container) |
 | `pnpm test` | vitest unit tests (pure logic; no network/Docker) |
+| `pnpm test:browser` | Chromium dashboard UI regression with HTTP fixtures; desktop/mobile screenshots in `.cache/dashboard-review` (no real auth/Worker) |
+| `pnpm test:integration` | production page-accounting repository against disposable local workerd D1; applies checked-in migrations, tests duplicate writes and rollback |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm build` | production build (Worker + client assets + container image), then prerenders the landing page into `dist/client/index.html` and fails if webforai cannot extract it (`scripts/prerender.ts`) |
 | `pnpm db:generate` | drizzle-kit migration from `src/db/schema.ts` |
@@ -117,5 +119,32 @@ Single Stripe Billing Meter denominated in credits; the schedule lives in
 `src/billing/credits.ts` (`fetch` 1, `browser` 5, `proxy-fetch` 2, `proxy-browser` 5,
 +1 screenshot, +1 per started 5 rehosted images). 500 credits/month free without a subscription; the metered subscription uses
 graduated tiers (first 500 at $0, then per-credit). Usage is recorded in D1
-(`usage_events`, ULID id) and mirrored to Stripe meter events with that id as the
+(`usage_events`, ULID for sync requests or a deterministic job/page id) and mirrored to Stripe meter events with that id as the
 idempotency `identifier`; unreported rows are retried by a 15-minute cron.
+
+## Dashboard and job reliability
+
+The dashboard distinguishes empty jobs from failed requests and provides Retry. Usage and
+job responses are validated before rendering. Authentication outages keep the dashboard
+open with a retry action. Navigation wraps on small screens; API key copy failures provide
+manual-copy guidance, and each newly created key starts with fresh copy feedback. The
+Markdown renderer loads when a result is displayed; raw output stays usable if preview
+loading fails.
+
+Async pages use an immutable D1 `job_pages` record and R2 result archive. A D1 batch commits
+the page marker, counters, and successful usage together, once per job/page index. Replays
+reuse the committed result and repair its KV projection; they do not fetch or bill again.
+KV visibility can temporarily lag committed D1 counts; result reads use D1/R2 for marked
+jobs and return `503 result_unavailable` if an unexpired archive cannot be read. Uncommitted R2 attempts expire under
+the existing `results/` lifecycle rule.
+
+Before upgrading an existing instance to the page-accounting migration, stop accepting new
+async jobs and let old workflows finish. Historical in-flight pages lack stable accounting
+identities and cannot be safely deduplicated retroactively. Apply generated migration
+`0001_wild_miek.sql`, deploy the matching Worker, then resume job creation. Do not roll back
+to the old accounting code while new jobs are active. No production migration is run by tests.
+
+If scheduling returns `503 scheduling_unknown`, use the job id in the error to inspect its
+status and Workflow instance before submitting a replacement. The scheduling request may
+have been accepted even though the acknowledgement was lost; its queued record is retained
+for operator reconciliation.
