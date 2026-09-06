@@ -8,7 +8,8 @@ When writing complex features or significant refactors, use an ExecPlan (as desc
 - `pnpm install` — workspace install (pnpm 9, `preinstall` enforces pnpm).
 - `pnpm format:fix` / `pnpm lint:fix` — biome; run before committing.
 - `pnpm typecheck` — tsc across packages.
-- `pnpm test` — vitest at repo root (library tests). Platform tests:
+- `pnpm test` — vitest at repo root; use `pnpm run test --run` for a one-shot run
+  (includes library, corpus, and platform unit tests). Platform tests:
   `pnpm --filter platform test`.
 - `pnpm build` — builds `packages/**`. Platform: `pnpm --filter platform build`.
 - Platform local dev: `pnpm --filter platform dev` (wrangler/vite; containers need Docker).

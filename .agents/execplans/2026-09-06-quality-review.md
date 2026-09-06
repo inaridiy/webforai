@@ -11,7 +11,7 @@ Start revision: `9dd0fe2`. The user's untracked `screen-shot.png` is preserved.
 - [x] (2026-09-06) Review the four areas and establish concrete defects and regression criteria.
 - [x] (2026-09-06) Improve library conversion and CLI behavior, with regressions and documentation.
 - [x] (2026-09-06) Improve platform API and dashboard behavior, with regressions and documentation.
-- [ ] Validate the integrated change, review design drift, and record remaining limitations.
+- [x] (2026-09-06) Validate the integrated change, review design drift, and record remaining limitations.
 
 Each completed step ends in a conventional commit, staging explicit paths only.
 
@@ -45,12 +45,14 @@ Targeted regressions per change; integrated `pnpm run test --run`, `pnpm typeche
 
 ## Outcomes & retrospective
 
-Implementation and integration are in progress; evidence collected so far:
+Implementation and integrated validation completed. Review fixes were accepted; remaining follow-ups below are explicitly deferred. Evidence:
 
 - Library source regression suite: 125 tests; real Chromium for local browser loaders, mocked Cloudflare transport. CLI/SDK focused checks included a real loopback HTTP 429 CLI invocation and cancellation of an incomplete HTTP response body.
+- Biome format/lint and sherif passed (168 advisory lint warnings, no errors; see known-issues). Independent final backend review accepted scheduler reconciliation, canonical result recovery, and bounded archive materialization.
 - Integrated `pnpm run test --run`: 38 files, 446 tests passed, exit 0. `pnpm --filter platform test`: 17 files, 193 tests passed, exit 0. Root/platform typechecks and sherif passed.
 - Production Drizzle repositories on disposable workerd D1: generated migrations, simultaneous conflicting commits, one usage event, unbilled failure, forced final-statement rollback and retry, owner guard, batch/crawl totals, monotonic queued/running state, numeric page order, cursor and expiry. Command: `pnpm --filter platform test:integration`. No developer D1 state was used.
 - Actual browser fixture journey: 1440/390 px dashboard geometry and screenshots, job failure/retry, malformed JSON, authentication outage/retry, key copy failures and replacement, lazy preview request/render, hook stale replies/rejections/unmount/save invalidation. Command: `pnpm --filter platform test:browser`. HTTP auth/data is explicitly stubbed, not evidence of real auth or cloud services.
+- Built client asset smoke passed using emitted production assets with SPA fallback and explicit HTTP fixtures: interactive prerendered landing, deferred preview, raw output retained after preview-chunk failure, and anonymous dashboard redirect. Runner retained at `apps/platform/.cache/quality-built-smoke.mjs`; this is not Worker/auth/provider E2E.
 - Library build and platform build passed. Platform build's self-extraction gate produced 3909 Markdown body characters. Preview splitting reduces initial JS from 857.87 kB to 354.39 kB (gzip 258.51 to 108.74 kB); no field performance/Core Web Vitals claim.
 - Frozen benchmark: actual base `9dd0fe2` vs current library source, 60 cached captures / 24.17 MiB, seven alternating paired passes. Median 2938.8→2862.2 ms (approximately unchanged speed); 0 conversion errors and 88/88 existing quality assertions on both, 28 changed outputs. Raw protocol, hashes and results: `evals/.reports/2026-09-06-quality-review/`. One missing StackOverflow capture; no semantic precision/recall or memory benchmark.
 
@@ -71,3 +73,10 @@ Owner for each: repository maintainers. Reopen in a scoped task when the relevan
 - User-owned untracked `screen-shot.png` preserved.
 - Ignored benchmark artifacts and dashboard screenshots retained for inspection. Owned benchmark source snapshots under `/tmp/webforai-quality-benchmark-sytsdioo` were removed after acceptance; lifecycle recorded in the report. All test servers and disposable D1 runtime are closed by finally/teardown.
 
+
+## Commit ledger
+
+- `57bfb0c`: review findings and acceptance plan.
+- `e13af78`: library/CLI/SDK regression fixes and user documentation.
+- `f7cfa51`: platform/API/dashboard, generated migration, integration/browser harness and specifications.
+- Final validation milestone: CI gates, root test-runner fixes, durable diagnostic registry, completed evidence record (commit containing this entry).
