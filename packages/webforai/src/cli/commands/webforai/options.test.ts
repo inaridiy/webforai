@@ -55,6 +55,11 @@ describe("resolveRunOptions", () => {
 		expect(() => resolveRunOptions(FIXTURE, { loader: "playwright" }, {})).toThrow(UsageError);
 	});
 
+	it.each(["fetch", "playwright"])("rejects platform engine/region with explicit %s loader", (loader) => {
+		expect(() => resolveRunOptions(URL_SOURCE, { loader, engine: "browser" }, {})).toThrow(/require --loader platform/);
+		expect(() => resolveRunOptions(URL_SOURCE, { loader, region: "jp" }, {})).toThrow(UsageError);
+	});
+
 	it("honours the platform URL override from flag and environment", () => {
 		const fromEnv = resolveRunOptions(
 			URL_SOURCE,

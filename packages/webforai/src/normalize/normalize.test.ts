@@ -59,6 +59,20 @@ describe("rendered maths", () => {
 			"<mjx-container><mjx-math>E</mjx-math><mjx-assistive-mml><math><mi>E</mi></math></mjx-assistive-mml></mjx-container>";
 		expect(convert(mathjax).trim()).toBe("$E$");
 	});
+
+	it.each([
+		"<mjx-container><mjx-math>E</mjx-math></mjx-container>",
+		"<mjx-container><mjx-math>E</mjx-math><mjx-assistive-mml></mjx-assistive-mml></mjx-container>",
+		'<span class="katex"><span class="katex-mathml"></span><span class="katex-html">E</span></span>',
+	])("preserves a sole rendered formula when MathML is absent: %s", (html) => {
+		expect(convert(html).trim()).toBe("E");
+	});
+
+	it("preserves a MediaWiki formula image when there is no MathML alternative", () => {
+		const html =
+			'<span class="mwe-math-element"><img class="mwe-math-fallback-image-inline" src="/formula.png" alt="E"></span>';
+		expect(convert(html)).toContain("![E](/formula.png)");
+	});
 });
 
 describe("ARIA headings", () => {

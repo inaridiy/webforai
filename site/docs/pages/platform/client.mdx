@@ -63,6 +63,14 @@ for await (const result of platform.jobResults(jobId)) {
 }
 ```
 
+`waitForJob` defaults to a 10-minute overall deadline and a 2-second poll interval.
+The deadline covers in-flight HTTP requests and response-body reads. Set `timeoutMs`
+(positive, at most 2,147,483,647 ms) and `pollIntervalMs` (zero or positive, same maximum)
+to override them. Pass an `AbortSignal` as `signal` to cancel the active request and polling;
+the promise rejects with that signal's abort reason. A deadline rejects with `poll_timeout`.
+Custom fetch implementations receive the signal too; if they ignore it, the polling promise
+still stops at its deadline, although the custom transport may continue its own work.
+
 Lower-level pieces are also exposed: `scrapeAsync` (a single URL as an async job),
 `getJob(jobId)` and `getJobResults(jobId, { cursor })` for manual polling and paging.
 
@@ -113,7 +121,7 @@ const logged: FetchLike = async (url, init) => {
 };
 ```
 
-Anything that accepts `(url: string, init: { method, headers?, body? })` and resolves to an
+Anything that accepts `(url: string, init: { method, headers?, body?, signal? })` and resolves to an
 object with `ok`, `status`, `headers.get()` and `json()` qualifies — a plain object is fine,
 no `Response` class required. The same injection point is what the client's own test suite
 uses. On runtimes without a global fetch, constructing a client without `fetch` throws a

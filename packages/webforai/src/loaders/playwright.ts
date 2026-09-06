@@ -1,4 +1,4 @@
-import { type Browser, chromium, devices } from "playwright-core";
+import { type Browser, type BrowserContext, chromium, devices } from "playwright-core";
 
 export type LoadHtmlOptions = {
 	browser?: Browser;
@@ -36,43 +36,43 @@ const SUPER_BYPASS_DEVICE = {
 export const loadHtml = async (url: string, options?: LoadHtmlOptions) => {
 	const { browser, waitUntil, timeout, superBypassMode } = options ?? {};
 	const _browser = browser ?? (await chromium.launch({ headless: true }));
-	const context = await _browser.newContext(superBypassMode ? SUPER_BYPASS_DEVICE : devices["Desktop Chrome"]);
+	let context: BrowserContext | undefined;
+	try {
+		context = await _browser.newContext(superBypassMode ? SUPER_BYPASS_DEVICE : devices["Desktop Chrome"]);
 
-	if (superBypassMode) {
-		await context.addInitScript(() => {
-			Object.defineProperty(navigator, "webdriver", { get: () => undefined });
-			Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
-			Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
-		});
-	}
-
-	const page = await context.newPage();
-	if (superBypassMode) {
-		await page.route("**/*.js", (route) => {
-			if (route.request().url().includes("captcha-delivery")) {
-				return route.abort();
-			}
-			return route.continue();
-		});
-	}
-
-	await page.goto(url, { waitUntil: waitUntil ?? "load", timeout });
-	await page.evaluate(() => {
-		const elements = document.querySelectorAll("*");
-		for (const element of elements) {
-			const rect = element.getBoundingClientRect();
-			element.setAttribute("data-rwidth", rect.width.toString());
-			element.setAttribute("data-rheight", rect.height.toString());
+		if (superBypassMode) {
+			await context.addInitScript(() => {
+				Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+				Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
+				Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
+			});
 		}
-	});
-	const html = await page.content();
-	await page.close();
 
-	if (browser) {
-		await context.close();
-	} else {
-		await _browser.close();
+		const page = await context.newPage();
+		if (superBypassMode) {
+			await page.route("**/*.js", (route) => {
+				if (route.request().url().includes("captcha-delivery")) {
+					return route.abort();
+				}
+				return route.continue();
+			});
+		}
+
+		await page.goto(url, { waitUntil: waitUntil ?? "load", timeout });
+		await page.evaluate(() => {
+			const elements = document.querySelectorAll("*");
+			for (const element of elements) {
+				const rect = element.getBoundingClientRect();
+				element.setAttribute("data-rwidth", rect.width.toString());
+				element.setAttribute("data-rheight", rect.height.toString());
+			}
+		});
+		return await page.content();
+	} finally {
+		if (browser) {
+			await context?.close();
+		} else {
+			await _browser.close();
+		}
 	}
-
-	return html;
 };

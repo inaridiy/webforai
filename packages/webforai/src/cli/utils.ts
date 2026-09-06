@@ -88,14 +88,11 @@ export function getNextAvailableFilePath(filePath: string): string {
 
 	const baseName = firstPart.replace(/_\d+$/, "");
 
-	let counter = 1;
+	const match = firstPart.match(/_(\d+)$/);
+	let counter = match ? Number.parseInt(match[1], 10) + 1 : 1;
 	let nextFilePath = filePath;
 
 	while (fs.existsSync(nextFilePath)) {
-		const match = firstPart.match(/_(\d+)$/);
-		if (match) {
-			counter = Number.parseInt(match[1], 10) + 1;
-		}
 		const newName = `${baseName}_${counter}${restName}`;
 		nextFilePath = path.join(directory, newName);
 		counter++;

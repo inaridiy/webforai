@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -13,7 +14,7 @@ const FIXTURE = path.join(PACKAGE_DIR, "src", "cli", "__fixtures__", "sample.htm
 
 const runCli = async (args: string[]) => {
 	try {
-		const { stdout, stderr } = await execFileAsync(TSX, [BIN, ...args], { cwd: PACKAGE_DIR });
+		const { stdout, stderr } = await execFileAsync(TSX, [BIN, ...args], { cwd: PACKAGE_DIR, timeout: 25000 });
 		return { stdout, stderr, code: 0 };
 	} catch (error) {
 		const failure = error as { stdout?: string; stderr?: string; code?: number };
@@ -51,5 +52,34 @@ describe("webforai CLI binary", () => {
 		expect(code).toBe(2);
 		expect(stderr).toContain("default | ai");
 		expect(stdout).toBe("");
+	}, 30000);
+
+	it("reports platform error codes and retry hints on stderr through the real HTTP client", async () => {
+		const server = createServer((_request, response) => {
+			response.writeHead(429, { "content-type": "application/json", "retry-after": "7" });
+			response.end(JSON.stringify({ error: { code: "rate_limited", message: "slow down" } }));
+		});
+		await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+		try {
+			const address = server.address();
+			if (!address || typeof address === "string") {
+				throw new Error("expected an ephemeral TCP port");
+			}
+			const { code, stdout, stderr } = await runCli([
+				"https://example.com",
+				"--engine",
+				"fetch",
+				"--api-key",
+				"wfa_test",
+				"--platform-url",
+				`http://127.0.0.1:${address.port}`,
+				"--json",
+			]);
+			expect(code).toBe(1);
+			expect(stdout).toBe("");
+			expect(stderr).toContain("rate_limited: slow down (retryAfter: 7s)");
+		} finally {
+			await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+		}
 	}, 30000);
 });

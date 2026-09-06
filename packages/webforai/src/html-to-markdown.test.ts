@@ -1,5 +1,7 @@
 import { distance } from "fastest-levenshtein";
+import { fromHtml } from "hast-util-from-html";
 import { describe, expect, it } from "vitest";
+import type { ExtractParams } from "./extractors/types";
 import { htmlToMarkdown } from "./html-to-markdown";
 
 const html = `
@@ -82,6 +84,43 @@ const expectedTableText = `Header 1  Header 2
 Cell 1    Cell 2`;
 
 describe("htmlToMarkdown", () => {
+	it("preserves code indentation and reads its explicit language", () => {
+		const markdown = htmlToMarkdown('<pre><code class="language-c++">    first\n      second\n</code></pre>', {
+			extractors: false,
+		});
+		expect(markdown).toBe("```c++\n    first\n      second\n```\n");
+	});
+
+	it("preserves indentation and language in a decorated code block", () => {
+		const markdown = htmlToMarkdown(
+			'<div class="code-block"><span>Copy</span><pre><code class="language-c++">    first\n      second\n</code></pre></div>',
+			{ extractors: false },
+		);
+		expect(markdown).toBe("```c++\n    first\n      second\n```\n");
+	});
+
+	it("keeps every example in a code tab group", () => {
+		const markdown = htmlToMarkdown(
+			'<div class="codegroup"><pre><code>first example</code></pre><pre><code>second example</code></pre></div>',
+			{ extractors: false },
+		);
+		expect(markdown).toContain("first example");
+		expect(markdown).toContain("second example");
+	});
+
+	it.each([false, ({ hast }: ExtractParams) => hast] as const)(
+		"does not mutate caller HAST during normalization with extractor %s",
+		(extractors) => {
+			const tree = fromHtml('<div role="heading" aria-level="3">Title</div><img data-src="/real.png" alt="Photo">', {
+				fragment: true,
+			});
+			const original = structuredClone(tree);
+			const markdown = htmlToMarkdown(tree, { extractors });
+			expect(markdown).toContain("### Title");
+			expect(markdown).toContain("![Photo](/real.png)");
+			expect(tree).toEqual(original);
+		},
+	);
 	it("should convert HTML to Markdown", () => {
 		const markdown = htmlToMarkdown(html, { extractors: false });
 		const d = distance(markdown, expected);

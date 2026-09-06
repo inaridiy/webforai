@@ -1,5 +1,6 @@
 import { CommanderError, program } from "commander";
 import packageInfo from "../../package.json";
+import { PlatformApiError } from "../platform";
 import { type SkillFlags, skillCommand } from "./commands/skill";
 import { interactiveCommand } from "./commands/webforai/interactive";
 import { type CliFlags, UsageError, resolveRunOptions } from "./commands/webforai/options";
@@ -87,6 +88,11 @@ const fail = (error: unknown): never => {
 	if (error instanceof UsageError) {
 		console.error(`error: ${error.message}`);
 		process.exit(2);
+	}
+	if (error instanceof PlatformApiError) {
+		const retry = error.retryAfter === undefined ? "" : ` (retryAfter: ${error.retryAfter}s)`;
+		console.error(`error: ${error.code}: ${error.message}${retry}`);
+		process.exit(1);
 	}
 	console.error(error instanceof Error ? `error: ${error.message}` : `error: ${String(error)}`);
 	process.exit(1);

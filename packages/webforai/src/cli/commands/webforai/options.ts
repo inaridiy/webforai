@@ -51,7 +51,11 @@ const impliesPlatform = (flags: CliFlags): boolean => flags.engine !== undefined
 
 const resolveLoader = (sourceIsUrl: boolean, flags: CliFlags): Loader => {
 	if (flags.loader) {
-		return oneOf("loader", flags.loader, LOADERS);
+		const loader = oneOf("loader", flags.loader, LOADERS);
+		if (impliesPlatform(flags) && loader !== "platform") {
+			throw new UsageError(`--engine/--region require --loader platform (received --loader ${loader})`);
+		}
+		return loader;
 	}
 	if (impliesPlatform(flags)) {
 		return "platform";

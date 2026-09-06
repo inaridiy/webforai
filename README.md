@@ -58,6 +58,11 @@ const html = await loadHtml(url);
 const markdown = htmlToMarkdown(html, { baseUrl: url });
 ```
 
+The CLI keeps Markdown/JSON on stdout and API failures on stderr, including the error code
+and `retryAfter` when supplied. `--engine` and `--region` select the platform loader; combining
+them with an explicit local loader exits with usage error `2`. The interactive wizard applies
+the same validation and honors `WEBFORAI_PLATFORM_URL`.
+
 ## What v3 changes
 
 **Better extraction.** The main-content extractor scores candidate containers the way Readability

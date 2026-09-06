@@ -1,7 +1,5 @@
-import puppeteer from "puppeteer";
+import puppeteer, { TimeoutError } from "puppeteer";
 import type { PuppeteerLaunchOptions } from "puppeteer";
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const loadHtml = async (url: string, ctx?: PuppeteerLaunchOptions) => {
 	const browser = await puppeteer.launch(
@@ -10,14 +8,19 @@ export const loadHtml = async (url: string, ctx?: PuppeteerLaunchOptions) => {
 			args: ["--no-sandbox", "--disable-setuid-sandbox"],
 		},
 	);
-	const page = await browser.newPage();
-	await page.goto(url);
-
-	const html = await page.content();
-
-	await Promise.race([page.waitForNetworkIdle(), sleep(10000)]);
-
-	await browser.close();
-
-	return html;
+	try {
+		const page = await browser.newPage();
+		await page.goto(url);
+		try {
+			await page.waitForNetworkIdle({ timeout: 10000 });
+		} catch (error) {
+			// Analytics or long polling may prevent idleness; return the current rendered page.
+			if (!(error instanceof TimeoutError)) {
+				throw error;
+			}
+		}
+		return await page.content();
+	} finally {
+		await browser.close();
+	}
 };

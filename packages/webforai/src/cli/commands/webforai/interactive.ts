@@ -9,7 +9,7 @@ import { inputSourcePath } from "../../helpers/inputSourcePath";
 import { selectExtractMode } from "../../helpers/selectExtractMode";
 import { selectLoader } from "../../helpers/selectLoader";
 import { isUrl } from "../../utils";
-import type { CliFlags, ResolvedRun } from "./options";
+import { type CliFlags, resolveRunOptions } from "./options";
 import { executeRun, writeOutputFile } from "./run";
 
 const ENGINE_HINTS: Record<(typeof REQUESTED_ENGINES)[number], string> = {
@@ -67,28 +67,21 @@ export const interactiveCommand = async (
 
 	const source = initialSource ?? (await inputSourcePath());
 
-	const loader = isUrl(source) ? flags.loader ?? (await selectLoader()) : "local";
-
-	const run: ResolvedRun = {
-		source,
-		loader: loader as ResolvedRun["loader"],
-		mode: "default",
-		extractor: (flags.extractor as ResolvedRun["extractor"]) ?? "auto",
-		frontmatter: flags.frontmatter ?? false,
-		json: false,
-		debug: flags.debug ?? false,
-		screenshot: flags.screenshot ?? false,
+	const loader = isUrl(source)
+		? flags.loader ?? (flags.engine !== undefined || flags.region !== undefined ? "platform" : await selectLoader())
+		: "local";
+	const selectedFlags: CliFlags = {
+		...flags,
+		loader: loader === "local" ? flags.loader : loader,
 	};
 
 	if (loader === "platform") {
 		const platform = await promptPlatformOptions(flags, env);
-		run.engine = platform.engine as ResolvedRun["engine"];
-		run.region = platform.region as ResolvedRun["region"];
-		run.apiKey = platform.apiKey;
-		run.platformUrl = flags.platformUrl;
+		Object.assign(selectedFlags, platform);
 	} else {
-		run.mode = (flags.mode as ResolvedRun["mode"]) ?? (await selectExtractMode());
+		selectedFlags.mode = flags.mode ?? (await selectExtractMode());
 	}
+	const run = resolveRunOptions(source, selectedFlags, env);
 
 	const outputPath = flags.output ?? (await inputOutputPath(source));
 

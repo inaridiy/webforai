@@ -15,6 +15,8 @@ export interface FetchRequestInit {
 	method: string;
 	headers?: Record<string, string>;
 	body?: string;
+	/** Cancels an in-flight status request when polling stops or times out. */
+	signal?: AbortSignal;
 }
 
 /** The subset of a Response the client reads. */

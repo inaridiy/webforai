@@ -40,8 +40,9 @@ export interface PlatformClientOptions {
 export interface WaitForJobOptions {
 	/** Delay between status polls. Default 2000ms. */
 	pollIntervalMs?: number;
-	/** Give up after this long with a `poll_timeout` `PlatformApiError`. Default 10 minutes. */
+	/** Overall deadline, including in-flight requests; throws `poll_timeout`. Default 10 minutes. */
 	timeoutMs?: number;
+	/** Cancels polling, including the current request, with the signal's abort reason. */
 	signal?: AbortSignal;
 	/** Called after every poll with the latest status — useful for progress display. */
 	onStatus?: (status: JobStatus) => void;
@@ -110,7 +111,10 @@ export const createPlatformClient = (options: PlatformClientOptions = {}): Platf
 	const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
 	const fetchImpl = resolveFetch(options.fetch);
 
-	const request = async <T>(path: string, init: { method: "GET" | "POST"; body?: unknown; auth: boolean }) => {
+	const request = async <T>(
+		path: string,
+		init: { method: "GET" | "POST"; body?: unknown; auth: boolean; signal?: AbortSignal },
+	) => {
 		const headers: Record<string, string> = { accept: "application/json" };
 		if (init.body !== undefined) {
 			headers["content-type"] = "application/json";
@@ -130,6 +134,7 @@ export const createPlatformClient = (options: PlatformClientOptions = {}): Platf
 			method: init.method,
 			headers,
 			body: init.body === undefined ? undefined : JSON.stringify(init.body),
+			...(init.signal ? { signal: init.signal } : {}),
 		});
 
 		const body: unknown = await response.json().catch(() => undefined);
@@ -142,8 +147,8 @@ export const createPlatformClient = (options: PlatformClientOptions = {}): Platf
 		return body as T;
 	};
 
-	const getJob = (jobId: string): Promise<JobStatus> =>
-		request(`/v1/jobs/${encodeURIComponent(jobId)}`, { method: "GET", auth: true });
+	const getJob = (jobId: string, signal?: AbortSignal): Promise<JobStatus> =>
+		request(`/v1/jobs/${encodeURIComponent(jobId)}`, { method: "GET", auth: true, signal });
 
 	const getJobResults = (jobId: string, opts?: { cursor?: string }): Promise<JobResultsPage> => {
 		const query = opts?.cursor ? `?cursor=${encodeURIComponent(opts.cursor)}` : "";
@@ -178,18 +183,47 @@ export const createPlatformClient = (options: PlatformClientOptions = {}): Platf
 		waitForJob: async (jobId: string, opts: WaitForJobOptions = {}): Promise<JobStatus> => {
 			const interval = opts.pollIntervalMs ?? 2000;
 			const timeout = opts.timeoutMs ?? 10 * 60 * 1000;
-			const startedAt = Date.now();
+			if (!Number.isFinite(interval) || interval < 0 || interval > 2_147_483_647) {
+				throw new RangeError("pollIntervalMs must be between 0 and 2147483647");
+			}
+			if (!Number.isFinite(timeout) || timeout <= 0 || timeout > 2_147_483_647) {
+				throw new RangeError("timeoutMs must be greater than 0 and at most 2147483647");
+			}
+			opts.signal?.throwIfAborted();
 
-			for (;;) {
-				const status = await getJob(jobId);
-				opts.onStatus?.(status);
-				if (TERMINAL_STATES.has(status.status)) {
-					return status;
+			const controller = new AbortController();
+			const { signal } = controller;
+			const onAbort = () => controller.abort(opts.signal?.reason);
+			opts.signal?.addEventListener("abort", onAbort, { once: true });
+			const timer = setTimeout(
+				() =>
+					controller.abort(new PlatformApiError("poll_timeout", `job ${jobId} did not finish within ${timeout}ms`, 0)),
+				timeout,
+			);
+			let rejectOnAbort: () => void = () => {};
+			const aborted = new Promise<never>((_resolve, reject) => {
+				rejectOnAbort = () => reject(signal.reason);
+				signal.addEventListener("abort", rejectOnAbort, { once: true });
+			});
+			const poll = async (): Promise<JobStatus> => {
+				for (;;) {
+					signal.throwIfAborted();
+					const status = await getJob(jobId, signal);
+					signal.throwIfAborted();
+					opts.onStatus?.(status);
+					if (TERMINAL_STATES.has(status.status)) {
+						return status;
+					}
+					await sleep(interval, signal);
 				}
-				if (Date.now() - startedAt + interval > timeout) {
-					throw new PlatformApiError("poll_timeout", `job ${jobId} still ${status.status} after ${timeout}ms`, 0);
-				}
-				await sleep(interval, opts.signal);
+			};
+			try {
+				// Custom fetch implementations may ignore signals; the caller still gets its deadline.
+				return await Promise.race([poll(), aborted]);
+			} finally {
+				clearTimeout(timer);
+				opts.signal?.removeEventListener("abort", onAbort);
+				signal.removeEventListener("abort", rejectOnAbort);
 			}
 		},
 

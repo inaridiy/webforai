@@ -41,7 +41,10 @@ npx webforai@latest https://example.com --json | jq -r .markdown
 | `-i, --interactive` | Guided prompt flow. |
 | `-d, --debug` | Verbose logs on stderr. |
 
-Exit codes: `0` success, `1` runtime failure, `2` usage error.
+Exit codes: `0` success, `1` runtime failure, `2` usage error. API failures include the
+platform error code and `retryAfter` (seconds, when supplied) on stderr. Explicit local
+loaders cannot be combined with `--engine` or `--region`; this exits with code `2` before
+making a request. Interactive mode applies the same flag validation and environment defaults.
 
 ## Loaders
 

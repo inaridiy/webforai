@@ -11,6 +11,7 @@ import type { Element, Nodes as Hast } from "hast";
 
 import {
 	classList,
+	findElement,
 	isElement,
 	numericProperty,
 	property,
@@ -137,7 +138,9 @@ const katexDuplicates = (node: Element): Element[] => {
 		return [];
 	}
 
-	const hasMathml = node.children.some((child) => isElement(child) && classList(child).includes("katex-mathml"));
+	const hasMathml = node.children.some(
+		(child) => isElement(child) && classList(child).includes("katex-mathml") && hasMathSource(child),
+	);
 	if (!hasMathml) {
 		return [];
 	}
@@ -152,7 +155,7 @@ const katexDuplicates = (node: Element): Element[] => {
  * text is the same formula. The MathML is kept because it becomes real LaTeX.
  */
 const mediawikiDuplicates = (node: Element): Element[] => {
-	if (!classList(node).includes("mwe-math-element")) {
+	if (!classList(node).includes("mwe-math-element") || !hasMathSource(node)) {
 		return [];
 	}
 	return node.children.filter(
@@ -166,8 +169,18 @@ const mathjaxDuplicates = (node: Element): Element[] => {
 	if (node.tagName !== "mjx-container") {
 		return [];
 	}
+	const hasMathml = node.children.some(
+		(child) => isElement(child) && child.tagName === "mjx-assistive-mml" && hasMathSource(child),
+	);
+	if (!hasMathml) {
+		return [];
+	}
 	return node.children.filter((child): child is Element => isElement(child) && child.tagName !== "mjx-assistive-mml");
 };
+
+/** A wrapper alone is not an alternative formula; some renderers omit assistive MathML. */
+const hasMathSource = (node: Element): boolean =>
+	Boolean(findElement(node, (element) => element.tagName === "math" && element.children.length > 0));
 
 /**
  * Removes the duplicated half of a rendered maths expression.

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { createServer } from "node:http";
+import { describe, expect, it, vi } from "vitest";
 import { createPlatformClient } from "./client";
 import { PlatformApiError } from "./error";
 import type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch";
@@ -123,6 +124,41 @@ describe("createPlatformClient", () => {
 		await expect(client.getJob("job_x")).rejects.toMatchObject({ code: "invalid_response", status: 404 });
 	});
 
+	it("preserves transport failures instead of wrapping them as API responses", async () => {
+		const failure = new TypeError("fetch failed");
+		const { impl } = stubFetch(() => Promise.reject(failure));
+		await expect(createPlatformClient({ apiKey: "k", fetch: impl }).getJob("job_1")).rejects.toBe(failure);
+	});
+
+	it("cancels an incomplete HTTP response through the default global fetch", async () => {
+		let received: () => void = () => {};
+		const requestReceived = new Promise<void>((resolve) => {
+			received = resolve;
+		});
+		const server = createServer((_request, response) => {
+			response.writeHead(200, { "content-type": "application/json" });
+			response.write('{"status":');
+			received();
+		});
+		await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+		try {
+			const address = server.address();
+			if (!address || typeof address === "string") {
+				throw new Error("expected an ephemeral TCP port");
+			}
+			const client = createPlatformClient({ apiKey: "k", baseUrl: `http://127.0.0.1:${address.port}` });
+			const controller = new AbortController();
+			const reason = new Error("stop reading the HTTP body");
+			const pending = client.waitForJob("job_1", { signal: controller.signal });
+			await requestReceived;
+			controller.abort(reason);
+			await expect(pending).rejects.toBe(reason);
+		} finally {
+			server.closeAllConnections();
+			await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+		}
+	});
+
 	it("waitForJob polls until a terminal status and reports each poll", async () => {
 		const statuses = ["queued", "running", "completed"];
 		let call = 0;
@@ -165,6 +201,88 @@ describe("createPlatformClient", () => {
 		await expect(client.waitForJob("job_1", { pollIntervalMs: 5, timeoutMs: 12 })).rejects.toMatchObject({
 			code: "poll_timeout",
 		});
+	});
+
+	it.each(["fetch", "body"])("waitForJob enforces its deadline while %s never resolves", async (stage) => {
+		vi.useFakeTimers();
+		try {
+			const never = new Promise<never>(() => {});
+			const { impl, calls } = stubFetch(() =>
+				stage === "fetch"
+					? never
+					: {
+							ok: true,
+							status: 200,
+							headers: { get: () => null },
+							json: () => never,
+						},
+			);
+			const client = createPlatformClient({ apiKey: "k", fetch: impl });
+			const pending = client.waitForJob("job_1", { timeoutMs: 50 });
+			const rejected = expect(pending).rejects.toMatchObject({ code: "poll_timeout" });
+			await vi.advanceTimersByTimeAsync(50);
+			await rejected;
+			expect(calls[0]?.init?.signal?.aborted).toBe(true);
+			expect(vi.getTimerCount()).toBe(0);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("waitForJob rejects an already-aborted signal before making a request", async () => {
+		const { impl, calls } = stubFetch(() => json({ status: "completed" }));
+		const client = createPlatformClient({ apiKey: "k", fetch: impl });
+		const reason = new Error("cancelled by caller");
+		await expect(client.waitForJob("job_1", { signal: AbortSignal.abort(reason) })).rejects.toBe(reason);
+		expect(calls).toHaveLength(0);
+	});
+
+	it("waitForJob cancels in-flight requests and suppresses status callbacks after cancellation", async () => {
+		let respond: (value: FetchResponseLike) => void = () => {};
+		const response = new Promise<FetchResponseLike>((resolve) => {
+			respond = resolve;
+		});
+		const { impl, calls } = stubFetch(() => response);
+		const client = createPlatformClient({ apiKey: "k", fetch: impl });
+		const controller = new AbortController();
+		const onStatus = vi.fn();
+		const reason = new Error("cancelled by caller");
+		const pending = client.waitForJob("job_1", { signal: controller.signal, onStatus });
+		controller.abort(reason);
+		await expect(pending).rejects.toBe(reason);
+		expect(calls[0]?.init?.signal?.aborted).toBe(true);
+		respond(json({ status: "completed" }));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(onStatus).not.toHaveBeenCalled();
+		expect(calls).toHaveLength(1);
+	});
+
+	it("waitForJob clears the deadline after successful completion", async () => {
+		vi.useFakeTimers();
+		try {
+			const { impl } = stubFetch(() => json({ status: "completed" }));
+			await createPlatformClient({ apiKey: "k", fetch: impl }).waitForJob("job_1");
+			expect(vi.getTimerCount()).toBe(0);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it.each([
+		{ timeoutMs: 0 },
+		{ timeoutMs: -1 },
+		{ timeoutMs: Number.NaN },
+		{ timeoutMs: Number.POSITIVE_INFINITY },
+		{ timeoutMs: 2_147_483_648 },
+		{ pollIntervalMs: -1 },
+		{ pollIntervalMs: Number.NaN },
+		{ pollIntervalMs: Number.POSITIVE_INFINITY },
+	])("waitForJob rejects invalid timing options %j before network I/O", async (options) => {
+		const { impl, calls } = stubFetch(() => json({ status: "completed" }));
+		await expect(
+			createPlatformClient({ apiKey: "k", fetch: impl }).waitForJob("job_1", options),
+		).rejects.toBeInstanceOf(RangeError);
+		expect(calls).toHaveLength(0);
 	});
 
 	it("jobResults follows the cursor and resolves resultUrl stubs to full pages", async () => {
