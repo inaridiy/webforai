@@ -6,6 +6,7 @@ content:
 
 import { HomePage } from "vocs/components";
 import { DemoScrape } from "../components/DemoScrape";
+import { WaysToUse } from "../components/WaysToUse";
 
 <div className="max-w-screen-lg mx-auto vp-doc relative px-6 mb-24 mt-8 md:px-0 md:mb-16">
   <div className="pt-[48px] max-sm:pt-0">
@@ -17,7 +18,7 @@ import { DemoScrape } from "../components/DemoScrape";
         </div>
         <div className="flex justify-center space-x-2">
           <HomePage.Button href="/getting-started" variant="accent">Get started</HomePage.Button>
-          <HomePage.Button href="/cookbook">Cookbook</HomePage.Button>
+          <HomePage.Button href="https://platform.webforai.dev">Hosted API</HomePage.Button>
           <HomePage.Button href="https://github.com/inaridiy/webforai">GitHub</HomePage.Button>
         </div>
       </div>
@@ -85,6 +86,17 @@ npx webforai@latest
 
 
 
+<section className="max-w-screen-lg mx-auto" id="ways-to-use">
+
+#
+# Three ways to use it
+
+The same extraction engine, wherever you want to run it.
+
+<WaysToUse button={HomePage.Button} />
+
+</section>
+
 <section className="max-w-screen-lg mx-auto" id="demo">
 
 #
@@ -140,9 +152,9 @@ crawl→Markdown API built on this library — scrape, batch and crawl over four
 
 <div className="flex flex-wrap gap-2 mt-6">
   <HomePage.Button href="https://platform.webforai.dev" variant="accent">Open the platform</HomePage.Button>
+  <HomePage.Button href="https://platform.webforai.dev/signup">Create a free account</HomePage.Button>
   <HomePage.Button href="/platform">Platform docs</HomePage.Button>
   <HomePage.Button href="/platform/api-reference">API reference</HomePage.Button>
-  <HomePage.Button href="#demo">Try the demo</HomePage.Button>
 </div>
 
 </section>

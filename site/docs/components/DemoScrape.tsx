@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Streamdown } from "streamdown";
-import { PLATFORM_DEMO_ENDPOINT, PLATFORM_REGIONS, type PlatformRegion } from "./platform";
+import { PLATFORM_DEMO_ENDPOINT, PLATFORM_ORIGIN, PLATFORM_REGIONS, type PlatformRegion } from "./platform";
 import "streamdown/styles.css";
 
 type DemoSuccess = {
@@ -213,8 +213,8 @@ export const DemoScrape = () => {
 			{result ? <DemoResult result={result} title={title} /> : null}
 
 			<div className="text-[13px] opacity-60">
-				Rate-limited public demo (5 requests / 10 min per IP) running the <code>proxy-fetch</code> engine. No API key
-				required.
+				Rate-limited public demo (5 requests / 10 min per IP) running the <code>auto</code> engine. No API key required
+				— for more, <a href={`${PLATFORM_ORIGIN}/signup`}>create a free platform account</a> (500 credits / month).
 			</div>
 		</div>
 	);

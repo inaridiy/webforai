@@ -1,10 +1,13 @@
 /**
- * Public demo endpoint of the webforai platform.
+ * Origin of the hosted webforai platform.
  *
- * This is the single place the docs site knows about the platform host. Self-hosted docs
- * builds should change this constant.
+ * Components read the platform host from here (MDX prose and vocs.config.ts links spell it
+ * out). Self-hosted docs builds should change this constant.
  */
-export const PLATFORM_DEMO_ENDPOINT = "https://platform.webforai.dev/v1/demo/scrape";
+export const PLATFORM_ORIGIN = "https://platform.webforai.dev";
+
+/** Public, keyless demo endpoint behind the landing page's "Try it" box. */
+export const PLATFORM_DEMO_ENDPOINT = `${PLATFORM_ORIGIN}/v1/demo/scrape`;
 
 export const PLATFORM_REGIONS = ["auto", "us", "eu", "uk", "jp", "asia"] as const;
 

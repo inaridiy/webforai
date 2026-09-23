@@ -2,7 +2,20 @@
 title: Platform
 ---
 
+import { HomePage } from "vocs/components";
+
 # webforai platform
+
+:::tip
+This section documents the hosted API. The product itself — sign-up, API keys, usage,
+billing and the playground — lives at [platform.webforai.dev](https://platform.webforai.dev).
+
+<div className="flex flex-wrap gap-2 mt-3">
+  <HomePage.Button href="https://platform.webforai.dev" variant="accent">Open platform</HomePage.Button>
+  <HomePage.Button href="https://platform.webforai.dev/dashboard">Dashboard &amp; API keys</HomePage.Button>
+  <HomePage.Button href="https://platform.webforai.dev/playground">Playground</HomePage.Button>
+</div>
+:::
 
 **webforai platform** is a hosted crawl→Markdown API built on this library.
 It takes a URL (or a whole site) and gives you back the same clean Markdown `htmlToMarkdown` produces,
@@ -93,7 +106,7 @@ only exists after JavaScript runs.
 
 ## Accounts and pricing
 
-Accounts and API keys live on the dashboard; requests authenticate with
+Accounts and API keys live on the [dashboard](https://platform.webforai.dev/dashboard); requests authenticate with
 `Authorization: Bearer wfa_...`. Usage is metered in credits with **500 credits per month free** —
 see [Billing](/platform/billing) for the full schedule.
 

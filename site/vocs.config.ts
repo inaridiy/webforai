@@ -38,9 +38,19 @@ export default defineConfig({
 	],
 	topNav: [
 		{ text: "Getting Started", link: "/getting-started" },
+		{ text: "CLI", link: "/cli" },
 		{ text: "Cookbook", link: "/cookbook" },
-		// The header entry opens the product itself; the docs stay reachable from the sidebar.
-		{ text: "Platform", link: "https://platform.webforai.dev" },
+		// "Platform" is both a product and a docs section: the dropdown names which one each
+		// entry opens. External entries get vocs' arrow icon.
+		{
+			text: "Platform",
+			items: [
+				{ text: "Open platform", link: "https://platform.webforai.dev" },
+				{ text: "Dashboard & API keys", link: "https://platform.webforai.dev/dashboard" },
+				{ text: "Platform docs", link: "/platform" },
+				{ text: "API reference", link: "/platform/api-reference" },
+			],
+		},
 		{
 			text: version, // <= should update automatically
 			items: [
@@ -121,7 +131,7 @@ export default defineConfig({
 			],
 		},
 		{
-			text: "Platform",
+			text: "Platform (hosted API)",
 			link: "/platform",
 			items: [
 				{
