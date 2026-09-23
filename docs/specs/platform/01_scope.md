@@ -1,5 +1,8 @@
 # Platform Scope
 
+Revision note (2026-09-23): Added "Surfaces and navigation" — the six user-facing surfaces,
+which one documents what, and the linking rules between the docs site and the platform app
+(product links and docs links are labelled apart; the app's "Docs" means the platform docs).
 Revision note (2026-09-06): Quality review preserves the existing product scope. Conversion now retains literal code, valid formula fallbacks, and caller-owned HAST; dashboard failures remain visible and retryable. Async page accounting and result recovery are specified in `02_architecture.md` and `04_billing.md`.
 
 Revision note (2026-08-24, later): `auto` also escalates on fetch-tier *failures* a browser
@@ -69,6 +72,30 @@ concrete engine that produced them.
   usage, billing.
 - API keys: Better Auth `apiKey` plugin; API authenticated via `Authorization: Bearer wfa_...`.
 - Billing: Stripe usage-based (Billing Meter, credit-denominated). See `04_billing.md`.
+
+## Surfaces and navigation
+
+webforai reaches users through these surfaces; each links to the others under labels that
+say where the link goes.
+
+| surface | where | job |
+| --- | --- | --- |
+| `webforai` library | npm, `packages/webforai` | HTML→Markdown in the user's own code |
+| CLI | same package (`npx webforai`) | URL/file→Markdown on stdout; `--engine`/`--region` call the platform |
+| `webforai/platform` client | same package (subpath) | typed HTTP client for the platform API |
+| Docs site | webforai.dev (`site/`) | the only documentation — library, CLI, client and platform API |
+| Platform app | platform.webforai.dev (`apps/platform`) | landing/pricing, sign-up, dashboard (keys, usage, billing, jobs), playground |
+| READMEs | GitHub / npm | route readers to the docs site; `apps/platform` README covers running and deploying an instance |
+
+Linking rules:
+
+- The docs site never uses the bare word "Platform" for both the product and its docs: the
+  header "Platform" is a dropdown whose entries say which they open ("Open platform",
+  "Dashboard & API keys" vs. "Platform docs", "API reference").
+- In the platform app, "Docs" opens the platform docs (webforai.dev/platform); library docs
+  are linked as "Library docs". The app has no docs pages of its own.
+- Wherever a user needs a key or credits — dashboard, CLI error hints, client errors, docs
+  quickstart — the dashboard is named with a link.
 
 ## Non-goals (initial)
 

@@ -78,6 +78,36 @@ describe("webforai CLI binary", () => {
 			expect(code).toBe(1);
 			expect(stdout).toBe("");
 			expect(stderr).toContain("rate_limited: slow down (retryAfter: 7s)");
+			expect(stderr).not.toContain("hint:");
+		} finally {
+			await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+		}
+	}, 30000);
+
+	it("points auth and credit failures at the configured platform's dashboard", async () => {
+		const server = createServer((_request, response) => {
+			response.writeHead(402, { "content-type": "application/json" });
+			response.end(JSON.stringify({ error: { code: "payment_required", message: "out of credits" } }));
+		});
+		await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+		try {
+			const address = server.address();
+			if (!address || typeof address === "string") {
+				throw new Error("expected an ephemeral TCP port");
+			}
+			const platformUrl = `http://127.0.0.1:${address.port}`;
+			const { code, stderr } = await runCli([
+				"https://example.com",
+				"--engine",
+				"fetch",
+				"--api-key",
+				"wfa_test",
+				"--platform-url",
+				`${platformUrl}/`,
+			]);
+			expect(code).toBe(1);
+			expect(stderr).toContain("payment_required: out of credits");
+			expect(stderr).toContain(`hint: manage API keys and credits at ${platformUrl}/dashboard`);
 		} finally {
 			await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
 		}

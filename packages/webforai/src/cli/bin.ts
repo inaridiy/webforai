@@ -1,6 +1,6 @@
 import { CommanderError, program } from "commander";
 import packageInfo from "../../package.json";
-import { PlatformApiError } from "../platform";
+import { DEFAULT_BASE_URL, PlatformApiError } from "../platform";
 import { type SkillFlags, skillCommand } from "./commands/skill";
 import { interactiveCommand } from "./commands/webforai/interactive";
 import { type CliFlags, UsageError, resolveRunOptions } from "./commands/webforai/options";
@@ -27,7 +27,20 @@ Exit codes:
 
 Output contract:
   stdout carries only the Markdown (or the --json envelope); all logs go to stderr.
+
+Docs:
+  https://webforai.dev/cli                    this CLI
+  https://webforai.dev/platform               the hosted platform (--engine / --region)
+  ${DEFAULT_BASE_URL}/dashboard     API keys, usage and billing
 `;
+
+/** Platform errors the user fixes on the dashboard rather than by retrying. */
+const DASHBOARD_ERRORS = new Set(["invalid_api_key", "payment_required"]);
+
+const platformDashboardUrl = (): string => {
+	const configured = program.opts<{ platformUrl?: string }>().platformUrl ?? process.env[PLATFORM_URL_ENV];
+	return `${(configured || DEFAULT_BASE_URL).replace(/\/+$/u, "")}/dashboard`;
+};
 
 program
 	.name("webforai")
@@ -92,6 +105,9 @@ const fail = (error: unknown): never => {
 	if (error instanceof PlatformApiError) {
 		const retry = error.retryAfter === undefined ? "" : ` (retryAfter: ${error.retryAfter}s)`;
 		console.error(`error: ${error.code}: ${error.message}${retry}`);
+		if (DASHBOARD_ERRORS.has(error.code)) {
+			console.error(`hint: manage API keys and credits at ${platformDashboardUrl()}`);
+		}
 		process.exit(1);
 	}
 	console.error(error instanceof Error ? `error: ${error.message}` : `error: ${String(error)}`);

@@ -30,7 +30,17 @@
 
 ## Documentation
 
-[Head to the documentation](https://webforai.dev/) to read and learn more about Webforai.
+Everything is documented at **[webforai.dev](https://webforai.dev)**. Start from what you want to do:
+
+| I want to… | Use | Start here |
+| --- | --- | --- |
+| convert HTML in my own code (Node.js, browsers, Workers) | the `webforai` library | [Getting started](https://webforai.dev/getting-started) |
+| get Markdown for a URL from the shell or an AI agent | the CLI, `npx webforai <url>` | [CLI](https://webforai.dev/cli) |
+| call a hosted API that runs the browsers and proxies for me | webforai platform | [platform.webforai.dev](https://platform.webforai.dev) (sign-up, API keys, usage) · [platform docs](https://webforai.dev/platform) |
+| run my own copy of that platform | [`apps/platform`](https://github.com/inaridiy/webforai/tree/main/apps/platform) | [Deploying your own instance](https://github.com/inaridiy/webforai/tree/main/apps/platform#deploying-your-own-instance) |
+
+The library, the CLI and the typed platform client (`webforai/platform`) all ship in the one
+`webforai` npm package.
 
 ## Overview
 
@@ -59,7 +69,8 @@ const markdown = htmlToMarkdown(html, { baseUrl: url });
 ```
 
 The CLI keeps Markdown/JSON on stdout and API failures on stderr, including the error code
-and `retryAfter` when supplied. `--engine` and `--region` select the platform loader; combining
+and `retryAfter` when supplied; `invalid_api_key` and `payment_required` add a hint pointing at
+the platform dashboard. `--engine` and `--region` select the platform loader; combining
 them with an explicit local loader exits with usage error `2`. The interactive wizard applies
 the same validation and honors `WEBFORAI_PLATFORM_URL`.
 
@@ -115,7 +126,8 @@ self-hostable SaaS built on this library: a metered crawl→Markdown HTTP API on
 (Workers + Workflows + Containers + Browser Run) with Better Auth accounts/API keys and
 Stripe usage-based billing. Use it through the typed `webforai/platform` client
 (`import { createPlatformClient } from "webforai/platform"`) or the CLI
-(`npx webforai <url> --engine auto`); docs live at
+(`npx webforai <url> --engine auto`). Sign up and manage API keys at
+[platform.webforai.dev](https://platform.webforai.dev); the docs live at
 [webforai.dev/platform](https://webforai.dev/platform). See its README and the design ledger
 in `docs/specs/platform`.
 
