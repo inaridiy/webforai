@@ -124,6 +124,12 @@ idempotency `identifier`; unreported rows are retried by a 15-minute cron.
 
 ## Dashboard and job reliability
 
+Below the API keys, a "Use your key" card shows the same request for curl, the TypeScript
+client and the CLI (with `baseUrl` / `WEBFORAI_PLATFORM_URL` filled in on self-hosted
+origins) and links to the platform docs. The header's "Docs" link opens the *platform*
+docs (webforai.dev/platform); the footer links library, CLI, client and self-hosting docs.
+The URLs live in `src/client/lib/links.ts`.
+
 The dashboard distinguishes empty jobs from failed requests and provides Retry. Usage and
 job responses are validated before rendering. Authentication outages keep the dashboard
 open with a retry action. Navigation wraps on small screens; API key copy failures provide

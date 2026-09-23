@@ -1,16 +1,54 @@
 import { useEffect } from "react";
+import { ClientSnippets } from "../components/client-snippets";
 import { ApiKeysSection } from "../components/dashboard/api-keys";
 import { JobsTable } from "../components/dashboard/jobs-table";
 import { BillingCard, CreditsCard } from "../components/dashboard/usage-overview";
 import { UsageTable } from "../components/dashboard/usage-table";
 import { fetchUsage } from "../lib/api";
 import type { Session } from "../lib/auth-client";
+import { links, useDeploymentOrigin } from "../lib/links";
 import { Link, navigate } from "../lib/router";
 import { useAsyncResult } from "../lib/use-async";
 import type { SessionState } from "../lib/use-session";
 import { Alert } from "../ui/alert";
 import { Button, buttonClass } from "../ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { LoadingRow } from "../ui/spinner";
+
+/** What to do with a key: the same request from each official client, plus where to read more. */
+const QuickstartCard = ({ className }: { className?: string }) => {
+	const origin = useDeploymentOrigin();
+	return (
+		<Card className={className}>
+			<CardHeader>
+				<CardTitle>Use your key</CardTitle>
+				<CardDescription>
+					Send the key as a bearer token from any client. The playground runs the same request in the browser.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+				<ClientSnippets origin={origin} />
+				<ul className="flex flex-col gap-2 text-sm lg:pt-9">
+					<li>
+						<Link href="/playground" className="text-accent hover:underline">
+							Try it in the playground
+						</Link>
+					</li>
+					<li>
+						<a href={links.quickstart} className="text-accent hover:underline">
+							Platform quickstart
+						</a>
+					</li>
+					<li>
+						<a href={links.billingDocs} className="text-accent hover:underline">
+							How credits are billed
+						</a>
+					</li>
+				</ul>
+			</CardContent>
+		</Card>
+	);
+};
 
 const DashboardBody = ({ session }: { session: Session }) => {
 	const usage = useAsyncResult(fetchUsage);
@@ -51,6 +89,7 @@ const DashboardBody = ({ session }: { session: Session }) => {
 					</>
 				) : null}
 				<ApiKeysSection className="md:col-span-12" />
+				<QuickstartCard className="md:col-span-12" />
 				{usage.state.status === "ready" ? (
 					<UsageTable events={usage.state.value.recentEvents} className="md:col-span-5" />
 				) : null}

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "../lib/cn";
-import { Link, navigate } from "../lib/router";
+import { links } from "../lib/links";
+import { Link } from "../lib/router";
 import type { SessionState } from "../lib/use-session";
 import { buttonClass } from "../ui/button";
 import { Wordmark } from "./logo";
@@ -48,6 +49,17 @@ const HeaderActions = ({ session, onSignOut }: { session: SessionState; onSignOu
 	);
 };
 
+const footerLinks: { text: string; href: string }[] = [
+	{ text: "Platform docs", href: links.platformDocs },
+	{ text: "Library docs", href: links.libraryDocs },
+	{ text: "API reference", href: links.apiReference },
+	{ text: "CLI", href: links.cliDocs },
+	{ text: "TypeScript client", href: links.clientDocs },
+	{ text: "Self-hosting", href: links.selfHosting },
+	{ text: "Billing", href: links.billingDocs },
+	{ text: "GitHub", href: links.repository },
+];
+
 export const SiteShell = ({ session, onSignOut, children }: SiteShellProps) => (
 	<div className="flex min-h-screen flex-col">
 		<header className="sticky top-0 z-20 border-border border-b bg-background/85 backdrop-blur">
@@ -58,11 +70,12 @@ export const SiteShell = ({ session, onSignOut, children }: SiteShellProps) => (
 						platform
 					</span>
 				</Link>
-				<nav className="hidden items-center gap-1 sm:flex">
-					<a href="https://webforai.dev" className={navLinkClass(false)}>
+				{/* Wraps onto its own row on phones instead of disappearing. */}
+				<nav className="order-last -ml-2 flex w-full items-center gap-1 sm:order-none sm:ml-0 sm:w-auto">
+					<a href={links.platformDocs} className={navLinkClass(false)}>
 						Docs
 					</a>
-					<a href="https://webforai.dev/platform/api-reference" className={navLinkClass(false)}>
+					<a href={links.apiReference} className={navLinkClass(false)}>
 						API reference
 					</a>
 					<Link href="/#pricing" className={navLinkClass(false)}>
@@ -76,21 +89,20 @@ export const SiteShell = ({ session, onSignOut, children }: SiteShellProps) => (
 		</header>
 		<main className="flex-1">{children}</main>
 		<footer className="border-border border-t">
-			<div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-8 text-muted-foreground text-sm sm:flex-row sm:items-center sm:justify-between">
-				<p>webforai platform — open source, self-hostable, deployed on Cloudflare Workers.</p>
-				<div className="flex items-center gap-4">
-					<a href="https://webforai.dev" className="hover:text-foreground">
-						Docs
-					</a>
-					<a href="https://webforai.dev/platform/api-reference" className="hover:text-foreground">
-						API reference
-					</a>
-					<a href="https://github.com/inaridiy/webforai" className="hover:text-foreground" rel="noreferrer">
-						GitHub
-					</a>
-					<button type="button" onClick={() => navigate("/signup")} className="hover:text-foreground">
-						Create account
-					</button>
+			<div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-8 text-muted-foreground text-sm sm:flex-row sm:items-start sm:justify-between">
+				<p className="max-w-sm">
+					webforai platform — the hosted API for the open-source{" "}
+					<a href={links.libraryDocs} className="text-foreground hover:underline">
+						webforai
+					</a>{" "}
+					library. Self-hostable on Cloudflare Workers.
+				</p>
+				<div className="grid grid-cols-2 gap-x-10 gap-y-2 sm:grid-cols-[auto_auto]">
+					{footerLinks.map((link) => (
+						<a key={link.href} href={link.href} className="hover:text-foreground">
+							{link.text}
+						</a>
+					))}
 				</div>
 			</div>
 		</footer>

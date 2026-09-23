@@ -53,8 +53,9 @@ const RevealedKey = ({ value, onDismiss }: { value: string; onDismiss: () => voi
 				</p>
 			) : null}
 			<p className="mt-3 text-muted-foreground text-xs">
-				Send it as <span className="font-mono">Authorization: Bearer &lt;key&gt;</span>. Anyone holding it can spend
-				your credits.
+				Send it as <span className="font-mono">Authorization: Bearer &lt;key&gt;</span> — curl, TypeScript and CLI
+				examples are under <span className="font-medium text-foreground">Use your key</span> below. Anyone holding it
+				can spend your credits.
 			</p>
 		</div>
 	);

@@ -1,24 +1,12 @@
-import { useEffect, useState } from "react";
+import { ClientSnippets } from "../components/client-snippets";
 import { DemoSection } from "../components/landing/demo-section";
+import { links, useDeploymentOrigin } from "../lib/links";
 import { Link } from "../lib/router";
 import { Badge } from "../ui/badge";
 import { buttonClass } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { CodeBlock } from "../ui/code-block";
 import { TBody, TD, TH, THead, TR, Table } from "../ui/table";
-
-const CANONICAL_ORIGIN = "https://platform.webforai.dev";
-
-/**
- * The deployment's own origin, hydration-safe: the build-time prerender and the first client
- * render both use the canonical origin, then an effect corrects it for self-hosted origins.
- * Reading `window.location` during render would make the prerendered markup mismatch.
- */
-const useDeploymentOrigin = (): string => {
-	const [origin, setOrigin] = useState(CANONICAL_ORIGIN);
-	useEffect(() => setOrigin(window.location.origin), []);
-	return origin;
-};
 
 /** The curl sample advertises this very deployment, like the playground's equivalent-curl strip. */
 const scrapeSnippet = (origin: string): string => {
@@ -82,9 +70,13 @@ const Hero = () => {
 						Any URL, converted to Markdown an LLM can actually read.
 					</h1>
 					<p className="mt-5 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-						webforai platform wraps the webforai extraction library in a metered HTTP API. Four acquisition engines —
-						plain fetch, browser rendering, proxied fetch, proxied browser — behind one request body, and an{" "}
-						<span className="font-mono">auto</span> default that renders client-side pages only when they need it.
+						webforai platform wraps the open-source{" "}
+						<a href={links.libraryDocs} className="text-foreground underline-offset-4 hover:underline">
+							webforai
+						</a>{" "}
+						extraction library in a metered HTTP API. Four acquisition engines — plain fetch, browser rendering, proxied
+						fetch, proxied browser — behind one request body, and an <span className="font-mono">auto</span> default
+						that renders client-side pages only when they need it.
 					</p>
 					<div className="mt-8 flex flex-wrap items-center gap-3">
 						<Link href="/signup" className={buttonClass("primary", "lg")}>
@@ -123,6 +115,33 @@ const Capabilities = () => (
 		</div>
 	</section>
 );
+
+const Clients = () => {
+	const origin = useDeploymentOrigin();
+	return (
+		<section className="mx-auto w-full max-w-6xl px-5 pb-16">
+			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-start">
+				<div>
+					<h2 className="font-semibold text-2xl tracking-tight">Call it from anywhere</h2>
+					<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
+						Plain HTTP with a bearer key, the typed <span className="font-mono">webforai/platform</span> client that
+						ships in the <span className="font-mono">webforai</span> npm package, or the{" "}
+						<span className="font-mono">npx webforai</span> CLI — pipes, scripts and AI agents included.
+					</p>
+					<div className="mt-5 flex flex-wrap gap-3">
+						<a href={links.quickstart} className={buttonClass("outline", "sm")}>
+							Quickstart
+						</a>
+						<a href={links.apiReference} className={buttonClass("ghost", "sm")}>
+							API reference
+						</a>
+					</div>
+				</div>
+				<ClientSnippets origin={origin} />
+			</div>
+		</section>
+	);
+};
 
 const Engines = () => (
 	<section className="border-border border-y bg-muted/40">
@@ -231,6 +250,7 @@ export const LandingPage = () => (
 		<Hero />
 		<DemoSection />
 		<Capabilities />
+		<Clients />
 		<Engines />
 		<Pricing />
 		<Closing />
