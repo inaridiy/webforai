@@ -58,12 +58,15 @@ Linking rules:
 
 - [x] (2026-09-23) Survey: site config/pages, platform SPA shell/landing/dashboard, CLI
       help/errors, READMEs, live site. Plan authored.
-- [ ] Docs site: nav dropdown, landing "ways to use" block, platform docs callout,
-      site README. Site build green.
-- [ ] Platform SPA: nav/footer targets, landing clients section, dashboard quickstart,
-      revealed-key next steps. Platform typecheck + tests + build green.
-- [ ] CLI help/hints + READMEs + spec revision note. Root tests/typecheck/build green.
-- [ ] Integrated validation, browser screenshots, drift pass over `docs/specs/platform`.
+- [x] (2026-09-23) Docs site: nav dropdown, landing "ways to use" block, platform docs
+      callout, dashboard links, demo caption fix, site README. Site build green. b7b31a0.
+- [x] (2026-09-23) Platform SPA: nav/footer targets, landing clients section, dashboard
+      quickstart, revealed-key next steps. Platform typecheck + 193 tests + build +
+      test:browser green. 1ef421f.
+- [x] (2026-09-23) CLI help/hints (+ test, changeset) + READMEs + spec section. 23b15d0.
+- [x] (2026-09-23) Integrated validation: root 447 tests, typecheck, library build, site
+      build. Screenshots of site landing/dropdown/platform docs (desktop+mobile) and platform
+      landing/dashboard (desktop+mobile) reviewed. Specs drift: only 01_scope changed.
 
 ## Decision log
 
@@ -78,7 +81,13 @@ Linking rules:
 
 ## Surprises & discoveries
 
-(none yet)
+- Importing `vocs/components` from a `.tsx` module under `site/docs/components` breaks
+  `vocs build` prerendering ("Received protocol 'virtual:'"); MDX pages can import it. The
+  landing passes `HomePage.Button` into `WaysToUse` as a prop.
+- The docs-site demo caption said it ran `proxy-fetch`; the demo has run `auto` since
+  2026-08-24.
+- `vocs preview` crashes on Node 24 here; static `docs/dist` served by any file server is
+  enough for screenshots.
 
 ## Validation
 
@@ -88,4 +97,7 @@ biome. Dashboard screenshots via `pnpm --filter platform test:browser` if it run
 
 ## Outcomes & retrospective
 
-(to be written at close-out)
+All five outcomes shipped as planned. Not done here: deploying webforai.dev and
+platform.webforai.dev — the live docs header still points "Platform" at /platform until
+the owner runs `pnpm --filter site build && pnpm --filter site worker:deploy` (and
+`pnpm --filter platform run deploy` for the app).
