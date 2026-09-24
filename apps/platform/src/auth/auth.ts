@@ -2,7 +2,7 @@ import { apiKey } from "@better-auth/api-key";
 import { stripe as stripePlugin } from "@better-auth/stripe";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { emailOTP } from "better-auth/plugins";
+import { captcha, emailOTP } from "better-auth/plugins";
 import { mirrorStripeEvent } from "../billing/state";
 import { createStripe } from "../billing/stripe";
 import { createDb } from "../db/client";
@@ -11,6 +11,9 @@ import type { AppConfig } from "../env";
 import { SIGN_IN_CODE_TTL_MINUTES, sendSignInCode } from "./sign-in-email";
 
 const DAY_SECONDS = 24 * 60 * 60;
+
+/** Turnstile action the sign-in widget sends and the server requires. */
+export const TURNSTILE_ACTION = "sign-in";
 
 /** Per-key rate limit: generous enough for scripted use, low enough to bound abuse. */
 const API_KEY_RATE_LIMIT = { enabled: true, timeWindow: 60 * 1000, maxRequests: 120 };
@@ -60,6 +63,21 @@ export const createAuth = (env: Env, config: AppConfig) => {
 				]
 			: [];
 
+	// Bot check on sending sign-in codes, only when both Turnstile keys are configured. The
+	// hostname allowlist comes from BASE_URL, so production never accepts localhost tokens.
+	const turnstile =
+		config.TURNSTILE_SECRET_KEY && config.TURNSTILE_SITE_KEY
+			? [
+					captcha({
+						provider: "cloudflare-turnstile",
+						secretKey: config.TURNSTILE_SECRET_KEY,
+						endpoints: ["/email-otp/send-verification-otp"],
+						expectedAction: TURNSTILE_ACTION,
+						allowedHostnames: [new URL(config.BASE_URL).hostname],
+					}),
+				]
+			: [];
+
 	return betterAuth({
 		database: drizzleAdapter(db, { provider: "sqlite", schema }),
 		baseURL: config.BASE_URL,
@@ -69,13 +87,20 @@ export const createAuth = (env: Env, config: AppConfig) => {
 		rateLimit: AUTH_RATE_LIMIT,
 		// Only Cloudflare sets this header; X-Forwarded-For is caller-controlled.
 		advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
+		// OAuth failures (e.g. account_not_linked) land on our sign-in page as ?error=<code>
+		// instead of Better Auth's generic error page.
+		onAPIError: { errorURL: "/login" },
 		...(config.githubLoginEnabled && github ? { socialProviders: { github } } : {}),
 		plugins: [
 			emailOTP({
 				otpLength: 6,
 				expiresIn: SIGN_IN_CODE_TTL_MINUTES * 60,
 				allowedAttempts: 3,
-				storeOTP: "hashed",
+				// Encrypted (not hashed) so a resend within the validity window can re-send the same
+				// code: whichever of several emails the user opens, its code works. Hashing made
+				// every resend rotate the code and silently invalidate earlier emails.
+				storeOTP: "encrypted",
+				resendStrategy: "reuse",
 				sendVerificationOTP: ({ email, otp }) => sendSignInCode(env.EMAIL, { email, otp, baseUrl: config.BASE_URL }),
 			}),
 			apiKey({
@@ -90,6 +115,7 @@ export const createAuth = (env: Env, config: AppConfig) => {
 				startingCharactersConfig: { shouldStore: true, charactersLength: 10 },
 			}),
 			...billing,
+			...turnstile,
 		],
 		// Better Auth session durations are expressed in seconds.
 		session: { expiresIn: 30 * DAY_SECONDS, updateAge: DAY_SECONDS },

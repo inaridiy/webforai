@@ -73,10 +73,17 @@ try {
 	assert.equal(sent[0]?.to, address);
 	const code = lastCode();
 
-	// 2. The code is stored hashed, never as sent.
+	// 2. The code is stored encrypted, never as sent.
 	const stored = await drizzle(binding, { schema }).select().from(schema.verification);
 	assert.equal(stored.length, 1);
 	assert(!stored[0]?.value.includes(code), "stored OTP must not contain the plain code");
+
+	// 2b. Asking again within the validity window re-sends the same code, so an older email
+	//     still works (a rotated code silently broke the first email a user opened).
+	const resend = await call("/email-otp/send-verification-otp", { email: address, type: "sign-in" });
+	assert.equal(resend.status, 200, await resend.clone().text());
+	assert.equal(sent.length, 2);
+	assert.equal(lastCode(), code, "resend within the window reuses the code");
 
 	// 3. A wrong code is rejected; the right one signs in and creates the account.
 	const wrong = await call("/sign-in/email-otp", { email: address, otp: code === "000000" ? "111111" : "000000" });
@@ -107,8 +114,33 @@ try {
 	const password = await call("/sign-up/email", { email: "pw@example.test", password: "Passw0rd!long", name: "x" });
 	assert.notEqual(password.status, 200);
 
+	// 7. With Turnstile configured, sending a code without a widget token is refused before
+	//    any email goes out (siteverify itself is exercised against production, not here).
+	const guarded = createAuth(
+		{
+			...env,
+			TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+			TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+		} as unknown as Env,
+		loadConfig({
+			...env,
+			TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+			TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+		} as unknown as Env),
+	);
+	const before = sent.length;
+	const noToken = await guarded.handler(
+		new Request(`${BASE_URL}/api/auth/email-otp/send-verification-otp`, {
+			method: "POST",
+			headers: { "content-type": "application/json", origin: BASE_URL, "cf-connecting-ip": "192.0.2.9" },
+			body: JSON.stringify({ email: "bot@example.test", type: "sign-in" }),
+		}),
+	);
+	assert.equal(noToken.status, 400, await noToken.clone().text());
+	assert.equal(sent.length, before, "no email without a Turnstile token");
+
 	console.log(
-		"Email OTP sign-in passed: code email, hashed storage, wrong/replayed code rejected, account created, D1 rate limit (4th send → 429), passwords disabled.",
+		"Email OTP sign-in passed: code email, encrypted storage, resend reuses the code, wrong/replayed code rejected, account created, D1 rate limit (4th send → 429), passwords disabled, Turnstile required when configured.",
 	);
 } finally {
 	await runtime.dispose();

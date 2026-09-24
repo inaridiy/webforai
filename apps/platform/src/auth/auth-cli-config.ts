@@ -30,7 +30,7 @@ export const auth = betterAuth({
 	rateLimit: { enabled: true, storage: "database" },
 	socialProviders: { github: { clientId: "placeholder", clientSecret: "placeholder" } },
 	plugins: [
-		emailOTP({ sendVerificationOTP: async () => undefined }),
+		emailOTP({ sendVerificationOTP: async () => undefined, storeOTP: "encrypted" }),
 		apiKey({ defaultPrefix: "wfa_" }),
 		stripePlugin({
 			stripeClient: new Stripe("sk_test_placeholder"),

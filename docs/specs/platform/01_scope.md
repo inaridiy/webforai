@@ -1,5 +1,11 @@
 # Platform Scope
 
+Revision note (2026-09-24, sign-in fixes): Resending within the validity window re-sends the
+same code (encrypted at rest, `resendStrategy: "reuse"`) after an owner report of a rotated
+code failing; optional Cloudflare Turnstile on code sending (captcha plugin); OAuth errors
+redirect to `/login?error=`. GitHub links to an existing account only after its email is
+verified (Better Auth `requireLocalEmailVerified`, kept on purpose — it blocks
+pre-registration takeover); one email-code sign-in verifies it.
 Revision note (2026-09-24, sign-in): Sign-in is by emailed one-time code (Better Auth email
 OTP, Cloudflare Email Sending from `login@webforai.dev`); the account is created on first
 sign-in. Passwords are disabled in production (`AUTH_PASSWORD_LOGIN` only for local/e2e).
@@ -73,7 +79,7 @@ concrete engine that produced them.
 
 ## Accounts, keys, billing
 
-- Login: Better Auth — emailed 6-digit code (10-minute expiry, 3 attempts, hashed at rest,
+- Login: Better Auth — emailed 6-digit code (10-minute expiry, 3 attempts, encrypted at rest,
   3 sends per minute per IP), optional GitHub. Dashboard SPA for key management,
   usage, billing.
 - API keys: Better Auth `apiKey` plugin; API authenticated via `Authorization: Bearer wfa_...`.

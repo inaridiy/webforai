@@ -46,7 +46,11 @@ app.get("/health", (c) => c.json({ ok: true }));
  */
 app.get("/api/auth-methods", (c) => {
 	const config = loadConfig(c.env);
-	return c.json({ github: config.githubLoginEnabled, password: config.passwordLoginEnabled });
+	return c.json({
+		github: config.githubLoginEnabled,
+		password: config.passwordLoginEnabled,
+		turnstileSiteKey: config.TURNSTILE_SITE_KEY && config.TURNSTILE_SECRET_KEY ? config.TURNSTILE_SITE_KEY : null,
+	});
 });
 
 /** Signed artifact URLs are unauthenticated by design — the token is the credential. */

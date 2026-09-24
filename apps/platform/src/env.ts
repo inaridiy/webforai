@@ -24,6 +24,10 @@ const envSchema = z.object({
 	/** Local/e2e only: re-enables email + password sign-up and sign-in. Never set in production. */
 	AUTH_PASSWORD_LOGIN: z.enum(["true", "false"]).optional(),
 
+	/** Cloudflare Turnstile on sign-in-code requests: public site key (var) + secret. */
+	TURNSTILE_SITE_KEY: z.string().optional(),
+	TURNSTILE_SECRET_KEY: z.string().optional(),
+
 	GITHUB_CLIENT_ID: z.string().optional(),
 	GITHUB_CLIENT_SECRET: z.string().optional(),
 });

@@ -113,7 +113,7 @@ export const runDemoScrape = (url: string, region: string): Promise<Result<DemoR
 	});
 
 /** Sign-in methods this deployment offers beyond email codes (`GET /api/auth-methods`). */
-export type AuthMethods = { github: boolean; password: boolean };
+export type AuthMethods = { github: boolean; password: boolean; turnstileSiteKey: string | null };
 
 export const fetchAuthMethods = (): Promise<Result<AuthMethods>> =>
 	requestJson(fetch, "/api/auth-methods", authMethodsSchema);

@@ -61,4 +61,11 @@ export const demoSchema: z.ZodType<DemoResult> = z.object({
 	metadata,
 });
 
-export const authMethodsSchema: z.ZodType<AuthMethods> = z.object({ github: z.boolean(), password: z.boolean() });
+export const authMethodsSchema: z.ZodType<AuthMethods> = z.object({
+	github: z.boolean(),
+	password: z.boolean(),
+	turnstileSiteKey: z
+		.string()
+		.nullish()
+		.transform((value) => value ?? null),
+});

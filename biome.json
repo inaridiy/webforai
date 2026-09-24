@@ -7,7 +7,8 @@
 			"apps/platform/drizzle/**",
 			"apps/platform/wrangler.jsonc",
 			"apps/platform/src/__generated__/**",
-			"apps/platform/.create-nodejs-fn/**"
+			"apps/platform/.create-nodejs-fn/**",
+			".claude/**"
 		]
 	},
 	"vcs": {

@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { FREE_MONTHLY_CREDITS } from "../../billing/credits";
+import { Turnstile } from "../components/turnstile";
 import { type AuthMethods, fetchAuthMethods } from "../lib/api";
 import { authClient, authErrorMessage } from "../lib/auth-client";
 import { Link, navigate } from "../lib/router";
@@ -13,26 +14,63 @@ import { Spinner } from "../ui/spinner";
 /**
  * Sign-in and sign-up are one flow: enter an email, receive a 6-digit code, enter it. The
  * account is created on the first sign-in, so the two routes differ only in their copy.
- * GitHub appears when the deployment has OAuth credentials (`GET /api/auth-methods`).
+ * GitHub and Turnstile appear when the deployment configures them (`GET /api/auth-methods`).
  */
 
 type Mode = "login" | "signup";
+type Pending = "none" | "send" | "verify" | "github";
+type AuthError = { code?: string; message?: string; status?: number };
 
 const RESEND_AFTER_SECONDS = 30;
+const CODE_PATTERN = /^\d{6}$/;
+const TURNSTILE_ACTION = "sign-in";
 
 /** Better Auth's email-OTP error codes, in the page's words. */
-const CODE_ERRORS: Record<string, string> = {
-	INVALID_OTP: "That code is not right. Check the email, or send a new code.",
-	OTP_EXPIRED: "That code has expired. Send a new one.",
-	TOO_MANY_ATTEMPTS: "Too many wrong tries for this code. Send a new one.",
-	TOO_MANY_REQUESTS: "Too many attempts. Wait a minute, then try again.",
+const CODE_ERRORS = new Map([
+	["INVALID_OTP", "That code is not right. Check the email, or send a new code."],
+	["OTP_EXPIRED", "That code has expired. Send a new one."],
+	["TOO_MANY_ATTEMPTS", "Too many wrong tries for this code. Send a new one."],
+]);
+const TOO_MANY_REQUESTS = "Too many attempts. Wait a minute, then try again.";
+
+/** Better Auth captcha plugin failures. */
+const CAPTCHA_ERRORS = new Set(["MISSING_RESPONSE", "VERIFICATION_FAILED", "UNKNOWN_ERROR"]);
+
+/** Codes Better Auth appends as `?error=` when an OAuth sign-in fails. */
+const OAUTH_ERRORS = new Map([
+	[
+		"account_not_linked",
+		"An account with this email already exists. Sign in once with an email code below; after that, GitHub signs you in to the same account.",
+	],
+]);
+
+const oauthErrorFromUrl = (): string | null => {
+	if (typeof window === "undefined") {
+		return null;
+	}
+	const code = new URLSearchParams(window.location.search).get("error");
+	if (code === null) {
+		return null;
+	}
+	return OAUTH_ERRORS.get(code) ?? "GitHub sign-in did not complete. Try again, or sign in with an email code.";
 };
 
-const codeErrorMessage = (error: { code?: string; message?: string; status?: number }): string =>
-	(error.code === undefined ? undefined : CODE_ERRORS[error.code]) ??
-	(error.status === 429 ? CODE_ERRORS.TOO_MANY_REQUESTS : undefined) ??
+const sendErrorMessage = (error: AuthError): string => {
+	if (error.code !== undefined && CAPTCHA_ERRORS.has(error.code)) {
+		return "The bot check did not pass. Complete it again, then retry.";
+	}
+	if (error.status === 429) {
+		return "Too many codes requested. Wait a minute, then try again.";
+	}
+	return authErrorMessage(error, "The code could not be sent. Try again in a minute.");
+};
+
+const verifyErrorMessage = (error: AuthError): string =>
+	(error.code === undefined ? undefined : CODE_ERRORS.get(error.code)) ??
+	(error.status === 429 ? TOO_MANY_REQUESTS : undefined) ??
 	authErrorMessage(error, "That code did not work. Check it, or send a new one.");
-const CODE_PATTERN = /^\d{6}$/;
+
+const NETWORK_ERROR = "Network error — could not reach the sign-in service.";
 
 const GithubMark = () => (
 	<svg viewBox="0 0 16 16" aria-hidden="true" className="size-4" fill="currentColor">
@@ -60,7 +98,7 @@ const copy: Record<Mode, { title: string; description: string; alt: string; altH
 };
 
 const useAuthMethods = (): AuthMethods => {
-	const [methods, setMethods] = useState<AuthMethods>({ github: false, password: false });
+	const [methods, setMethods] = useState<AuthMethods>({ github: false, password: false, turnstileSiteKey: null });
 	useEffect(() => {
 		fetchAuthMethods().then((result) => {
 			if (result.ok) {
@@ -91,50 +129,171 @@ const useCountdown = (): [number, () => void] => {
 	];
 };
 
+/** The three requests the page makes; each resolves to an error message or `null`. */
+const signInRequests = {
+	sendCode: (email: string, captchaToken: string | null): Promise<string | null> =>
+		authClient.emailOtp
+			.sendVerificationOtp(
+				{ email, type: "sign-in" },
+				{ headers: captchaToken === null ? {} : { "x-captcha-response": captchaToken } },
+			)
+			.then((result) => (result.error ? sendErrorMessage(result.error) : null))
+			.catch(() => NETWORK_ERROR),
+	verify: (email: string, otp: string): Promise<string | null> =>
+		authClient.signIn
+			.emailOtp({ email, otp })
+			.then((result) => (result.error ? verifyErrorMessage(result.error) : null))
+			.catch(() => NETWORK_ERROR),
+	github: (): Promise<string | null> =>
+		authClient.signIn
+			.social({ provider: "github", callbackURL: "/dashboard" })
+			.then((result) =>
+				result.error ? authErrorMessage(result.error, "GitHub sign-in did not start. Try again or use email.") : null,
+			)
+			.catch(() => "GitHub sign-in did not start. Try again or use email."),
+};
+
+const EmailStep = ({
+	email,
+	onEmail,
+	onSubmit,
+	pending,
+	blocked,
+}: {
+	email: string;
+	onEmail: (value: string) => void;
+	onSubmit: () => void;
+	pending: Pending;
+	blocked: boolean;
+}) => (
+	<form
+		className="flex flex-col gap-4"
+		onSubmit={(event: FormEvent<HTMLFormElement>) => {
+			event.preventDefault();
+			onSubmit();
+		}}
+	>
+		<Field label="Email" htmlFor="email">
+			<Input
+				id="email"
+				name="email"
+				type="email"
+				required={true}
+				autoComplete="email"
+				autoFocus={true}
+				value={email}
+				placeholder="you@example.com"
+				onChange={(event) => onEmail(event.target.value)}
+			/>
+		</Field>
+		<Button type="submit" disabled={pending !== "none" || blocked}>
+			{pending === "send" ? <Spinner /> : null}
+			Email me a code
+		</Button>
+	</form>
+);
+
+const CodeStep = ({
+	mode,
+	code,
+	onCode,
+	onSubmit,
+	onChangeEmail,
+	onResend,
+	resendIn,
+	pending,
+	blocked,
+}: {
+	mode: Mode;
+	code: string;
+	onCode: (value: string) => void;
+	onSubmit: () => void;
+	onChangeEmail: () => void;
+	onResend: () => void;
+	resendIn: number;
+	pending: Pending;
+	blocked: boolean;
+}) => (
+	<form
+		className="flex flex-col gap-4"
+		onSubmit={(event: FormEvent<HTMLFormElement>) => {
+			event.preventDefault();
+			onSubmit();
+		}}
+	>
+		<Field label="Code" htmlFor="code">
+			<Input
+				id="code"
+				name="code"
+				inputMode="numeric"
+				autoComplete="one-time-code"
+				autoFocus={true}
+				maxLength={6}
+				pattern="\d{6}"
+				required={true}
+				value={code}
+				placeholder="123456"
+				className="h-12 text-center font-mono text-2xl tracking-[0.4em]"
+				onChange={(event) => onCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+			/>
+		</Field>
+		<Button type="submit" disabled={pending !== "none"}>
+			{pending === "verify" ? <Spinner /> : null}
+			{mode === "signup" ? "Create account" : "Sign in"}
+		</Button>
+		<div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+			<button type="button" className="text-muted-foreground hover:text-foreground" onClick={onChangeEmail}>
+				Use a different email
+			</button>
+			<button
+				type="button"
+				className="text-accent hover:underline disabled:text-muted-foreground disabled:no-underline"
+				disabled={resendIn > 0 || pending !== "none" || blocked}
+				onClick={onResend}
+			>
+				{resendIn > 0 ? `Send the code again in ${resendIn}s` : "Send the code again"}
+			</button>
+		</div>
+	</form>
+);
+
 const AuthCard = ({ mode, onAuthenticated }: { mode: Mode; onAuthenticated: () => void }) => {
 	const methods = useAuthMethods();
 	const [step, setStep] = useState<"email" | "code">("email");
 	const [email, setEmail] = useState("");
 	const [code, setCode] = useState("");
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(oauthErrorFromUrl);
 	const [notice, setNotice] = useState<string | null>(null);
-	const [pending, setPending] = useState<"none" | "send" | "verify" | "github">("none");
+	const [pending, setPending] = useState<Pending>("none");
+	const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+	const [captchaReset, setCaptchaReset] = useState(0);
 	const [resendIn, startCountdown] = useCountdown();
 	const text = copy[mode];
+	const captchaBlocked = methods.turnstileSiteKey !== null && captchaToken === null;
 
-	const sendCode = (): void => {
+	const sendCode = (resend: boolean): void => {
 		setError(null);
 		setNotice(null);
 		setPending("send");
-		authClient.emailOtp
-			.sendVerificationOtp({ email: email.trim(), type: "sign-in" })
-			.then((result) => {
-				setPending("none");
-				if (result.error) {
-					setError(
-						result.error.status === 429
-							? "Too many codes requested. Wait a minute, then try again."
-							: authErrorMessage(result.error, "The code could not be sent. Try again in a minute."),
-					);
-					return;
-				}
-				setStep("code");
+		signInRequests.sendCode(email.trim(), captchaToken).then((failure) => {
+			setPending("none");
+			// A Turnstile token is single-use; get a fresh one for the next request.
+			setCaptchaReset((value) => value + 1);
+			if (failure !== null) {
+				setError(failure);
+				return;
+			}
+			setStep("code");
+			startCountdown();
+			if (resend) {
+				setNotice("We sent the same code again. It is still valid.");
+			} else {
 				setCode("");
-				startCountdown();
-			})
-			.catch(() => {
-				setPending("none");
-				setError("Network error — could not reach the sign-in service.");
-			});
+			}
+		});
 	};
 
-	const onSendCode = (event: FormEvent<HTMLFormElement>): void => {
-		event.preventDefault();
-		sendCode();
-	};
-
-	const onVerify = (event: FormEvent<HTMLFormElement>): void => {
-		event.preventDefault();
+	const verify = (): void => {
 		if (!CODE_PATTERN.test(code)) {
 			setError("Enter the 6 digits from the email.");
 			return;
@@ -142,38 +301,27 @@ const AuthCard = ({ mode, onAuthenticated }: { mode: Mode; onAuthenticated: () =
 		setError(null);
 		setNotice(null);
 		setPending("verify");
-		authClient.signIn
-			.emailOtp({ email: email.trim(), otp: code })
-			.then((result) => {
-				if (result.error) {
-					setPending("none");
-					setError(codeErrorMessage(result.error));
-					return;
-				}
-				onAuthenticated();
-				navigate("/dashboard");
-			})
-			.catch(() => {
+		signInRequests.verify(email.trim(), code).then((failure) => {
+			if (failure !== null) {
 				setPending("none");
-				setError("Network error — could not reach the sign-in service.");
-			});
+				setError(failure);
+				return;
+			}
+			onAuthenticated();
+			navigate("/dashboard");
+		});
 	};
 
-	const onGithub = (): void => {
+	const github = (): void => {
 		setError(null);
 		setPending("github");
-		authClient.signIn
-			.social({ provider: "github", callbackURL: "/dashboard" })
-			.then((result) => {
-				if (result.error) {
-					setError(authErrorMessage(result.error, "GitHub sign-in did not start. Try again or use email."));
-					setPending("none");
-				}
-			})
-			.catch(() => {
-				setError("GitHub sign-in did not start. Try again or use email.");
+		window.history.replaceState({}, "", window.location.pathname);
+		signInRequests.github().then((failure) => {
+			if (failure !== null) {
+				setError(failure);
 				setPending("none");
-			});
+			}
+		});
 	};
 
 	return (
@@ -196,72 +344,37 @@ const AuthCard = ({ mode, onAuthenticated }: { mode: Mode; onAuthenticated: () =
 					{error === null ? null : <Alert tone="error">{error}</Alert>}
 					{notice === null ? null : <Alert tone="info">{notice}</Alert>}
 					{step === "email" ? (
-						<form className="flex flex-col gap-4" onSubmit={onSendCode}>
-							<Field label="Email" htmlFor="email">
-								<Input
-									id="email"
-									name="email"
-									type="email"
-									required={true}
-									autoComplete="email"
-									autoFocus={true}
-									value={email}
-									placeholder="you@example.com"
-									onChange={(event) => setEmail(event.target.value)}
-								/>
-							</Field>
-							<Button type="submit" disabled={pending !== "none"}>
-								{pending === "send" ? <Spinner /> : null}
-								Email me a code
-							</Button>
-						</form>
+						<EmailStep
+							email={email}
+							onEmail={setEmail}
+							onSubmit={() => sendCode(false)}
+							pending={pending}
+							blocked={captchaBlocked}
+						/>
 					) : (
-						<form className="flex flex-col gap-4" onSubmit={onVerify}>
-							<Field label="Code" htmlFor="code">
-								<Input
-									id="code"
-									name="code"
-									inputMode="numeric"
-									autoComplete="one-time-code"
-									autoFocus={true}
-									maxLength={6}
-									pattern="\d{6}"
-									required={true}
-									value={code}
-									placeholder="123456"
-									className="h-12 text-center font-mono text-2xl tracking-[0.4em]"
-									onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-								/>
-							</Field>
-							<Button type="submit" disabled={pending !== "none"}>
-								{pending === "verify" ? <Spinner /> : null}
-								{mode === "signup" ? "Create account" : "Sign in"}
-							</Button>
-							<div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-								<button
-									type="button"
-									className="text-muted-foreground hover:text-foreground"
-									onClick={() => {
-										setStep("email");
-										setError(null);
-										setNotice(null);
-									}}
-								>
-									Use a different email
-								</button>
-								<button
-									type="button"
-									className="text-accent hover:underline disabled:text-muted-foreground disabled:no-underline"
-									disabled={resendIn > 0 || pending !== "none"}
-									onClick={() => {
-										sendCode();
-										setNotice("A new code is on its way. Only the newest code works.");
-									}}
-								>
-									{resendIn > 0 ? `Send a new code in ${resendIn}s` : "Send a new code"}
-								</button>
-							</div>
-						</form>
+						<CodeStep
+							mode={mode}
+							code={code}
+							onCode={setCode}
+							onSubmit={verify}
+							onChangeEmail={() => {
+								setStep("email");
+								setError(null);
+								setNotice(null);
+							}}
+							onResend={() => sendCode(true)}
+							resendIn={resendIn}
+							pending={pending}
+							blocked={captchaBlocked}
+						/>
+					)}
+					{methods.turnstileSiteKey === null ? null : (
+						<Turnstile
+							siteKey={methods.turnstileSiteKey}
+							action={TURNSTILE_ACTION}
+							resetKey={captchaReset}
+							onToken={setCaptchaToken}
+						/>
 					)}
 					{step === "email" && methods.github ? (
 						<>
@@ -270,7 +383,7 @@ const AuthCard = ({ mode, onAuthenticated }: { mode: Mode; onAuthenticated: () =
 								or
 								<span className="h-px flex-1 bg-border" />
 							</div>
-							<Button variant="outline" onClick={onGithub} disabled={pending !== "none"}>
+							<Button variant="outline" onClick={github} disabled={pending !== "none"}>
 								{pending === "github" ? <Spinner /> : <GithubMark />}
 								Continue with GitHub
 							</Button>
