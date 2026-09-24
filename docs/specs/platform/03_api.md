@@ -1,5 +1,7 @@
 # Platform API
 
+Revision note (2026-09-24): The demo response names the concrete `engine` that `auto`
+resolved to, so the docs-site and landing demos can show when a page needed a browser.
 Revision note (2026-09-06): Public target validation precedes job creation and demo counters; invalid crawl regexes return `400 invalid_request`. Internal/configuration failures expose stable generic messages while logs retain diagnostics. Dashboard jobs and usage validate response shapes, distinguish errors from empty state, and support retry. SDK polling deadlines cover active requests and bodies; cancellation propagates to transports.
 
 Revision note (2026-08-24, later): Fetch-tier acquisition (`fetch`, `proxy-fetch`, and
@@ -164,6 +166,7 @@ showing an empty body), no screenshot, no image rehosting, default conversion.
 
 ```jsonc
 { "url": "https://example.com/article", "region": "auto",
+  "engine": "fetch",            // what auto resolved to: fetch | browser | proxy-fetch | proxy-browser
   "markdown": "# ...",          // cut near 8000 chars at a blank line, with an in-markdown notice
   "truncated": false,
   "title": "...",               // when the page has one

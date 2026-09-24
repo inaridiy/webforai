@@ -154,6 +154,7 @@ try {
 			body: JSON.stringify({
 				url: "https://example.test",
 				region: "auto",
+				engine: "browser",
 				markdown: "# Preview regression\n\nA rendered result.",
 				truncated: false,
 				metadata: {},
@@ -164,6 +165,7 @@ try {
 	await page.getByRole("button", { name: "Convert", exact: true }).click();
 	await page.getByRole("heading", { name: "Preview regression", exact: true }).waitFor();
 	assert.equal(previewRequests, 1, "load the renderer when a result is available");
+	await page.getByText("auto → browser", { exact: true }).waitFor();
 	await page.route("**/async-fixture", (route) =>
 		route.fulfill({
 			contentType: "text/html",

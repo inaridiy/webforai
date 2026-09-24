@@ -34,6 +34,11 @@ type RunState =
 const DemoResultView = ({ result }: { result: DemoResult }) => {
 	return (
 		<>
+			<div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-border border-t px-5 py-2.5 text-muted-foreground text-xs">
+				<span className="min-w-0 truncate font-medium text-foreground text-sm">{result.title ?? result.url}</span>
+				<span className="rounded bg-muted px-1.5 font-mono text-foreground">auto → {result.engine}</span>
+				<span className="font-mono">{result.markdown.length.toLocaleString("en")} chars</span>
+			</div>
 			<MarkdownPanes markdown={result.markdown} className="border-border border-t" />
 			{result.truncated ? (
 				<div className="border-border border-t bg-muted/60 px-5 py-2 text-center text-muted-foreground text-xs">

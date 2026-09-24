@@ -124,6 +124,7 @@ describe("demo scrape", () => {
 		expect(body).toEqual({
 			url: "https://example.com/a",
 			region: "jp",
+			engine: "fetch",
 			markdown: "# Demo\n\nbody",
 			truncated: false,
 			title: "Demo page",

@@ -43,6 +43,7 @@ export const playgroundSchema: z.ZodType<PlaygroundResult> = z.object({
 export const demoSchema: z.ZodType<DemoResult> = z.object({
 	url: z.string(),
 	region: z.string(),
+	engine: z.string(),
 	markdown: z.string(),
 	truncated: z.boolean(),
 	title: z.string().optional(),

@@ -4,7 +4,13 @@ import { z } from "zod";
 
 import { REGIONS, type Region } from "../core/regions";
 import { assertPublicHttpUrl } from "../core/ssrf";
-import { EngineUnavailableError, PlatformError, type ScrapeRequest, type ScrapeSuccess } from "../core/types";
+import {
+	type Engine,
+	EngineUnavailableError,
+	PlatformError,
+	type ScrapeRequest,
+	type ScrapeSuccess,
+} from "../core/types";
 import { describeZodError, onPlatformError } from "./errors";
 
 /**
@@ -215,6 +221,8 @@ export const demoScrapeRequest = (url: string, region: Region): ScrapeRequest =>
 export interface DemoResponse {
 	url: string;
 	region: Region;
+	/** The concrete engine `auto` resolved to — shows visitors when a page needed a browser. */
+	engine: Engine;
 	markdown: string;
 	truncated: boolean;
 	title?: string;
@@ -303,6 +311,7 @@ export const demoRoutes = (createDeps: DemoDepsFactory) => {
 		const response: DemoResponse = {
 			url: result.url,
 			region: body.region,
+			engine: result.engine,
 			markdown,
 			truncated,
 			...(typeof title === "string" ? { title } : {}),

@@ -48,7 +48,8 @@ Full contract: `docs/specs/platform/03_api.md`.
 `POST /v1/demo/scrape` is a public, keyless, unbilled demo (fixed `auto` engine, markdown
 cut near 8000 chars at a paragraph boundary with an in-markdown notice) behind both the
 docs-site demo and the platform landing's own
-"Live demo" section (raw Markdown + rendered preview side by side), limited to 5 requests /
+"Live demo" section (raw Markdown + rendered preview side by side; the response names the
+engine `auto` resolved to, which both demos display), limited to 5 requests /
 10 min per IP and 500 / day globally:
 
 ```bash

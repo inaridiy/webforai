@@ -152,6 +152,8 @@ export interface DemoScrapeOptions {
 export interface DemoResult {
 	url: string;
 	region: Region;
+	/** The engine `auto` resolved to. Absent from deployments older than 2026-09-24. */
+	engine?: Engine;
 	/** Truncated to ~8000 characters by the demo endpoint. */
 	markdown: string;
 	truncated: boolean;

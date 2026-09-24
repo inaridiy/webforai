@@ -85,6 +85,7 @@ export const runPlaygroundScrape = (request: PlaygroundRequest): Promise<Result<
 export type DemoResult = {
 	url: string;
 	region: string;
+	engine: string;
 	markdown: string;
 	truncated: boolean;
 	title?: string;
