@@ -1,5 +1,9 @@
 # Platform Scope
 
+Revision note (2026-09-24, sign-in): Sign-in is by emailed one-time code (Better Auth email
+OTP, Cloudflare Email Sending from `login@webforai.dev`); the account is created on first
+sign-in. Passwords are disabled in production (`AUTH_PASSWORD_LOGIN` only for local/e2e).
+GitHub stays optional and its button shows only when configured.
 Revision note (2026-09-24, regions): `region` is `auto` | `jp` only — the proxy plan has no
 dedicated IPs elsewhere (see `03_api.md`).
 Revision note (2026-09-23): Added "Surfaces and navigation" — the six user-facing surfaces,
@@ -69,7 +73,8 @@ concrete engine that produced them.
 
 ## Accounts, keys, billing
 
-- Login: Better Auth (email/password, optional GitHub). Dashboard SPA for key management,
+- Login: Better Auth — emailed 6-digit code (10-minute expiry, 3 attempts, hashed at rest,
+  3 sends per minute per IP), optional GitHub. Dashboard SPA for key management,
   usage, billing.
 - API keys: Better Auth `apiKey` plugin; API authenticated via `Authorization: Bearer wfa_...`.
 - Billing: Stripe usage-based (Billing Meter, credit-denominated). See `04_billing.md`.

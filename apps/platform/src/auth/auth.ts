@@ -2,16 +2,25 @@ import { apiKey } from "@better-auth/api-key";
 import { stripe as stripePlugin } from "@better-auth/stripe";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { emailOTP } from "better-auth/plugins";
 import { mirrorStripeEvent } from "../billing/state";
 import { createStripe } from "../billing/stripe";
 import { createDb } from "../db/client";
 import * as schema from "../db/schema";
 import type { AppConfig } from "../env";
+import { SIGN_IN_CODE_TTL_MINUTES, sendSignInCode } from "./sign-in-email";
 
 const DAY_SECONDS = 24 * 60 * 60;
 
 /** Per-key rate limit: generous enough for scripted use, low enough to bound abuse. */
 const API_KEY_RATE_LIMIT = { enabled: true, timeWindow: 60 * 1000, maxRequests: 120 };
+
+/**
+ * Better Auth's limiter, persisted in D1: in-memory counters would be per isolate on Workers.
+ * `enabled` is explicit because its production auto-detection does not see Workers. The
+ * email-OTP plugin adds its own rules (3 sends per minute) on top of this default.
+ */
+const AUTH_RATE_LIMIT = { enabled: true, storage: "database", window: 60, max: 60 } as const;
 
 /**
  * Better Auth instance factory.
@@ -55,9 +64,20 @@ export const createAuth = (env: Env, config: AppConfig) => {
 		database: drizzleAdapter(db, { provider: "sqlite", schema }),
 		baseURL: config.BASE_URL,
 		secret: config.BETTER_AUTH_SECRET,
-		emailAndPassword: { enabled: true },
+		// Sign-in is by emailed code; passwords exist only for local runs and e2e seeding.
+		emailAndPassword: { enabled: config.passwordLoginEnabled },
+		rateLimit: AUTH_RATE_LIMIT,
+		// Only Cloudflare sets this header; X-Forwarded-For is caller-controlled.
+		advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
 		...(config.githubLoginEnabled && github ? { socialProviders: { github } } : {}),
 		plugins: [
+			emailOTP({
+				otpLength: 6,
+				expiresIn: SIGN_IN_CODE_TTL_MINUTES * 60,
+				allowedAttempts: 3,
+				storeOTP: "hashed",
+				sendVerificationOTP: ({ email, otp }) => sendSignInCode(env.EMAIL, { email, otp, baseUrl: config.BASE_URL }),
+			}),
 			apiKey({
 				defaultPrefix: "wfa_",
 				defaultKeyLength: 48,

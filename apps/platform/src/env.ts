@@ -21,6 +21,9 @@ const envSchema = z.object({
 	PROXY_ACCOUNT_API_URL: z.string().url().optional(),
 	PROXY_ACCOUNT_API_KEY: z.string().optional(),
 
+	/** Local/e2e only: re-enables email + password sign-up and sign-in. Never set in production. */
+	AUTH_PASSWORD_LOGIN: z.enum(["true", "false"]).optional(),
+
 	GITHUB_CLIENT_ID: z.string().optional(),
 	GITHUB_CLIENT_SECRET: z.string().optional(),
 });
@@ -33,6 +36,7 @@ export type AppConfig = z.infer<typeof envSchema> & {
 	/** Proxy account API configured — enables the monthly bandwidth guard. */
 	proxyBandwidthGuard: boolean;
 	githubLoginEnabled: boolean;
+	passwordLoginEnabled: boolean;
 };
 
 /** Throws on malformed configuration — the Worker must not run half-configured. */
@@ -44,5 +48,6 @@ export const loadConfig = (env: Env): AppConfig => {
 		proxyEnabled: Boolean(parsed.PROXY_URL && parsed.PROXY_USERNAME && parsed.PROXY_PASSWORD),
 		proxyBandwidthGuard: Boolean(parsed.PROXY_ACCOUNT_API_URL && parsed.PROXY_ACCOUNT_API_KEY),
 		githubLoginEnabled: Boolean(parsed.GITHUB_CLIENT_ID && parsed.GITHUB_CLIENT_SECRET),
+		passwordLoginEnabled: parsed.AUTH_PASSWORD_LOGIN === "true",
 	};
 };

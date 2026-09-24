@@ -28,5 +28,7 @@ export const devVarsContent = (): string =>
 		"PROXY_URL=http://127.0.0.1:9",
 		"PROXY_USERNAME=e2e-fake-user",
 		"PROXY_PASSWORD=e2e-fake-pass",
+		// Sign-in is by emailed code in production; e2e seeds accounts with passwords instead.
+		"AUTH_PASSWORD_LOGIN=true",
 		"",
 	].join("\n");

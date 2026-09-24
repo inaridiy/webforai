@@ -1,7 +1,8 @@
 /**
  * GENERATED — do not edit by hand.
  *
- *   pnpm exec auth generate --config src/auth/auth-cli-config.ts --output src/db/auth-schema.ts -y
+ *   npx auth@<better-auth version> generate --config src/auth/auth-cli-config.ts \
+ *     --output src/db/auth-schema.ts --y
  *
  * The CLI cannot instantiate `createAuth` (per-request factory needing the D1 binding), so
  * generation runs against `src/auth/auth-cli-config.ts`, which mirrors the same plugin set.
@@ -130,6 +131,13 @@ export const apikey = sqliteTable(
 		index("apikey_key_idx").on(table.key),
 	],
 );
+
+export const rateLimit = sqliteTable("rate_limit", {
+	id: text("id").primaryKey(),
+	key: text("key").notNull().unique(),
+	count: integer("count").notNull(),
+	lastRequest: integer("last_request").notNull(),
+});
 
 export const userRelations = relations(user, ({ many }) => ({
 	sessions: many(session),

@@ -1,5 +1,9 @@
 # Platform Architecture
 
+Revision note (2026-09-24, sign-in): New `EMAIL` (`send_email`, sender-restricted) binding
+for sign-in codes; Better Auth's rate limiter moved to D1 (`rate_limit` table, migration
+0003) because in-memory counters are per isolate; `GET /api/auth-methods` tells the SPA which
+sign-in methods exist.
 Revision note (2026-09-24, bandwidth guard): The egress proxy is a flat monthly plan with a
 bandwidth cap, and the provider stops all proxies past it. With `PROXY_ACCOUNT_API_URL` /
 `PROXY_ACCOUNT_API_KEY` set, the 15-minute cron reads the period's usage and cap from the
@@ -51,9 +55,11 @@ Revision note (2026-08-10): Initial version.
 | `BROWSER` | Browser Rendering | `browser` engine |
 | `CRAWL_WORKFLOW` | Workflows | async jobs |
 | `NODEJS_FN` | Container/DO | create-nodejs-fn runtime |
+| `EMAIL` | Email Sending (`send_email`) | sign-in codes, only as `login@webforai.dev` |
 
 Secrets: `BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
-`PROXY_URL`, `PROXY_USERNAME`, `PROXY_PASSWORD`, optional `GITHUB_CLIENT_ID/SECRET`.
+`PROXY_URL`, `PROXY_USERNAME`, `PROXY_PASSWORD`, optional `GITHUB_CLIENT_ID/SECRET`,
+optional `PROXY_ACCOUNT_API_URL/KEY`; `AUTH_PASSWORD_LOGIN` only in local/e2e dev vars.
 Typed access via a zod-validated `env.ts` (fail-closed: engines whose secrets are missing are
 reported `unavailable`, not silently downgraded).
 

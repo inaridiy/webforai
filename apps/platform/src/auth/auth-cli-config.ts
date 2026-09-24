@@ -16,6 +16,7 @@ import { apiKey } from "@better-auth/api-key";
 import { stripe as stripePlugin } from "@better-auth/stripe";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { emailOTP } from "better-auth/plugins";
 import Stripe from "stripe";
 
 // biome-ignore lint/suspicious/noExplicitAny: no database is touched during schema generation
@@ -25,8 +26,11 @@ export const auth = betterAuth({
 	database: drizzleAdapter(placeholderDb, { provider: "sqlite" }),
 	baseURL: "http://localhost:5173",
 	emailAndPassword: { enabled: true },
+	// `storage: "database"` is what adds the `rateLimit` table.
+	rateLimit: { enabled: true, storage: "database" },
 	socialProviders: { github: { clientId: "placeholder", clientSecret: "placeholder" } },
 	plugins: [
+		emailOTP({ sendVerificationOTP: async () => undefined }),
 		apiKey({ defaultPrefix: "wfa_" }),
 		stripePlugin({
 			stripeClient: new Stripe("sk_test_placeholder"),

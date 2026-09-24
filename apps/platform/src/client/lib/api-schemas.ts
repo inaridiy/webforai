@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { DemoResult, JobSummary, PlaygroundResult, UsageSummary } from "./api";
+import type { AuthMethods, DemoResult, JobSummary, PlaygroundResult, UsageSummary } from "./api";
 
 const count = z.number().int().nonnegative();
 const metadata = z.record(z.string(), z.unknown());
@@ -60,3 +60,5 @@ export const demoSchema: z.ZodType<DemoResult> = z.object({
 	title: z.string().optional(),
 	metadata,
 });
+
+export const authMethodsSchema: z.ZodType<AuthMethods> = z.object({ github: z.boolean(), password: z.boolean() });

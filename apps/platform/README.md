@@ -72,7 +72,9 @@ pnpm dev                                      # vite dev (first run builds the c
   `BETTER_AUTH_SECRET` (required, ≥32 chars), `PROXY_URL`/`PROXY_USERNAME`/`PROXY_PASSWORD`
   (an HTTP rotating-proxy gateway, e.g. `PROXY_URL=http://host:port` — enables the proxy
   engines), `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_METERED_PRICE_ID`
-  (enables billing), `GITHUB_CLIENT_ID`/`_SECRET` (enables GitHub login),
+  (enables billing), `GITHUB_CLIENT_ID`/`_SECRET` (enables GitHub login; OAuth app callback
+  `<BASE_URL>/api/auth/callback/github`), `AUTH_PASSWORD_LOGIN=true` (local/e2e only:
+  email + password sign-up for seeding — never set in production),
   `PROXY_ACCOUNT_API_URL`/`PROXY_ACCOUNT_API_KEY` (the proxy provider's v2 account API base
   and key — enables the monthly bandwidth guard: the 15-minute cron stores usage in KV, logs
   `proxy_bandwidth_high` from 80%, and from 95% the proxy engines answer
@@ -82,8 +84,14 @@ pnpm dev                                      # vite dev (first run builds the c
 - `browser` needs a real Browser Run session (`wrangler dev --remote` semantics); the
   other three engines work fully locally.
 
-Manual walkthrough: open http://localhost:5173, sign up, create an API key on the
-dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer <key>"
+Sign-in is by emailed 6-digit code (Better Auth email OTP, sent through the `EMAIL`
+`send_email` binding as `login@webforai.dev`). Locally the email is not delivered: the dev
+server logs it and saves it under the Miniflare temp directory, so read the code there (or set
+`"remote": true` on the binding to send real mail). Code sends are rate limited per IP in D1
+(`rate_limit` table, 3 per minute).
+
+Manual walkthrough: open http://localhost:5173, sign in with any email (read the code from the
+dev server log), create an API key on the dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer <key>"
 -d '{"url":"https://example.com"}'` and watch usage appear on the dashboard.
 
 ## Commands
@@ -93,7 +101,7 @@ dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer
 | `pnpm dev` | vite dev server (Worker + SPA + container) |
 | `pnpm test` | vitest unit tests (pure logic; no network/Docker) |
 | `pnpm test:browser` | Chromium dashboard UI regression with HTTP fixtures; desktop/mobile screenshots in `.cache/dashboard-review` (no real auth/Worker) |
-| `pnpm test:integration` | production page-accounting repository against disposable local workerd D1; applies checked-in migrations, tests duplicate writes and rollback |
+| `pnpm test:integration` | against disposable local workerd D1 with the checked-in migrations: the page-accounting repository (duplicate writes, rollback) and the real Better Auth email-code sign-in (hashed codes, wrong/replayed codes, D1 rate limit, passwords off) |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm build` | production build (Worker + client assets + container image), then prerenders the landing page into `dist/client/index.html` and fails if webforai cannot extract it (`scripts/prerender.ts`) |
 | `pnpm db:generate` | drizzle-kit migration from `src/db/schema.ts` |
@@ -104,6 +112,9 @@ dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer
 
 ## Deploying your own instance
 
+0. Sign-in email: onboard your domain to Cloudflare Email Sending
+   (`wrangler email sending enable <domain>`) and change the sender in `wrangler.jsonc`
+   (`allowed_sender_addresses`) and `src/auth/sign-in-email.ts` (`SIGN_IN_SENDER`).
 1. `wrangler d1 create platform`, `wrangler kv namespace create JOBS_KV`,
    `wrangler r2 bucket create webforai-platform-artifacts` — put the ids into
    `wrangler.jsonc`.

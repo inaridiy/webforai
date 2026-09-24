@@ -7,6 +7,33 @@ import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
 import { createServer } from "vite";
 
+/**
+ * Sign-in endpoints: the signed-out session, which methods exist, sending a code, and code
+ * sign-in (only `123456` works). `signedIn` tells the caller the fixture session is now live.
+ */
+const signInFixture = (
+	path: string,
+	requestBody: () => unknown,
+	state: { githubEnabled: boolean; signedOut: boolean },
+): { status: number; body: unknown; signedIn?: boolean } | undefined => {
+	if (path === "/api/auth/get-session" && state.signedOut) {
+		return { status: 200, body: null };
+	}
+	if (path === "/api/auth-methods") {
+		return { status: 200, body: { github: state.githubEnabled, password: false } };
+	}
+	if (path === "/api/auth/email-otp/send-verification-otp") {
+		return { status: 200, body: { success: true } };
+	}
+	if (path === "/api/auth/sign-in/email-otp") {
+		const { otp } = requestBody() as { otp: string };
+		return otp === "123456"
+			? { status: 200, body: { token: "session-token", user: { id: "user-1" } }, signedIn: true }
+			: { status: 400, body: { code: "INVALID_OTP", message: "Invalid OTP" } };
+	}
+	return undefined;
+};
+
 /** Newest first: 5 scrapes, then one 30-page crawl, then 10 older scrapes — 45 ledger rows. */
 const usageFixture = [
 	...Array.from({ length: 5 }, (_, index) => ({ id: `s${index}`, jobId: null, operation: "fetch" })),
@@ -47,12 +74,27 @@ try {
 	});
 	let jobsFail = true;
 	let sessionFails = false;
+	let signedOut = false;
+	let githubEnabled = false;
 	let malformedUsage = false;
 	const timestamp = "2026-09-06T00:00:00.000Z";
 	await page.route("**/api/**", async (route) => {
 		const path = new URL(route.request().url()).pathname;
 		let status = 200;
 		let body: unknown;
+		const signIn = signInFixture(path, route.request().postDataJSON.bind(route.request()), {
+			githubEnabled,
+			signedOut,
+		});
+		if (signIn !== undefined) {
+			signedOut = signedOut && signIn.signedIn !== true;
+			await route.fulfill({
+				status: signIn.status,
+				contentType: "application/json",
+				body: JSON.stringify(signIn.body),
+			});
+			return;
+		}
 		if (path === "/api/auth/get-session") {
 			status = sessionFails ? 503 : 200;
 			body = sessionFails
@@ -169,6 +211,29 @@ try {
 	await page.getByRole("button", { name: "Retry", exact: true }).click();
 	await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
 	assert.equal(previewRequests, 0, "dashboard must not load the Markdown renderer");
+	// Email-code sign-in: no GitHub button without OAuth credentials, wrong code rejected,
+	// right code signs in and lands on the dashboard.
+	signedOut = true;
+	await page.setViewportSize({ width: 1440, height: 1100 });
+	await page.goto(`${origin}/login`);
+	await page.getByLabel("Email", { exact: true }).fill("new-user@example.test");
+	assert.equal(await page.getByRole("button", { name: "Continue with GitHub" }).count(), 0);
+	await page.getByRole("button", { name: "Email me a code", exact: true }).click();
+	await page.getByText("Check your email", { exact: true }).waitFor();
+	await page.getByLabel("Code", { exact: true }).fill("000000");
+	await page.getByRole("button", { name: "Sign in", exact: true }).click();
+	await page.getByText("That code is not right. Check the email, or send a new code.", { exact: true }).waitFor();
+	await page.screenshot({ path: `${output}/signin-code-1440.png`, fullPage: true });
+	await page.getByLabel("Code", { exact: true }).fill("123456");
+	await page.getByRole("button", { name: "Sign in", exact: true }).click();
+	await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
+	signedOut = true;
+	githubEnabled = true;
+	await page.goto(`${origin}/signup`);
+	await page.getByRole("button", { name: "Continue with GitHub" }).waitFor();
+	await page.screenshot({ path: `${output}/signup-1440.png`, fullPage: true });
+	signedOut = false;
+
 	await page.route("**/v1/demo/scrape", (route) =>
 		route.fulfill({
 			contentType: "application/json",

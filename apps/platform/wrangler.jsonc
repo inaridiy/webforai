@@ -45,6 +45,14 @@
   "browser": {
     "binding": "BROWSER"
   },
+  // Sign-in codes (Better Auth email OTP). Cloudflare Email Sending on webforai.dev; the
+  // binding can only send as the one sender address.
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": ["login@webforai.dev"]
+    }
+  ],
   "workflows": [
     {
       "name": "crawl-workflow",

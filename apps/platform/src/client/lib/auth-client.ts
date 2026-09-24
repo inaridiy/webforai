@@ -1,11 +1,12 @@
 import { apiKeyClient } from "@better-auth/api-key/client";
 import { createAuthClient } from "better-auth/client";
+import { emailOTPClient } from "better-auth/client/plugins";
 
 /**
  * Better Auth browser client. Same-origin: the Worker mounts the auth handler at
  * `/api/auth/*`, so the default baseURL (current origin) is correct.
  */
-export const authClient = createAuthClient({ plugins: [apiKeyClient()] });
+export const authClient = createAuthClient({ plugins: [apiKeyClient(), emailOTPClient()] });
 
 export type Session = NonNullable<Awaited<ReturnType<typeof authClient.getSession>>["data"]>;
 export type SessionUser = Session["user"];

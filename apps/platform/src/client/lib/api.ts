@@ -1,4 +1,11 @@
-import { billingRedirectSchema, demoSchema, jobsSchema, playgroundSchema, usageSchema } from "./api-schemas";
+import {
+	authMethodsSchema,
+	billingRedirectSchema,
+	demoSchema,
+	jobsSchema,
+	playgroundSchema,
+	usageSchema,
+} from "./api-schemas";
 import { requestJson } from "./json-request";
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string; status: number };
@@ -104,3 +111,9 @@ export const runDemoScrape = (url: string, region: string): Promise<Result<DemoR
 		method: "POST",
 		body: JSON.stringify({ url, region }),
 	});
+
+/** Sign-in methods this deployment offers beyond email codes (`GET /api/auth-methods`). */
+export type AuthMethods = { github: boolean; password: boolean };
+
+export const fetchAuthMethods = (): Promise<Result<AuthMethods>> =>
+	requestJson(fetch, "/api/auth-methods", authMethodsSchema);

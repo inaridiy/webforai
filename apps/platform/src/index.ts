@@ -40,6 +40,15 @@ app.onError(onPlatformError);
 
 app.get("/health", (c) => c.json({ ok: true }));
 
+/**
+ * Which sign-in methods this deployment offers, for the sign-in page. Email codes are always
+ * on; GitHub only with OAuth credentials; passwords only in local/e2e runs.
+ */
+app.get("/api/auth-methods", (c) => {
+	const config = loadConfig(c.env);
+	return c.json({ github: config.githubLoginEnabled, password: config.passwordLoginEnabled });
+});
+
 /** Signed artifact URLs are unauthenticated by design — the token is the credential. */
 app.route("/", artifactRoutes());
 
