@@ -3,6 +3,8 @@ import type { SubscriptionStatus, UsageSummary } from "../../lib/api";
 import { openBillingPortal, startCheckout } from "../../lib/api";
 import { cn } from "../../lib/cn";
 import { formatNumber, formatPeriodLabel } from "../../lib/format";
+import { formatUsd, paidTiers } from "../../lib/pricing";
+import { Link } from "../../lib/router";
 import { Alert } from "../../ui/alert";
 import type { BadgeTone } from "../../ui/badge";
 import { Badge } from "../../ui/badge";
@@ -68,6 +70,9 @@ export const CreditsCard = ({ usage, className }: { usage: UsageSummary; classNa
 	);
 };
 
+/** The first paid tier's per-credit price — what the next credit past the allowance costs. */
+const firstPaidRate = (paidTiers()[0]?.microUsdPerCredit ?? 0) / 1_000_000;
+
 export const BillingCard = ({ usage, className }: { usage: UsageSummary; className?: string }) => {
 	const [pending, setPending] = useState<"none" | "checkout" | "portal">("none");
 	const [error, setError] = useState<string | null>(null);
@@ -126,8 +131,11 @@ export const BillingCard = ({ usage, className }: { usage: UsageSummary; classNa
 			</CardContent>
 			<CardFooter>
 				<p className="text-muted-foreground text-xs">
-					<span className="font-mono tabular">$0.002</span> per credit past the first{" "}
-					<span className="font-mono tabular">{formatNumber(usage.freeAllowance)}</span> each month.
+					From <span className="font-mono tabular">{formatUsd(firstPaidRate)}</span> per credit past the first{" "}
+					<span className="font-mono tabular">{formatNumber(usage.freeAllowance)}</span> each month, less at volume.{" "}
+					<Link href="/#pricing" className="text-accent hover:underline">
+						Pricing
+					</Link>
 				</p>
 			</CardFooter>
 		</Card>

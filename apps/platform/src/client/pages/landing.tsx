@@ -1,10 +1,13 @@
+import { ENGINE_CREDITS, FREE_MONTHLY_CREDITS } from "../../billing/credits";
 import { ClientSnippets } from "../components/client-snippets";
 import { DemoSection } from "../components/landing/demo-section";
+import { PricingSection } from "../components/landing/pricing-section";
+import { formatNumber } from "../lib/format";
 import { links, useDeploymentOrigin } from "../lib/links";
 import { Link } from "../lib/router";
 import { Badge } from "../ui/badge";
 import { buttonClass } from "../ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { CodeBlock } from "../ui/code-block";
 import { TBody, TD, TH, THead, TR, Table } from "../ui/table";
 
@@ -26,17 +29,35 @@ const engines: { id: string; how: string; proxy: string; screenshot: string; cre
 		how: "Cheapest engine first, escalates to browser rendering when the page needs JavaScript or blocks plain fetches",
 		proxy: "with region",
 		screenshot: "yes",
-		credits: "1–5",
+		credits: `${ENGINE_CREDITS.fetch}–${ENGINE_CREDITS.browser}`,
 	},
-	{ id: "fetch", how: "Plain HTTP fetch from the edge", proxy: "no", screenshot: "no", credits: "1" },
-	{ id: "browser", how: "Headless browser rendering", proxy: "no", screenshot: "yes", credits: "5" },
-	{ id: "proxy-fetch", how: "HTTP fetch through a rotating proxy", proxy: "yes", screenshot: "no", credits: "2" },
+	{
+		id: "fetch",
+		how: "Plain HTTP fetch from the edge",
+		proxy: "no",
+		screenshot: "no",
+		credits: `${ENGINE_CREDITS.fetch}`,
+	},
+	{
+		id: "browser",
+		how: "Headless browser rendering",
+		proxy: "no",
+		screenshot: "yes",
+		credits: `${ENGINE_CREDITS.browser}`,
+	},
+	{
+		id: "proxy-fetch",
+		how: "HTTP fetch through a rotating proxy",
+		proxy: "yes",
+		screenshot: "no",
+		credits: `${ENGINE_CREDITS["proxy-fetch"]}`,
+	},
 	{
 		id: "proxy-browser",
 		how: "Headless browser behind the rotating proxy",
 		proxy: "yes",
 		screenshot: "yes",
-		credits: "5",
+		credits: `${ENGINE_CREDITS["proxy-browser"]}`,
 	},
 ];
 
@@ -87,7 +108,8 @@ const Hero = () => {
 						</a>
 					</div>
 					<p className="mt-4 text-[0.8125rem] text-muted-foreground">
-						500 free credits every month — no card required.
+						{formatNumber(FREE_MONTHLY_CREDITS)} free credits every month, then from $1 per 1,000 pages — no card
+						required.
 					</p>
 				</div>
 				<div className="min-w-0">
@@ -185,45 +207,6 @@ const Engines = () => (
 	</section>
 );
 
-const Pricing = () => (
-	<section id="pricing" className="mx-auto w-full max-w-6xl scroll-mt-20 px-5 py-16">
-		<h2 className="font-semibold text-2xl tracking-tight">Pricing</h2>
-		<p className="mt-2 max-w-2xl text-muted-foreground text-sm leading-relaxed">
-			Everything is denominated in credits and metered per successful operation. One counter, no plan matrix.
-		</p>
-		<div className="mt-8 grid gap-4 md:grid-cols-2">
-			<Card>
-				<CardHeader>
-					<CardTitle>Free allowance</CardTitle>
-					<CardDescription>No card required.</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<p className="font-mono text-4xl tabular tracking-tight">500</p>
-					<p className="mt-1 text-muted-foreground text-sm">credits per calendar month</p>
-					<p className="mt-4 text-muted-foreground text-sm leading-relaxed">
-						That is 500 plain-fetch scrapes, or 100 browser-rendered pages. Past the allowance the API answers{" "}
-						<code className="font-mono text-accent">402 payment_required</code> until you subscribe.
-					</p>
-				</CardContent>
-			</Card>
-			<Card>
-				<CardHeader>
-					<CardTitle>Usage-based</CardTitle>
-					<CardDescription>Stripe metered subscription, billed monthly.</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<p className="font-mono text-4xl tabular tracking-tight">$0.002</p>
-					<p className="mt-1 text-muted-foreground text-sm">per credit beyond the first 500</p>
-					<p className="mt-4 text-muted-foreground text-sm leading-relaxed">
-						Graduated tiers on a single Stripe billing meter. Usage is recorded only after an operation succeeds, so
-						retries and failures never appear on the invoice.
-					</p>
-				</CardContent>
-			</Card>
-		</div>
-	</section>
-);
-
 const Closing = () => (
 	<section className="border-border border-t">
 		<div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-4 px-5 py-16 sm:flex-row sm:items-center sm:justify-between">
@@ -252,7 +235,7 @@ export const LandingPage = () => (
 		<Capabilities />
 		<Clients />
 		<Engines />
-		<Pricing />
+		<PricingSection />
 		<Closing />
 	</>
 );
