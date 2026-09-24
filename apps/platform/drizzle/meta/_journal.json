@@ -15,6 +15,13 @@
       "when": 1788667346757,
       "tag": "0001_wild_miek",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790248610047,
+      "tag": "0002_hard_major_mapleleaf",
+      "breakpoints": true
     }
   ]
 }

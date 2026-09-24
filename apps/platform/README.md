@@ -122,7 +122,9 @@ Single Stripe Billing Meter denominated in credits; the schedule lives in
 +1 screenshot, +1 per started 5 rehosted images). 500 credits/month free without a subscription; the metered subscription uses
 graduated tiers (first 500 at $0, then per-credit). Usage is recorded in D1
 (`usage_events`, ULID for sync requests or a deterministic job/page id) and mirrored to Stripe meter events with that id as the
-idempotency `identifier`; unreported rows are retried by a 15-minute cron.
+idempotency `identifier`; unreported rows are retried by a 15-minute cron, which reads them
+through a partial index (migration `0002`, index-only — apply it with `pnpm db:migrate:remote`
+before or after deploying).
 
 ## Dashboard and job reliability
 

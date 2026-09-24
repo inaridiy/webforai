@@ -3,6 +3,7 @@
  * generated from the Better Auth config (`npx auth generate`) and live in ./auth-schema.ts;
  * this file adds the platform's own tables and re-exports everything for drizzle-kit.
  */
+import { isNull } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export * from "./auth-schema";
@@ -78,5 +79,12 @@ export const usageEvents = sqliteTable(
 		reportedAt: integer("reported_at", { mode: "timestamp" }),
 		createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 	},
-	(table) => [index("usage_user_idx").on(table.userId, table.createdAt)],
+	(table) => [
+		index("usage_user_idx").on(table.userId, table.createdAt),
+		// The 15-minute Stripe report cron reads unsent rows oldest-first; without this partial
+		// index every run scans the whole ledger. Only unsent rows are in it, so it stays small.
+		index("usage_unreported_idx")
+			.on(table.createdAt)
+			.where(isNull(table.reportedAt)),
+	],
 );
