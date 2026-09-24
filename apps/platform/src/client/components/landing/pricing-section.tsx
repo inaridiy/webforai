@@ -200,7 +200,7 @@ const Estimator = () => {
 					</div>
 					<label className="flex items-center gap-2 text-sm">
 						<input type="checkbox" checked={region} onChange={(event) => setRegion(event.target.checked)} />
-						Pin an egress region (rotating proxy engines)
+						Send from Japanese IPs (proxy engines)
 					</label>
 				</div>
 				<div className="flex flex-col justify-center rounded-xl bg-muted/60 p-5">
@@ -230,7 +230,7 @@ export const PricingSection = () => (
 				Start free
 			</Link>
 		</div>
-		<div className="mt-8 grid gap-4 lg:grid-cols-2">
+		<div className="mt-8 grid gap-4 lg:grid-cols-2 lg:items-start">
 			<EnginePrices />
 			<Tiers />
 			<Estimator />

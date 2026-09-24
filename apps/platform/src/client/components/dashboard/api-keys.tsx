@@ -4,7 +4,7 @@ import type { Result } from "../../lib/api";
 import type { ApiKeySummary } from "../../lib/auth-client";
 import { authClient, authErrorMessage } from "../../lib/auth-client";
 import { copyToClipboard, formatDateTime, formatNumber } from "../../lib/format";
-import { useAsyncResult } from "../../lib/use-async";
+import type { AsyncState } from "../../lib/use-async";
 import { Alert } from "../../ui/alert";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
@@ -13,7 +13,7 @@ import { Input } from "../../ui/input";
 import { LoadingRow } from "../../ui/spinner";
 import { TBody, TD, TH, THead, TR, Table } from "../../ui/table";
 
-const listKeys = async (): Promise<Result<ApiKeySummary[]>> => {
+export const listKeys = async (): Promise<Result<ApiKeySummary[]>> => {
 	try {
 		const response = await authClient.apiKey.list();
 		if (response.error) {
@@ -187,8 +187,16 @@ const KeysEmpty = ({ onCreate }: { onCreate: () => void }) => (
 	</div>
 );
 
-export const ApiKeysSection = ({ className }: { className?: string }) => {
-	const { state, reload } = useAsyncResult(listKeys);
+/** Keys are loaded by the page (`listKeys`), which also needs them for its setup checklist. */
+export const ApiKeysSection = ({
+	className,
+	keys: state,
+	reload,
+}: {
+	className?: string;
+	keys: AsyncState<ApiKeySummary[]>;
+	reload: () => void;
+}) => {
 	const [revealed, setRevealed] = useState<string | null>(null);
 	const [creating, setCreating] = useState(false);
 

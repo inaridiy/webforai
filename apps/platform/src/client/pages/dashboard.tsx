@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { ClientSnippets } from "../components/client-snippets";
-import { ApiKeysSection } from "../components/dashboard/api-keys";
+import { ApiKeysSection, listKeys } from "../components/dashboard/api-keys";
 import { JobsTable } from "../components/dashboard/jobs-table";
-import { BillingCard, CreditsCard } from "../components/dashboard/usage-overview";
+import { SetupChecklist } from "../components/dashboard/setup-checklist";
+import { UsagePanel } from "../components/dashboard/usage-overview";
 import { UsageTable } from "../components/dashboard/usage-table";
 import { fetchUsage } from "../lib/api";
 import type { Session } from "../lib/auth-client";
@@ -52,15 +53,17 @@ const QuickstartCard = ({ className }: { className?: string }) => {
 
 const DashboardBody = ({ session }: { session: Session }) => {
 	const usage = useAsyncResult(fetchUsage);
+	const keys = useAsyncResult(listKeys);
+	const ready = usage.state.status === "ready" ? usage.state.value : undefined;
 
 	return (
 		<div className="mx-auto w-full max-w-6xl px-5 py-10">
-			<header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-				<div>
-					<h1 className="font-semibold text-2xl tracking-tight">Dashboard</h1>
+			<header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+				<div className="min-w-0">
+					<h1 className="font-semibold text-3xl tracking-tight">Dashboard</h1>
 					<p className="mt-1.5 break-all text-muted-foreground text-sm">{session.user.email}</p>
 				</div>
-				<Link href="/playground" className={buttonClass("primary", "sm")}>
+				<Link href="/playground" className={buttonClass("primary", "md")}>
 					Open playground
 				</Link>
 			</header>
@@ -82,18 +85,19 @@ const DashboardBody = ({ session }: { session: Session }) => {
 						</div>
 					</Alert>
 				) : null}
-				{usage.state.status === "ready" ? (
-					<>
-						<CreditsCard usage={usage.state.value} className="md:col-span-8" />
-						<BillingCard usage={usage.state.value} className="md:col-span-4" />
-					</>
+				{ready !== undefined && keys.state.status === "ready" ? (
+					<SetupChecklist
+						className="md:col-span-12"
+						hasKey={keys.state.value.length > 0}
+						hasUsage={ready.monthCredits > 0 || ready.recentEvents.length > 0}
+						subscribed={ready.subscriptionStatus === "active" || ready.subscriptionStatus === "past_due"}
+					/>
 				) : null}
-				<ApiKeysSection className="md:col-span-12" />
+				{ready !== undefined ? <UsagePanel usage={ready} className="md:col-span-12" /> : null}
+				<ApiKeysSection className="md:col-span-12" keys={keys.state} reload={keys.reload} />
 				<QuickstartCard className="md:col-span-12" />
-				{usage.state.status === "ready" ? (
-					<UsageTable events={usage.state.value.recentEvents} className="md:col-span-5" />
-				) : null}
-				<JobsTable className={usage.state.status === "ready" ? "md:col-span-7" : "md:col-span-12"} />
+				{ready !== undefined ? <UsageTable events={ready.recentEvents} className="md:col-span-5" /> : null}
+				<JobsTable className={ready !== undefined ? "md:col-span-7" : "md:col-span-12"} />
 			</div>
 		</div>
 	);

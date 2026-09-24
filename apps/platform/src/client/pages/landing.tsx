@@ -1,226 +1,221 @@
 import { ENGINE_CREDITS, FREE_MONTHLY_CREDITS } from "../../billing/credits";
+import type { Engine } from "../../core/types";
 import { ClientSnippets } from "../components/client-snippets";
-import { DemoSection } from "../components/landing/demo-section";
+import { DemoConsole } from "../components/landing/demo-console";
 import { PricingSection } from "../components/landing/pricing-section";
 import { formatNumber } from "../lib/format";
 import { links, useDeploymentOrigin } from "../lib/links";
 import { Link } from "../lib/router";
-import { Badge } from "../ui/badge";
 import { buttonClass } from "../ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { CodeBlock } from "../ui/code-block";
 import { TBody, TD, TH, THead, TR, Table } from "../ui/table";
 
-/** The curl sample advertises this very deployment, like the playground's equivalent-curl strip. */
-const scrapeSnippet = (origin: string): string => {
-	return `curl -X POST ${origin}/v1/scrape \\
-  -H "Authorization: Bearer wfa_..." \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "url": "https://example.com/article",
-    "engine": "auto",
-    "convert": { "extractor": "auto", "frontmatter": true }
-  }'`;
-};
+const credits = (engine: Engine): string =>
+	`${ENGINE_CREDITS[engine]} credit${ENGINE_CREDITS[engine] === 1 ? "" : "s"}`;
 
-const engines: { id: string; how: string; proxy: string; screenshot: string; credits: string }[] = [
-	{
-		id: "auto",
-		how: "Cheapest engine first, escalates to browser rendering when the page needs JavaScript or blocks plain fetches",
-		proxy: "with region",
-		screenshot: "yes",
-		credits: `${ENGINE_CREDITS.fetch}–${ENGINE_CREDITS.browser}`,
-	},
-	{
-		id: "fetch",
-		how: "Plain HTTP fetch from the edge",
-		proxy: "no",
-		screenshot: "no",
-		credits: `${ENGINE_CREDITS.fetch}`,
-	},
-	{
-		id: "browser",
-		how: "Headless browser rendering",
-		proxy: "no",
-		screenshot: "yes",
-		credits: `${ENGINE_CREDITS.browser}`,
-	},
-	{
-		id: "proxy-fetch",
-		how: "HTTP fetch through a rotating proxy",
-		proxy: "yes",
-		screenshot: "no",
-		credits: `${ENGINE_CREDITS["proxy-fetch"]}`,
-	},
-	{
-		id: "proxy-browser",
-		how: "Headless browser behind the rotating proxy",
-		proxy: "yes",
-		screenshot: "yes",
-		credits: `${ENGINE_CREDITS["proxy-browser"]}`,
-	},
-];
-
-const capabilities: { title: string; body: string; tag: string }[] = [
-	{
-		tag: "POST /v1/scrape",
-		title: "Scrape",
-		body: "One URL in, Markdown plus metadata out. Runs synchronously on a plain Worker, so a single page returns in one request.",
-	},
-	{
-		tag: "POST /v1/batch",
-		title: "Batch",
-		body: "Up to 100 URLs per job. Runs as a Cloudflare Workflow with retries; results are paged from the job results endpoint.",
-	},
-	{
-		tag: "POST /v1/crawl",
-		title: "Crawl",
-		body: "Seed URL, same-origin BFS with depth and page limits plus include/exclude path patterns. Same conversion core as scrape.",
-	},
-];
-
-const Hero = () => {
-	const origin = useDeploymentOrigin();
-	return (
-		<section className="relative overflow-hidden border-border border-b">
-			<div className="dot-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_at_top,black,transparent_72%)]" />
-			<div className="relative mx-auto grid w-full max-w-6xl gap-12 px-5 py-20 sm:py-24 lg:grid-cols-[minmax(0,1fr)_28.75rem] lg:items-center">
-				<div>
-					<Badge tone="accent">crawl to markdown api</Badge>
-					<h1 className="mt-5 max-w-3xl text-balance font-semibold text-4xl leading-[1.08] tracking-tight sm:text-5xl">
-						Any URL, converted to Markdown an LLM can actually read.
-					</h1>
-					<p className="mt-5 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-						webforai platform wraps the open-source{" "}
-						<a href={links.libraryDocs} className="text-foreground underline-offset-4 hover:underline">
-							webforai
-						</a>{" "}
-						extraction library in a metered HTTP API. Four acquisition engines — plain fetch, browser rendering, proxied
-						fetch, proxied browser — behind one request body, and an <span className="font-mono">auto</span> default
-						that renders client-side pages only when they need it.
-					</p>
-					<div className="mt-8 flex flex-wrap items-center gap-3">
-						<Link href="/signup" className={buttonClass("primary", "lg")}>
-							Get an API key
-						</Link>
-						<a href="#demo" className={buttonClass("outline", "lg")}>
-							Try the live demo
-						</a>
-					</div>
-					<p className="mt-4 text-[0.8125rem] text-muted-foreground">
-						{formatNumber(FREE_MONTHLY_CREDITS)} free credits every month, then from $1 per 1,000 pages — no card
-						required.
-					</p>
-				</div>
-				<div className="min-w-0">
-					<CodeBlock code={scrapeSnippet(origin)} label="curl" />
-				</div>
-			</div>
-		</section>
-	);
-};
-
-const Capabilities = () => (
-	<section className="mx-auto w-full max-w-6xl px-5 py-16">
-		<div className="grid gap-4 md:grid-cols-3">
-			{capabilities.map((item) => (
-				<Card key={item.tag}>
-					<CardHeader>
-						<span className="font-mono text-[0.6875rem] text-accent uppercase tracking-wider">{item.tag}</span>
-						<CardTitle>{item.title}</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className="text-muted-foreground text-sm leading-relaxed">{item.body}</p>
-					</CardContent>
-				</Card>
-			))}
+const Hero = () => (
+	<section className="relative border-border border-b">
+		<div className="dot-grid pointer-events-none absolute inset-0 opacity-50 [mask-image:linear-gradient(to_bottom,black,transparent_70%)]" />
+		<div className="relative mx-auto w-full max-w-6xl px-5 pt-16 pb-14 sm:pt-24 sm:pb-20">
+			<h1 className="max-w-4xl text-balance font-semibold text-[2.5rem] leading-[1.04] tracking-[-0.035em] sm:text-6xl">
+				Turn any web page into Markdown your model can read.
+			</h1>
+			<p className="mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed">
+				Send a URL, get back the article as clean Markdown with its title, author and date. Navigation, ads and cookie
+				banners are removed, and pages that only exist after JavaScript runs are rendered in a real browser first.
+			</p>
+			<DemoConsole className="mt-10" />
+			<p className="mt-4 text-muted-foreground text-sm">
+				The demo needs no account and allows 5 conversions every 10 minutes.{" "}
+				<Link href="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">
+					Create an account
+				</Link>{" "}
+				for an API key with {formatNumber(FREE_MONTHLY_CREDITS)} free credits a month.
+			</p>
 		</div>
 	</section>
 );
 
-const Clients = () => {
+const STEPS: { title: string; body: string }[] = [
+	{
+		title: "Create an account",
+		body: `${formatNumber(
+			FREE_MONTHLY_CREDITS,
+		)} credits every month are free, and no card is needed until you want more.`,
+	},
+	{
+		title: "Create an API key",
+		body: "On the dashboard. It is shown once; send it as a bearer token.",
+	},
+	{
+		title: "Send your first request",
+		body: "With curl, the TypeScript client from the webforai package, or npx webforai on the command line.",
+	},
+];
+
+const GetStarted = () => {
 	const origin = useDeploymentOrigin();
 	return (
-		<section className="mx-auto w-full max-w-6xl px-5 pb-16">
-			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-start">
-				<div>
-					<h2 className="font-semibold text-2xl tracking-tight">Call it from anywhere</h2>
-					<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-						Plain HTTP with a bearer key, the typed <span className="font-mono">webforai/platform</span> client that
-						ships in the <span className="font-mono">webforai</span> npm package, or the{" "}
-						<span className="font-mono">npx webforai</span> CLI — pipes, scripts and AI agents included.
-					</p>
-					<div className="mt-5 flex flex-wrap gap-3">
-						<a href={links.quickstart} className={buttonClass("outline", "sm")}>
-							Quickstart
-						</a>
-						<a href={links.apiReference} className={buttonClass("ghost", "sm")}>
-							API reference
-						</a>
-					</div>
+		<section className="mx-auto grid w-full max-w-6xl gap-12 px-5 py-20 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+			<div>
+				<h2 className="font-semibold text-3xl tracking-tight">Into your own code in three steps</h2>
+				<ol className="mt-8 space-y-6">
+					{STEPS.map((step, index) => (
+						<li key={step.title} className="grid grid-cols-[2rem_1fr] gap-x-4">
+							<span
+								aria-hidden={true}
+								className="flex size-8 items-center justify-center rounded-full border border-border bg-card font-medium text-sm tabular"
+							>
+								{index + 1}
+							</span>
+							<div>
+								<h3 className="font-medium">{step.title}</h3>
+								<p className="mt-1 text-muted-foreground text-sm leading-relaxed">{step.body}</p>
+							</div>
+						</li>
+					))}
+				</ol>
+				<div className="mt-9 flex flex-wrap gap-3">
+					<Link href="/signup" className={buttonClass("primary", "md")}>
+						Create an account
+					</Link>
+					<a href={links.quickstart} className={buttonClass("ghost", "md")}>
+						Read the quickstart
+					</a>
 				</div>
-				<ClientSnippets origin={origin} />
 			</div>
+			<ClientSnippets origin={origin} className="lg:pt-2" />
 		</section>
 	);
 };
 
+const OPERATIONS: { endpoint: string; title: string; body: string }[] = [
+	{
+		endpoint: "POST /v1/scrape",
+		title: "One page, right away",
+		body: "The Markdown and metadata come back in the same response.",
+	},
+	{
+		endpoint: "POST /v1/batch",
+		title: "Up to 100 URLs",
+		body: "Runs in the background with retries; read the results page by page when the job is done.",
+	},
+	{
+		endpoint: "POST /v1/crawl",
+		title: "A whole site",
+		body: "Follows links on the same site from a start URL, within the depth, page and path limits you set.",
+	},
+];
+
+const Operations = () => (
+	<section className="border-border border-y bg-card">
+		<dl className="mx-auto grid w-full max-w-6xl gap-px bg-border md:grid-cols-3">
+			{OPERATIONS.map((operation) => (
+				<div key={operation.endpoint} className="bg-card px-5 py-10 md:px-8">
+					<dt>
+						<code className="font-mono text-accent text-sm">{operation.endpoint}</code>
+						<span className="mt-3 block font-semibold text-lg">{operation.title}</span>
+					</dt>
+					<dd className="mt-2 text-muted-foreground text-sm leading-relaxed">{operation.body}</dd>
+				</div>
+			))}
+		</dl>
+	</section>
+);
+
+/** One step of the `auto` resolution, shown as the page's small flow diagram. */
+const FlowStep = ({ engine, note }: { engine: Engine; note: string }) => (
+	<div className="rounded-xl border border-border bg-card px-5 py-4">
+		<div className="flex items-baseline justify-between gap-3">
+			<code className="font-mono">{engine}</code>
+			<span className="text-muted-foreground text-sm tabular">{credits(engine)}</span>
+		</div>
+		<p className="mt-1.5 text-muted-foreground text-sm leading-relaxed">{note}</p>
+	</div>
+);
+
+const FlowArrow = ({ label }: { label: string }) => (
+	<div className="flex items-center gap-3 py-1.5 pl-5 text-muted-foreground text-sm md:max-w-32 md:flex-col md:justify-center md:py-0 md:pl-0">
+		<span aria-hidden={true} className="text-base md:hidden">
+			↓
+		</span>
+		<span className="md:text-center">{label}</span>
+		<span aria-hidden={true} className="hidden text-base md:block">
+			→
+		</span>
+	</div>
+);
+
+const ENGINE_ROWS: { id: Engine; how: string; jp: boolean; screenshot: boolean }[] = [
+	{ id: "fetch", how: "Plain HTTP request from Cloudflare's edge", jp: false, screenshot: false },
+	{ id: "browser", how: "Headless Chromium; runs the page's JavaScript", jp: false, screenshot: true },
+	{ id: "proxy-fetch", how: "HTTP request through a rotating proxy", jp: true, screenshot: false },
+	{ id: "proxy-browser", how: "Headless Chromium behind the rotating proxy", jp: true, screenshot: true },
+];
+
 const Engines = () => (
-	<section className="border-border border-y bg-muted/40">
-		<div className="mx-auto w-full max-w-6xl px-5 py-16">
-			<h2 className="font-semibold text-2xl tracking-tight">Four acquisition engines, one auto mode</h2>
-			<p className="mt-2 max-w-2xl text-muted-foreground text-sm leading-relaxed">
-				The engine decides how the HTML is fetched; extraction and Markdown conversion are identical across all of them.
-				The default <span className="font-mono">auto</span> starts cheap and escalates to browser rendering when a page
-				turns out to be a client-side shell or refuses the plain fetch — you are billed for the engine that produced the
-				result.
-			</p>
-			<div className="mt-8 rounded-xl border border-border bg-card py-2">
-				<Table>
-					<THead>
-						<TR>
-							<TH>Engine</TH>
-							<TH>How it fetches</TH>
-							<TH>Proxy</TH>
-							<TH>Screenshot</TH>
-							<TH className="text-right">Credits</TH>
-						</TR>
-					</THead>
-					<TBody>
-						{engines.map((engine) => (
-							<TR key={engine.id}>
-								<TD className="font-mono text-accent">{engine.id}</TD>
-								<TD className="text-muted-foreground">{engine.how}</TD>
-								<TD className="text-muted-foreground">{engine.proxy}</TD>
-								<TD className="text-muted-foreground">{engine.screenshot}</TD>
-								<TD className="text-right font-mono tabular">{engine.credits}</TD>
-							</TR>
-						))}
-					</TBody>
-				</Table>
+	<section className="mx-auto w-full max-w-6xl px-5 py-20">
+		<div className="grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-center">
+			<div>
+				<h2 className="font-semibold text-3xl tracking-tight">You only pay for a browser when the page needs one</h2>
+				<p className="mt-4 text-muted-foreground leading-relaxed">
+					Requests default to <code className="font-mono text-foreground text-sm">auto</code>. It fetches the page
+					plainly, and only if the HTML turns out to be an empty JavaScript shell or the site refuses the request does
+					it run the page again in a browser. The response says which engine produced it, and that is the one you are
+					billed for.
+				</p>
+				<p className="mt-4 text-muted-foreground text-sm leading-relaxed">
+					Set <code className="font-mono text-foreground">"region": "jp"</code> to leave from Japanese IP addresses
+					through the proxy pair instead.
+				</p>
 			</div>
-			<p className="mt-4 text-muted-foreground text-xs">
-				Options add credits on top: screenshot +1, image rehosting +1 per started 5 images. Failed operations are never
-				billed.
-			</p>
+			<div className="grid gap-2 md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-4">
+				<FlowStep engine="fetch" note="Static pages: articles, docs, most blogs" />
+				<FlowArrow label="needs JavaScript or blocked" />
+				<FlowStep engine="browser" note="Single-page apps and bot-protected sites" />
+			</div>
+		</div>
+		<div className="mt-12 overflow-hidden rounded-xl border border-border bg-card py-1">
+			<Table>
+				<THead>
+					<TR>
+						<TH>Pin an engine</TH>
+						<TH>How it fetches</TH>
+						<TH>Japanese IPs</TH>
+						<TH>Screenshot</TH>
+					</TR>
+				</THead>
+				<TBody>
+					{ENGINE_ROWS.map((row) => (
+						<TR key={row.id}>
+							<TD className="font-mono">{row.id}</TD>
+							<TD className="text-muted-foreground">{row.how}</TD>
+							<TD className="text-muted-foreground">{row.jp ? "Yes" : "—"}</TD>
+							<TD className="text-muted-foreground">{row.screenshot ? "Yes" : "—"}</TD>
+						</TR>
+					))}
+				</TBody>
+			</Table>
 		</div>
 	</section>
 );
 
 const Closing = () => (
-	<section className="border-border border-t">
-		<div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-4 px-5 py-16 sm:flex-row sm:items-center sm:justify-between">
+	<section className="border-border border-t bg-card">
+		<div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-6 px-5 py-16 sm:flex-row sm:items-center sm:justify-between">
 			<div>
-				<h2 className="font-semibold text-xl tracking-tight">Start with the free allowance</h2>
-				<p className="mt-1 text-muted-foreground text-sm">
-					Create an account, mint a key, send the first request in a minute.
+				<h2 className="font-semibold text-2xl tracking-tight">
+					Start with {formatNumber(FREE_MONTHLY_CREDITS)} free credits
+				</h2>
+				<p className="mt-2 text-muted-foreground">
+					That is {formatNumber(FREE_MONTHLY_CREDITS / ENGINE_CREDITS.fetch)} static pages or{" "}
+					{formatNumber(FREE_MONTHLY_CREDITS / ENGINE_CREDITS.browser)} rendered ones, every month.
 				</p>
 			</div>
 			<div className="flex gap-3">
-				<Link href="/signup" className={buttonClass("primary", "md")}>
-					Create account
+				<Link href="/signup" className={buttonClass("primary", "lg")}>
+					Create an account
 				</Link>
-				<Link href="/login" className={buttonClass("outline", "md")}>
+				<Link href="/login" className={buttonClass("outline", "lg")}>
 					Sign in
 				</Link>
 			</div>
@@ -231,9 +226,8 @@ const Closing = () => (
 export const LandingPage = () => (
 	<>
 		<Hero />
-		<DemoSection />
-		<Capabilities />
-		<Clients />
+		<GetStarted />
+		<Operations />
 		<Engines />
 		<PricingSection />
 		<Closing />

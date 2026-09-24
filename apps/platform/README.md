@@ -47,8 +47,7 @@ Full contract: `docs/specs/platform/03_api.md`.
 
 `POST /v1/demo/scrape` is a public, keyless, unbilled demo (fixed `auto` engine, markdown
 cut near 40,000 chars at a paragraph boundary with an in-markdown notice) behind both the
-docs-site demo and the platform landing's own
-"Live demo" section (raw Markdown + rendered preview side by side; the response names the
+docs-site demo and the platform landing's hero (raw Markdown + rendered preview side by side; the response names the
 engine `auto` resolved to, which both demos display; identical URL + region requests are
 served from a 10-minute cache without counting), limited to 5 requests /
 10 min per IP and 500 / day globally:
@@ -151,7 +150,10 @@ Stripe prices are immutable, so a new schedule is a new price under a versioned 
 
 ## Dashboard and job reliability
 
-Below the API keys, a "Use your key" card shows the same request for curl, the TypeScript
+The dashboard opens with a "Get set up" checklist (create a key → send a first request →
+optional billing) that disappears once the account has a key and usage, then one usage panel:
+credits used this month, the estimated bill from `PRICE_TIERS`, and the plan with its billing
+actions. Below the API keys, a "Use your key" card shows the same request for curl, the TypeScript
 client and the CLI (with `baseUrl` / `WEBFORAI_PLATFORM_URL` filled in on self-hosted
 origins) and links to the platform docs. The header's "Docs" link opens the *platform*
 docs (webforai.dev/platform); the footer links library, CLI, client and self-hosting docs.
