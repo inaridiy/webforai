@@ -1,5 +1,11 @@
 # Platform Architecture
 
+Revision note (2026-09-24): Cost of goods. Both browser engines navigate once
+(`domcontentloaded`, then the remaining budget waiting for `networkidle`) instead of
+re-navigating after an idle timeout; `proxy-browser` aborts image/media/font requests unless
+a screenshot is requested. A page whose `auto` escalation was refused on both tiers
+(`EscalationExhaustedError`) is recorded as failed without spending step retries; browser
+launch/capacity errors still retry.
 Revision note (2026-09-06): Async pages now commit immutable `job_pages` identities, counters, and successful usage atomically in a D1 batch. Immutable R2 attempt archives hold full results and crawl links; KV is a recoverable projection. Authenticated result reads use D1/R2 for marked jobs, so a KV outage cannot hide a committed paid page. Workflow instance ids are persisted before scheduling.
 
 Revision note (2026-08-22): Engine `cf-browser` renamed to `browser`. Proxy secrets are now
@@ -21,7 +27,9 @@ Revision note (2026-08-10): Initial version.
   Playwright.
 - **Workflows**: `crawl-workflow` (WorkflowEntrypoint in the same Worker) executes async jobs
   step-by-step (one step per page fetch+convert) so every page benefits from Workflows
-  retries; terminal failure still writes a `failed` job record (unhappy path is explicit).
+  retries for transient failures (4xx and exhausted `auto` escalations are recorded as
+  failed pages immediately); terminal failure still writes a `failed` job record (unhappy
+  path is explicit).
   Step return values are capped at 1 MiB — steps therefore persist page results to KV/R2
   *inside* the step and return only small summaries (url, status, credits).
 - **Browser Run** (formerly Browser Rendering) binding for the `browser` engine, via

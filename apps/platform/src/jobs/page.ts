@@ -1,6 +1,6 @@
 import { type CrawlScope, discoverLinks } from "../core/links";
 import { type ScrapeDeps, convertFetchedPage, fetchForScrape } from "../core/scrape-core";
-import { PlatformError, type ScrapeRequest } from "../core/types";
+import { EscalationExhaustedError, PlatformError, type ScrapeRequest } from "../core/types";
 import { type PageAccountingRepo, type PageCommit, pageCommitId } from "./page-accounting";
 import type { PageArchive, PageArchiveStore } from "./page-archive";
 import { type JobResultsDeps, putPageResult } from "./results";
@@ -94,7 +94,11 @@ export const runPage = async (deps: PageDeps, params: RunPageParams): Promise<Pa
 			outcome: { url: result.url, ok: true, credits: result.credits, links },
 		};
 	} catch (error) {
-		if (!(error instanceof PlatformError && error.status >= 400 && error.status < 500)) throw error;
+		// Final failures are recorded now; only transient ones go back to the step's retries.
+		const final =
+			error instanceof EscalationExhaustedError ||
+			(error instanceof PlatformError && error.status >= 400 && error.status < 500);
+		if (!final) throw error;
 		return recordPageFailure(deps, params, error);
 	}
 	return commit(deps, params, archive);

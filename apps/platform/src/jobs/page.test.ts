@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ArtifactStore } from "../artifacts/store";
-import { type FetchedPage, PlatformError } from "../core/types";
+import { EscalationExhaustedError, type FetchedPage, PlatformError } from "../core/types";
 import { type PageDeps, type RunPageParams, recordPageFailure, runPage } from "./page";
 import { type PageCommit, pageCommitId } from "./page-accounting";
 import type { PageArchive } from "./page-archive";
@@ -141,6 +141,24 @@ describe("durable page execution", () => {
 		state.controls.failCommit = false;
 		expect(await runPage(state.deps, params)).toMatchObject({ ok: true });
 		expect(state.counts.succeeded).toBe(1);
+	});
+
+	it("records an exhausted escalation as a failed page instead of handing it to step retries", async () => {
+		const state = harness();
+		state.fetch.mockRejectedValueOnce(
+			new EscalationExhaustedError("fetch_failed", 'engine "fetch" failed; escalation to "browser" also failed', 502),
+		);
+
+		expect(await runPage(state.deps, params)).toMatchObject({ ok: false, credits: 0 });
+		expect(state.counts).toMatchObject({ succeeded: 0, failed: 1, credits: 0 });
+	});
+
+	it("leaves other 5xx failures to the step's retries", async () => {
+		const state = harness();
+		state.fetch.mockRejectedValueOnce(new PlatformError("engine_failed", "render crashed", 502));
+
+		await expect(runPage(state.deps, params)).rejects.toThrow("render crashed");
+		expect(state.counts.failed).toBe(0);
 	});
 
 	it("counts a failed page once, never bills it, and preserves batch total", async () => {

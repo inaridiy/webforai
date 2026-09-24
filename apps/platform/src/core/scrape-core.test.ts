@@ -4,7 +4,14 @@ import { minimalFilter, takumiExtractor } from "webforai";
 import type { ArtifactStore } from "../artifacts/store";
 import type { FetchLike } from "./rehost";
 import { type ScrapeDeps, resolveExtractors, scrapePage } from "./scrape-core";
-import { type Engine, type EngineFetchParams, type EngineSet, type FetchedPage, PlatformError } from "./types";
+import {
+	type Engine,
+	type EngineFetchParams,
+	type EngineSet,
+	EscalationExhaustedError,
+	type FetchedPage,
+	PlatformError,
+} from "./types";
 
 const PAGE_HTML = `<!doctype html>
 <html lang="en"><head><title>Test page</title><meta name="description" content="a fixture"></head>
@@ -483,10 +490,25 @@ describe("auto engine: failure escalation", () => {
 			browser: () => Promise.reject(new PlatformError("engine_failed", "render crashed", 502)),
 		});
 
-		await expect(scrapePage(deps(engines, artifacts), request({ engine: "auto" }))).rejects.toMatchObject({
+		const failure = scrapePage(deps(engines, artifacts), request({ engine: "auto" }));
+		await expect(failure).rejects.toMatchObject({
 			code: "engine_failed",
 			message: expect.stringContaining('escalation to "browser" also failed'),
 		});
+		// The browser's own trouble (launch, capacity) stays retryable for jobs.
+		await expect(failure).rejects.not.toBeInstanceOf(EscalationExhaustedError);
+	});
+
+	it("marks the failure final when the browser also reached the target and was refused", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({
+			fetch: failingFetch(upstreamFailure(522)),
+			browser: () => Promise.reject(new PlatformError("fetch_failed", "browser rendering failed: timeout", 502)),
+		});
+
+		const failure = scrapePage(deps(engines, artifacts), request({ engine: "auto" }));
+		await expect(failure).rejects.toBeInstanceOf(EscalationExhaustedError);
+		await expect(failure).rejects.toMatchObject({ code: "fetch_failed", status: 502 });
 	});
 
 	it("escalates from the originally requested URL when a meta-refresh hop is blocked", async () => {

@@ -88,6 +88,14 @@ export class PlatformError extends Error {
 	}
 }
 
+/**
+ * `auto` tried both tiers and the browser tier itself reached the target and failed. Retrying
+ * reruns the same fetch + browser pair against the same refusal, so jobs record the page as
+ * failed instead of spending their retries (and browser time) on it. The HTTP contract is the
+ * same as any other `PlatformError`.
+ */
+export class EscalationExhaustedError extends PlatformError {}
+
 export class EngineUnavailableError extends PlatformError {
 	constructor(engine: Engine, reason: string) {
 		super("engine_unavailable", `engine "${engine}" is unavailable: ${reason}`, 503);

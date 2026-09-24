@@ -17,6 +17,7 @@ import {
 	type ConvertOptions,
 	type Engine,
 	type EngineSet,
+	EscalationExhaustedError,
 	type FetchedPage,
 	PlatformError,
 	SCREENSHOT_ENGINES,
@@ -106,11 +107,11 @@ const escalationFailed = (base: Engine, cause: unknown, escalation: Engine, erro
 	const code = error instanceof PlatformError ? error.code : "engine_failed";
 	const status = error instanceof PlatformError ? error.status : 502;
 	const detail = error instanceof Error ? error.message : String(error);
-	return new PlatformError(
-		code,
-		`engine "${base}" failed (${causeMessage}); escalation to "${escalation}" also failed: ${detail}`,
-		status,
-	);
+	const message = `engine "${base}" failed (${causeMessage}); escalation to "${escalation}" also failed: ${detail}`;
+	// `fetch_failed` means the browser got as far as the target and was refused too. Anything
+	// else (a launch or capacity error) is the browser tier's own trouble and worth a retry.
+	const Failure = code === "fetch_failed" ? EscalationExhaustedError : PlatformError;
+	return new Failure(code, message, status);
 };
 
 const SHELL_DESCRIPTION: Record<ClientShellReason, string> = {
