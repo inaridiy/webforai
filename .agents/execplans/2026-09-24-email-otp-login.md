@@ -57,6 +57,19 @@ the deployment has GitHub credentials.
 - Better Auth 1.6.26's database rate-limit storage already retries a lost first-insert race
   and increments conditionally, so no custom storage was needed on Workers.
 
+- [x] (2026-09-24) Follow-ups after the owner's first real sign-in:
+      - Code "009782" failed: it came from the test email sent at 16:02; the owner's own
+        request at 16:14 rotated the code (hash of 009782 ≠ stored hash). Fix: encrypted
+        storage + `resendStrategy: "reuse"` so every email within the window has the same
+        code (6a97a9b, deployed 8bac2670).
+      - GitHub `account_not_linked`: the pre-existing password account had an unverified
+        email; Better Auth's `requireLocalEmailVerified` (kept) refuses to link. One
+        email-code sign-in verifies it. OAuth errors now land on `/login?error=` with an
+        explanation (6a97a9b).
+      - Turnstile (captcha plugin) wired, inactive until keys are set.
+      - Launch items (not yet deployed): account deletion, legal pages, OG image,
+        robots.txt, opt-in `respectRobotsTxt` (8f42fe2, 02d0bb8, 0291c88).
+
 ## Outcomes & retrospective
 
 Shipped as designed. Open: GitHub OAuth app + secrets (owner); confirm first code email lands
