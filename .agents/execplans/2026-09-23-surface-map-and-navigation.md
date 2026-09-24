@@ -67,6 +67,10 @@ Linking rules:
 - [x] (2026-09-23) Integrated validation: root 447 tests, typecheck, library build, site
       build. Screenshots of site landing/dropdown/platform docs (desktop+mobile) and platform
       landing/dashboard (desktop+mobile) reviewed. Specs drift: only 01_scope changed.
+- [x] (2026-09-24) Follow-up (owner request): "Try it" moved above "Three ways to use it"
+      and rebuilt (examples, skeleton + timer, result header with engine/size/tokens,
+      view toggle, copy, rate-limit/failure states). Demo API returns `engine`
+      (03_api revision note). 6c4c31c, 4bb5709.
 
 ## Decision log
 
@@ -86,6 +90,8 @@ Linking rules:
   landing passes `HomePage.Button` into `WaysToUse` as a prop.
 - The docs-site demo caption said it ran `proxy-fetch`; the demo has run `auto` since
   2026-08-24.
+- The Hacker News front page converts to ~120 chars through the demo (library adapter
+  issue, not investigated here); it was dropped from the demo examples.
 - `vocs preview` crashes on Node 24 here; static `docs/dist` served by any file server is
   enough for screenshots.
 
