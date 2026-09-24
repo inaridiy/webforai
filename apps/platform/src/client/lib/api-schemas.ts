@@ -9,7 +9,18 @@ export const usageSchema: z.ZodType<UsageSummary> = z.object({
 	freeAllowance: count,
 	billingEnabled: z.boolean(),
 	subscriptionStatus: z.enum(["none", "active", "past_due", "canceled"]),
-	recentEvents: z.array(z.object({ id: z.string(), operation: z.string(), credits: count, createdAt: z.string() })),
+	recentEvents: z.array(
+		z.object({
+			id: z.string(),
+			jobId: z
+				.string()
+				.nullish()
+				.transform((value) => value ?? null),
+			operation: z.string(),
+			credits: count,
+			createdAt: z.string(),
+		}),
+	),
 });
 
 export const jobsSchema: z.ZodType<{ jobs: JobSummary[] }> = z.object({

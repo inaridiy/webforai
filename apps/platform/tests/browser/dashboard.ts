@@ -7,6 +7,21 @@ import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
 import { createServer } from "vite";
 
+/** Newest first: 5 scrapes, then one 30-page crawl, then 10 older scrapes — 45 ledger rows. */
+const usageFixture = [
+	...Array.from({ length: 5 }, (_, index) => ({ id: `s${index}`, jobId: null, operation: "fetch" })),
+	...Array.from({ length: 30 }, (_, index) => ({
+		id: `p${index}`,
+		jobId: "job_crawl",
+		operation: index % 3 === 0 ? "browser" : "fetch",
+	})),
+	...Array.from({ length: 10 }, (_, index) => ({ id: `o${index}`, jobId: null, operation: "browser" })),
+].map((event, index) => ({
+	...event,
+	credits: event.operation === "browser" ? 2 : 1,
+	createdAt: new Date(Date.UTC(2026, 8, 24, 12, 0, 45 - index)).toISOString(),
+}));
+
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const output = `${root}.cache/dashboard-review`;
 await mkdir(output, { recursive: true });
@@ -68,7 +83,7 @@ try {
 						freeAllowance: 1000,
 						billingEnabled: false,
 						subscriptionStatus: "none",
-						recentEvents: [],
+						recentEvents: usageFixture,
 					};
 		} else if (path === "/api/dashboard/jobs") {
 			status = jobsFail ? 503 : 200;
@@ -107,6 +122,12 @@ try {
 		jobsFail = false;
 		await page.getByRole("button", { name: "Retry", exact: true }).click();
 		await page.getByText("completed", { exact: true }).waitFor();
+		// 45 ledger rows → 16 rows once the crawl's pages are grouped; 8 shown until expanded.
+		await page.getByText("Job, 30 pages", { exact: true }).waitFor();
+		await page.getByText("8 more", { exact: true }).waitFor();
+		await page.getByRole("button", { name: "Show more", exact: true }).click();
+		await page.getByText("Showing the latest 50 entries.", { exact: true }).waitFor();
+		await page.getByRole("button", { name: "Show less", exact: true }).click();
 		await page.getByRole("button", { name: "Create your first key" }).click();
 		await page.getByLabel("Key name", { exact: true }).fill("production");
 		await page.getByRole("button", { name: "Create key", exact: true }).click();

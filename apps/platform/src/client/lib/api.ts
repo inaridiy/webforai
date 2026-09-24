@@ -7,6 +7,8 @@ export type SubscriptionStatus = "none" | "active" | "past_due" | "canceled";
 
 export type UsageEvent = {
 	id: string;
+	/** Set for pages of a batch/crawl job; `null` for single requests. */
+	jobId: string | null;
 	operation: string;
 	credits: number;
 	createdAt: string;
