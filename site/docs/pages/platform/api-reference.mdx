@@ -256,7 +256,7 @@ curl "https://platform.webforai.dev/v1/jobs/job_.../results?cursor=..." \
 
 The public, unauthenticated endpoint behind the [demo on the home page](/#demo). No API key, no
 account, no credits — it always runs the [`auto` engine](#the-auto-engine) and truncates the
-output near 8,000 characters, cutting at a paragraph boundary and appending a visible
+output near 40,000 characters, cutting at a paragraph boundary and appending a visible
 `…truncated (N more characters)` notice inside the markdown.
 
 ### Request
@@ -276,7 +276,7 @@ output near 8,000 characters, cutting at a paragraph boundary and appending a vi
   "region": "auto",              // echoes the requested region
   "engine": "fetch",             // what auto resolved to (browser when the page needed JavaScript)
   "markdown": "# Example Domain\n...",
-  "truncated": false,            // true when the markdown was cut at ~8000 characters
+  "truncated": false,            // true when the markdown was cut at ~40,000 characters
   "title": "Example Domain",     // when the page has one
   "metadata": { "title": "Example Domain" }
 }

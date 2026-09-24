@@ -288,7 +288,7 @@ const ResultView = ({ result, elapsedMs }: { result: DemoSuccess; elapsedMs: num
 			</div>
 			{result.truncated ? (
 				<div className="border-border border-t bg-muted/60 px-4 py-2.5 text-center text-[13px] text-muted-foreground">
-					The demo returns the first ~8,000 characters.{" "}
+					The demo shows the first ~40,000 characters of long pages.{" "}
 					<a href={`${PLATFORM_ORIGIN}/signup`} className="font-medium text-accent">
 						Get the full page with a free API key →
 					</a>

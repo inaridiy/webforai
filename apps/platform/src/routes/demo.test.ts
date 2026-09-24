@@ -139,7 +139,7 @@ describe("demo scrape", () => {
 	});
 
 	it("truncates long markdown at a paragraph boundary with a visible notice", async () => {
-		const long = Array.from({ length: 300 }, (_, index) => `paragraph ${index} ${"word ".repeat(10).trim()}`).join(
+		const long = Array.from({ length: 1000 }, (_, index) => `paragraph ${index} ${"word ".repeat(10).trim()}`).join(
 			"\n\n",
 		);
 		expect(long.length).toBeGreaterThan(DEMO_MARKDOWN_LIMIT);

@@ -154,7 +154,7 @@ export interface DemoResult {
 	region: Region;
 	/** The engine `auto` resolved to. Absent from deployments older than 2026-09-24. */
 	engine?: Engine;
-	/** Truncated to ~8000 characters by the demo endpoint. */
+	/** Truncated to ~40,000 characters by the demo endpoint (~8000 before 2026-09-24). */
 	markdown: string;
 	truncated: boolean;
 	title?: string;

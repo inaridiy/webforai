@@ -45,8 +45,12 @@ export const DEMO_IP_WINDOW_SECONDS = 10 * 60;
 export const DEMO_GLOBAL_LIMIT = 500;
 export const DEMO_GLOBAL_WINDOW_SECONDS = 24 * 60 * 60;
 
-/** Markdown is a teaser here; the full document is what the paid API is for. */
-export const DEMO_MARKDOWN_LIMIT = 8000;
+/**
+ * Enough for a typical article to come back whole, so the demo shows real extraction quality;
+ * very long pages are still cut with a visible notice. Conversion always runs on the whole
+ * page, so this bounds only the response size — the rate limits above bound the cost.
+ */
+export const DEMO_MARKDOWN_LIMIT = 40_000;
 
 /** KV rejects an `expirationTtl` below 60s, so short remainders are rounded up to it. */
 const MIN_KV_TTL_SECONDS = 60;
