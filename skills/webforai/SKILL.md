@@ -37,6 +37,8 @@ npx webforai https://example.com --json             # machine-readable envelope 
 - `--region <auto|jp>` — platform proxy egress region (implies `-l platform`).
 - `--screenshot` — platform browser engines only; the envelope carries an expiring
   `screenshotUrl`.
+- `--respect-robots` — platform loader only; honor the target site's robots.txt rules
+  (off by default). A disallowed URL fails with `robots_disallowed` and is not billed.
 - `--api-key <key>` / `--platform-url <url>` — platform credentials and host; usually set
   via env vars instead.
 - `-i, --interactive` — guided prompt flow (for humans; do not use from an agent).
@@ -86,5 +88,7 @@ actually ran); failures are never billed.
 ## Errors worth handling
 
 - `payment_required` on stderr → platform credits exhausted.
+- `robots_disallowed` → `--respect-robots` was set and the site's robots.txt disallows
+  the URL.
 - `rate_limited` → back off (a `retryAfter` seconds hint is included when known).
 - Playwright loader errors explain the exact `npx playwright install` command to run.

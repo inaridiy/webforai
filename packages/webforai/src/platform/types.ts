@@ -42,6 +42,11 @@ interface CommonRequestOptions {
 	/** Re-upload the page's images behind expiring URLs; +1 credit per started 5 images. */
 	rehostImages?: boolean;
 	region?: Region;
+	/**
+	 * Honor the target site's robots.txt rules: each URL is checked before it is fetched, and a
+	 * disallowed URL fails with `robots_disallowed` (never billed). Defaults to `false`.
+	 */
+	respectRobotsTxt?: boolean;
 	convert?: ConvertOptions;
 }
 

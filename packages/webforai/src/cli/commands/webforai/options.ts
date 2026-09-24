@@ -17,6 +17,7 @@ export interface CliFlags {
 	engine?: string;
 	region?: string;
 	screenshot?: boolean;
+	respectRobots?: boolean;
 	apiKey?: string;
 	platformUrl?: string;
 	debug?: boolean;
@@ -35,6 +36,8 @@ export interface ResolvedRun {
 	engine?: (typeof REQUESTED_ENGINES)[number];
 	region?: (typeof REGIONS)[number];
 	screenshot: boolean;
+	/** Platform loader only: honor the target site's robots.txt rules. */
+	respectRobotsTxt: boolean;
 	apiKey?: string;
 	platformUrl?: string;
 }
@@ -113,12 +116,15 @@ export const resolveRunOptions = (
 		json: flags.json ?? false,
 		debug: flags.debug ?? false,
 		screenshot: flags.screenshot ?? false,
+		respectRobotsTxt: flags.respectRobots ?? false,
 	};
 
 	if (resolved.loader === "platform") {
 		applyPlatformFields(resolved, flags, env);
 	} else if (flags.screenshot) {
 		throw new UsageError("--screenshot is only available with the platform loader (browser engines)");
+	} else if (flags.respectRobots) {
+		throw new UsageError("--respect-robots is only available with the platform loader");
 	}
 
 	return resolved;

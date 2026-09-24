@@ -36,6 +36,7 @@ npx webforai@latest https://example.com --json | jq -r .markdown
 | `--engine <engine>` | Platform engine: `auto` (renders JavaScript only when the page needs it), `fetch`, `browser`, `proxy-fetch`, `proxy-browser`. Implies `-l platform`. |
 | `--region <region>` | Platform proxy egress region: `auto` or `jp`. Implies `-l platform`. |
 | `--screenshot` | Platform browser engines only: also capture a screenshot (expiring URL). |
+| `--respect-robots` | Platform loader only: honor the target site's robots.txt rules (off by default). A disallowed URL fails with `robots_disallowed` and is not billed. See [robots.txt](/platform/api-reference#robotstxt). |
 | `--api-key <key>` | Platform API key; defaults to `$WEBFORAI_API_KEY`. |
 | `--platform-url <url>` | Platform base URL; defaults to `$WEBFORAI_PLATFORM_URL` or the hosted instance. |
 | `-i, --interactive` | Guided prompt flow. |

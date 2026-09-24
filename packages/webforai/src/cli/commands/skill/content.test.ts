@@ -15,6 +15,7 @@ const PUBLIC_FLAGS = [
 	"--engine",
 	"--region",
 	"--screenshot",
+	"--respect-robots",
 	"--api-key",
 	"--platform-url",
 	"--interactive",

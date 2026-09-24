@@ -63,6 +63,7 @@ program
 	)
 	.option("--region <region>", "platform proxy egress region (auto | jp); implies -l platform")
 	.option("--screenshot", "platform browser engines: also capture a screenshot (expiring URL)")
+	.option("--respect-robots", "platform loader: honor the target site's robots.txt rules (off by default)")
 	.option("--api-key <key>", `platform API key (defaults to $${API_KEY_ENV})`)
 	.option("--platform-url <url>", `platform base URL (defaults to $${PLATFORM_URL_ENV} or the hosted instance)`)
 	.option("-i, --interactive", "guided prompt flow (the pre-v3 default)")

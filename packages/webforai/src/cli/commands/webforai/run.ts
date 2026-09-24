@@ -40,6 +40,7 @@ const convertViaPlatform = async (run: ResolvedRun): Promise<RunEnvelope> => {
 		engine: run.engine,
 		region: run.region,
 		screenshot: run.screenshot ? true : undefined,
+		respectRobotsTxt: run.respectRobotsTxt ? true : undefined,
 		convert: { extractor: run.extractor, frontmatter: run.frontmatter },
 	});
 

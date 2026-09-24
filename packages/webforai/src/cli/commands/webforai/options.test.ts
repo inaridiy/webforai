@@ -49,6 +49,14 @@ describe("resolveRunOptions", () => {
 	it("rejects platform-only flags for local sources and non-platform loaders", () => {
 		expect(() => resolveRunOptions(FIXTURE, { engine: "browser" }, {})).toThrow(UsageError);
 		expect(() => resolveRunOptions(URL_SOURCE, { screenshot: true }, {})).toThrow(/platform/);
+		expect(() => resolveRunOptions(URL_SOURCE, { respectRobots: true }, {})).toThrow(/--respect-robots/);
+		expect(() => resolveRunOptions(FIXTURE, { respectRobots: true }, {})).toThrow(UsageError);
+	});
+
+	it("--respect-robots is off by default and opt-in on the platform loader", () => {
+		expect(resolveRunOptions(URL_SOURCE, {}, {}).respectRobotsTxt).toBe(false);
+		const run = resolveRunOptions(URL_SOURCE, { loader: "platform", respectRobots: true }, { [API_KEY_ENV]: "k" });
+		expect(run).toMatchObject({ loader: "platform", respectRobotsTxt: true });
 	});
 
 	it("rejects an explicit remote loader for a local path", () => {
