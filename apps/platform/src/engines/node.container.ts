@@ -4,6 +4,7 @@ import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 import { nodejsFn } from "../__generated__/create-nodejs-fn.runtime";
 import { assertPublicHttpUrl } from "../core/ssrf";
+import { navigate } from "./navigate";
 import { buildProxyUsername } from "./proxy-username";
 import { FETCH_TIMEOUT_MS, HTML_REQUEST_HEADERS, MAX_HTML_BYTES, PLATFORM_USER_AGENT } from "./workers-fetch";
 
@@ -157,19 +158,17 @@ export const proxyFetch = nodejsFn(async (url: string, country?: string): Promis
 });
 
 /**
- * `networkidle` gives the best-rendered DOM but never settles on pages with long-polling or
- * analytics beacons, so a timeout falls back to `domcontentloaded` — a second, explicit
- * navigation rather than a silent partial result.
+ * Resource types that never reach the Markdown: image and media URLs are read from the DOM
+ * (`src`, `srcset`, `data-src` stay intact when the request is aborted) and fonts only change
+ * rendering. Every byte here is paid proxy bandwidth, so they are aborted unless a screenshot
+ * needs the page to look right.
  */
-const gotoWithFallback = async (page: Page, url: string) => {
-	try {
-		return await page.goto(url, { waitUntil: "networkidle", timeout: FETCH_TIMEOUT_MS });
-	} catch (error) {
-		if (!(error instanceof Error && error.name === "TimeoutError")) {
-			throw error;
-		}
-		return await page.goto(url, { waitUntil: "domcontentloaded", timeout: FETCH_TIMEOUT_MS });
-	}
+const UNUSED_RESOURCE_TYPES = new Set(["image", "media", "font"]);
+
+const blockUnusedResources = async (page: Page): Promise<void> => {
+	await page.route("**/*", (route) =>
+		UNUSED_RESOURCE_TYPES.has(route.request().resourceType()) ? route.abort() : route.continue(),
+	);
 };
 
 /** `proxy-browser` engine: Playwright Chromium behind the same rotating proxy. */
@@ -184,7 +183,10 @@ export const proxyBrowser = nodejsFn(
 
 		try {
 			const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT });
-			const response = await gotoWithFallback(page, target);
+			if (!screenshot) {
+				await blockUnusedResources(page);
+			}
+			const response = await navigate(page, target, FETCH_TIMEOUT_MS);
 			const finalUrl = assertAllowedUrl(page.url() || target);
 			const html = await page.content();
 			const screenshotBase64 = screenshot

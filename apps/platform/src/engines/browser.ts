@@ -2,6 +2,7 @@ import { launch } from "@cloudflare/playwright";
 
 import { assertPublicHttpUrl } from "../core/ssrf";
 import { type EngineFetchParams, type FetchedPage, PlatformError } from "../core/types";
+import { navigate } from "./navigate";
 import { FETCH_TIMEOUT_MS, PLATFORM_USER_AGENT } from "./workers-fetch";
 
 /**
@@ -11,22 +12,10 @@ import { FETCH_TIMEOUT_MS, PLATFORM_USER_AGENT } from "./workers-fetch";
  * container-hosted `proxy-browser`). No proxy: egress is Cloudflare's.
  */
 
-type BrowserPage = Awaited<ReturnType<Awaited<ReturnType<typeof launch>>["newPage"]>>;
-
-/**
- * `networkidle` renders the most complete DOM but never settles on pages that keep a
- * connection open; a timeout falls back to an explicit `domcontentloaded` navigation.
+/*
+ * Resources are not blocked here (unlike `proxy-browser`): Browser Rendering bandwidth is not
+ * billed, and `page.route` would add a Worker round-trip per subresource.
  */
-const gotoWithFallback = async (page: BrowserPage, url: string) => {
-	try {
-		return await page.goto(url, { waitUntil: "networkidle", timeout: FETCH_TIMEOUT_MS });
-	} catch (error) {
-		if (!(error instanceof Error && error.name === "TimeoutError")) {
-			throw error;
-		}
-		return await page.goto(url, { waitUntil: "domcontentloaded", timeout: FETCH_TIMEOUT_MS });
-	}
-};
 
 export const browserEngine = async (binding: Env["BROWSER"], params: EngineFetchParams): Promise<FetchedPage> => {
 	const target = assertPublicHttpUrl(params.url);
@@ -34,7 +23,7 @@ export const browserEngine = async (binding: Env["BROWSER"], params: EngineFetch
 
 	try {
 		const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT });
-		const response = await gotoWithFallback(page, target.href);
+		const response = await navigate(page, target.href, FETCH_TIMEOUT_MS);
 
 		// The browser follows redirects itself, so the landing URL is the only one worth guarding.
 		const finalUrl = assertPublicHttpUrl(page.url() || target.href);
