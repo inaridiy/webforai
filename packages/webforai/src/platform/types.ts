@@ -19,7 +19,8 @@ export const REQUESTED_ENGINES = [...ENGINES, "auto"] as const;
 export type RequestedEngine = (typeof REQUESTED_ENGINES)[number];
 
 /** Coarse egress location, honoured by the proxy engines only. */
-export const REGIONS = ["auto", "us", "eu", "uk", "jp", "asia"] as const;
+/** Egress regions the hosted platform can honour (Japan, or no geo-targeting). */
+export const REGIONS = ["auto", "jp"] as const;
 export type Region = (typeof REGIONS)[number];
 
 /** Extraction presets understood by the platform (passed through to the webforai library). */

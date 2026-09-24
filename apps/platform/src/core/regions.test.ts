@@ -5,11 +5,7 @@ import { REGIONS, REGION_COUNTRY, type Region, regionToCountry } from "./regions
 
 describe("regions", () => {
 	it("maps every region except auto to a country", () => {
-		expect(regionToCountry("us")).toBe("US");
-		expect(regionToCountry("eu")).toBe("DE");
-		expect(regionToCountry("uk")).toBe("GB");
 		expect(regionToCountry("jp")).toBe("JP");
-		expect(regionToCountry("asia")).toBe("SG");
 	});
 
 	it("treats auto as no geo-targeting", () => {
@@ -47,7 +43,7 @@ describe("buildProxyUsername", () => {
 	});
 
 	it("builds exactly what regionToCountry resolves to", () => {
-		expect(buildProxyUsername("user", regionToCountry("uk"))).toBe("user-GB-rotate");
+		expect(buildProxyUsername("user", regionToCountry("jp"))).toBe("user-JP-rotate");
 		expect(buildProxyUsername("user", regionToCountry("auto"))).toBe("user-rotate");
 	});
 });

@@ -41,7 +41,7 @@ via container, 2), `proxy-browser` (Playwright behind the proxy in container, 10
 screenshots). Fetch-tier engines follow `<meta http-equiv="refresh">` redirect stubs like
 HTTP redirects (≤ 3 hops, SSRF-guarded, one operation). Responses carry a `warning` when a
 fetch-tier result looks like an unrendered shell. `rehostImages: true` re-uploads the page's images to R2 behind expiring signed URLs.
-`"region": "us" | "eu" | "uk" | "jp" | "asia"` picks the proxy egress country (`auto` by
+`"region": "jp"` pins proxy egress to Japanese IPs (`auto` by
 default; pins `engine: "auto"` to the proxy tier, ignored by the two non-proxy engines).
 Full contract: `docs/specs/platform/03_api.md`.
 
@@ -55,7 +55,7 @@ served from a 10-minute cache without counting), limited to 5 requests /
 
 ```bash
 curl -X POST https://<your-host>/v1/demo/scrape \
-  -H 'content-type: application/json' -d '{ "url": "https://example.com", "region": "us" }'
+  -H 'content-type: application/json' -d '{ "url": "https://example.com", "region": "jp" }'
 ```
 
 ## Local development

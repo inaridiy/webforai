@@ -1,5 +1,8 @@
 # Platform API
 
+Revision note (2026-09-24, regions): `region` narrowed to `auto` | `jp` (owner decision). The
+proxy plan has Japanese and unspecified-country IPs only, so `us`/`eu`/`uk`/`asia` could not
+be honoured; they are now rejected with `400 invalid_request`.
 Revision note (2026-09-24, cache): Successful demo responses are cached for 10 minutes per
 data center (Workers Cache API) by normalized URL + region; a hit answers before the rate
 limiter, carries `X-Demo-Cache: hit`, and neither scrapes nor counts against the limits.
@@ -54,7 +57,7 @@ Runs on the plain Worker (fast, not durable). With `"async": true` it instead en
   "engine": "auto",             // auto (default) | fetch | browser | proxy-fetch | proxy-browser
   "screenshot": false,           // auto / browser / proxy-browser only (400 otherwise)
   "rehostImages": false,
-  "region": "auto",             // auto | us | eu | uk | jp | asia — proxy engines only
+  "region": "auto",             // auto | jp — proxy engines only
   "async": false,
   "convert": {                   // passthrough to webforai (all optional)
     "extractor": "auto",        // auto | takumi | minimal | none
@@ -64,9 +67,9 @@ Runs on the plain Worker (fast, not durable). With `"async": true` it instead en
 }
 ```
 
-`region` picks a coarse egress location for `proxy-fetch` / `proxy-browser` by pinning the
-proxy exit IP to one **representative** country per region — `us`→US, `eu`→DE, `uk`→GB,
-`jp`→JP, `asia`→SG (`src/core/regions.ts` is the source of truth). `auto` (the default) does no
+`region` picks the egress location for `proxy-fetch` / `proxy-browser` by pinning the proxy
+exit IP to a country — `jp`→JP, the only region the proxy plan has dedicated IPs for
+(`src/core/regions.ts` is the source of truth). `auto` (the default) does no
 geo-targeting. `fetch` and `browser` egress from Cloudflare and ignore the field rather than
 failing, so one default can be set for a mixed-engine workload. Pricing is unaffected.
 

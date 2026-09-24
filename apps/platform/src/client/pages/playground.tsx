@@ -38,11 +38,7 @@ const ENGINE_HINTS: Record<string, string> = {
 
 const REGION_OPTIONS: SelectOption[] = [
 	{ value: "auto", label: "auto" },
-	{ value: "us", label: "us" },
-	{ value: "eu", label: "eu" },
-	{ value: "uk", label: "uk" },
 	{ value: "jp", label: "jp" },
-	{ value: "asia", label: "asia" },
 ];
 
 const EXTRACTOR_OPTIONS: SelectOption[] = [

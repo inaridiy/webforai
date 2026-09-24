@@ -34,7 +34,7 @@ npx webforai@latest https://example.com --json | jq -r .markdown
 | `--frontmatter` | Prepend YAML front matter built from the page metadata (title, author, canonical URL, …). |
 | `--json` | Print a JSON envelope instead of raw Markdown (below). |
 | `--engine <engine>` | Platform engine: `auto` (renders JavaScript only when the page needs it), `fetch`, `browser`, `proxy-fetch`, `proxy-browser`. Implies `-l platform`. |
-| `--region <region>` | Platform proxy egress region: `auto`, `us`, `eu`, `uk`, `jp`, `asia`. Implies `-l platform`. |
+| `--region <region>` | Platform proxy egress region: `auto` or `jp`. Implies `-l platform`. |
 | `--screenshot` | Platform browser engines only: also capture a screenshot (expiring URL). |
 | `--api-key <key>` | Platform API key; defaults to `$WEBFORAI_API_KEY`. |
 | `--platform-url <url>` | Platform base URL; defaults to `$WEBFORAI_PLATFORM_URL` or the hosted instance. |

@@ -35,6 +35,13 @@ describe("scrape body", () => {
 		expect(scrapeBodySchema.safeParse({ url: "https://example.com/a", region: "antarctica" }).success).toBe(false);
 	});
 
+	it("rejects the regions withdrawn on 2026-09-24 — the proxy plan cannot honour them", () => {
+		expect(REGIONS).toEqual(["auto", "jp"]);
+		for (const region of ["us", "eu", "uk", "asia"]) {
+			expect(scrapeBodySchema.safeParse({ url: "https://example.com/a", region }).success).toBe(false);
+		}
+	});
+
 	it("rejects a screenshot on an engine that cannot take one", () => {
 		const result = scrapeBodySchema.safeParse({ url: "https://example.com/a", engine: "fetch", screenshot: true });
 		expect(result.success).toBe(false);

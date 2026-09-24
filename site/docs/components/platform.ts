@@ -9,6 +9,6 @@ export const PLATFORM_ORIGIN = "https://platform.webforai.dev";
 /** Public, keyless demo endpoint behind the landing page's "Try it" box. */
 export const PLATFORM_DEMO_ENDPOINT = `${PLATFORM_ORIGIN}/v1/demo/scrape`;
 
-export const PLATFORM_REGIONS = ["auto", "us", "eu", "uk", "jp", "asia"] as const;
+export const PLATFORM_REGIONS = ["auto", "jp"] as const;
 
 export type PlatformRegion = (typeof PLATFORM_REGIONS)[number];

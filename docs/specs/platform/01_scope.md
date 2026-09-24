@@ -1,5 +1,7 @@
 # Platform Scope
 
+Revision note (2026-09-24, regions): `region` is `auto` | `jp` only — the proxy plan has no
+dedicated IPs elsewhere (see `03_api.md`).
 Revision note (2026-09-23): Added "Surfaces and navigation" — the six user-facing surfaces,
 which one documents what, and the linking rules between the docs site and the platform app
 (product links and docs links are labelled apart; the app's "Docs" means the platform docs).
@@ -61,9 +63,8 @@ concrete engine that produced them.
 - `screenshot` (engines `browser` / `proxy-browser`): PNG stored in R2, expiring URL returned.
 - `rehostImages`: download images referenced by the resulting Markdown, re-upload to R2 with a
   TTL (lifecycle rule), rewrite Markdown URLs to the R2-hosted copies.
-- `region` (`auto` | `us` | `eu` | `uk` | `jp` | `asia`): coarse egress location, applied by
-  pinning the proxy exit IP to a representative country. Proxy engines only; the other two
-  egress from Cloudflare and ignore it. No price difference.
+- `region` (`auto` | `jp`): egress location, applied by pinning the proxy exit IP to Japan.
+  Proxy engines only; the other two egress from Cloudflare and ignore it. No price difference.
 - Extraction options passed through to webforai (`extractor` preset, `frontmatter`, ...).
 
 ## Accounts, keys, billing

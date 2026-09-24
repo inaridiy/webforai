@@ -61,7 +61,7 @@ program
 		"--engine <engine>",
 		"platform engine (auto | fetch | browser | proxy-fetch | proxy-browser); implies -l platform",
 	)
-	.option("--region <region>", "platform proxy egress region (auto | us | eu | uk | jp | asia); implies -l platform")
+	.option("--region <region>", "platform proxy egress region (auto | jp); implies -l platform")
 	.option("--screenshot", "platform browser engines: also capture a screenshot (expiring URL)")
 	.option("--api-key <key>", `platform API key (defaults to $${API_KEY_ENV})`)
 	.option("--platform-url <url>", `platform base URL (defaults to $${PLATFORM_URL_ENV} or the hosted instance)`)

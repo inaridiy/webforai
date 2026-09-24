@@ -42,7 +42,7 @@ npx webforai https://example.com --json             # machine-readable envelope 
   escalates to browser rendering when the page is a client-rendered shell;
   \`browser\`/\`proxy-browser\` always render JavaScript; \`proxy-*\` engines egress through
   rotating proxies for bot-protected sites.
-- \`--region <auto|us|eu|uk|jp|asia>\` — platform proxy egress region (implies \`-l platform\`).
+- \`--region <auto|jp>\` — platform proxy egress region (implies \`-l platform\`).
 - \`--screenshot\` — platform browser engines only; the envelope carries an expiring
   \`screenshotUrl\`.
 - \`--api-key <key>\` / \`--platform-url <url>\` — platform credentials and host; usually set

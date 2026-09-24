@@ -44,18 +44,13 @@ It expresses a coarse geographic preference for the egress location:
 | value | meaning |
 | --- | --- |
 | `auto` | let the platform choose (default) |
-| `us` | United States |
-| `eu` | Europe |
-| `uk` | United Kingdom |
 | `jp` | Japan |
-| `asia` | Asia |
 
 It only affects the proxy engines (`proxy-fetch`, `proxy-browser`), which select a proxy exit
 node in the requested area; a non-`auto` region also pins `engine: "auto"` to the proxy tier so
 the preference can be honoured. The `fetch` and `browser` engines egress from Cloudflare's own
 network and ignore the field rather than failing, so one default can be set for a mixed-engine
-workload. A region is a preference for a representative exit country, not a guarantee. Pricing
-is unaffected.
+workload. Other values are rejected with `400 invalid_request`. Pricing is unaffected.
 
 ## POST /v1/scrape
 
@@ -69,7 +64,7 @@ instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and retu
 {
   "url": "https://example.com/article",
   "engine": "auto",              // auto (default) | fetch | browser | proxy-fetch | proxy-browser
-  "region": "auto",              // auto | us | eu | uk | jp | asia (proxy engines only)
+  "region": "auto",              // auto | jp (proxy engines only)
   "screenshot": false,           // auto / browser / proxy-browser only (400 otherwise)
   "rehostImages": false,
   "async": false,
@@ -264,7 +259,7 @@ output near 40,000 characters, cutting at a paragraph boundary and appending a v
 ```jsonc
 {
   "url": "https://example.com",
-  "region": "auto"               // optional: auto | us | eu | uk | jp | asia
+  "region": "auto"               // optional: auto | jp
 }
 ```
 

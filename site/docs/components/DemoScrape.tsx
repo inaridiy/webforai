@@ -38,11 +38,7 @@ const EXAMPLES: { label: string; url: string }[] = [
 
 const REGION_LABELS: Record<PlatformRegion, string> = {
 	auto: "Region: auto",
-	us: "United States",
-	eu: "Europe",
-	uk: "United Kingdom",
-	jp: "Japan",
-	asia: "Asia",
+	jp: "Region: Japan",
 };
 
 const ENGINE_LABELS: Record<string, string> = {

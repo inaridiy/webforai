@@ -18,11 +18,7 @@ const INITIAL_URL = "https://platform.webforai.dev";
 
 const REGION_OPTIONS: SelectOption[] = [
 	{ value: "auto", label: "auto (nearest)" },
-	{ value: "us", label: "United States" },
-	{ value: "eu", label: "Europe" },
-	{ value: "uk", label: "United Kingdom" },
 	{ value: "jp", label: "Japan" },
-	{ value: "asia", label: "Asia" },
 ];
 
 type RunState =
