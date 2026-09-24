@@ -1,11 +1,14 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import { z } from "zod";
+import { deleteAccount } from "../account/delete-account";
 import type { AuthVariables } from "../auth/middleware";
 import { requireSession } from "../auth/middleware";
 import { FREE_MONTHLY_CREDITS } from "../billing/credits";
 import { monthStart } from "../billing/guard";
 import { createBillingRepo } from "../billing/repo";
 import { createStripe } from "../billing/stripe";
+import { reportToStripe } from "../billing/usage";
 import { createDb } from "../db/client";
 import { user } from "../db/schema";
 import { loadConfig } from "../env";
@@ -29,6 +32,8 @@ const customerIdOf = async (env: Env, userId: string): Promise<string | undefine
  * The caller mounts `sessionMiddleware(auth)` before this sub-app; `requireSession` is
  * applied here so a mounting mistake cannot expose the routes anonymously.
  */
+const deleteAccountBody = z.object({ confirmEmail: z.string().min(1).max(320) });
+
 export const dashboardRoutes = () => {
 	const app = new Hono<DashboardEnv>();
 
@@ -108,6 +113,49 @@ export const dashboardRoutes = () => {
 		});
 
 		return c.json({ url: portal.url });
+	});
+
+	/**
+	 * Deletes the signed-in account and its data (`src/account/delete-account.ts`). The body
+	 * must repeat the account's email; billing is settled first and a billing failure deletes
+	 * nothing.
+	 */
+	app.post("/account/delete", async (c) => {
+		// biome-ignore lint/style/noNonNullAssertion: requireSession guarantees a user
+		const sessionUser = c.get("user")!;
+		const body = deleteAccountBody.safeParse(await c.req.json().catch(() => null));
+		if (!body.success) {
+			return c.json({ error: { code: "invalid_request", message: "Send { confirmEmail }." } }, 400);
+		}
+		const config = loadConfig(c.env);
+		const db = createDb(c.env);
+		const stripe = createStripe(config);
+		const usageDeps = { repo: createBillingRepo(db), config, stripe };
+		await deleteAccount(
+			{
+				db,
+				billing:
+					config.billingEnabled && stripe
+						? {
+								report: (row) => reportToStripe(usageDeps, row),
+								cancelSubscription: async (id) => {
+									// Final invoice now, including metered usage so far.
+									await stripe.subscriptions.cancel(id, { invoice_now: true, prorate: false });
+								},
+							}
+						: undefined,
+				deletePrefix: async (prefix) => {
+					const listed = await c.env.ARTIFACTS.list({ prefix, limit: 1000 });
+					if (listed.objects.length > 0) {
+						await c.env.ARTIFACTS.delete(listed.objects.map((object) => object.key));
+					}
+				},
+				waitUntil: (promise) => c.executionCtx.waitUntil(promise),
+			},
+			{ id: sessionUser.id, email: sessionUser.email },
+			body.data.confirmEmail,
+		);
+		return c.json({ deleted: true });
 	});
 
 	return app;

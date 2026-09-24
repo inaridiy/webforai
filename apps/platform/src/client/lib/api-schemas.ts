@@ -69,3 +69,5 @@ export const authMethodsSchema: z.ZodType<AuthMethods> = z.object({
 		.nullish()
 		.transform((value) => value ?? null),
 });
+
+export const deletedSchema: z.ZodType<{ deleted: true }> = z.object({ deleted: z.literal(true) });

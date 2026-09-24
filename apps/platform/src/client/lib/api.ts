@@ -1,6 +1,7 @@
 import {
 	authMethodsSchema,
 	billingRedirectSchema,
+	deletedSchema,
 	demoSchema,
 	jobsSchema,
 	playgroundSchema,
@@ -117,3 +118,11 @@ export type AuthMethods = { github: boolean; password: boolean; turnstileSiteKey
 
 export const fetchAuthMethods = (): Promise<Result<AuthMethods>> =>
 	requestJson(fetch, "/api/auth-methods", authMethodsSchema);
+
+/** Deletes the signed-in account; `confirmEmail` must equal the account's email. */
+export const deleteAccount = (confirmEmail: string): Promise<Result<{ deleted: true }>> =>
+	requestJson(fetch, "/api/dashboard/account/delete", deletedSchema, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ confirmEmail }),
+	});

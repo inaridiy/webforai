@@ -58,6 +58,10 @@ const footerLinks: { text: string; href: string }[] = [
 	{ text: "Self-hosting", href: links.selfHosting },
 	{ text: "Billing", href: links.billingDocs },
 	{ text: "GitHub", href: links.repository },
+	{ text: "Terms", href: "/terms" },
+	{ text: "Privacy", href: "/privacy" },
+	{ text: "特定商取引法に基づく表記", href: "/commerce" },
+	{ text: "Contact", href: "mailto:support@webforai.dev" },
 ];
 
 export const SiteShell = ({ session, onSignOut, children }: SiteShellProps) => (

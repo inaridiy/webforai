@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { ClientSnippets } from "../components/client-snippets";
 import { ApiKeysSection, listKeys } from "../components/dashboard/api-keys";
+import { DeleteAccountCard } from "../components/dashboard/delete-account";
 import { JobsTable } from "../components/dashboard/jobs-table";
 import { SetupChecklist } from "../components/dashboard/setup-checklist";
 import { UsagePanel } from "../components/dashboard/usage-overview";
@@ -51,7 +52,7 @@ const QuickstartCard = ({ className }: { className?: string }) => {
 	);
 };
 
-const DashboardBody = ({ session }: { session: Session }) => {
+const DashboardBody = ({ session, onDeleted }: { session: Session; onDeleted: () => void }) => {
 	const usage = useAsyncResult(fetchUsage);
 	const keys = useAsyncResult(listKeys);
 	const ready = usage.state.status === "ready" ? usage.state.value : undefined;
@@ -98,6 +99,7 @@ const DashboardBody = ({ session }: { session: Session }) => {
 				<QuickstartCard className="md:col-span-12" />
 				{ready !== undefined ? <UsageTable events={ready.recentEvents} className="md:col-span-5" /> : null}
 				<JobsTable className={ready !== undefined ? "md:col-span-7" : "md:col-span-12"} />
+				<DeleteAccountCard email={session.user.email} onDeleted={onDeleted} className="md:col-span-12" />
 			</div>
 		</div>
 	);
@@ -145,5 +147,13 @@ export const DashboardPage = ({ session, reloadSession }: { session: SessionStat
 		);
 	}
 
-	return <DashboardBody session={session.session} />;
+	return (
+		<DashboardBody
+			session={session.session}
+			onDeleted={() => {
+				reloadSession();
+				navigate("/", { replace: true });
+			}}
+		/>
+	);
 };

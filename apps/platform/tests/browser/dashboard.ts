@@ -234,6 +234,17 @@ try {
 	await page.screenshot({ path: `${output}/signup-1440.png`, fullPage: true });
 	signedOut = false;
 
+	// Legal pages render as routes of the SPA.
+	for (const [path, heading] of [
+		["/terms", "Terms of Service"],
+		["/privacy", "Privacy Policy"],
+		["/commerce", "特定商取引法に基づく表記"],
+	] as const) {
+		await page.goto(`${origin}${path}`);
+		await page.getByRole("heading", { name: heading, level: 1 }).waitFor();
+		await page.screenshot({ path: `${output}/legal${path.replace("/", "-")}.png`, fullPage: true });
+	}
+
 	await page.route("**/v1/demo/scrape", (route) =>
 		route.fulfill({
 			contentType: "application/json",

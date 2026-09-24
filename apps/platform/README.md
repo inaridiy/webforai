@@ -176,6 +176,17 @@ origins) and links to the platform docs. The header's "Docs" link opens the *pla
 docs (webforai.dev/platform); the footer links library, CLI, client and self-hosting docs.
 The URLs live in `src/client/lib/links.ts`.
 
+Accounts can be deleted from the dashboard (`POST /api/dashboard/account/delete` with
+`{ confirmEmail }`): unreported usage is sent to the Stripe meter and an active subscription is
+cancelled with an immediate final invoice first — if either fails, nothing is deleted — then
+the user's keys, jobs, usage, billing state, pending codes, sessions, linked accounts and user
+row go in one D1 batch; job archives in R2 are removed best-effort (the 7-day lifecycle catches
+the rest). Stripe keeps its invoices.
+
+Legal pages are SPA routes: `/terms`, `/privacy`, `/commerce` (特定商取引法に基づく表記),
+linked from the footer with `support@webforai.dev`. `public/` holds `og.png` (Open Graph image,
+tags in `index.html`) and `robots.txt`.
+
 The dashboard distinguishes empty jobs from failed requests and provides Retry. Usage and
 job responses are validated before rendering. Authentication outages keep the dashboard
 open with a retry action. Navigation wraps on small screens; API key copy failures provide

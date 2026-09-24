@@ -1,5 +1,9 @@
 # Platform Scope
 
+Revision note (2026-09-24, launch): Users can delete their account from the dashboard (billing
+settled first; a billing failure deletes nothing). Terms, privacy policy and 特定商取引法に基づく
+表記 ship as `/terms`, `/privacy`, `/commerce`; users are responsible for what they fetch, job
+contents are not inspected except to operate the service, results are deleted after 7 days.
 Revision note (2026-09-24, sign-in fixes): Resending within the validity window re-sends the
 same code (encrypted at rest, `resendStrategy: "reuse"`) after an owner report of a rotated
 code failing; optional Cloudflare Turnstile on code sending (captcha plugin); OAuth errors

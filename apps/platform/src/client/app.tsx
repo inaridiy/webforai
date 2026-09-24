@@ -7,6 +7,7 @@ import { useSession } from "./lib/use-session";
 import { LoginPage, SignupPage } from "./pages/auth";
 import { DashboardPage } from "./pages/dashboard";
 import { LandingPage } from "./pages/landing";
+import { LegalPage, isLegalPath } from "./pages/legal/legal-page";
 import { NotFoundPage } from "./pages/not-found";
 import { PlaygroundPage } from "./pages/playground";
 
@@ -23,7 +24,7 @@ const renderRoute = (path: string, session: SessionState, reloadSession: () => v
 		case "/playground":
 			return <PlaygroundPage session={session} />;
 		default:
-			return <NotFoundPage path={path} />;
+			return isLegalPath(path) ? <LegalPage path={path} /> : <NotFoundPage path={path} />;
 	}
 };
 
