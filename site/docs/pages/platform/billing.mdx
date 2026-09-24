@@ -14,7 +14,7 @@ amount; nothing else is counted — no per-seat pricing, no request tiers, no mi
 | scrape via `fetch` | 1 |
 | scrape via `proxy-fetch` | 2 |
 | scrape via `browser` | 2 |
-| scrape via `proxy-browser` | 10 |
+| scrape via `proxy-browser` | 3 |
 | `screenshot` option | +1 |
 | `rehostImages` option | +1 per started 5 images |
 
@@ -44,9 +44,9 @@ Each tier applies only to the credits inside it. 1,000 free credits is 1,000 `fe
 500 browser-rendered or `proxy-fetch` pages, every month. For example, 50,000 `auto` pages a
 month where 20% need a browser is 60,000 credits: 1,000 free + 59,000 × $0.001 = **$59**.
 
-Revision note (2026-09-24): prices lowered (`browser` 5→2 credits, $0.002 → from $0.001 per
-credit, free allowance 500→1,000) except `proxy-browser`, raised 5→10 credits because every
-subresource of its browser session crosses the paid proxy.
+Revision note (2026-09-24): prices lowered — `browser` 5→2 credits, `proxy-browser` 5→3,
+$0.002 → from $0.001 per credit, free allowance 500→1,000. Routing through the proxy adds one
+credit to either tier.
 
 ## How usage is counted
 

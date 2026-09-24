@@ -3,7 +3,7 @@ import { ENGINE_CREDITS, FREE_MONTHLY_CREDITS, PRICE_TIERS, creditsFor, monthlyC
 
 describe("credit schedule", () => {
 	it("prices each engine per the 2026-09-24 schedule", () => {
-		expect(ENGINE_CREDITS).toEqual({ fetch: 1, browser: 2, "proxy-fetch": 2, "proxy-browser": 10 });
+		expect(ENGINE_CREDITS).toEqual({ fetch: 1, browser: 2, "proxy-fetch": 2, "proxy-browser": 3 });
 		expect(creditsFor({ engine: "browser", screenshot: true, rehostedImages: 6 })).toBe(2 + 1 + 2);
 	});
 

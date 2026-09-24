@@ -5,15 +5,17 @@ import type { Engine } from "../core/types";
  * `docs/specs/platform/04_billing.md` mirrors this file, `scripts/stripe-setup.ts` builds the
  * Stripe price from `PRICE_TIERS`, and the landing page and dashboard render from it.
  *
- * Revised 2026-09-24 (owner decision, see 04_billing.md): browser 5→2, proxy-browser 5→10,
+ * Revised 2026-09-24 (owner decision, see 04_billing.md): browser 5→2, proxy-browser 5→3,
  * free allowance 500→1,000, per-credit price $0.002 → graduated $0.001 / $0.0007 / $0.0005.
  */
 export const ENGINE_CREDITS: Record<Engine, number> = {
 	fetch: 1,
 	browser: 2,
 	"proxy-fetch": 2,
-	// Priced for its cost: every subresource of a real browser session crosses the paid proxy.
-	"proxy-browser": 10,
+	// The proxy adds one credit to either tier (fetch 1 → 2, browser 2 → 3). The egress proxy is
+	// a flat monthly plan, so its marginal cost per page is tiny; its monthly bandwidth cap is
+	// the real limit (04_billing.md).
+	"proxy-browser": 3,
 };
 
 export const SCREENSHOT_CREDITS = 1;

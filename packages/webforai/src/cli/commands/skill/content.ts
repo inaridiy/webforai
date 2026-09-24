@@ -82,7 +82,7 @@ npx webforai https://example.com --engine auto --json
 \`\`\`
 
 \`WEBFORAI_PLATFORM_URL\` overrides the host for self-hosted deployments. Requests are metered
-in credits (fetch 1, browser 2, proxy-fetch 2, proxy-browser 10; \`auto\` bills the engine that
+in credits (fetch 1, browser 2, proxy-fetch 2, proxy-browser 3; \`auto\` bills the engine that
 actually ran); failures are never billed.
 
 ## Exit codes

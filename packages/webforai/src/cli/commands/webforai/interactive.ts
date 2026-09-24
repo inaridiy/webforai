@@ -17,7 +17,7 @@ const ENGINE_HINTS: Record<(typeof REQUESTED_ENGINES)[number], string> = {
 	fetch: "Plain fetch · 1 credit",
 	browser: "Browser rendering, screenshots · 2 credits",
 	"proxy-fetch": "Rotating-proxy egress · 2 credits",
-	"proxy-browser": "Browser rendering behind the proxy · 10 credits",
+	"proxy-browser": "Browser rendering behind the proxy · 3 credits",
 };
 
 const promptPlatformOptions = async (flags: CliFlags, env: Record<string, string | undefined>) => {

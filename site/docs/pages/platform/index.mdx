@@ -82,11 +82,11 @@ they egress through a proxy, and what they cost in credits.
 
 | engine | how it fetches | proxy | screenshot | credits |
 | --- | --- | --- | --- | --- |
-| `auto` (default) | Cheapest first, escalates to browser rendering when the page needs JavaScript | with region | yes | 1–2 (2–10 with a region) |
+| `auto` (default) | Cheapest first, escalates to browser rendering when the page needs JavaScript | with region | yes | 1–2 (2–3 with a region) |
 | `fetch` | Workers `fetch()` | no | no | 1 |
 | `browser` | Browser rendering | no | yes | 2 |
 | `proxy-fetch` | Plain fetch through a rotating proxy | yes | no | 2 |
-| `proxy-browser` | Browser rendering behind the rotating proxy | yes | yes | 10 |
+| `proxy-browser` | Browser rendering behind the rotating proxy | yes | yes | 3 |
 
 The default `auto` starts with a plain fetch and reruns in a browser only when the fetched HTML
 turns out to be a client-rendered shell (or an anti-bot interstitial) — you are billed for the

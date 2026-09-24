@@ -281,7 +281,7 @@ describe("auto engine", () => {
 
 		expect(engineCalls.map((call) => call.engine)).toEqual(["proxy-fetch", "proxy-browser"]);
 		expect(result.engine).toBe("proxy-browser");
-		expect(result.credits).toBe(10);
+		expect(result.credits).toBe(3);
 	});
 
 	it("starts at the browser when a screenshot is requested", async () => {

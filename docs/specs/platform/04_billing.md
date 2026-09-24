@@ -1,5 +1,13 @@
 # Billing
 
+Revision note (2026-09-24, correction): `proxy-browser` is 3 credits, not 10. The earlier
+note assumed a per-GB residential proxy (~$4/GB); the deployed egress proxy is a flat
+datacenter plan ($3.75/month, 100 IPs, 250 GB/month cap — about $0.015/GB), so proxy-browser
+costs about what `browser` does (~$0.2 per 1k pages). Routing through the proxy now adds one
+credit to either tier. The binding constraint is the monthly bandwidth cap: past it the
+provider stops the proxies, and every proxy engine (and region-pinned `auto`/demo) fails with
+`engine_failed`/`fetch_failed` until the cap resets — ~100k–250k proxy-browser pages or
+~2M proxy-fetch pages a month.
 Revision note (2026-09-24): Price schedule revised by owner decision after a competitor and
 unit-cost review (evidence in `.agents/execplans/2026-09-24-api-cost.md`): `browser` 5→2
 credits, `proxy-browser` 5→10 (its proxy bandwidth cost ~$5–10 per 1k pages exceeded the old
@@ -30,7 +38,7 @@ A single meter keeps Stripe simple while letting per-operation prices differ.
 | scrape via `fetch` | 1 |
 | scrape via `browser` | 2 |
 | scrape via `proxy-fetch` | 2 |
-| scrape via `proxy-browser` | 10 |
+| scrape via `proxy-browser` | 3 |
 | screenshot option | +1 |
 | image rehost | +1 per started 5 images |
 

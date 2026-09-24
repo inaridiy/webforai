@@ -118,7 +118,7 @@ dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer
 ## Billing model
 
 Single Stripe Billing Meter denominated in credits; the schedule and price tiers live in
-`src/billing/credits.ts` (`fetch` 1, `browser` 2, `proxy-fetch` 2, `proxy-browser` 10,
+`src/billing/credits.ts` (`fetch` 1, `browser` 2, `proxy-fetch` 2, `proxy-browser` 3,
 +1 screenshot, +1 per started 5 rehosted images; `PRICE_TIERS`). 1,000 credits/month free
 without a subscription; the metered subscription uses graduated tiers per calendar month —
 first 1,000 at $0, then $0.001, $0.0007 above 100k and $0.0005 above 1M credits. The landing
@@ -141,9 +141,9 @@ Stripe prices are immutable, so a new schedule is a new price under a versioned 
    New checkouts use the new price; credit counts per operation change for everyone at deploy.
 4. Move existing subscriptions to the new price at their next period boundary (Stripe
    Dashboard → subscription → update, or subscription schedules). Until moved they pay the
-   old per-credit rate on the new credit counts — for the 2026-09-24 change that makes
-   `proxy-browser` $0.02 a page on v1 ($0.002 × 10) instead of $0.01, while every other
-   engine gets cheaper. Archive the old price once no subscription uses it.
+   old per-credit rate on the new credit counts (for the 2026-09-24 change every engine is
+   still cheaper than before on v1, e.g. `browser` $0.004 instead of $0.01). Archive the old
+   price once no subscription uses it.
 
 ## Dashboard and job reliability
 

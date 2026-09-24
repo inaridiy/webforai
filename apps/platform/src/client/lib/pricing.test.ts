@@ -9,7 +9,7 @@ describe("pricing helpers", () => {
 		}
 		expect(usdPerThousandPages("fetch", first)).toBeCloseTo(1, 10);
 		expect(usdPerThousandPages("browser", first)).toBeCloseTo(2, 10);
-		expect(usdPerThousandPages("proxy-browser", first)).toBeCloseTo(10, 10);
+		expect(usdPerThousandPages("proxy-browser", first)).toBeCloseTo(3, 10);
 	});
 
 	it("formats dollars and sub-cent per-credit prices", () => {
