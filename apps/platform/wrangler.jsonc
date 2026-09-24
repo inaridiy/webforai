@@ -98,6 +98,8 @@
   ],
   "vars": {
     "BASE_URL": "https://platform.webforai.dev",
-    "STRIPE_METER_EVENT_NAME": "webforai_credits"
+    "STRIPE_METER_EVENT_NAME": "webforai_credits",
+    // Public Turnstile site key for the sign-in widget; the secret is TURNSTILE_SECRET_KEY.
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFCd0-SQiq76YgB7"
   }
 }
