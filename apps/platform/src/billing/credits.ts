@@ -1,14 +1,19 @@
 import type { Engine } from "../core/types";
 
 /**
- * Credit schedule — the single source of operation pricing.
- * `docs/specs/platform/04_billing.md` mirrors this table; update both together.
+ * Credit schedule and price tiers — the single source of operation pricing.
+ * `docs/specs/platform/04_billing.md` mirrors this file, `scripts/stripe-setup.ts` builds the
+ * Stripe price from `PRICE_TIERS`, and the landing page and dashboard render from it.
+ *
+ * Revised 2026-09-24 (owner decision, see 04_billing.md): browser 5→2, proxy-browser 5→10,
+ * free allowance 500→1,000, per-credit price $0.002 → graduated $0.001 / $0.0007 / $0.0005.
  */
 export const ENGINE_CREDITS: Record<Engine, number> = {
 	fetch: 1,
-	browser: 5,
+	browser: 2,
 	"proxy-fetch": 2,
-	"proxy-browser": 5,
+	// Priced for its cost: every subresource of a real browser session crosses the paid proxy.
+	"proxy-browser": 10,
 };
 
 export const SCREENSHOT_CREDITS = 1;
@@ -21,5 +26,38 @@ export const creditsFor = (params: { engine: Engine; screenshot: boolean; rehost
 	return ENGINE_CREDITS[params.engine] + screenshot + rehost;
 };
 
-/** Monthly free allowance for users without an active subscription. */
-export const FREE_MONTHLY_CREDITS = 500;
+export type PriceTier = {
+	/** Last credit of the calendar month this tier covers; `null` is unbounded. */
+	upTo: number | null;
+	/** Integer micro-dollars per credit, so the Stripe cents conversion is exact. */
+	microUsdPerCredit: number;
+};
+
+/** Graduated per-credit prices, per calendar month; the first tier is the free allowance. */
+export const PRICE_TIERS: readonly PriceTier[] = [
+	{ upTo: 1_000, microUsdPerCredit: 0 },
+	{ upTo: 100_000, microUsdPerCredit: 1_000 },
+	{ upTo: 1_000_000, microUsdPerCredit: 700 },
+	{ upTo: null, microUsdPerCredit: 500 },
+];
+
+/** Monthly free allowance for users without an active subscription — the $0 first tier. */
+export const FREE_MONTHLY_CREDITS = 1_000;
+
+export const usdPerCredit = (tier: PriceTier): number => tier.microUsdPerCredit / 1_000_000;
+
+/** What a month of `credits` costs under the graduated tiers, in dollars. */
+export const monthlyCostUsd = (credits: number): number => {
+	let micro = 0;
+	let floor = 0;
+	for (const tier of PRICE_TIERS) {
+		const ceiling = tier.upTo ?? Number.POSITIVE_INFINITY;
+		const inTier = Math.max(0, Math.min(credits, ceiling) - floor);
+		micro += inTier * tier.microUsdPerCredit;
+		floor = ceiling;
+		if (credits <= ceiling) {
+			break;
+		}
+	}
+	return micro / 1_000_000;
+};

@@ -6,18 +6,32 @@
  * Creates (or reuses) the credits meter, the platform product and the graduated metered
  * price, then prints the price id to store as a Worker secret. Nothing here is committed —
  * ids differ per deployment. Safe to re-run: every object is looked up first.
+ *
+ * The tiers come from `PRICE_TIERS` in `src/billing/credits.ts`. Stripe prices are immutable,
+ * so a schedule change ships as a new lookup key (`PRICE_LOOKUP_KEY`); the previous price is
+ * left alone for the subscriptions still on it (see the README's "Changing prices").
  */
 import Stripe from "stripe";
+import { PRICE_TIERS, type PriceTier } from "../src/billing/credits";
 
 const METER_EVENT_NAME = "webforai_credits";
 const PRODUCT_NAME = "webforai platform";
 /** Stable marker so re-runs find the objects this script created. */
 const MARKER_KEY = "webforai_platform";
-const PRICE_LOOKUP_KEY = "webforai_platform_credits";
-/** Credits included at $0 each month, mirroring FREE_MONTHLY_CREDITS. */
-const FREE_TIER_CREDITS = 500;
-/** $0.002 per credit, expressed in cents with decimals. */
-const UNIT_AMOUNT_DECIMAL = "0.2";
+/** Versioned with the price schedule; v1 (first 500 free, then $0.002) predates 2026-09-24. */
+const PRICE_LOOKUP_KEY = "webforai_platform_credits_v2";
+const PREVIOUS_LOOKUP_KEYS = ["webforai_platform_credits"];
+
+/** Stripe wants cents; micro-dollars / 10,000 is exact for every tier we define. */
+const toStripeTier = (tier: PriceTier): Stripe.PriceCreateParams.Tier => ({
+	// biome-ignore lint/style/useNamingConvention: Stripe API field name
+	up_to: tier.upTo ?? "inf",
+	...(tier.microUsdPerCredit === 0
+		? // biome-ignore lint/style/useNamingConvention: Stripe API field name
+			{ unit_amount: 0 }
+		: // biome-ignore lint/style/useNamingConvention: Stripe API field name
+			{ unit_amount_decimal: Stripe.Decimal.from(String(tier.microUsdPerCredit / 10_000)) }),
+});
 
 const log = (message: string): void => {
 	// biome-ignore lint/suspicious/noConsoleLog: this is a CLI script
@@ -83,10 +97,7 @@ const ensurePrice = async (stripe: Stripe, product: Stripe.Product, meterId: str
 		lookup_key: PRICE_LOOKUP_KEY,
 		billing_scheme: "tiered",
 		tiers_mode: "graduated",
-		tiers: [
-			{ up_to: FREE_TIER_CREDITS, unit_amount: 0 },
-			{ up_to: "inf", unit_amount_decimal: Stripe.Decimal.from(UNIT_AMOUNT_DECIMAL) },
-		],
+		tiers: PRICE_TIERS.map(toStripeTier),
 		recurring: { interval: "month", usage_type: "metered", meter: meterId },
 		metadata: { [MARKER_KEY]: "true" },
 	});
@@ -104,6 +115,7 @@ const main = async (): Promise<void> => {
 	const meter = await ensureMeter(stripe);
 	const product = await ensureProduct(stripe);
 	const price = await ensurePrice(stripe, product, meter.id);
+	const previous = await stripe.prices.list({ lookup_keys: PREVIOUS_LOOKUP_KEYS, active: true, limit: 10 });
 
 	log("");
 	log(`STRIPE_METERED_PRICE_ID=${price.id}`);
@@ -113,6 +125,10 @@ const main = async (): Promise<void> => {
 	log("  wrangler secret put STRIPE_SECRET_KEY");
 	log("  wrangler secret put STRIPE_WEBHOOK_SECRET   # from the endpoint below");
 	log("");
+	for (const old of previous.data) {
+		log(`Previous price ${old.id} (${old.lookup_key}) is still active: subscriptions on it keep the old`);
+		log('  rates until moved to the new price — see the README\'s "Changing prices".');
+	}
 	log("Create the webhook endpoint pointing at <BASE_URL>/api/auth/stripe/webhook with events:");
 	log("  checkout.session.completed, customer.subscription.created,");
 	log("  customer.subscription.updated, customer.subscription.deleted, invoice.payment_failed");

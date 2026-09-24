@@ -1,5 +1,12 @@
 # Billing
 
+Revision note (2026-09-24): Price schedule revised by owner decision after a competitor and
+unit-cost review (evidence in `.agents/execplans/2026-09-24-api-cost.md`): `browser` 5→2
+credits, `proxy-browser` 5→10 (its proxy bandwidth cost ~$5–10 per 1k pages exceeded the old
+price), free allowance 500→1,000 credits/month, per-credit price $0.002 → graduated
+$0.001 / $0.0007 above 100k / $0.0005 above 1M credits a month. Tiers now live in
+`PRICE_TIERS` (`src/billing/credits.ts`) and the setup script creates a new Stripe price under
+lookup key `webforai_platform_credits_v2`; v1 subscriptions stay on the old price until moved.
 Revision note (2026-09-06): Successful async usage uses a deterministic job/page identifier. A D1 batch atomically writes usage, counters, and an immutable completion marker; replay and concurrent attempts reuse that record. Sync usage retains ULIDs. This guarantees local accounting uniqueness; Stripe meter reconciliation still relies on the provider’s finite deduplication window, so it is not an unlimited exactly-once external billing guarantee.
 
 Revision note (2026-08-24): `engine: "auto"` (the new request default) has no price of its
@@ -21,9 +28,9 @@ A single meter keeps Stripe simple while letting per-operation prices differ.
 | operation | credits |
 |---|---|
 | scrape via `fetch` | 1 |
-| scrape via `browser` | 5 |
+| scrape via `browser` | 2 |
 | scrape via `proxy-fetch` | 2 |
-| scrape via `proxy-browser` | 5 |
+| scrape via `proxy-browser` | 10 |
 | screenshot option | +1 |
 | image rehost | +1 per started 5 images |
 
@@ -33,8 +40,18 @@ Batch/crawl bill per successfully converted page using the same schedule.
 
 - Meter: event_name `webforai_credits`, aggregation sum over `payload.value`,
   customer mapped by `payload.stripe_customer_id`.
-- Product "webforai platform" + Price: recurring monthly, usage-based on the meter,
-  graduated tiers — first 500 credits/month at $0, then $0.002/credit (tune later).
+- Product "webforai platform" + Price (lookup key `webforai_platform_credits_v2`): recurring
+  monthly, usage-based on the meter, graduated tiers from `PRICE_TIERS`:
+
+  | credits in the month | $ per credit |
+  |---|---|
+  | 1–1,000 | 0 (the free allowance) |
+  | 1,001–100,000 | 0.001 |
+  | 100,001–1,000,000 | 0.0007 |
+  | above 1,000,000 | 0.0005 |
+
+  Stripe prices are immutable: a schedule change is a new versioned lookup key, and existing
+  subscriptions are moved to it at a period boundary (README, "Changing prices").
 - Customer per user via Better Auth Stripe plugin (created on signup/first checkout).
 
 Revision note (2026-08-10): `@better-auth/stripe` models fixed plans only — no metered

@@ -18,12 +18,12 @@ CLI (`npx webforai <url> --engine auto`).
 
 ```bash
 # Markdown from a URL (sync; default engine "auto" — plain fetch, escalated to browser
-# rendering when the page turns out to be a client-side shell — 1 or 5 credits)
+# rendering when the page turns out to be a client-side shell — 1 or 2 credits)
 curl -X POST https://<your-host>/v1/scrape \
   -H "Authorization: Bearer wfa_..." -H "content-type: application/json" \
   -d '{ "url": "https://example.com/article" }'
 
-# Rendered in a real browser with screenshot (5+1 credits)
+# Rendered in a real browser with screenshot (2+1 credits)
 curl -X POST https://<your-host>/v1/scrape \
   -d '{ "url": "https://example.com", "engine": "browser", "screenshot": true }' ...
 
@@ -35,9 +35,9 @@ curl https://<your-host>/v1/jobs/<jobId>/results  # paged results
 ```
 
 Engines: `auto` (default — cheapest first, escalates to browser rendering on
-client-rendered shells, bills the engine that ran, 1–5 credits), `fetch` (Workers fetch,
-1 credit), `browser` (Browser Run rendering, 5, screenshots), `proxy-fetch` (rotating proxy
-via container, 2), `proxy-browser` (Playwright behind the proxy in container, 5,
+client-rendered shells, bills the engine that ran, 1–2 credits), `fetch` (Workers fetch,
+1 credit), `browser` (Browser Run rendering, 2, screenshots), `proxy-fetch` (rotating proxy
+via container, 2), `proxy-browser` (Playwright behind the proxy in container, 10,
 screenshots). Fetch-tier engines follow `<meta http-equiv="refresh">` redirect stubs like
 HTTP redirects (≤ 3 hops, SSRF-guarded, one operation). Responses carry a `warning` when a
 fetch-tier result looks like an unrendered shell. `rehostImages: true` re-uploads the page's images to R2 behind expiring signed URLs.
@@ -117,14 +117,33 @@ dashboard, then `curl -X POST localhost:5173/v1/scrape -H "Authorization: Bearer
 
 ## Billing model
 
-Single Stripe Billing Meter denominated in credits; the schedule lives in
-`src/billing/credits.ts` (`fetch` 1, `browser` 5, `proxy-fetch` 2, `proxy-browser` 5,
-+1 screenshot, +1 per started 5 rehosted images). 500 credits/month free without a subscription; the metered subscription uses
-graduated tiers (first 500 at $0, then per-credit). Usage is recorded in D1
+Single Stripe Billing Meter denominated in credits; the schedule and price tiers live in
+`src/billing/credits.ts` (`fetch` 1, `browser` 2, `proxy-fetch` 2, `proxy-browser` 10,
++1 screenshot, +1 per started 5 rehosted images; `PRICE_TIERS`). 1,000 credits/month free
+without a subscription; the metered subscription uses graduated tiers per calendar month —
+first 1,000 at $0, then $0.001, $0.0007 above 100k and $0.0005 above 1M credits. The landing
+page and dashboard render prices from the same file. Usage is recorded in D1
 (`usage_events`, ULID for sync requests or a deterministic job/page id) and mirrored to Stripe meter events with that id as the
 idempotency `identifier`; unreported rows are retried by a 15-minute cron, which reads them
 through a partial index (migration `0002`, index-only — apply it with `pnpm db:migrate:remote`
 before or after deploying).
+
+### Changing prices
+
+Stripe prices are immutable, so a new schedule is a new price under a versioned lookup key
+(`PRICE_LOOKUP_KEY` in `scripts/stripe-setup.ts`, currently `webforai_platform_credits_v2`):
+
+1. Edit `ENGINE_CREDITS` / `FREE_MONTHLY_CREDITS` / `PRICE_TIERS` (and bump the lookup key if
+   the tiers changed); update `docs/specs/platform/04_billing.md`.
+2. `STRIPE_SECRET_KEY=sk_... pnpm stripe:setup` creates the new price and prints its id; it
+   also lists older prices that are still active.
+3. `wrangler secret put STRIPE_METERED_PRICE_ID` with the new id, then `pnpm run deploy`.
+   New checkouts use the new price; credit counts per operation change for everyone at deploy.
+4. Move existing subscriptions to the new price at their next period boundary (Stripe
+   Dashboard → subscription → update, or subscription schedules). Until moved they pay the
+   old per-credit rate on the new credit counts — for the 2026-09-24 change that makes
+   `proxy-browser` $0.02 a page on v1 ($0.002 × 10) instead of $0.01, while every other
+   engine gets cheaper. Archive the old price once no subscription uses it.
 
 ## Dashboard and job reliability
 

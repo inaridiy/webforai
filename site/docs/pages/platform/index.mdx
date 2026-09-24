@@ -36,7 +36,7 @@ Try it without an account on the [live demo](/#demo), or read the full [API refe
 ## Quickstart
 
 1. **Create an account** at [platform.webforai.dev](https://platform.webforai.dev/signup) —
-   no card required, 500 credits per month are free.
+   no card required, 1,000 credits per month are free.
 2. **Mint an API key** on the [dashboard](https://platform.webforai.dev/dashboard). Keys look
    like `wfa_...` and are shown once at creation.
 3. **Send the first request** — with curl (above), the [TypeScript client](/platform/client),
@@ -82,11 +82,11 @@ they egress through a proxy, and what they cost in credits.
 
 | engine | how it fetches | proxy | screenshot | credits |
 | --- | --- | --- | --- | --- |
-| `auto` (default) | Cheapest first, escalates to browser rendering when the page needs JavaScript | with region | yes | 1–5 |
+| `auto` (default) | Cheapest first, escalates to browser rendering when the page needs JavaScript | with region | yes | 1–2 (2–10 with a region) |
 | `fetch` | Workers `fetch()` | no | no | 1 |
-| `browser` | Browser rendering | no | yes | 5 |
+| `browser` | Browser rendering | no | yes | 2 |
 | `proxy-fetch` | Plain fetch through a rotating proxy | yes | no | 2 |
-| `proxy-browser` | Browser rendering behind the rotating proxy | yes | yes | 5 |
+| `proxy-browser` | Browser rendering behind the rotating proxy | yes | yes | 10 |
 
 The default `auto` starts with a plain fetch and reruns in a browser only when the fetched HTML
 turns out to be a client-rendered shell (or an anti-bot interstitial) — you are billed for the
@@ -107,7 +107,7 @@ only exists after JavaScript runs.
 ## Accounts and pricing
 
 Accounts and API keys live on the [dashboard](https://platform.webforai.dev/dashboard); requests authenticate with
-`Authorization: Bearer wfa_...`. Usage is metered in credits with **500 credits per month free** —
+`Authorization: Bearer wfa_...`. Usage is metered in credits with **1,000 credits per month free** —
 see [Billing](/platform/billing) for the full schedule.
 
 ## Self-hosting

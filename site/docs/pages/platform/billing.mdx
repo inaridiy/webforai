@@ -13,14 +13,14 @@ amount; nothing else is counted — no per-seat pricing, no request tiers, no mi
 | --- | --- |
 | scrape via `fetch` | 1 |
 | scrape via `proxy-fetch` | 2 |
-| scrape via `proxy-browser` | 5 |
-| scrape via `browser` | 5 |
+| scrape via `browser` | 2 |
+| scrape via `proxy-browser` | 10 |
 | `screenshot` option | +1 |
 | `rehostImages` option | +1 per started 5 images |
 
 The default [`auto` engine](/platform/api-reference#the-auto-engine) has no price of its own: the
 operation bills the engine that actually produced the result (so 1 credit when a plain fetch
-sufficed, 5 when the page needed browser rendering), and only that engine.
+sufficed, 2 when the page needed browser rendering), and only that engine.
 
 Batch and crawl jobs bill **per successfully converted page** using the same schedule. A page that
 fails is not billed, and neither is a request that errors before the conversion runs.
@@ -30,12 +30,23 @@ The schedule is a single source of truth in the codebase
 
 ## Price
 
-- **500 credits per month free** — no subscription, no card.
-- Beyond that, a metered monthly subscription with graduated tiers: the first 500 credits at $0,
-  then **$0.002 per credit**.
+- **1,000 credits per month free** — no subscription, no card.
+- Beyond that, a metered monthly subscription with graduated tiers per calendar month:
 
-500 free credits is 500 `fetch` scrapes, 250 `proxy-fetch` scrapes, or 100 browser-rendered pages
-every month.
+| credits in the month | price per credit | per 1,000 `fetch` pages | per 1,000 `browser` pages |
+| --- | --- | --- | --- |
+| first 1,000 | free | free | free |
+| 1,001 – 100,000 | **$0.001** | $1.00 | $2.00 |
+| 100,001 – 1,000,000 | $0.0007 | $0.70 | $1.40 |
+| above 1,000,000 | $0.0005 | $0.50 | $1.00 |
+
+Each tier applies only to the credits inside it. 1,000 free credits is 1,000 `fetch` scrapes, or
+500 browser-rendered or `proxy-fetch` pages, every month. For example, 50,000 `auto` pages a
+month where 20% need a browser is 60,000 credits: 1,000 free + 59,000 × $0.001 = **$59**.
+
+Revision note (2026-09-24): prices lowered (`browser` 5→2 credits, $0.002 → from $0.001 per
+credit, free allowance 500→1,000) except `proxy-browser`, raised 5→10 credits because every
+subresource of its browser session crosses the paid proxy.
 
 ## How usage is counted
 

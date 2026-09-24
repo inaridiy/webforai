@@ -13,11 +13,11 @@ import { type CliFlags, resolveRunOptions } from "./options";
 import { executeRun, writeOutputFile } from "./run";
 
 const ENGINE_HINTS: Record<(typeof REQUESTED_ENGINES)[number], string> = {
-	auto: "Cheapest first, renders when the page needs JavaScript · 1–5 credits",
+	auto: "Cheapest first, renders when the page needs JavaScript · 1–2 credits",
 	fetch: "Plain fetch · 1 credit",
-	browser: "Browser rendering, screenshots · 5 credits",
+	browser: "Browser rendering, screenshots · 2 credits",
 	"proxy-fetch": "Rotating-proxy egress · 2 credits",
-	"proxy-browser": "Browser rendering behind the proxy · 5 credits",
+	"proxy-browser": "Browser rendering behind the proxy · 10 credits",
 };
 
 const promptPlatformOptions = async (flags: CliFlags, env: Record<string, string | undefined>) => {

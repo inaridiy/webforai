@@ -46,8 +46,8 @@ describe("credits", () => {
 	it("prices engines and options", () => {
 		expect(creditsFor({ engine: "fetch", screenshot: false, rehostedImages: 0 })).toBe(1);
 		expect(creditsFor({ engine: "proxy-fetch", screenshot: false, rehostedImages: 0 })).toBe(2);
-		expect(creditsFor({ engine: "browser", screenshot: true, rehostedImages: 0 })).toBe(6);
-		expect(creditsFor({ engine: "proxy-browser", screenshot: true, rehostedImages: 7 })).toBe(8);
+		expect(creditsFor({ engine: "browser", screenshot: true, rehostedImages: 0 })).toBe(3);
+		expect(creditsFor({ engine: "proxy-browser", screenshot: true, rehostedImages: 7 })).toBe(13);
 	});
 });
 

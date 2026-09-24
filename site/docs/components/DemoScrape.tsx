@@ -311,7 +311,7 @@ const ErrorView = ({
 				href={`${PLATFORM_ORIGIN}/signup`}
 				className="mt-2 rounded-lg bg-accent px-4 py-2 font-medium text-[14px] text-accent-foreground hover:opacity-90"
 			>
-				Create a free account — 500 credits / month
+				Create a free account — 1,000 credits / month
 			</a>
 		</div>
 	) : (
@@ -450,7 +450,7 @@ export const DemoScrape = () => {
 			<div className="border-border border-t bg-muted/40 px-4 py-2 text-[12px] text-muted-foreground">
 				Public demo · 5 conversions / 10 min · <span className="font-mono">auto</span> engine · no API key needed ·{" "}
 				<a href={`${PLATFORM_ORIGIN}/signup`} className="text-accent">
-					free account: 500 credits / month →
+					free account: 1,000 credits / month →
 				</a>
 			</div>
 		</div>

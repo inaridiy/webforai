@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { FREE_MONTHLY_CREDITS } from "../../billing/credits";
 import { authClient, authErrorMessage } from "../lib/auth-client";
 import { Link, navigate } from "../lib/router";
 import { Alert } from "../ui/alert";
@@ -30,7 +31,7 @@ const copy: Record<
 	},
 	signup: {
 		title: "Create account",
-		description: "500 credits per month, no card required to start.",
+		description: `${FREE_MONTHLY_CREDITS.toLocaleString("en-US")} free credits every month, no card required to start.`,
 		submit: "Create account",
 		alt: "Already registered?",
 		altHref: "/login",

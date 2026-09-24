@@ -42,7 +42,7 @@ const ways: Way[] = [
 		id: "platform",
 		title: "Hosted API",
 		snippet: "POST /v1/scrape",
-		body: "We run the browsers, proxies and queues: scrape, batch and crawl over HTTP. 500 free credits every month.",
+		body: "We run the browsers, proxies and queues: scrape, batch and crawl over HTTP. 1,000 free credits every month.",
 		primary: { text: "Open platform", href: PLATFORM_ORIGIN },
 		secondary: { text: "Platform docs", href: "/platform" },
 	},

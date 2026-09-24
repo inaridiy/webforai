@@ -168,7 +168,7 @@ describe("scrapePage", () => {
 
 		expect(result.screenshotUrl).toBe("https://cdn.example.com/shot.png");
 		expect(calls).toEqual([{ kind: "screenshot", hint: "https://example.com/article", bytes: 5 }]);
-		expect(result.credits).toBe(6);
+		expect(result.credits).toBe(3);
 	});
 
 	it("fails loudly when a screenshot engine returns no screenshot", async () => {
@@ -267,7 +267,7 @@ describe("auto engine", () => {
 
 		expect(engineCalls.map((call) => call.engine)).toEqual(["fetch", "browser"]);
 		expect(result.engine).toBe("browser");
-		expect(result.credits).toBe(5);
+		expect(result.credits).toBe(2);
 		expect(result.markdown).toContain("First paragraph");
 		expect(result.warning).toBeUndefined();
 	});
@@ -281,7 +281,7 @@ describe("auto engine", () => {
 
 		expect(engineCalls.map((call) => call.engine)).toEqual(["proxy-fetch", "proxy-browser"]);
 		expect(result.engine).toBe("proxy-browser");
-		expect(result.credits).toBe(5);
+		expect(result.credits).toBe(10);
 	});
 
 	it("starts at the browser when a screenshot is requested", async () => {
@@ -295,7 +295,7 @@ describe("auto engine", () => {
 
 		expect(engineCalls).toEqual([]);
 		expect(result.engine).toBe("browser");
-		expect(result.credits).toBe(6);
+		expect(result.credits).toBe(3);
 		expect(result.screenshotUrl).toBe("https://cdn.example.com/shot.png");
 	});
 
@@ -449,7 +449,7 @@ describe("auto engine: failure escalation", () => {
 
 		expect(engineCalls.map((call) => call.engine)).toEqual(["fetch", "browser"]);
 		expect(result.engine).toBe("browser");
-		expect(result.credits).toBe(5);
+		expect(result.credits).toBe(2);
 		expect(result.markdown).toContain("First paragraph");
 	});
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ENGINE_CREDITS } from "../../billing/credits";
 import { MarkdownPanes } from "../components/markdown-panes";
 import { type PlaygroundRequest, type PlaygroundResult, type Result, runPlaygroundScrape } from "../lib/api";
 import { cn } from "../lib/cn";
@@ -22,14 +23,17 @@ const ENGINE_OPTIONS: SelectOption[] = [
 ];
 
 /** Shown under the engine select so the cost is visible before pressing Run. */
+const credits = (engine: keyof typeof ENGINE_CREDITS): string =>
+	`${ENGINE_CREDITS[engine]} credit${ENGINE_CREDITS[engine] === 1 ? "" : "s"}`;
+
 const ENGINE_HINTS: Record<string, string> = {
-	auto: "Cheapest first, renders when the page needs JavaScript or blocks fetches · 1–5 credits",
-	fetch: "Plain fetch · 1 credit",
-	browser: "Browser rendering · 5 credits",
+	auto: `Cheapest first, renders when the page needs JavaScript or blocks fetches · ${ENGINE_CREDITS.fetch}–${ENGINE_CREDITS.browser} credits (${ENGINE_CREDITS["proxy-fetch"]}–${ENGINE_CREDITS["proxy-browser"]} with a region)`,
+	fetch: `Plain fetch · ${credits("fetch")}`,
+	browser: `Browser rendering · ${credits("browser")}`,
 	// biome-ignore lint/style/useNamingConvention: engine ids are kebab-case API values
-	"proxy-fetch": "Rotating-proxy egress · 2 credits",
+	"proxy-fetch": `Rotating-proxy egress · ${credits("proxy-fetch")}`,
 	// biome-ignore lint/style/useNamingConvention: engine ids are kebab-case API values
-	"proxy-browser": "Headless browser via proxy · 5 credits",
+	"proxy-browser": `Headless browser via proxy · ${credits("proxy-browser")}`,
 };
 
 const REGION_OPTIONS: SelectOption[] = [
