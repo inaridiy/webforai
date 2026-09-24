@@ -53,8 +53,10 @@ const engineSchema = z.enum(REQUESTED_ENGINES).default("auto");
  * region is a documented no-op rather than a validation error, so a client can set one default
  * for a mixed-engine workload.
  *
- * `respectRobotsTxt` is opt-in: when set, each URL is checked against its site's robots.txt
- * before any engine runs, and a disallowed URL fails with `robots_disallowed`.
+ * `respectRobotsTxt`: when set, each URL is checked against its site's robots.txt before any
+ * engine runs, and a disallowed URL fails with `robots_disallowed`. Off by default for scrape
+ * and batch (URLs the caller chose); on by default for crawl (URLs the platform discovers),
+ * where `false` turns it off.
  */
 const commonFields = {
 	engine: engineSchema,
@@ -113,6 +115,7 @@ export const crawlBodySchema = z
 		// asks for it from believing it was honoured.
 		sameOrigin: z.literal(true).default(true),
 		...commonFields,
+		respectRobotsTxt: z.boolean().default(true),
 	})
 	.strict()
 	.superRefine(requireScreenshotCapableEngine);

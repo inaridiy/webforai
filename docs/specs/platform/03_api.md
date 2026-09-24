@@ -1,5 +1,10 @@
 # Platform API
 
+Revision note (2026-09-24, robots default): `respectRobotsTxt` now defaults to `true` for
+`/v1/crawl` (still `false` for scrape and batch); callers may pass `false`. Owner decision after
+comparing Firecrawl (crawl honors robots.txt by default, overridable only on Enterprise;
+single scrape does not check) — same visible default, no plan gating. Crawl jobs stored
+before this change carry no value and keep running with `false`.
 Revision note (2026-09-24, robots): Added the opt-in `respectRobotsTxt` boolean (default
 `false`, unchanged behaviour) to scrape, batch and crawl — not the demo. When true, each URL is
 checked against `<origin>/robots.txt` before any engine runs (all engines, `auto` escalation
@@ -109,7 +114,8 @@ both rerunning on the browser sibling:
 
 ### robots.txt option
 
-`respectRobotsTxt: true` honors the target site's robots.txt rules. Off by default. When on:
+`respectRobotsTxt: true` honors the target site's robots.txt rules. Default: `false` for scrape
+and batch, `true` for crawl. When on:
 
 - Before any engine runs, the Worker fetches `<origin>/robots.txt` (Workers `fetch` with
   `cf: { cacheTtl: 3600, cacheEverything: true }`, so repeat checks hit Cloudflare's edge
@@ -153,7 +159,7 @@ Limits: ≤100 URLs per job (initial). Returns `202 { "jobId": "job_..." }`.
   "includePaths": ["^/docs"],   // regex on pathname, optional
   "excludePaths": [],
   "sameOrigin": true,            // fixed true initially
-  "screenshot": false, "rehostImages": false, "region": "auto", "respectRobotsTxt": false,
+  "screenshot": false, "rehostImages": false, "region": "auto", "respectRobotsTxt": true,
   "convert": { }
 }
 ```

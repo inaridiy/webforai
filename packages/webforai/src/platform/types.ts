@@ -44,7 +44,8 @@ interface CommonRequestOptions {
 	region?: Region;
 	/**
 	 * Honor the target site's robots.txt rules: each URL is checked before it is fetched, and a
-	 * disallowed URL fails with `robots_disallowed` (never billed). Defaults to `false`.
+	 * disallowed URL fails with `robots_disallowed` (never billed). Defaults to `false` for
+	 * scrape and batch and to `true` for crawl (pass `false` to turn it off).
 	 */
 	respectRobotsTxt?: boolean;
 	convert?: ConvertOptions;

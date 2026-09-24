@@ -55,7 +55,9 @@ workload. Other values are rejected with `400 invalid_request`. Pricing is unaff
 ## robots.txt
 
 `respectRobotsTxt` is an optional boolean on `/v1/scrape`, `/v1/batch` and `/v1/crawl`
-(not the demo). It defaults to `false`: the platform does not read robots.txt unless asked.
+(not the demo). For scrape and batch — URLs you chose — it defaults to `false`. For crawl —
+URLs the platform discovers by following links — it defaults to `true`; send `false` to crawl
+without reading robots.txt.
 
 When `true`, the platform honors the target site's robots.txt rules. Before any engine runs, it
 reads `<origin>/robots.txt` and applies the group for the `webforai-platform` user-agent token,
@@ -159,7 +161,7 @@ Asynchronous, a list of URLs. Limit: **100 URLs per job**.
   "region": "auto",
   "screenshot": false,
   "rehostImages": false,
-  "respectRobotsTxt": false,
+  "respectRobotsTxt": true,      // default for crawl; false skips robots.txt
   "convert": {}
 }
 ```
@@ -329,6 +331,7 @@ curl -X POST https://platform.webforai.dev/v1/demo/scrape \
 - **SSRF guard**: public `http(s)` URLs only. Private IP ranges, localhost and non-standard ports
   are rejected at validation time for every engine, and re-checked inside the container fetcher —
   redirect targets included.
-- **robots.txt**: only checked when `respectRobotsTxt` is `true`; see [robots.txt](#robotstxt).
+- **robots.txt**: checked when `respectRobotsTxt` is `true` — the default for crawl only; see
+  [robots.txt](#robotstxt).
 - **Rate limits**: per-key requests per minute, plus the job-level caps above (≤100 URLs per
   batch, ≤5 crawl depth, ≤500 crawl pages). The public demo endpoint is limited per IP instead.

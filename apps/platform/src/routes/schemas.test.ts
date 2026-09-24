@@ -63,13 +63,17 @@ describe("scrape body", () => {
 		expect(scrapeBodySchema.safeParse({ url: "https://example.com", maxDepth: 3 }).success).toBe(false);
 	});
 
-	it("accepts respectRobotsTxt as an opt-in boolean on scrape, batch and crawl", () => {
+	it("defaults respectRobotsTxt off for scrape and batch and on for crawl", () => {
 		expect(scrapeBodySchema.parse({ url: "https://example.com/a", respectRobotsTxt: true }).respectRobotsTxt).toBe(
 			true,
 		);
 		expect(batchBodySchema.parse({ urls: [url(1)] }).respectRobotsTxt).toBe(false);
 		expect(batchBodySchema.parse({ urls: [url(1)], respectRobotsTxt: true }).respectRobotsTxt).toBe(true);
-		expect(crawlBodySchema.parse({ url: "https://example.com/" }).respectRobotsTxt).toBe(false);
+		// Crawls honor robots.txt unless the caller turns it off.
+		expect(crawlBodySchema.parse({ url: "https://example.com/" }).respectRobotsTxt).toBe(true);
+		expect(crawlBodySchema.parse({ url: "https://example.com/", respectRobotsTxt: false }).respectRobotsTxt).toBe(
+			false,
+		);
 		expect(crawlBodySchema.parse({ url: "https://example.com/", respectRobotsTxt: true }).respectRobotsTxt).toBe(true);
 		expect(scrapeBodySchema.safeParse({ url: "https://example.com/a", respectRobotsTxt: "yes" }).success).toBe(false);
 	});

@@ -102,7 +102,8 @@ only exists after JavaScript runs.
   Browser engines only (`browser`, `proxy-browser`).
 - `rehostImages` — downloads the images referenced by the resulting Markdown, re-uploads them to
   R2 with a TTL, and rewrites the Markdown to point at those copies.
-- `respectRobotsTxt` — honor the target site's robots.txt rules. Off by default; when on, a URL
+- `respectRobotsTxt` — honor the target site's robots.txt rules. Off by default for scrape and
+  batch, on by default for crawl (send `false` to turn it off); when on, a URL
   the rules disallow fails with `robots_disallowed` and is not billed. See
   [the API reference](/platform/api-reference#robotstxt).
 - `convert` — extraction options passed straight through to webforai (`extractor` preset,
