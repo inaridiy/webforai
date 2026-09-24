@@ -1,5 +1,8 @@
 # Platform API
 
+Revision note (2026-09-24, cache): Successful demo responses are cached for 10 minutes per
+data center (Workers Cache API) by normalized URL + region; a hit answers before the rate
+limiter, carries `X-Demo-Cache: hit`, and neither scrapes nor counts against the limits.
 Revision note (2026-09-24, later): Demo truncation limit raised from 8000 to 40,000
 characters (owner request: 8000 showed ~15% of a Wikipedia article, too little to judge
 quality). Conversion already ran on the whole page, so only response size grows; the per-IP
@@ -176,6 +179,10 @@ showing an empty body), no screenshot, no image rehosting, default conversion.
   "title": "...",               // when the page has one
   "metadata": { "title": "..." } }
 ```
+
+Successful responses are cached for 10 minutes per data center, keyed by the normalized URL
+(fragment dropped) and region. A cache hit is answered first — `X-Demo-Cache: hit`, no scrape,
+no rate-limit count — so the docs site's example buttons do not re-run the engines.
 
 Rate limits (KV counters checked *before* the proxy runs, so a rejection costs nothing;
 fail-closed — a KV failure denies rather than allows):

@@ -49,7 +49,8 @@ Full contract: `docs/specs/platform/03_api.md`.
 cut near 40,000 chars at a paragraph boundary with an in-markdown notice) behind both the
 docs-site demo and the platform landing's own
 "Live demo" section (raw Markdown + rendered preview side by side; the response names the
-engine `auto` resolved to, which both demos display), limited to 5 requests /
+engine `auto` resolved to, which both demos display; identical URL + region requests are
+served from a 10-minute cache without counting), limited to 5 requests /
 10 min per IP and 500 / day globally:
 
 ```bash

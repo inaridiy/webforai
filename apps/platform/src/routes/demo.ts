@@ -70,8 +70,32 @@ export interface DemoKv {
 	put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
 }
 
+/**
+ * Recent demo results by URL + region. The docs site's example buttons send the same few URLs
+ * over and over; a hit skips the scrape and the rate limiter alike (it costs nothing to serve).
+ * Optional so a deployment or test without a cache simply always scrapes.
+ */
+export interface DemoCache {
+	get(key: string): Promise<DemoResponse | undefined>;
+	put(key: string, value: DemoResponse): Promise<void>;
+}
+
+/** Long enough to absorb bursts on the example URLs, short enough that results stay current. */
+export const DEMO_CACHE_TTL_SECONDS = 10 * 60;
+
+/**
+ * A URL, because that is what the Cache API keys on: this deployment's own origin (the cache is
+ * scoped to its zone) plus the normalized target — fragment dropped, host lowercased by `URL`.
+ */
+export const demoCacheKey = (origin: string, url: string, region: Region): string => {
+	const target = new URL(url);
+	target.hash = "";
+	return `${origin}/v1/demo/scrape/cache?region=${region}&url=${encodeURIComponent(target.href)}`;
+};
+
 export interface DemoDeps {
 	kv: DemoKv;
+	cache?: DemoCache;
 	/** Gates the whole endpoint: without a configured proxy there is no demo to serve. */
 	proxyEnabled: boolean;
 	/** Runs the fixed demo scrape. Injected so tests exercise the limiter without proxy egress. */
@@ -298,6 +322,13 @@ export const demoRoutes = (createDeps: DemoDepsFactory) => {
 			throw new EngineUnavailableError("proxy-fetch", "geo-targeted demo requests require a configured proxy");
 		}
 
+		const cacheKey = demoCacheKey(new URL(c.req.url).origin, body.url, body.region);
+		const cached = await deps.cache?.get(cacheKey).catch(() => undefined);
+		if (cached) {
+			c.header("X-Demo-Cache", "hit");
+			return c.json(cached);
+		}
+
 		const now = deps.now();
 		const decision = await checkDemoLimits(deps, demoLimitsFor(demoClientIp(c.req.raw.headers), now), now);
 		if (!decision.allowed) {
@@ -321,6 +352,8 @@ export const demoRoutes = (createDeps: DemoDepsFactory) => {
 			...(typeof title === "string" ? { title } : {}),
 			metadata: result.metadata,
 		};
+		// A cache that cannot be written only costs a future scrape; never the response.
+		await deps.cache?.put(cacheKey, response).catch(() => undefined);
 		return c.json(response);
 	});
 

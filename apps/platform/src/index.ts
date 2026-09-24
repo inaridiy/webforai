@@ -15,7 +15,7 @@ import { CrawlWorkflow } from "./jobs/workflow";
 import { artifactRoutes } from "./routes/artifacts";
 import { dashboardRoutes } from "./routes/dashboard";
 import { dashboardJobsRoutes } from "./routes/dashboard-jobs";
-import { type DemoDeps, demoRoutes } from "./routes/demo";
+import { DEMO_CACHE_TTL_SECONDS, type DemoCache, type DemoDeps, type DemoResponse, demoRoutes } from "./routes/demo";
 import { onPlatformError } from "./routes/errors";
 import { playgroundRoutes } from "./routes/playground";
 import { v1Routes } from "./routes/v1";
@@ -61,11 +61,33 @@ app.route("/api/dashboard", playgroundRoutes());
  * Real dependencies for the public demo. Built here rather than in `routes/demo.ts` so that
  * module stays free of the Workers-only engine imports and can be unit-tested.
  */
+/**
+ * The Workers default cache. The single tsconfig also serves the SPA and includes the DOM lib,
+ * whose `CacheStorage` has no Workers-only `default`.
+ */
+const workersCache = (): Cache => (caches as unknown as { default: Cache }).default;
+
+/** The demo cache on the Workers Cache API: per data center, expiring by `Cache-Control`. */
+const demoCache: DemoCache = {
+	get: async (key) => {
+		const hit = await workersCache().match(key);
+		return hit ? ((await hit.json()) as DemoResponse) : undefined;
+	},
+	put: (key, value) =>
+		workersCache().put(
+			key,
+			new Response(JSON.stringify(value), {
+				headers: { "content-type": "application/json", "cache-control": `max-age=${DEMO_CACHE_TTL_SECONDS}` },
+			}),
+		),
+};
+
 const demoDeps = (env: Env): DemoDeps => {
 	const config = loadConfig(env);
 	const scrape = { engines: createEngines(env, config), artifacts: createArtifactStore(env, config) };
 	return {
 		kv: env.JOBS_KV,
+		cache: demoCache,
 		proxyEnabled: config.proxyEnabled,
 		runScrape: (request) => scrapePage(scrape, request),
 		now: () => new Date(),

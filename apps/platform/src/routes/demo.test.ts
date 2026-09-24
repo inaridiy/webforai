@@ -8,8 +8,10 @@ import {
 	DEMO_IP_LIMIT,
 	DEMO_IP_WINDOW_SECONDS,
 	DEMO_MARKDOWN_LIMIT,
+	type DemoCache,
 	type DemoDeps,
 	type DemoKv,
+	type DemoResponse,
 	demoClientIp,
 	demoGlobalKey,
 	demoIpKey,
@@ -130,6 +132,44 @@ describe("demo scrape", () => {
 			title: "Demo page",
 			metadata: { title: "Demo page" },
 		});
+	});
+
+	it("serves a repeated URL from the cache without scraping or spending the rate limit", async () => {
+		const store = new Map<string, DemoResponse>();
+		const cache: DemoCache = {
+			get: (key) => Promise.resolve(store.get(key)),
+			put: (key, value) => {
+				store.set(key, value);
+				return Promise.resolve();
+			},
+		};
+		const { app, requests, kv } = harness({ cache });
+
+		const first = await post(app, { url: "https://example.com/a#section", region: "auto" });
+		const writesAfterFirst = kv.store.size;
+		const second = await post(app, { url: "https://example.com/a", region: "auto" });
+
+		expect(requests).toHaveLength(1);
+		expect(second.headers.get("x-demo-cache")).toBe("hit");
+		expect(await second.json()).toEqual(await first.json());
+		expect(JSON.parse(kv.store.get(demoIpKey("203.0.113.7"))?.value ?? "{}")).toMatchObject({ count: 1 });
+		expect(kv.store.size).toBe(writesAfterFirst);
+
+		await post(app, { url: "https://example.com/a", region: "jp" });
+		expect(requests).toHaveLength(2);
+	});
+
+	it("still answers when the cache fails", async () => {
+		const cache: DemoCache = {
+			get: () => Promise.reject(new Error("cache down")),
+			put: () => Promise.reject(new Error("cache down")),
+		};
+		const { app, requests } = harness({ cache });
+
+		const response = await post(app, { url: "https://example.com/a" });
+
+		expect(response.status).toBe(200);
+		expect(requests).toHaveLength(1);
 	});
 
 	it("defaults the region to auto", async () => {
