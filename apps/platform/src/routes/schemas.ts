@@ -52,12 +52,16 @@ const engineSchema = z.enum(REQUESTED_ENGINES).default("auto");
  * `region` is accepted for every engine but only the proxy engines can act on it; an ignored
  * region is a documented no-op rather than a validation error, so a client can set one default
  * for a mixed-engine workload.
+ *
+ * `respectRobotsTxt` is opt-in: when set, each URL is checked against its site's robots.txt
+ * before any engine runs, and a disallowed URL fails with `robots_disallowed`.
  */
 const commonFields = {
 	engine: engineSchema,
 	screenshot: z.boolean().default(false),
 	rehostImages: z.boolean().default(false),
 	region: z.enum(REGIONS).default("auto"),
+	respectRobotsTxt: z.boolean().default(false),
 	convert: convertSchema,
 };
 

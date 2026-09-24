@@ -40,6 +40,7 @@ export const playgroundRoutes = () => {
 			screenshot: body.screenshot,
 			rehostImages: body.rehostImages,
 			region: body.region,
+			respectRobotsTxt: body.respectRobotsTxt,
 			convert: body.convert,
 		};
 		const result = await runSyncScrape(c, config, { userId: sessionUser.id, request });

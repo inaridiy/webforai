@@ -3,6 +3,8 @@ import { minimalFilter, takumiExtractor } from "webforai";
 
 import type { ArtifactStore } from "../artifacts/store";
 import type { FetchLike } from "./rehost";
+import { ALLOW_ALL, parseRobotsTxt } from "./robots";
+import type { RobotsTxtLoader } from "./robots-fetch";
 import { type ScrapeDeps, resolveExtractors, scrapePage } from "./scrape-core";
 import {
 	type Engine,
@@ -528,5 +530,94 @@ describe("auto engine: failure escalation", () => {
 		expect(result.engine).toBe("browser");
 		const browserCall = engineCalls.find((call) => call.engine === "browser");
 		expect(browserCall?.params.url).toBe("https://example.com/article");
+	});
+});
+
+describe("respectRobotsTxt", () => {
+	const robotsLoader = (text: string) => {
+		const calls: string[] = [];
+		const load: RobotsTxtLoader = (target) => {
+			calls.push(target.href);
+			return Promise.resolve(parseRobotsTxt(text));
+		};
+		return { load, calls };
+	};
+
+	const withRobots = (engines: EngineSet, artifacts: ArtifactStore, robotsTxt: RobotsTxtLoader): ScrapeDeps => ({
+		...deps(engines, artifacts),
+		robotsTxt,
+	});
+
+	it("never loads robots.txt when the option is off, even for a disallowed URL", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines();
+		const robots = robotsLoader("User-agent: *\nDisallow: /");
+
+		for (const respectRobotsTxt of [undefined, false]) {
+			const result = await scrapePage(withRobots(engines, artifacts, robots.load), request({ respectRobotsTxt }));
+			expect(result.markdown).toContain("First paragraph");
+		}
+		expect(robots.calls).toEqual([]);
+	});
+
+	it.each(["fetch", "browser", "proxy-fetch", "proxy-browser", "auto"] as const)(
+		"rejects a disallowed URL with robots_disallowed before engine %s runs",
+		async (engine) => {
+			const { artifacts } = fakeArtifacts();
+			const engines = fakeEngines();
+			const robots = robotsLoader("User-agent: *\nDisallow: /article");
+
+			const failure = scrapePage(
+				withRobots(engines, artifacts, robots.load),
+				request({ engine, respectRobotsTxt: true }),
+			);
+
+			await expect(failure).rejects.toBeInstanceOf(PlatformError);
+			await expect(failure).rejects.toMatchObject({ code: "robots_disallowed", status: 403 });
+			expect(engineCalls).toHaveLength(0);
+			expect(robots.calls).toEqual(["https://example.com/article"]);
+		},
+	);
+
+	it("fetches an allowed URL normally, checking robots.txt once", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines();
+		const robots = robotsLoader("User-agent: *\nDisallow: /article\n\nUser-agent: webforai-platform\nAllow: /");
+
+		const result = await scrapePage(
+			withRobots(engines, artifacts, robots.load),
+			request({ engine: "auto", respectRobotsTxt: true }),
+		);
+
+		expect(result.markdown).toContain("First paragraph");
+		expect(robots.calls).toHaveLength(1);
+		expect(engineCalls.map((call) => call.engine)).toEqual(["fetch"]);
+	});
+
+	it("checks a meta-refresh hop target too and stops before fetching it", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines({ fetch: stubServingEngine("fetch", { "/article": "/ja/" }) });
+		const robots = robotsLoader("User-agent: *\nDisallow: /ja/");
+
+		const failure = scrapePage(
+			withRobots(engines, artifacts, robots.load),
+			request({ engine: "auto", respectRobotsTxt: true }),
+		);
+
+		await expect(failure).rejects.toMatchObject({ code: "robots_disallowed", status: 403 });
+		expect(engineCalls.map((call) => [call.engine, call.params.url])).toEqual([
+			["fetch", "https://example.com/article"],
+		]);
+		expect(robots.calls).toEqual(["https://example.com/article", "https://example.com/ja/"]);
+	});
+
+	it("treats an unavailable robots.txt as allow-all", async () => {
+		const { artifacts } = fakeArtifacts();
+		const engines = fakeEngines();
+		const robotsTxt: RobotsTxtLoader = () => Promise.resolve(ALLOW_ALL);
+
+		const result = await scrapePage(withRobots(engines, artifacts, robotsTxt), request({ respectRobotsTxt: true }));
+
+		expect(result.markdown).toContain("First paragraph");
 	});
 });

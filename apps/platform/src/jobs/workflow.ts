@@ -122,6 +122,7 @@ const scrapeRequestFor = (params: JobParams, url: string): ScrapeRequest => ({
 	screenshot: params.request.screenshot,
 	rehostImages: params.request.rehostImages,
 	region: params.request.region,
+	respectRobotsTxt: params.request.respectRobotsTxt ?? false,
 	convert: params.request.convert,
 });
 

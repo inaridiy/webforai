@@ -43,6 +43,10 @@ HTTP redirects (≤ 3 hops, SSRF-guarded, one operation). Responses carry a `war
 fetch-tier result looks like an unrendered shell. `rehostImages: true` re-uploads the page's images to R2 behind expiring signed URLs.
 `"region": "jp"` pins proxy egress to Japanese IPs (`auto` by
 default; pins `engine: "auto"` to the proxy tier, ignored by the two non-proxy engines).
+`"respectRobotsTxt": true` (opt-in; off by default) honors the target site's robots.txt
+rules for the `webforai-platform` token: each URL is checked before any engine runs and a
+disallowed one fails with `403 robots_disallowed`, unbilled. robots.txt fetches go through
+Cloudflare's edge cache (1h); an unavailable robots.txt (4xx, 5xx, timeout) means no rules.
 Full contract: `docs/specs/platform/03_api.md`.
 
 `POST /v1/demo/scrape` is a public, keyless, unbilled demo (fixed `auto` engine, markdown

@@ -112,6 +112,7 @@ export const v1Routes = () => {
 				screenshot: body.screenshot,
 				rehostImages: body.rehostImages,
 				region: body.region,
+				respectRobotsTxt: body.respectRobotsTxt,
 				convert: body.convert,
 			};
 			const jobId = await startJob(c.env, { userId, type: "batch", request, total: 1 });
@@ -124,6 +125,7 @@ export const v1Routes = () => {
 			screenshot: body.screenshot,
 			rehostImages: body.rehostImages,
 			region: body.region,
+			respectRobotsTxt: body.respectRobotsTxt,
 			convert: body.convert,
 		};
 		const result = await runSyncScrape(c, config, { userId, request });

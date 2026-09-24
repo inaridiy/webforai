@@ -29,6 +29,11 @@ export interface ScrapeRequest {
 	convert: ConvertOptions;
 	/** Egress region; honoured by the proxy engines only. Absent means `auto`. */
 	region?: Region;
+	/**
+	 * Honor the target site's robots.txt rules before fetching. Opt-in; absent means `false`
+	 * (job requests stored before the option existed replay without it).
+	 */
+	respectRobotsTxt?: boolean;
 }
 
 /** What an engine returns: the rendered/raw HTML plus an optional screenshot. */

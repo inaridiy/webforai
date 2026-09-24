@@ -66,6 +66,7 @@ export type PlaygroundRequest = {
 	screenshot: boolean;
 	rehostImages: boolean;
 	region: string;
+	respectRobotsTxt?: boolean;
 	convert: { extractor: string; frontmatter: boolean };
 };
 

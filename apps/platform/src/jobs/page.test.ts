@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ArtifactStore } from "../artifacts/store";
+import { parseRobotsTxt } from "../core/robots";
 import { EscalationExhaustedError, type FetchedPage, PlatformError } from "../core/types";
 import { type PageDeps, type RunPageParams, recordPageFailure, runPage } from "./page";
 import { type PageCommit, pageCommitId } from "./page-accounting";
@@ -151,6 +152,22 @@ describe("durable page execution", () => {
 
 		expect(await runPage(state.deps, params)).toMatchObject({ ok: false, credits: 0 });
 		expect(state.counts).toMatchObject({ succeeded: 0, failed: 1, credits: 0 });
+	});
+
+	it("records a robots.txt-disallowed URL as a failed, unbilled page without fetching it", async () => {
+		const state = harness();
+		state.deps.scrape.robotsTxt = async () => parseRobotsTxt("User-agent: *\nDisallow: /");
+
+		const outcome = await runPage(state.deps, { ...params, request: { ...params.request, respectRobotsTxt: true } });
+
+		expect(outcome).toMatchObject({ ok: false, credits: 0, links: [] });
+		expect(state.fetch).not.toHaveBeenCalled();
+		expect(state.counts).toMatchObject({ succeeded: 0, failed: 1, credits: 0 });
+		expect(state.usage.size).toBe(0);
+		expect(JSON.parse(state.kv.get(pageResultKey("job_1", 0)) ?? "null")).toMatchObject({
+			status: "error",
+			error: { code: "robots_disallowed" },
+		});
 	});
 
 	it("leaves other 5xx failures to the step's retries", async () => {

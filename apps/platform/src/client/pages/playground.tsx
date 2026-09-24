@@ -61,6 +61,7 @@ type FormState = {
 	frontmatter: boolean;
 	screenshot: boolean;
 	rehostImages: boolean;
+	respectRobotsTxt: boolean;
 };
 
 const INITIAL_FORM: FormState = {
@@ -71,6 +72,7 @@ const INITIAL_FORM: FormState = {
 	frontmatter: true,
 	screenshot: false,
 	rehostImages: false,
+	respectRobotsTxt: false,
 };
 
 const buildRequest = (form: FormState): PlaygroundRequest => ({
@@ -79,6 +81,8 @@ const buildRequest = (form: FormState): PlaygroundRequest => ({
 	screenshot: form.screenshot,
 	rehostImages: form.rehostImages,
 	region: form.region,
+	// Opt-in and off by default; only sent (and shown in the curl sample) when checked.
+	...(form.respectRobotsTxt ? { respectRobotsTxt: true } : {}),
 	convert: { extractor: form.extractor, frontmatter: form.frontmatter },
 });
 
@@ -408,6 +412,13 @@ const PlaygroundBody = () => {
 							label="Rehost images"
 							checked={form.rehostImages}
 							onChange={(checked) => update("rehostImages", checked)}
+						/>
+						<Checkbox
+							id="pg-robots"
+							label="Honor robots.txt"
+							hint="Check the site's robots.txt first; disallowed pages fail with robots_disallowed."
+							checked={form.respectRobotsTxt}
+							onChange={(checked) => update("respectRobotsTxt", checked)}
 						/>
 					</div>
 				</div>

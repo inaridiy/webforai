@@ -1,5 +1,10 @@
 # Platform API
 
+Revision note (2026-09-24, robots): Added the opt-in `respectRobotsTxt` boolean (default
+`false`, unchanged behaviour) to scrape, batch and crawl — not the demo. When true, each URL is
+checked against `<origin>/robots.txt` before any engine runs (all engines, `auto` escalation
+included, plus meta-refresh hop targets); a disallowed URL fails with `403 robots_disallowed`,
+recorded as a failed page in jobs and never billed. See "robots.txt option" below.
 Revision note (2026-09-24, regions): `region` narrowed to `auto` | `jp` (owner decision). The
 proxy plan has Japanese and unspecified-country IPs only, so `us`/`eu`/`uk`/`asia` could not
 be honoured; they are now rejected with `400 invalid_request`.
@@ -58,6 +63,7 @@ Runs on the plain Worker (fast, not durable). With `"async": true` it instead en
   "screenshot": false,           // auto / browser / proxy-browser only (400 otherwise)
   "rehostImages": false,
   "region": "auto",             // auto | jp — proxy engines only
+  "respectRobotsTxt": false,     // opt-in robots.txt check (see below)
   "async": false,
   "convert": {                   // passthrough to webforai (all optional)
     "extractor": "auto",        // auto | takumi | minimal | none
@@ -101,6 +107,27 @@ both rerunning on the browser sibling:
   responses are rethrown without escalation — a browser would see the same thing. If the
   escalation also fails, the error names both failures.
 
+### robots.txt option
+
+`respectRobotsTxt: true` honors the target site's robots.txt rules. Off by default. When on:
+
+- Before any engine runs, the Worker fetches `<origin>/robots.txt` (Workers `fetch` with
+  `cf: { cacheTtl: 3600, cacheEverything: true }`, so repeat checks hit Cloudflare's edge
+  cache; 5 s timeout; first 512 KiB parsed). Meta-refresh hop targets are checked the same way;
+  HTTP redirects followed inside an engine are not re-checked.
+- Rules come from the group naming the product token `webforai-platform` (case-insensitive),
+  else the `*` group, else nothing is disallowed. Matching is RFC 9309: the longest matching
+  `allow`/`disallow` pattern wins (`allow` on a tie), `*` wildcards, trailing `$` anchor,
+  matched against path + query. `/robots.txt` itself is always allowed.
+- Any 4xx, 5xx, network error, timeout or non-`text/*` response counts as "no rules" (the
+  page is fetched). `Crawl-delay` and `Sitemap` lines are ignored.
+- A disallowed URL fails with `403 robots_disallowed`. Sync scrape returns the error; in
+  batch/crawl jobs the page is recorded as failed. Nothing is billed either way. A crawl still
+  enqueues discovered links; each one is checked when its turn comes.
+
+Implementation: `src/core/robots.ts` (parser/matcher), `src/core/robots-fetch.ts` (loader),
+checked in `fetchForScrape` (`src/core/scrape-core.ts`).
+
 Billing follows the returned `engine` — a scrape that only succeeded via the browser bills
 5, and a scrape that failed on both tiers bills nothing. Explicitly chosen engines never
 substitute — a fetch-tier engine that hits a shell returns its result with a `warning`,
@@ -110,7 +137,7 @@ and one that hits a blocked fetch fails.
 
 ```jsonc
 { "urls": ["https://a", "https://b"], "engine": "auto", "screenshot": false,
-  "rehostImages": false, "region": "auto", "convert": { } }
+  "rehostImages": false, "region": "auto", "respectRobotsTxt": false, "convert": { } }
 ```
 
 Limits: ≤100 URLs per job (initial). Returns `202 { "jobId": "job_..." }`.
@@ -126,7 +153,8 @@ Limits: ≤100 URLs per job (initial). Returns `202 { "jobId": "job_..." }`.
   "includePaths": ["^/docs"],   // regex on pathname, optional
   "excludePaths": [],
   "sameOrigin": true,            // fixed true initially
-  "screenshot": false, "rehostImages": false, "region": "auto", "convert": { }
+  "screenshot": false, "rehostImages": false, "region": "auto", "respectRobotsTxt": false,
+  "convert": { }
 }
 ```
 

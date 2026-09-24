@@ -11,6 +11,8 @@ import {
 import type { ArtifactStore } from "../artifacts/store";
 import { creditsFor } from "../billing/credits";
 import { type FetchLike, rehostImages } from "./rehost";
+import { ROBOTS_USER_AGENT_TOKEN, isAllowedByRobots, robotsPathOf } from "./robots";
+import { type RobotsTxtLoader, createRobotsTxtLoader } from "./robots-fetch";
 import { assertPublicHttpUrl } from "./ssrf";
 import {
 	type AcquiredPage,
@@ -38,6 +40,8 @@ export interface ScrapeDeps {
 	artifacts: ArtifactStore;
 	/** Injected by unit tests for image rehosting; defaults to the runtime `fetch`. */
 	fetch?: FetchLike;
+	/** Injected by unit tests for `respectRobotsTxt`; defaults to the edge-cached Workers loader. */
+	robotsTxt?: RobotsTxtLoader;
 }
 
 /**
@@ -62,6 +66,23 @@ export const resolveExtractors = (preset: ConvertOptions["extractor"]): Extracto
 };
 
 const supportsScreenshot = (engine: Engine): boolean => SCREENSHOT_ENGINES.includes(engine);
+
+/**
+ * The opt-in robots.txt check. Runs once per URL before any engine is chosen, so it applies
+ * to every engine and to `auto` escalation alike; a disallowed URL is a 4xx, which jobs record
+ * as a failed page and which is never billed.
+ */
+const assertRobotsAllowed = async (deps: ScrapeDeps, target: URL): Promise<void> => {
+	const loader = deps.robotsTxt ?? createRobotsTxtLoader();
+	const robots = await loader(target);
+	if (!isAllowedByRobots(robots, robotsPathOf(target), ROBOTS_USER_AGENT_TOKEN)) {
+		throw new PlatformError(
+			"robots_disallowed",
+			`${target.origin}/robots.txt disallows ${target.href} for user-agent "${ROBOTS_USER_AGENT_TOKEN}"`,
+			403,
+		);
+	}
+};
 
 /** Meta-refresh chains deeper than this are loops, not redirects. */
 const MAX_META_REFRESH_HOPS = 3;
@@ -152,6 +173,10 @@ export const fetchForScrape = async (deps: ScrapeDeps, req: ScrapeRequest): Prom
 		throw new PlatformError("screenshot_unsupported", `engine "${req.engine}" cannot take screenshots`, 400);
 	}
 
+	if (req.respectRobotsTxt) {
+		await assertRobotsAllowed(deps, target);
+	}
+
 	const { base, escalation } = req.engine === "auto" ? resolveAuto(req) : { base: req.engine, escalation: undefined };
 	const params = { url: target.href, screenshot: req.screenshot, region: req.region };
 
@@ -176,6 +201,9 @@ export const fetchForScrape = async (deps: ScrapeDeps, req: ScrapeRequest): Prom
 				break;
 			}
 			const next = assertPublicHttpUrl(refresh.url);
+			if (req.respectRobotsTxt) {
+				await assertRobotsAllowed(deps, next);
+			}
 			page = await deps.engines[base]({ ...params, url: next.href });
 		}
 	} catch (error) {

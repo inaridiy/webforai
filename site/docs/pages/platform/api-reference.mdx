@@ -52,6 +52,27 @@ the preference can be honoured. The `fetch` and `browser` engines egress from Cl
 network and ignore the field rather than failing, so one default can be set for a mixed-engine
 workload. Other values are rejected with `400 invalid_request`. Pricing is unaffected.
 
+## robots.txt
+
+`respectRobotsTxt` is an optional boolean on `/v1/scrape`, `/v1/batch` and `/v1/crawl`
+(not the demo). It defaults to `false`: the platform does not read robots.txt unless asked.
+
+When `true`, the platform honors the target site's robots.txt rules. Before any engine runs, it
+reads `<origin>/robots.txt` and applies the group for the `webforai-platform` user-agent token,
+or the `*` group when there is none. Rules are evaluated per
+[RFC 9309](https://www.rfc-editor.org/rfc/rfc9309): the longest matching `Allow`/`Disallow` path
+wins (`Allow` on a tie), with `*` wildcards and a trailing `$` anchor, matched against the path
+and query string.
+
+- The check applies to every engine, including `auto` escalation, and to meta-refresh hop
+  targets. HTTP redirects followed during the fetch are not re-checked.
+- A disallowed URL fails with `403 robots_disallowed`. In batch and crawl jobs that page is
+  recorded as failed; either way it is not billed.
+- If robots.txt cannot be read — any 4xx or 5xx status, a network error, a 5-second timeout, or a
+  non-text response — no rules apply and the page is fetched.
+- robots.txt responses are cached at Cloudflare's edge for up to an hour, so a change to the file
+  can take that long to be seen. `Crawl-delay` and `Sitemap` lines are ignored.
+
 ## POST /v1/scrape
 
 Synchronous, single URL. Runs on the plain Worker — fast, but not durable. With `"async": true` it
@@ -67,6 +88,7 @@ instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and retu
   "region": "auto",              // auto | jp (proxy engines only)
   "screenshot": false,           // auto / browser / proxy-browser only (400 otherwise)
   "rehostImages": false,
+  "respectRobotsTxt": false,    // opt-in; see robots.txt above
   "async": false,
   "convert": {                   // passthrough to webforai (all optional)
     "extractor": "auto",         // auto | takumi | minimal | none
@@ -137,6 +159,7 @@ Asynchronous, a list of URLs. Limit: **100 URLs per job**.
   "region": "auto",
   "screenshot": false,
   "rehostImages": false,
+  "respectRobotsTxt": false,
   "convert": {}
 }
 ```
@@ -170,6 +193,7 @@ Asynchronous, recursive same-origin crawl from a seed URL.
   "sameOrigin": true,            // only true is accepted (sending false is a 400)
   "screenshot": false,
   "rehostImages": false,
+  "respectRobotsTxt": false,
   "convert": {}
 }
 ```
@@ -305,5 +329,6 @@ curl -X POST https://platform.webforai.dev/v1/demo/scrape \
 - **SSRF guard**: public `http(s)` URLs only. Private IP ranges, localhost and non-standard ports
   are rejected at validation time for every engine, and re-checked inside the container fetcher —
   redirect targets included.
+- **robots.txt**: only checked when `respectRobotsTxt` is `true`; see [robots.txt](#robotstxt).
 - **Rate limits**: per-key requests per minute, plus the job-level caps above (≤100 URLs per
   batch, ≤5 crawl depth, ≤500 crawl pages). The public demo endpoint is limited per IP instead.

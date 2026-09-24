@@ -79,6 +79,9 @@ concrete engine that produced them.
   TTL (lifecycle rule), rewrite Markdown URLs to the R2-hosted copies.
 - `region` (`auto` | `jp`): egress location, applied by pinning the proxy exit IP to Japan.
   Proxy engines only; the other two egress from Cloudflare and ignore it. No price difference.
+- `respectRobotsTxt` (opt-in, default `false`): honor the target site's robots.txt rules;
+  a disallowed URL fails with `robots_disallowed` and is not billed (details: `03_api.md`).
+  (Revision note 2026-09-24: added.)
 - Extraction options passed through to webforai (`extractor` preset, `frontmatter`, ...).
 
 ## Accounts, keys, billing

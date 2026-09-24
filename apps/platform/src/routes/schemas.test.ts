@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { REGIONS } from "../core/regions";
+import { demoBodySchema } from "./demo";
 import {
 	MAX_BATCH_URLS,
 	MAX_CRAWL_DEPTH,
@@ -23,6 +24,7 @@ describe("scrape body", () => {
 			screenshot: false,
 			rehostImages: false,
 			region: "auto",
+			respectRobotsTxt: false,
 			async: false,
 			convert: {},
 		});
@@ -61,6 +63,21 @@ describe("scrape body", () => {
 		expect(scrapeBodySchema.safeParse({ url: "https://example.com", maxDepth: 3 }).success).toBe(false);
 	});
 
+	it("accepts respectRobotsTxt as an opt-in boolean on scrape, batch and crawl", () => {
+		expect(scrapeBodySchema.parse({ url: "https://example.com/a", respectRobotsTxt: true }).respectRobotsTxt).toBe(
+			true,
+		);
+		expect(batchBodySchema.parse({ urls: [url(1)] }).respectRobotsTxt).toBe(false);
+		expect(batchBodySchema.parse({ urls: [url(1)], respectRobotsTxt: true }).respectRobotsTxt).toBe(true);
+		expect(crawlBodySchema.parse({ url: "https://example.com/" }).respectRobotsTxt).toBe(false);
+		expect(crawlBodySchema.parse({ url: "https://example.com/", respectRobotsTxt: true }).respectRobotsTxt).toBe(true);
+		expect(scrapeBodySchema.safeParse({ url: "https://example.com/a", respectRobotsTxt: "yes" }).success).toBe(false);
+	});
+
+	it("is not accepted by the public demo", () => {
+		expect(demoBodySchema.safeParse({ url: "https://example.com/a", respectRobotsTxt: true }).success).toBe(false);
+	});
+
 	it("rejects an unknown extractor preset", () => {
 		expect(
 			scrapeBodySchema.safeParse({ url: "https://example.com", convert: { extractor: "readability" } }).success,
@@ -77,6 +94,7 @@ describe("playground body", () => {
 			screenshot: false,
 			rehostImages: false,
 			region: "auto",
+			respectRobotsTxt: false,
 			convert: {},
 		});
 	});
