@@ -40,7 +40,10 @@ the deployment has GitHub credentials.
       unit tests + real Better Auth/D1 integration test.
 - [x] (2026-09-24) Client: email → code flow, resend cooldown, mapped errors; GitHub gated;
       browser regression covers wrong/right code and the gated button.
-- [ ] Docs/specs/README; checks; deploy (migration first); live sign-in verification.
+- [x] (2026-09-24) Docs/specs/README; full checks (110ff54). Deployed: D1 migration 0003,
+      platform 70e69706 (EMAIL binding restricted to login@webforai.dev), docs site 1853e8dc.
+      Live: `/api/auth-methods` → github false; password sign-up → 400; code email to the
+      owner's address accepted by Email Sending (200). Owner to confirm inbox delivery.
 
 ## Decision log
 
@@ -56,4 +59,5 @@ the deployment has GitHub credentials.
 
 ## Outcomes & retrospective
 
-(pending)
+Shipped as designed. Open: GitHub OAuth app + secrets (owner); confirm first code email lands
+in the inbox (not spam); the old email/password accounts sign in by code now (same email).
