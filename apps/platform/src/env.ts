@@ -17,6 +17,9 @@ const envSchema = z.object({
 	PROXY_URL: z.string().url().optional(),
 	PROXY_USERNAME: z.string().optional(),
 	PROXY_PASSWORD: z.string().optional(),
+	/** The proxy provider's account API (v2 base URL) and key, for the bandwidth guard. */
+	PROXY_ACCOUNT_API_URL: z.string().url().optional(),
+	PROXY_ACCOUNT_API_KEY: z.string().optional(),
 
 	GITHUB_CLIENT_ID: z.string().optional(),
 	GITHUB_CLIENT_SECRET: z.string().optional(),
@@ -27,6 +30,8 @@ export type AppConfig = z.infer<typeof envSchema> & {
 	billingEnabled: boolean;
 	/** Rotating-proxy gateway configured — gates `proxy-fetch` / `proxy-browser`. */
 	proxyEnabled: boolean;
+	/** Proxy account API configured — enables the monthly bandwidth guard. */
+	proxyBandwidthGuard: boolean;
 	githubLoginEnabled: boolean;
 };
 
@@ -37,6 +42,7 @@ export const loadConfig = (env: Env): AppConfig => {
 		...parsed,
 		billingEnabled: Boolean(parsed.STRIPE_SECRET_KEY && parsed.STRIPE_WEBHOOK_SECRET && parsed.STRIPE_METERED_PRICE_ID),
 		proxyEnabled: Boolean(parsed.PROXY_URL && parsed.PROXY_USERNAME && parsed.PROXY_PASSWORD),
+		proxyBandwidthGuard: Boolean(parsed.PROXY_ACCOUNT_API_URL && parsed.PROXY_ACCOUNT_API_KEY),
 		githubLoginEnabled: Boolean(parsed.GITHUB_CLIENT_ID && parsed.GITHUB_CLIENT_SECRET),
 	};
 };

@@ -73,7 +73,11 @@ pnpm dev                                      # vite dev (first run builds the c
   `BETTER_AUTH_SECRET` (required, ≥32 chars), `PROXY_URL`/`PROXY_USERNAME`/`PROXY_PASSWORD`
   (an HTTP rotating-proxy gateway, e.g. `PROXY_URL=http://host:port` — enables the proxy
   engines), `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_METERED_PRICE_ID`
-  (enables billing), `GITHUB_CLIENT_ID`/`_SECRET` (enables GitHub login).
+  (enables billing), `GITHUB_CLIENT_ID`/`_SECRET` (enables GitHub login),
+  `PROXY_ACCOUNT_API_URL`/`PROXY_ACCOUNT_API_KEY` (the proxy provider's v2 account API base
+  and key — enables the monthly bandwidth guard: the 15-minute cron stores usage in KV, logs
+  `proxy_bandwidth_high` from 80%, and from 95% the proxy engines answer
+  `503 engine_unavailable` until the provider's period renews).
   Missing optional secrets degrade explicitly: proxy engines return
   `503 engine_unavailable`, billing runs in free-allowance-only mode.
 - `browser` needs a real Browser Run session (`wrangler dev --remote` semantics); the

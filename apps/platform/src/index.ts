@@ -12,6 +12,7 @@ import { createDb } from "./db/client";
 import { createEngines } from "./engines";
 import { loadConfig } from "./env";
 import { CrawlWorkflow } from "./jobs/workflow";
+import { refreshProxyBandwidth } from "./proxy/bandwidth";
 import { artifactRoutes } from "./routes/artifacts";
 import { dashboardRoutes } from "./routes/dashboard";
 import { dashboardJobsRoutes } from "./routes/dashboard-jobs";
@@ -115,10 +116,29 @@ app.route("/v1", v1Routes());
  */
 const scheduled: ExportedHandlerScheduledHandler<Env> = async (_controller, env) => {
 	const config = loadConfig(env);
-	await retryUnreportedUsage(
-		{ repo: createBillingRepo(createDb(env)), config, stripe: createStripe(config) },
-		RETRY_USAGE_LIMIT,
-	);
+	// Independent jobs: a proxy-account outage must not hold back billing, nor the reverse.
+	const results = await Promise.allSettled([
+		retryUnreportedUsage(
+			{ repo: createBillingRepo(createDb(env)), config, stripe: createStripe(config) },
+			RETRY_USAGE_LIMIT,
+		),
+		config.proxyBandwidthGuard && config.PROXY_ACCOUNT_API_URL && config.PROXY_ACCOUNT_API_KEY
+			? refreshProxyBandwidth({
+					kv: env.JOBS_KV,
+					api: {
+						baseUrl: config.PROXY_ACCOUNT_API_URL,
+						apiKey: config.PROXY_ACCOUNT_API_KEY,
+						fetch: (input, init) => fetch(input, init),
+					},
+					now: () => new Date(),
+					log: console,
+				})
+			: Promise.resolve(undefined),
+	]);
+	const failure = results.find((result) => result.status === "rejected");
+	if (failure) {
+		throw failure.reason;
+	}
 };
 
 const RETRY_USAGE_LIMIT = 100;

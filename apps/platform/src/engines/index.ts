@@ -8,6 +8,7 @@ import {
 	PlatformError,
 } from "../core/types";
 import type { AppConfig } from "../env";
+import { proxyBandwidthRefusal } from "../proxy/bandwidth";
 import { browserEngine } from "./browser";
 import { proxyBrowser, proxyFetch } from "./node.container";
 import { workersFetchEngine } from "./workers-fetch";
@@ -58,9 +59,19 @@ const callContainer = async <T>(engine: Engine, run: () => Promise<T>): Promise<
 	}
 };
 
-const requireProxy = (config: AppConfig, engine: Engine): void => {
+/**
+ * The proxy engines run only when the gateway is configured and, where the bandwidth guard is
+ * on, while the plan's monthly bandwidth is not about to run out (`proxy/bandwidth.ts`).
+ */
+const requireProxy = async (env: Env, config: AppConfig, engine: Engine): Promise<void> => {
 	if (!config.proxyEnabled) {
 		throw new EngineUnavailableError(engine, "PROXY_URL/PROXY_USERNAME/PROXY_PASSWORD are not configured");
+	}
+	if (config.proxyBandwidthGuard) {
+		const refusal = await proxyBandwidthRefusal(env.JOBS_KV, new Date());
+		if (refusal !== undefined) {
+			throw new EngineUnavailableError(engine, refusal);
+		}
 	}
 };
 
@@ -88,7 +99,7 @@ export const createEngines = (env: Env, config: AppConfig): EngineSet => ({
 	browser: (params) => browserEngine(env.BROWSER, params),
 
 	"proxy-fetch": async ({ url, region }): Promise<FetchedPage> => {
-		requireProxy(config, "proxy-fetch");
+		await requireProxy(env, config, "proxy-fetch");
 		const page = await callContainer("proxy-fetch", () => proxyFetch(url, countryFor(region)));
 		return { html: page.html, url: page.finalUrl, status: page.status };
 	},
@@ -96,7 +107,7 @@ export const createEngines = (env: Env, config: AppConfig): EngineSet => ({
 	// `screenshot` is honoured here; `scrape-core` rejects it for the two engines that cannot
 	// produce one, so the flag never reaches them.
 	"proxy-browser": async ({ url, screenshot, region }): Promise<FetchedPage> => {
-		requireProxy(config, "proxy-browser");
+		await requireProxy(env, config, "proxy-browser");
 		const page = await callContainer("proxy-browser", () => proxyBrowser(url, screenshot, countryFor(region)));
 		return {
 			html: page.html,

@@ -1,5 +1,11 @@
 # Platform Architecture
 
+Revision note (2026-09-24, bandwidth guard): The egress proxy is a flat monthly plan with a
+bandwidth cap, and the provider stops all proxies past it. With `PROXY_ACCOUNT_API_URL` /
+`PROXY_ACCOUNT_API_KEY` set, the 15-minute cron reads the period's usage and cap from the
+provider's account API into KV (`proxy:bandwidth`, 1-hour TTL); proxy engines refuse with
+`503 engine_unavailable` from 95% until the period ends, logs warn from 80%. A missing, stale
+or unreadable snapshot never blocks (fail open). Code: `src/proxy/bandwidth.ts`.
 Revision note (2026-09-24): Cost of goods. Both browser engines navigate once
 (`domcontentloaded`, then the remaining budget waiting for `networkidle`) instead of
 re-navigating after an idle timeout; `proxy-browser` aborts image/media/font requests unless
