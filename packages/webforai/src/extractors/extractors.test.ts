@@ -377,3 +377,60 @@ describe("title deduplication", () => {
 		expect(markdown.match(/^# /gm)?.length ?? 0).toBe(1);
 	});
 });
+
+describe("screen-reader-only text", () => {
+	it("drops accessibility labels in every class naming convention", () => {
+		const html = article(
+			'<span class="VisuallyHidden-styles__VisuallyHiddenStyled-sc-1y1x">Site search</span><span class="srOnly">Opens in a new tab</span><span class="screen-reader-text">Skip ahead</span>',
+		);
+		const markdown = htmlToMarkdown(html);
+
+		expect(markdown).not.toContain("Site search");
+		expect(markdown).not.toContain("Opens in a new tab");
+		expect(markdown).not.toContain("Skip ahead");
+	});
+
+	it("keeps elements whose class merely contains the words", () => {
+		const markdown = htmlToMarkdown(article('<p class="not-sr-only">Visible on every screen, here.</p>'));
+		expect(markdown).toContain("Visible on every screen, here.");
+	});
+});
+
+describe("consent placeholders", () => {
+	const placeholder =
+		"This content isn't visible due to your cookie preferences. To load this content, click the Allow button below.";
+
+	it("removes the stand-in a consent manager leaves where an embed was", () => {
+		const markdown = htmlToMarkdown(article(`<div class="x7f2"><p>${placeholder}</p><button>Allow</button></div>`));
+		expect(markdown).not.toContain("cookie preferences");
+	});
+
+	it("keeps prose that discusses the same subject", () => {
+		const prose = `<p>Regulators found that this content isn't visible due to your cookie preferences on many sites.</p>`;
+		expect(htmlToMarkdown(article(prose))).toContain("Regulators found");
+	});
+});
+
+describe("furniture removal when a wrapper matches a furniture class", () => {
+	// Amazon names every block `*_feature_div celwidget`. The class match condemns the wrapper that
+	// holds the product description, which used to abandon furniture removal altogether.
+	const rail = (name: string) =>
+		`<div class="${name}_feature_div celwidget">${Array.from(
+			{ length: 30 },
+			(_, i) => `<a href="/p/${name}${i}">Product ${name} ${i}</a>`,
+		).join(" ")}</div>`;
+
+	const html = `<html lang="en"><body><div class="page celwidget">
+		${rail("sims")}
+		<div class="desc_feature_div celwidget">${filler()}</div>
+		${rail("sponsored")}
+	</div></body></html>`;
+
+	it("keeps the prose and drops the link-dense rails", () => {
+		const markdown = htmlToMarkdown(html);
+
+		expect(markdown).toContain("Sentence with, some prose.");
+		expect(markdown).not.toContain("Product sims");
+		expect(markdown).not.toContain("Product sponsored");
+	});
+});

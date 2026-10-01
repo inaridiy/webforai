@@ -35,6 +35,9 @@ import type { ExtractParams } from "../types";
 /** Fraction of the parent tree's text a narrowed selection must retain to be trusted. */
 const MIN_RETAINED_FRACTION = 0.25;
 
+/** Link density above which a weakly-matched block is furniture even when it is large. */
+const FURNITURE_LINK_DENSITY = 0.5;
+
 /** Attribute-driven markers that state, unambiguously, where the content is. */
 const SEMANTIC_SELECTORS: Array<(element: Element) => boolean> = [
 	(element) => stringProperty(element, "itemprop")?.includes("articleBody") ?? false,
@@ -146,10 +149,21 @@ export const takumiExtractor = (params: ExtractParams): Hast => {
 	// Price the furniture-removal pass before paying for it: summing the text of the elements it
 	// would delete is far cheaper than cloning the tree, pruning the copy and re-measuring.
 	const searchText = collector.textLength(searchRoot);
-	const doomed = findUnlikelyElements(searchRoot);
-	const doomedText = doomed.reduce((sum, element) => sum + collector.metrics(element).text, 0);
+	let doomed = findUnlikelyElements(searchRoot);
+	const textOf = (elements: Element[]) => elements.reduce((sum, element) => sum + collector.metrics(element).text, 0);
 
-	if (searchText - doomedText > Math.max(minLength, searchText * MIN_RETAINED_FRACTION)) {
+	let acceptable = searchText - textOf(doomed) > Math.max(minLength, searchText * MIN_RETAINED_FRACTION);
+	if (!acceptable) {
+		// The full pass would cut too deep, usually because a class-substring match hit a wrapper
+		// that holds the article. Rather than giving up on furniture removal altogether — which
+		// leaves every carousel and footer in place on exactly the pages that have the most —
+		// retry sparing the weak matches that read as prose. Link-dense weak matches are rails,
+		// carousels and sitemaps whatever their size, so only the absolute floor guards them.
+		doomed = findUnlikelyElements(searchRoot, (element) => collector.linkDensity(element) < FURNITURE_LINK_DENSITY);
+		acceptable = doomed.length > 0 && searchText - textOf(doomed) >= minLength;
+	}
+
+	if (acceptable) {
 		const doomedSet = new Set<Element>(doomed);
 		pruneInPlace(searchRoot, (node) => !(isElement(node) && doomedSet.has(node)));
 		collector = new MetricsCollector();

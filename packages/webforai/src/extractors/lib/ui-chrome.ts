@@ -135,3 +135,25 @@ export const isUiChromeText = (text: string): boolean => {
 
 	return UI_PHRASES.has(normalized);
 };
+
+/**
+ * Opening phrases of the stand-in a consent manager renders where a third-party embed was.
+ *
+ * The embed itself never loaded, so the placeholder is all that remains — and it is written as a
+ * full sentence ("This content isn't visible due to your cookie preferences…"), which is too long
+ * for {@link UI_PHRASES} and carries no class name a hashing framework leaves readable. Anchored
+ * at the start of the element's text so prose that merely discusses cookies is untouched.
+ */
+const CONSENT_PLACEHOLDER =
+	/^(this content (isn['’]?t|is not) (visible|available) (due to|because of) your (cookie|privacy) (preferences|settings)|we need your (consent|permission) to load|to (view|see|load) this (content|embed|video|post)[, ]+(please )?(enable|accept|allow|update)|(please )?(accept|allow|enable) (all |marketing |functional )?cookies to (view|see|load|watch)|このコンテンツを表示するには)/i;
+
+/** Longest text a consent placeholder may have; an article paragraph is never tested. */
+export const MAX_CONSENT_PLACEHOLDER_LENGTH = 400;
+
+/**
+ * True when an element's entire text is a consent manager's embed placeholder.
+ *
+ * @param text - The element's complete text content.
+ */
+export const isConsentPlaceholderText = (text: string): boolean =>
+	text.length <= MAX_CONSENT_PLACEHOLDER_LENGTH && CONSENT_PLACEHOLDER.test(text.trimStart());

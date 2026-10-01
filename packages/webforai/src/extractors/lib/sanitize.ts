@@ -30,7 +30,7 @@ import {
 	RESPONSIVE_DISPLAY_OVERRIDE,
 	UNLIKELY_ROLES,
 } from "./constants";
-import { isUiChromeText } from "./ui-chrome";
+import { MAX_CONSENT_PLACEHOLDER_LENGTH, isConsentPlaceholderText, isUiChromeText } from "./ui-chrome";
 
 /** Inline styles that take an element out of the visual flow. */
 const INVISIBLE_STYLE = /(^|;)\s*(display\s*:\s*none|visibility\s*:\s*hidden)\s*(;|$)/i;
@@ -44,9 +44,28 @@ const INVISIBLE_STYLE = /(^|;)\s*(display\s*:\s*none|visibility\s*:\s*hidden)\s*
 const hasHiddenClass = (element: Element): boolean => {
 	const classes = classList(element);
 	if (!classes.some((name) => HIDDEN_CLASS_NAMES.has(name))) {
-		return classes.some((name) => REGEXPS.hidden.test(name));
+		return classes.some((name) => REGEXPS.hidden.test(name) || isScreenReaderOnlyClass(name));
 	}
 	return !classes.some((name) => RESPONSIVE_DISPLAY_OVERRIDE.test(name));
+};
+
+/**
+ * Screen-reader-only utilities, in any naming convention.
+ *
+ * `sr-only` and `visually-hidden` are the hyphenated spellings, but CSS-in-JS frameworks emit
+ * `VisuallyHidden-styles__VisuallyHiddenStyled-sc-…` or `srOnly`, which no hyphenated pattern
+ * matches. Their text is an accessibility label ("Site search", "(opens in a new tab)") that a
+ * sighted reader never sees. Responsive variants (`md:not-sr-only`) fail the leading-letter test.
+ */
+const SCREEN_READER_ONLY = /^(sronly|visuallyhidden|screenreader(only|text))/;
+
+const isScreenReaderOnlyClass = (name: string): boolean => {
+	const first = name.charCodeAt(0) | 0x20;
+	// Every spelling starts with s or v; this keeps the normalisation off the hot path.
+	if (first !== 0x73 && first !== 0x76) {
+		return false;
+	}
+	return SCREEN_READER_ONLY.test(name.toLowerCase().replace(/[-_]/g, ""));
 };
 
 /**
@@ -251,43 +270,54 @@ export const findLandmarkChrome = (tree: Hast): Set<Element> => {
 };
 
 /**
- * True for containers that are almost certainly page furniture.
+ * How sure the furniture pass is about an element.
+ *
+ * `strong` comes from structure or from patterns no content container carries (a `<nav>`, a
+ * navigation role, `navbox`, a class that is exactly `breadcrumbs`). `weak` is the substring
+ * match on class and id, which hits whole-page wrappers on some sites: Amazon names every block
+ * `*_feature_div celwidget`, so `widget` condemns the product description along with the
+ * carousels around it.
+ */
+export type UnlikelyTier = "strong" | "weak";
+
+/**
+ * Classifies a container that is almost certainly page furniture.
  *
  * Mirrors Readability's unlikely-candidate rule: a class/id match condemns the element unless it
  * also looks content-ish, with a short list of patterns strong enough to skip that reprieve.
  */
-const isUnlikelyCandidate = (element: Element): boolean => {
+const unlikelyTier = (element: Element): UnlikelyTier | undefined => {
 	// Semantic content elements are never furniture, whatever they are called.
 	if (element.tagName === "article" || element.tagName === "main" || element.tagName === "body") {
-		return false;
+		return undefined;
 	}
 
 	const role = stringProperty(element, "role");
 	if (role && UNLIKELY_ROLES.has(role)) {
-		return true;
+		return "strong";
 	}
 
 	if (CHROME_TAGS.has(element.tagName)) {
-		return true;
+		return "strong";
 	}
 
 	const match = matchString(element);
 
 	if (REGEXPS.specialUnlikelyCandidates.test(match)) {
-		return true;
+		return "strong";
 	}
 
 	for (const name of [...classList(element), stringProperty(element, "id") ?? ""]) {
 		if (REGEXPS.stronglyUnlikely.test(name)) {
-			return true;
+			return "strong";
 		}
 	}
 
 	if (REGEXPS.unlikelyCandidates.test(match) && !REGEXPS.okMaybeItsaCandidate.test(match)) {
-		return true;
+		return "weak";
 	}
 
-	return false;
+	return undefined;
 };
 
 /**
@@ -295,8 +325,11 @@ const isUnlikelyCandidate = (element: Element): boolean => {
  *
  * Callers use this to price the pass before paying for it: measuring the text about to be lost
  * is far cheaper than cloning the document, pruning the copy and re-measuring the result.
+ *
+ * @param spareWeak - Called for each `weak` match; returning `true` keeps the element and
+ * searches inside it instead. Strong matches are never spared.
  */
-export const findUnlikelyElements = (tree: Hast): Element[] => {
+export const findUnlikelyElements = (tree: Hast, spareWeak?: (element: Element) => boolean): Element[] => {
 	const landmarks = findLandmarkChrome(tree);
 	const doomed: Element[] = [];
 
@@ -308,9 +341,14 @@ export const findUnlikelyElements = (tree: Hast): Element[] => {
 			if (!isElement(child)) {
 				continue;
 			}
-			if (landmarks.has(child) || isUnlikelyCandidate(child)) {
+			if (landmarks.has(child)) {
 				doomed.push(child);
 				continue; // its subtree goes with it
+			}
+			const tier = unlikelyTier(child);
+			if (tier === "strong" || (tier === "weak" && !spareWeak?.(child))) {
+				doomed.push(child);
+				continue;
 			}
 			visit(child);
 		}
@@ -543,7 +581,7 @@ export const findCleanupTargets = (tree: Hast, collector: MetricsCollector): Ele
 				continue;
 			}
 
-			if (isMidArticleWidget(child)) {
+			if (isMidArticleWidget(child, collector)) {
 				doomed.push(child);
 				continue; // its subtree goes with it
 			}
@@ -617,7 +655,7 @@ const countAnchors = (element: Element): number => {
  */
 const LITERAL_TEXT_TAGS = new Set(["code", "kbd", "samp", "var", "pre"]);
 
-const isMidArticleWidget = (element: Element): boolean => {
+const isMidArticleWidget = (element: Element, collector: MetricsCollector): boolean => {
 	if (LITERAL_TEXT_TAGS.has(element.tagName)) {
 		return false;
 	}
@@ -633,7 +671,13 @@ const isMidArticleWidget = (element: Element): boolean => {
 
 	// Class names are unusable on sites that hash them, so fall back to what the element says.
 	// Only whole-element matches count, and only below a length cap, so prose is never touched.
-	return isUiChromeText(elementText(element));
+	// The measured length never exceeds the raw text's, so checking it first skips building the
+	// string for every large container — which otherwise makes this pass quadratic in depth.
+	if (collector.metrics(element).text > MAX_CONSENT_PLACEHOLDER_LENGTH) {
+		return false;
+	}
+	const text = elementText(element);
+	return isUiChromeText(text) || isConsentPlaceholderText(text);
 };
 
 /**
