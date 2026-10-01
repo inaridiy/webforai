@@ -58,6 +58,27 @@ const hoistBoundaryWhitespace = (nodes: PhrasingContent[]): PhrasingContent[] =>
  * item with its definitions nested beneath it — the structure most Markdown renderers and models
  * read as a definition.
  */
+/**
+ * The `<dt>`/`<dd>` children of a `<dl>`, in order. HTML allows wrapping each term/definition
+ * group in a `<div>` (`<dl><div><dt/><dd/></div></dl>` — what component libraries and
+ * Tailwind layouts emit), so wrapper divs are looked through rather than skipped; skipping them
+ * dropped the entire list.
+ */
+const termsAndDefinitions = (parent: Element): Element[] => {
+	const found: Element[] = [];
+	for (const child of parent.children) {
+		if (child.type !== "element") {
+			continue;
+		}
+		if (child.tagName === "dt" || child.tagName === "dd") {
+			found.push(child);
+		} else if (child.tagName === "div") {
+			found.push(...termsAndDefinitions(child));
+		}
+	}
+	return found;
+};
+
 export const definitionListHandler: Handle = (state, node) => {
 	const items: ListItem[] = [];
 	let current: { term: PhrasingContent[]; definitions: Array<BlockContent | DefinitionContent> } | undefined;
@@ -74,12 +95,7 @@ export const definitionListHandler: Handle = (state, node) => {
 		current = undefined;
 	};
 
-	for (const child of node.children) {
-		if (child.type !== "element") {
-			continue;
-		}
-		const element = child as Element;
-
+	for (const element of termsAndDefinitions(node)) {
 		if (element.tagName === "dt") {
 			// Consecutive `<dt>`s share one definition; start a new item only after a definition.
 			if (current && current.definitions.length > 0) {
@@ -104,7 +120,10 @@ export const definitionListHandler: Handle = (state, node) => {
 	flush();
 
 	if (items.length === 0) {
-		return undefined;
+		// Not a term/definition list after all (stray markup inside `<dl>`): keep its content
+		// as ordinary blocks rather than dropping it.
+		const fallback = state.toFlow(state.all(node) as Array<BlockContent | DefinitionContent>);
+		return fallback.length > 0 ? fallback : undefined;
 	}
 
 	const result: List = { type: "list", ordered: false, spread: false, children: items };
