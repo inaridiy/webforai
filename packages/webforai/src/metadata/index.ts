@@ -152,10 +152,17 @@ const asString = (value: unknown): string | undefined =>
 /** Longer than this and the value is a description, not a title. */
 const MAX_TITLE_LENGTH = 160;
 
+/**
+ * Cap for the document's own `<title>`, which is authoritative rather than a guess: retailers
+ * put the full product name there, routinely past {@link MAX_TITLE_LENGTH}, and rejecting it fell
+ * through to the first `<h1>` — on Amazon an accessibility label, not the product.
+ */
+const MAX_DOCUMENT_TITLE_LENGTH = 300;
+
 /** Accepts a title candidate, rejecting values that are really descriptions. */
-const asTitle = (value: string | undefined): string | undefined => {
+const asTitle = (value: string | undefined, maxLength = MAX_TITLE_LENGTH): string | undefined => {
 	const cleaned = clean(value);
-	return cleaned && cleaned.length <= MAX_TITLE_LENGTH ? cleaned : undefined;
+	return cleaned && cleaned.length <= maxLength ? cleaned : undefined;
 };
 
 /** Collapses runs of whitespace, which meta tags and headings both carry liberally. */
@@ -251,7 +258,7 @@ export const extractMetadata = (tree: Hast): PageMetadata => {
 		asTitle(get("og:title", "twitter:title")) ??
 		asTitle(asString(article?.headline)) ??
 		asTitle(asString(article?.name)) ??
-		asTitle(documentTitle(tree)) ??
+		asTitle(documentTitle(tree), MAX_DOCUMENT_TITLE_LENGTH) ??
 		asTitle(firstHeading(tree));
 
 	return {

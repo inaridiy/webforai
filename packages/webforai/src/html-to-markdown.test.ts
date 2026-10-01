@@ -2,7 +2,7 @@ import { distance } from "fastest-levenshtein";
 import { fromHtml } from "hast-util-from-html";
 import { describe, expect, it } from "vitest";
 import type { ExtractParams } from "./extractors/types";
-import { htmlToMarkdown } from "./html-to-markdown";
+import { headingTitle, htmlToMarkdown, htmlToMarkdownWithMetadata } from "./html-to-markdown";
 
 const html = `
 <h1>Hello, world!</h1>
@@ -215,5 +215,56 @@ describe("display math written inside a sentence", () => {
 		);
 
 		expect(markdown).toBe("is the equality\n\n$$\ne^{i\\pi }+1=0\n$$\n\nwhere\n");
+	});
+});
+
+describe("page title heading", () => {
+	const page = (title: string, body: string, siteName?: string) =>
+		`<html><head><title>${title}</title>${
+			siteName ? `<meta property="og:site_name" content="${siteName}">` : ""
+		}</head><body><article>${body}</article></body></html>`;
+	const prose = `<p>${"Markdown is a lightweight markup language, here. ".repeat(20)}</p>`;
+
+	it("drops the site name the title element appends", () => {
+		const markdown = htmlToMarkdown(page("Markdown - Wikipedia", prose), {
+			url: "https://en.wikipedia.org/wiki/Markdown",
+		});
+		expect(markdown.startsWith("# Markdown\n")).toBe(true);
+	});
+
+	it("keeps a hyphenated title that is not about the site", () => {
+		const markdown = htmlToMarkdown(page("Rick Astley - Never Gonna Give You Up", prose, "YouTube"), {
+			url: "https://www.youtube.com/watch?v=x",
+		});
+		expect(markdown.startsWith("# Rick Astley - Never Gonna Give You Up\n")).toBe(true);
+	});
+
+	it("keeps a leading product name unless it is the declared site name", () => {
+		expect(headingTitle("Hono - Web framework built on Web Standards", undefined, "https://hono.dev/docs/")).toBe(
+			"Hono - Web framework built on Web Standards",
+		);
+		expect(headingTitle("GitHub - inaridiy/webforai: HTML to Markdown", "GitHub", "https://github.com/x")).toBe(
+			"inaridiy/webforai: HTML to Markdown",
+		);
+	});
+
+	it("does not mistake a short title in the first sentence for the title", () => {
+		expect(
+			htmlToMarkdown(page("Markdown - Wikipedia", prose), { url: "https://en.wikipedia.org/wiki/Markdown" }),
+		).toMatch(/^# Markdown\n/);
+	});
+
+	it("does not repeat a title the body shows as a lower-level heading", () => {
+		const markdown = htmlToMarkdown(page("Release notes - ICS MEDIA", `<h2>Release notes</h2>${prose}`), {
+			url: "https://ics.media/entry/1/",
+		});
+		expect(markdown.match(/Release notes/g)?.length).toBe(1);
+	});
+
+	it("uses a long product title rather than falling back to the first heading", () => {
+		const long = `Amazon.co.jp: ${"Mini Drone for Kids, Compact, Indoor, ".repeat(5)}`;
+		const markdown = htmlToMarkdown(page(long, `<h1>Product summary presents key product information</h1>${prose}`));
+		expect(htmlToMarkdownWithMetadata(page(long, prose)).metadata.title).toContain("Mini Drone for Kids");
+		expect(markdown).toContain("# Product summary");
 	});
 });

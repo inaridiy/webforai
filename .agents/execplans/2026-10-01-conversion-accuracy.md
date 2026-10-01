@@ -27,6 +27,9 @@ correct short outputs, not extraction losses.
       labelled blocks with real fences; display math inside a paragraph becomes its own block.
       Result: code fence recall 736/748, table recall 26/64 (the TS handbook comparison table is
       now blocks, not a GFM table), checks 74/74.
+- [x] (2026-10-01) Titles: the prepended heading drops the site-name segment (`Markdown -
+      Wikipedia` → `Markdown`), the presence check no longer matches a short title inside prose,
+      and `<title>` up to 300 chars is accepted (Amazon fell back to an a11y `<h1>`).
 - [ ] Validation: biome, typecheck, tests, build, `bench:compare`, changeset.
 
 ## Decision log
@@ -53,3 +56,7 @@ correct short outputs, not extraction losses.
   newline, so ordinary tables are byte-identical. A table is unfolded into blocks only when a cell
   holds a multi-line code block; a flattened code sample is unreadable and loses its fence.
   Header labels come from the first row only when every cell of it is a `<th>`.
+- Title affixes: a trailing segment is removed when it is the declared site name or a host label
+  (optionally plus ≤2 words); a leading one only when it equals the declared site name, because
+  titles often open with the product ("Hono - Web framework…"). Metadata `title` is unchanged —
+  only the prepended heading is cleaned.
