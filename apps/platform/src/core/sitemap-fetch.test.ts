@@ -83,4 +83,18 @@ describe("createSitemapLoader", () => {
 		await createSitemapLoader(robotsWith({ sitemaps: ["https://example.com/index.xml"] }), fetchImpl)(SEED, 1000);
 		expect(requested).toHaveLength(MAX_SITEMAP_FETCHES);
 	});
+
+	it("decides on gzip by content, not by name", async () => {
+		const gz = await gzip(urlset("https://example.com/g"));
+		const { fetchImpl } = fakeFetch({
+			// Gzipped bytes under a plain name, and an already-decoded body under a .gz name.
+			"https://example.com/a.xml": () => new Response(gz),
+			"https://example.com/b.xml.gz": () => new Response(urlset("https://example.com/plain")),
+		});
+		const loader = createSitemapLoader(
+			robotsWith({ sitemaps: ["https://example.com/a.xml", "https://example.com/b.xml.gz"] }),
+			fetchImpl,
+		);
+		expect(await loader(SEED, 100)).toEqual(["https://example.com/g", "https://example.com/plain"]);
+	});
 });

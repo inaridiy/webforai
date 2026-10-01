@@ -72,8 +72,8 @@ subscription.
 
 | limit | free | paid | over the limit |
 | --- | --- | --- | --- |
-| `/v1` requests per minute | 60 | 600 | `429 rate_limited` with `Retry-After: 60` |
-| batch + crawl jobs queued or running at once (async scrape included) | 3 | 20 | `429 too_many_jobs` |
+| `/v1` requests per minute (job status/result `GET`s are not counted) | 60 | 600 | `429 rate_limited` with `Retry-After: 60` |
+| batch + crawl jobs queued or running at once (async scrape included; a job silent for over an hour stops counting) | 3 | 20 | `429 too_many_jobs` |
 | API keys per account | 50 | 50 | key creation refused |
 | URLs per batch job | 100 | 100 | `400 invalid_request` |
 | crawl depth / pages per crawl | 5 / 500 | 5 / 500 | `400 invalid_request` |
@@ -81,8 +81,8 @@ subscription.
 Counters are kept per Cloudflare location and are eventually consistent, so treat the numbers
 as a fairness bound rather than exact accounting. The [public demo](#post-v1demoscrape) is
 limited per client IP instead. The [CLI](/cli)'s `crawl` and `batch` commands retry
-`rate_limited` automatically; the [TypeScript client](/platform/client) exposes `retryAfter`
-and leaves retrying to you.
+`rate_limited` automatically; the [TypeScript client](/platform/client)'s `waitForJob` waits
+out a 429, and other calls expose `retryAfter` and leave retrying to you.
 
 ## Proxy engines are paid-only
 

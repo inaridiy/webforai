@@ -7,11 +7,12 @@ import { account, apikey, billingState, jobPages, jobs, session, usageEvents, us
 /**
  * Account deletion, owner-requested and user-triggered from the dashboard.
  *
- * Billing is settled first and any billing failure aborts before a single row is deleted:
+ * The user's queued/running job Workflows are terminated first (best-effort, so a job cannot
+ * keep scraping — and recording usage — for an account being deleted). Then billing is settled,
+ * and any billing failure aborts before a single row is deleted:
  *   1. usage rows not yet on the Stripe meter are reported, so nothing owed is lost;
  *   2. an active subscription is cancelled with an immediate final invoice.
- * Then the user's queued/running job Workflows are terminated (best-effort, so a job cannot
- * keep scraping for a deleted account), and the user's rows go in one D1 batch (keys, jobs + pages, usage, billing state, pending
+ * Finally the user's rows go in one D1 batch (keys, jobs + pages, usage, billing state, pending
  * sign-in codes, sessions, linked accounts, the user). Stripe keeps its invoices and customer
  * record — the billing records the privacy policy says are retained. Job result archives in
  * R2 are removed best-effort afterwards; anything missed expires under the 7-day lifecycle.
@@ -92,8 +93,6 @@ export const deleteAccount = async (
 		throw new PlatformError("not_found", "The account no longer exists.", 404);
 	}
 
-	await settleBilling(deps, target.id, row.stripeCustomerId ?? null);
-
 	const userJobs = await deps.db
 		.select({ id: jobs.id, status: jobs.status, workflowInstanceId: jobs.workflowInstanceId })
 		.from(jobs)
@@ -112,6 +111,9 @@ export const deleteAccount = async (
 			console.warn("account_delete_terminate_failed", { userId: target.id, failed });
 		}
 	}
+
+	// After the jobs stop, so no page can record usage between the final report and the delete.
+	await settleBilling(deps, target.id, row.stripeCustomerId ?? null);
 	const email = row.email.toLowerCase();
 	await deps.db.batch([
 		deps.db.delete(apikey).where(eq(apikey.referenceId, target.id)),

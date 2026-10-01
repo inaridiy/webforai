@@ -16,7 +16,7 @@
 		"stripe:setup": "tsx scripts/stripe-setup.ts",
 		"cf-typegen": "wrangler types",
 		"test:browser": "tsx tests/browser/dashboard.ts",
-		"test:integration": "tsx tests/integration/page-accounting.ts && tsx tests/integration/email-otp.ts && tsx tests/integration/delete-account.ts && tsx tests/integration/billing-repo.ts && tsx tests/integration/api-key-limits.ts"
+		"test:integration": "tsx tests/integration/page-accounting.ts && tsx tests/integration/email-otp.ts && tsx tests/integration/delete-account.ts && tsx tests/integration/billing-repo.ts && tsx tests/integration/api-key-limits.ts && tsx tests/integration/job-capacity.ts"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "1.6.26",

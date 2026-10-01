@@ -186,6 +186,26 @@ export const createPlatformClient = (options: PlatformClientOptions = {}): Platf
 		return (await response.json()) as PageSuccess;
 	};
 
+	/**
+	 * One poll; a 429 is waited out (its `Retry-After`, else the poll interval) instead of
+	 * failing the wait — a free account's per-minute limit covers polling too.
+	 */
+	const getJobOrBackOff = async (
+		jobId: string,
+		signal: AbortSignal,
+		interval: number,
+	): Promise<JobStatus | undefined> => {
+		try {
+			return await getJob(jobId, signal);
+		} catch (error) {
+			if (!(error instanceof PlatformApiError && error.status === 429)) {
+				throw error;
+			}
+			await sleep(error.retryAfter !== undefined ? error.retryAfter * 1000 : interval, signal);
+			return undefined;
+		}
+	};
+
 	return {
 		scrape: (opts: ScrapeOptions) => request<ScrapeResult>("/v1/scrape", { method: "POST", body: opts, auth: true }),
 
@@ -227,8 +247,11 @@ export const createPlatformClient = (options: PlatformClientOptions = {}): Platf
 			const poll = async (): Promise<JobStatus> => {
 				for (;;) {
 					signal.throwIfAborted();
-					const status = await getJob(jobId, signal);
+					const status = await getJobOrBackOff(jobId, signal, interval);
 					signal.throwIfAborted();
+					if (status === undefined) {
+						continue;
+					}
 					opts.onStatus?.(status);
 					if (TERMINAL_STATES.has(status.status)) {
 						return status;

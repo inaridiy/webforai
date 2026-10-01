@@ -121,6 +121,15 @@ describe("traverseCrawl", () => {
 		]);
 	});
 
+	it("still visits sitemap URLs in sitemap-only mode when maxDepth is 0", async () => {
+		const { visits, visit } = visitorOver({});
+		await traverseCrawl(SEED, { maxDepth: 0, limit: 50 }, visit, {
+			sitemapUrls: ["https://docs.example.com/s"],
+			followLinks: false,
+		});
+		expect(visits.map((entry) => entry.url)).toEqual([SEED, "https://docs.example.com/s"]);
+	});
+
 	it("follows no links in sitemap-only mode", async () => {
 		const { visits, visit } = visitorOver({
 			[SEED]: ["https://docs.example.com/a"],

@@ -1,4 +1,4 @@
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, gt, inArray } from "drizzle-orm";
 
 import type { BillingState } from "../billing/state";
 import { isSpendable } from "../billing/state";
@@ -94,14 +94,25 @@ export const rateLimitedMessage = (tier: Tier): string =>
 const ACTIVE_JOB_STATUSES = ["queued", "running"] as const;
 
 /**
- * Active jobs for one account. Uses `jobs_user_idx` (user_id, created_at) for the user prefix
- * and filters status on the matched rows.
+ * A queued/running job whose row has not moved for this long no longer counts: every finished
+ * page bumps `updated_at` (a page step is bounded at a few minutes with retries), so silence
+ * this long means a lost Workflow or a `scheduling_unknown` job, which must not hold the
+ * account's capacity forever.
  */
-export const countActiveJobs = async (db: PlatformDb, userId: string): Promise<number> => {
+export const STALE_ACTIVE_JOB_MS = 60 * 60 * 1000;
+
+/** Active jobs for one account (`jobs_user_status_idx`), ignoring stale ones. */
+export const countActiveJobs = async (db: PlatformDb, userId: string, now: Date = new Date()): Promise<number> => {
 	const rows = await db
 		.select({ value: count() })
 		.from(jobs)
-		.where(and(eq(jobs.userId, userId), inArray(jobs.status, [...ACTIVE_JOB_STATUSES])));
+		.where(
+			and(
+				eq(jobs.userId, userId),
+				inArray(jobs.status, [...ACTIVE_JOB_STATUSES]),
+				gt(jobs.updatedAt, new Date(now.getTime() - STALE_ACTIVE_JOB_MS)),
+			),
+		);
 	return rows[0]?.value ?? 0;
 };
 

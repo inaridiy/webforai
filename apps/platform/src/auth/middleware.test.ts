@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { type RateLimiter, type Tier, rateLimitedMessage } from "../ops/limits";
 import type { Auth } from "./auth";
-import { type ApiKeyGateDeps, type AuthVariables, requireApiKey } from "./middleware";
+import { type ApiKeyGateDeps, type AuthVariables, isJobRead, requireApiKey } from "./middleware";
 
 /**
  * The `/v1` gate: key verification (Better Auth, faked) then the per-account limit on the
@@ -121,5 +121,29 @@ describe("requireApiKey", () => {
 		const response = await call("wfa_quota");
 		expect(response.status).toBe(429);
 		expect(((await response.json()) as { error: { code: string } }).error.code).toBe("rate_limited");
+	});
+
+	it("exempts job status and result reads from the per-minute limit", async () => {
+		const free = limiter(0);
+		const auth = fakeAuth({ wfa_alice: { id: "key_a", referenceId: "user_alice" } });
+		const deps: ApiKeyGateDeps = {
+			tierOf: () => Promise.resolve("free"),
+			limiter: () => free.value,
+			dashboardUrl: DASHBOARD,
+		};
+		const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+		app.use(
+			"/v1/*",
+			requireApiKey(auth, () => deps),
+		);
+		app.get("/v1/jobs/:id", (c) => c.json({ ok: true }));
+		app.post("/v1/batch", (c) => c.json({ ok: true }));
+		const headers = { authorization: "Bearer wfa_alice" };
+
+		expect((await app.request("/v1/jobs/job_1", { headers }, {} as Env)).status).toBe(200);
+		expect((await app.request("/v1/batch", { method: "POST", headers }, {} as Env)).status).toBe(429);
+		expect(isJobRead("GET", "/v1/jobs/job_1/results")).toBe(true);
+		expect(isJobRead("POST", "/v1/jobs/job_1")).toBe(false);
+		expect(isJobRead("GET", "/v1/jobsx")).toBe(false);
 	});
 });

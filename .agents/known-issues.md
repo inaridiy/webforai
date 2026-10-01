@@ -23,6 +23,14 @@ renderer is 502.59 kB (149.68 kB gzip). Keep the warning enabled to reveal futur
 this specific deferred vendor chunk is accepted. Revisit if preview loading itself becomes
 a measured UX problem. No Core Web Vitals claim follows from these bundle sizes.
 
+## KI-3: Playwright loader tests need the pinned Chromium build
+
+`pnpm run test --run` fails only `packages/webforai/src/loaders/playwright.test.ts` (3 tests)
+with `browserType.launch: Executable doesn't exist at ~/.cache/ms-playwright/chromium-1124/…`
+when the machine has newer Playwright browsers but not the build the library's pinned
+`playwright` expects (seen 2026-10-01). Not a code failure. Fix locally with
+`pnpm --filter webforai exec playwright install chromium`; CI installs it explicitly.
+
 ## Resolved diagnostics and command corrections
 
 - Root Vite CJS deprecation: root config is now `vitest.config.mts`, so Vite loads it as ESM.

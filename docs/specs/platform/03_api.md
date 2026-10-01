@@ -1,5 +1,9 @@
 # Platform API
 
+Revision note (2026-10-01, review fixes): Job status/result reads (`GET /v1/jobs/*`) are exempt
+from the per-minute limit (polling a few jobs must not exhaust a free budget); a queued/running
+job whose row has not moved for an hour stops counting toward the concurrency cap (lost
+Workflows, `scheduling_unknown`). Permalinks answer `GET` only (`HEAD` → 405, never billed).
 Revision note (2026-10-01, permalinks and sitemaps): `GET /<http(s) URL>` returns Markdown as
 `text/markdown`, re-dispatched internally to `POST /v1/scrape` (with a Bearer key) or
 `POST /v1/demo/scrape` (without), so auth, limits and billing are those routes' own. Crawl
@@ -359,8 +363,8 @@ Constants: `src/ops/limits.ts`.
 
 | limit | free | paid | refusal |
 |---|---|---|---|
-| `/v1/*` requests per minute (all of the account's keys together) | 60 | 600 | `429 rate_limited`, `Retry-After: 60` |
-| batch + crawl jobs (async scrape included) in `queued`/`running` | 3 | 20 | `429 too_many_jobs` |
+| `/v1/*` requests per minute (all of the account's keys together; `GET /v1/jobs/*` exempt) | 60 | 600 | `429 rate_limited`, `Retry-After: 60` |
+| batch + crawl jobs (async scrape included) in `queued`/`running`, updated within the last hour | 3 | 20 | `429 too_many_jobs` |
 | API keys | 50 | 50 | `403` from `POST /api/auth/api-key/create` |
 
 - Request limits run in `requireApiKey` after key verification, on the Workers Rate Limiting

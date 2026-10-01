@@ -211,6 +211,35 @@ describe("createPlatformClient", () => {
 		expect(seen).toEqual(["queued", "running", "completed"]);
 	});
 
+	it("waitForJob waits out a 429 instead of failing", async () => {
+		let call = 0;
+		const { impl } = stubFetch(() => {
+			call += 1;
+			if (call === 1) {
+				return json(
+					{ error: { code: "rate_limited", message: "slow down" } },
+					{ status: 429, headers: { "retry-after": "0" } },
+				);
+			}
+			return json({
+				jobId: "job_1",
+				type: "batch",
+				status: "completed",
+				total: 1,
+				completed: 1,
+				failed: 0,
+				credits: 1,
+				expiresAt: "2026-08-29T00:00:00Z",
+			});
+		});
+		const client = createPlatformClient({ apiKey: "k", fetch: impl });
+
+		const done = await client.waitForJob("job_1", { pollIntervalMs: 1 });
+
+		expect(done.status).toBe("completed");
+		expect(call).toBe(2);
+	});
+
 	it("waitForJob times out with poll_timeout instead of hanging", async () => {
 		const { impl } = stubFetch(() =>
 			json({

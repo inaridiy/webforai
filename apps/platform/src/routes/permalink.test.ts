@@ -77,6 +77,16 @@ describe("permalink route", () => {
 		expect(await response.text()).toBe("rate_limited: Slow down.\n");
 	});
 
+	it("refuses HEAD so a probe never runs (or bills) a scrape", async () => {
+		const { app, seen } = harness(() => json({ markdown: "x" }));
+		const response = await app.request("https://p.dev/https://example.com", {
+			method: "HEAD",
+			headers: { authorization: "Bearer wfa_x" },
+		});
+		expect(response.status).toBe(405);
+		expect(seen).toEqual([]);
+	});
+
 	it("passes other paths through untouched", async () => {
 		const { app, seen } = harness(() => json({}));
 		expect((await app.request("https://p.dev/dashboard")).status).toBe(404);

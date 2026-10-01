@@ -17,7 +17,7 @@
  * Bump VERSION only when this file's caching logic changes; activation drops older caches.
  * Cache names start with "wfa-" — `clearOfflineData` in src/client/lib/pwa.ts relies on it.
  */
-const VERSION = "v2";
+const VERSION = "v3";
 const SHELL_CACHE = `wfa-shell-${VERSION}`;
 const ASSET_CACHE = `wfa-assets-${VERSION}`;
 const STATIC_CACHE = `wfa-static-${VERSION}`;
@@ -28,7 +28,8 @@ const MAX_ASSETS = 80;
 /** A navigation that has not answered by then is served from cache (it still updates it). */
 const NAVIGATION_TIMEOUT_MS = 4000;
 
-const WORKER_ROUTE = /^\/(?:v1|api|artifacts)(?:\/|$)|^\/health$/;
+/** Worker-only paths, Markdown permalinks (`/https://…`) included: never cached or shell-served. */
+const WORKER_ROUTE = /^\/(?:v1|api|artifacts)(?:\/|$)|^\/health$|^\/https?:/i;
 /** Paths with their own prerendered HTML file; keep in sync with PAGES in scripts/prerender.ts. */
 const OWN_DOCUMENT = /^\/(?:terms|privacy|commerce)(?:\.html)?\/?$/;
 

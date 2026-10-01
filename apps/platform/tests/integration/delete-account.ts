@@ -1,6 +1,6 @@
 /**
- * Account deletion against disposable workerd D1 with the checked-in migrations: billing is
- * settled first (unreported usage reported, subscription cancelled), a billing failure deletes
+ * Account deletion against disposable workerd D1 with the checked-in migrations: live jobs are
+ * stopped and billing is settled (unreported usage reported, subscription cancelled), a billing failure deletes
  * nothing, and a successful deletion removes every row the user owns while another user's rows
  * stay untouched.
  */

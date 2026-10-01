@@ -101,6 +101,10 @@ export const permalinkRoutes = <E extends HonoEnv>(dispatch: PermalinkDispatch<E
 		if (target === undefined) {
 			return next();
 		}
+		// Hono routes HEAD to GET handlers; a HEAD must not run (and bill) a scrape.
+		if (c.req.method !== "GET") {
+			return text("", 405, { allow: "GET" });
+		}
 		if (target.length > MAX_URL_LENGTH) {
 			return text(`invalid_request: the URL is longer than ${MAX_URL_LENGTH} characters.\n`, 400);
 		}

@@ -66,7 +66,10 @@ export const traverseCrawl = async (
 			frontier = enqueueLinks(frontier, outcome.links, depth + 1, limits);
 		}
 		if (index === 1 && sitemapUrls.length > 0) {
-			frontier = enqueueLinks(frontier, sitemapUrls, 1, limits);
+			// Sitemap URLs sit at depth 1; in sitemap-only mode no link is ever followed, so depth
+			// limits nothing and `maxDepth: 0` must not silently drop the whole sitemap.
+			const depthLimits = followLinks ? limits : { ...limits, maxDepth: Math.max(limits.maxDepth, 1) };
+			frontier = enqueueLinks(frontier, sitemapUrls, 1, depthLimits);
 		}
 	}
 
