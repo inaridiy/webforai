@@ -99,6 +99,17 @@ describe("htmlToMarkdown", () => {
 		expect(markdown).toBe("```c++\n    first\n      second\n```\n");
 	});
 
+	it("reads the language from data-language (Shiki / rehype-pretty-code)", () => {
+		const markdown = htmlToMarkdown(
+			'<figure data-rehype-pretty-code-figure=""><pre tabindex="0" data-language="tsx" data-theme="github-dark"><code data-language="tsx" style="display: grid;"><span data-line=""><span style="color:#F97583">import</span> x</span></code></pre></figure>',
+			{ extractors: false },
+		);
+		expect(markdown).toBe("```tsx\nimport x\n```\n");
+		expect(htmlToMarkdown('<pre data-lang="go"><code>x := 1</code></pre>', { extractors: false })).toBe(
+			"```go\nx := 1\n```\n",
+		);
+	});
+
 	it("keeps every example in a code tab group", () => {
 		const markdown = htmlToMarkdown(
 			'<div class="codegroup"><pre><code>first example</code></pre><pre><code>second example</code></pre></div>',
