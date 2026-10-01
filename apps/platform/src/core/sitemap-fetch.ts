@@ -45,6 +45,15 @@ const fetchSitemapText = async (fetchImpl: FetchLike, start: string): Promise<st
 	return readTruncated(body, MAX_SITEMAP_BYTES);
 };
 
+const addUpTo = (into: Set<string>, urls: string[], max: number): void => {
+	for (const url of urls) {
+		if (into.size >= max) {
+			return;
+		}
+		into.add(url);
+	}
+};
+
 export const createSitemapLoader =
 	(robotsTxt: RobotsTxtLoader, fetchImpl: FetchLike = (input, init) => fetch(input, init)): SitemapLoader =>
 	async (seed, maxUrls) => {
@@ -66,13 +75,8 @@ export const createSitemapLoader =
 			const sitemap = parseSitemap(text);
 			if (sitemap.kind === "index") {
 				pending.push(...sitemap.urls);
-				continue;
-			}
-			for (const url of sitemap.urls) {
-				urls.add(url);
-				if (urls.size >= maxUrls) {
-					break;
-				}
+			} else {
+				addUpTo(urls, sitemap.urls, maxUrls);
 			}
 		}
 

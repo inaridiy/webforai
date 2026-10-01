@@ -55,6 +55,41 @@ const toTextError = async (response: Response): Promise<Response> => {
 	return text(`${code}: ${message}\n`, response.status, retryAfter ? { "retry-after": retryAfter } : {});
 };
 
+/** The incoming headers the re-dispatched request keeps: credentials and the client's identity. */
+const forwardedHeaders = (header: (name: string) => string | undefined): Headers => {
+	const headers = new Headers({ "content-type": "application/json" });
+	for (const name of ["authorization", "cf-connecting-ip", "user-agent"]) {
+		const value = header(name);
+		if (value) {
+			headers.set(name, value);
+		}
+	}
+	return headers;
+};
+
+const markdownHeaders = (result: ScrapeJson, target: string, keyed: boolean): Record<string, string> => {
+	const out: Record<string, string> = {
+		"content-type": "text/markdown; charset=utf-8",
+		"access-control-allow-origin": "*",
+		"x-content-type-options": "nosniff",
+		// Keyed results are billed per request and private to the caller; demo results are
+		// already cached server-side for the same 10 minutes.
+		"cache-control": keyed ? "private, no-store" : "public, max-age=600",
+		vary: "authorization",
+		"x-webforai-source": target,
+	};
+	if (typeof result.engine === "string") {
+		out["x-webforai-engine"] = result.engine;
+	}
+	if (typeof result.truncated === "boolean") {
+		out["x-webforai-truncated"] = String(result.truncated);
+	}
+	if (typeof result.credits === "number") {
+		out["x-webforai-credits"] = String(result.credits);
+	}
+	return out;
+};
+
 /** Runs the rewritten request through the Worker's router, with the incoming request's context. */
 export type PermalinkDispatch<E extends HonoEnv> = (request: Request, c: Context<E>) => Promise<Response>;
 
@@ -72,16 +107,13 @@ export const permalinkRoutes = <E extends HonoEnv>(dispatch: PermalinkDispatch<E
 
 		const authorization = c.req.header("authorization");
 		const origin = new URL(c.req.url).origin;
-		const headers = new Headers({ "content-type": "application/json" });
-		for (const name of ["authorization", "cf-connecting-ip", "user-agent"]) {
-			const value = c.req.header(name);
-			if (value) {
-				headers.set(name, value);
-			}
-		}
 		const path = authorization ? "/v1/scrape" : "/v1/demo/scrape";
 		const response = await dispatch(
-			new Request(`${origin}${path}`, { method: "POST", headers, body: JSON.stringify({ url: target }) }),
+			new Request(`${origin}${path}`, {
+				method: "POST",
+				headers: forwardedHeaders((name) => c.req.header(name)),
+				body: JSON.stringify({ url: target }),
+			}),
 			c,
 		);
 		if (!response.ok) {
@@ -89,25 +121,7 @@ export const permalinkRoutes = <E extends HonoEnv>(dispatch: PermalinkDispatch<E
 		}
 
 		const result = (await response.json()) as ScrapeJson;
-		const out: Record<string, string> = {
-			"content-type": "text/markdown; charset=utf-8",
-			"access-control-allow-origin": "*",
-			"x-content-type-options": "nosniff",
-			// Keyed results are billed per request and private to the caller; demo results are
-			// already cached server-side for the same 10 minutes.
-			"cache-control": authorization ? "private, no-store" : "public, max-age=600",
-			vary: "authorization",
-			"x-webforai-source": target,
-		};
-		if (typeof result.engine === "string") {
-			out["x-webforai-engine"] = result.engine;
-		}
-		if (typeof result.truncated === "boolean") {
-			out["x-webforai-truncated"] = String(result.truncated);
-		}
-		if (typeof result.credits === "number") {
-			out["x-webforai-credits"] = String(result.credits);
-		}
+		const out = markdownHeaders(result, target, authorization !== undefined);
 		return new Response(typeof result.markdown === "string" ? result.markdown : "", { status: 200, headers: out });
 	});
 
