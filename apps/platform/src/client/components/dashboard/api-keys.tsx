@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { z } from "zod";
 import type { Result } from "../../lib/api";
 import type { ApiKeySummary } from "../../lib/auth-client";
 import { authClient, authErrorMessage } from "../../lib/auth-client";
@@ -13,13 +14,43 @@ import { Input } from "../../ui/input";
 import { LoadingRow } from "../../ui/spinner";
 import { TBody, TD, TH, THead, TR, Table } from "../../ui/table";
 
-export const listKeys = async (): Promise<Result<ApiKeySummary[]>> => {
+/** The key fields the table shows — also what the dashboard caches locally (no secrets). */
+export type KeyListItem = Pick<ApiKeySummary, "id" | "name" | "start" | "createdAt" | "requestCount" | "enabled">;
+
+export const keyListSchema: z.ZodType<KeyListItem[]> = z.array(
+	z.object({
+		id: z.string(),
+		name: z.string().nullable(),
+		start: z.string().nullable(),
+		// JSON turns the Date into a string; the cached copy is revived here.
+		createdAt: z.coerce.date(),
+		requestCount: z.number(),
+		enabled: z.boolean(),
+	}),
+);
+
+export const listKeys = async (): Promise<Result<KeyListItem[]>> => {
 	try {
 		const response = await authClient.apiKey.list();
 		if (response.error) {
-			return { ok: false, error: authErrorMessage(response.error, "Could not load API keys."), status: 0 };
+			return {
+				ok: false,
+				error: authErrorMessage(response.error, "Could not load API keys."),
+				status: response.error.status,
+			};
 		}
-		return { ok: true, value: response.data?.apiKeys ?? [] };
+		const keys = response.data?.apiKeys ?? [];
+		return {
+			ok: true,
+			value: keys.map(({ id, name, start, createdAt, requestCount, enabled }) => ({
+				id,
+				name,
+				start,
+				createdAt,
+				requestCount,
+				enabled,
+			})),
+		};
 	} catch {
 		return { ok: false, error: "Network error — could not load API keys.", status: 0 };
 	}
@@ -61,7 +92,7 @@ const RevealedKey = ({ value, onDismiss }: { value: string; onDismiss: () => voi
 	);
 };
 
-const KeyRow = ({ apiKey, onRevoked }: { apiKey: ApiKeySummary; onRevoked: () => void }) => {
+const KeyRow = ({ apiKey, onRevoked }: { apiKey: KeyListItem; onRevoked: () => void }) => {
 	const [confirming, setConfirming] = useState(false);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -156,7 +187,8 @@ const CreateKeyForm = ({ onCreated, onCancel }: { onCreated: (key: string) => vo
 					Key name
 				</label>
 				<Input
-					className="h-8 max-w-xs flex-1 text-[0.8125rem]"
+					textSize="text-base sm:text-[0.8125rem]"
+					className="h-8 max-w-xs flex-1"
 					id="api-key-name"
 					name="api-key-name"
 					value={name}
@@ -194,7 +226,7 @@ export const ApiKeysSection = ({
 	reload,
 }: {
 	className?: string;
-	keys: AsyncState<ApiKeySummary[]>;
+	keys: AsyncState<KeyListItem[]>;
 	reload: () => void;
 }) => {
 	const [revealed, setRevealed] = useState<string | null>(null);

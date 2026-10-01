@@ -23,20 +23,20 @@ export const usageSchema: z.ZodType<UsageSummary> = z.object({
 	),
 });
 
-export const jobsSchema: z.ZodType<{ jobs: JobSummary[] }> = z.object({
-	jobs: z.array(
-		z.object({
-			id: z.string(),
-			type: z.string(),
-			status: z.string(),
-			total: count,
-			succeeded: count,
-			failed: count,
-			creditsUsed: count,
-			createdAt: z.string(),
-		}),
-	),
-});
+export const jobListSchema: z.ZodType<JobSummary[]> = z.array(
+	z.object({
+		id: z.string(),
+		type: z.string(),
+		status: z.string(),
+		total: count,
+		succeeded: count,
+		failed: count,
+		creditsUsed: count,
+		createdAt: z.string(),
+	}),
+);
+
+export const jobsSchema: z.ZodType<{ jobs: JobSummary[] }> = z.object({ jobs: jobListSchema });
 
 export const billingRedirectSchema = z.object({ url: z.url({ protocol: /^https?$/ }) });
 

@@ -189,7 +189,30 @@ the rest). Stripe keeps its invoices.
 
 Legal pages are SPA routes: `/terms`, `/privacy`, `/commerce` (特定商取引法に基づく表記),
 linked from the footer with `support@webforai.dev`. `public/` holds `og.png` (Open Graph image,
-tags in `index.html`) and `robots.txt`.
+tags in `index.html`), `robots.txt`, and the installable-app files below.
+
+### Installable app (PWA) and offline data
+
+The SPA is an installable PWA: `public/manifest.webmanifest` (starts on `/dashboard`),
+`public/icons/`, and `public/sw.js`. The dashboard's **Settings → Install the app** card has
+per-platform install steps (iOS Safari: Share → Add to Home Screen; Android Chrome: ⋮ →
+Install app; desktop Chrome/Edge: address-bar install icon), plus the browser's own install
+button when one is offered. The service worker is registered only in production builds
+(`pnpm build`), never under `pnpm dev`. To exercise it locally, serve the build with
+`pnpm build && pnpm exec vite preview`. Like `pnpm dev`, this builds the container image
+first, so Docker must be running.
+
+- The service worker loads page navigations network-first and falls back to the cached app
+  shell when the device is offline or the network stalls for more than 4 s. It serves the
+  hashed `/assets/*` cache-first and other static files stale-while-revalidate. It never
+  intercepts `/v1`, `/api`, `/artifacts`, `/health` or cross-origin requests.
+- Dashboard data (the signed-in account's id, email and name; usage; the key list without
+  secrets; jobs) is saved in `localStorage` under `wfa-cache:v1:*`
+  (`src/client/lib/local-cache.ts`). On reopen it is shown while fresh data loads, and it is
+  kept with a "Showing saved data" notice when a load fails offline or with a 5xx. Sign-out,
+  an expired session, account deletion and **Clear saved data** remove it.
+- The shell uses `min-h-dvh` (100dvh, not 100vh) and safe-area insets
+  (`viewport-fit=cover`). Text fields are 16px on phones so iOS does not zoom on focus.
 
 The dashboard distinguishes empty jobs from failed requests and provides Retry. Usage and
 job responses are validated before rendering. Authentication outages keep the dashboard

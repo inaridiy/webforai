@@ -162,7 +162,7 @@ const Estimator = () => {
 							step={1000}
 							value={pages}
 							onChange={(event) => setPages(Math.max(0, Number(event.target.value) || 0))}
-							className="h-10 w-full rounded-md border border-border bg-input px-3 font-mono text-sm tabular"
+							className="h-10 w-full rounded-md border border-border bg-input px-3 font-mono text-base tabular sm:text-sm"
 						/>
 						<div className="flex flex-wrap gap-1.5">
 							{PAGE_PRESETS.map((preset) => (

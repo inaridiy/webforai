@@ -334,7 +334,8 @@ const PlaygroundBody = () => {
 							<Input
 								id="pg-url"
 								type="url"
-								className="font-mono text-[0.8125rem]"
+								textSize="text-base sm:text-[0.8125rem]"
+								className="font-mono"
 								value={form.url}
 								onChange={(event) => update("url", event.target.value)}
 								placeholder="https://example.com"
@@ -345,7 +346,8 @@ const PlaygroundBody = () => {
 						<Field label="Engine" htmlFor="pg-engine" hint={ENGINE_HINTS[form.engine]}>
 							<Select
 								id="pg-engine"
-								className="font-mono text-[0.8125rem]"
+								textSize="text-base sm:text-[0.8125rem]"
+								className="font-mono"
 								options={ENGINE_OPTIONS}
 								value={form.engine}
 								onChange={(event) => onEngineChange(event.target.value)}
@@ -373,7 +375,8 @@ const PlaygroundBody = () => {
 						<Field label="Region" htmlFor="pg-region" hint="Proxy engines only.">
 							<Select
 								id="pg-region"
-								className="font-mono text-[0.8125rem]"
+								textSize="text-base sm:text-[0.8125rem]"
+								className="font-mono"
 								options={REGION_OPTIONS}
 								value={form.region}
 								disabled={!regionApplies}
@@ -385,7 +388,8 @@ const PlaygroundBody = () => {
 						<Field label="Extractor" htmlFor="pg-extractor">
 							<Select
 								id="pg-extractor"
-								className="font-mono text-[0.8125rem]"
+								textSize="text-base sm:text-[0.8125rem]"
+								className="font-mono"
 								options={EXTRACTOR_OPTIONS}
 								value={form.extractor}
 								onChange={(event) => update("extractor", event.target.value)}

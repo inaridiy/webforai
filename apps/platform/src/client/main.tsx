@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import { App } from "./app";
+import { registerPwa } from "./lib/pwa";
 import "./app.css";
 
 const container = document.getElementById("root");
@@ -8,6 +9,8 @@ const container = document.getElementById("root");
 if (container === null) {
 	throw new Error("Mount point #root is missing from index.html");
 }
+
+registerPwa();
 
 const app = (
 	<StrictMode>

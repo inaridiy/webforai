@@ -1,13 +1,21 @@
 import type { InputHTMLAttributes, LabelHTMLAttributes, ReactNode } from "react";
 import { cn } from "../lib/cn";
 
-export type InputProps = InputHTMLAttributes<HTMLInputElement>;
+/**
+ * iOS Safari zooms the page into any focused field whose text is under 16px, so fields are
+ * 16px on phones. `cn` does not dedupe utilities: override the size through `textSize`, never
+ * through `className`.
+ */
+export const fieldTextSize = "text-base sm:text-sm";
 
-export const Input = ({ className, ...rest }: InputProps) => (
+export type InputProps = InputHTMLAttributes<HTMLInputElement> & { textSize?: string };
+
+export const Input = ({ className, textSize = fieldTextSize, ...rest }: InputProps) => (
 	<input
 		className={cn(
-			"h-10 w-full rounded-md border border-border bg-input px-3 text-foreground text-sm",
+			"h-10 w-full rounded-md border border-border bg-input px-3 text-foreground",
 			"placeholder:text-muted-foreground/70 disabled:opacity-50",
+			textSize,
 			className,
 		)}
 		{...rest}

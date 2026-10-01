@@ -233,7 +233,8 @@ const CodeStep = ({
 				required={true}
 				value={code}
 				placeholder="123456"
-				className="h-12 text-center font-mono text-2xl tracking-[0.4em]"
+				textSize="text-2xl"
+				className="h-12 text-center font-mono tracking-[0.4em]"
 				onChange={(event) => onCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
 			/>
 		</Field>

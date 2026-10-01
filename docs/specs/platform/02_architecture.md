@@ -1,5 +1,15 @@
 # Platform Architecture
 
+Revision note (2026-09-30, PWA): The SPA is installable (`public/manifest.webmanifest`,
+`public/sw.js`). The service worker only caches the public app shell and static assets. It
+never intercepts the Worker's routes (`/v1`, `/api`, `/artifacts`, `/health`), so no account
+data or credentials reach Cache Storage. Per-account display data (session user, usage, key
+list without secrets, jobs) is kept as a client-side stale-while-revalidate cache in
+`localStorage`. Every read is re-validated with the response's zod schema, and sign-out,
+account deletion or an anonymous session response clears it. The hook reads that cache after
+mount (layout effect), so the prerendered landing page still hydrates against a `loading`
+session.
+
 Revision note (2026-09-24, sign-in): New `EMAIL` (`send_email`, sender-restricted) binding
 for sign-in codes; Better Auth's rate limiter moved to D1 (`rate_limit` table, migration
 0003) because in-memory counters are per isolate; `GET /api/auth-methods` tells the SPA which

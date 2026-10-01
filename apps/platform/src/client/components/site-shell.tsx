@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { links } from "../lib/links";
+import { useOnline } from "../lib/pwa";
 import { Link } from "../lib/router";
 import type { SessionState } from "../lib/use-session";
 import { buttonClass } from "../ui/button";
@@ -64,9 +65,21 @@ const footerLinks: { text: string; href: string }[] = [
 	{ text: "Contact", href: "mailto:support@webforai.dev" },
 ];
 
+const OfflineBanner = () =>
+	useOnline() ? null : (
+		<div role="status" className="border-warning/30 border-b bg-warning-subtle px-5 py-1.5 text-center text-xs">
+			You're offline — showing what was saved on this device.
+		</div>
+	);
+
+/*
+ * `min-h-dvh` (100dvh), not 100vh: on phones 100vh is the height with the browser toolbars
+ * hidden, which pushes the footer below the visible area. `viewport-fit=cover` (index.html)
+ * lets the installed app draw edge to edge, so the shell pads itself by the safe-area insets.
+ */
 export const SiteShell = ({ session, onSignOut, children }: SiteShellProps) => (
-	<div className="flex min-h-screen flex-col">
-		<header className="sticky top-0 z-20 border-border border-b bg-background/85 backdrop-blur">
+	<div className="flex min-h-dvh flex-col pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
+		<header className="sticky top-0 z-20 border-border border-b bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur">
 			<div className="mx-auto flex min-h-14 w-full max-w-6xl flex-wrap items-center gap-3 px-5 py-2 sm:gap-6">
 				<Link href="/" className="flex items-center gap-2.5 text-foreground" aria-label="webforai platform home">
 					<Wordmark className="h-5 w-auto" />
@@ -90,9 +103,10 @@ export const SiteShell = ({ session, onSignOut, children }: SiteShellProps) => (
 					<HeaderActions session={session} onSignOut={onSignOut} />
 				</div>
 			</div>
+			<OfflineBanner />
 		</header>
 		<main className="flex-1">{children}</main>
-		<footer className="border-border border-t">
+		<footer className="border-border border-t pb-[env(safe-area-inset-bottom)]">
 			<div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-8 text-muted-foreground text-sm sm:flex-row sm:items-start sm:justify-between">
 				<p className="max-w-sm">
 					webforai platform — the hosted API for the open-source{" "}

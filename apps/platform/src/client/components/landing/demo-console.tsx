@@ -214,7 +214,7 @@ export const DemoConsole = ({ className }: { className?: string }) => {
 					disabled={running}
 					onChange={(event) => setUrl(event.target.value)}
 					placeholder="https://any-page.example/article"
-					className="h-12 w-full min-w-0 rounded-lg border sm:flex-1 sm:w-auto border-border bg-background px-4 font-mono text-[0.9375rem] outline-none transition-colors focus:border-accent disabled:opacity-60"
+					className="h-12 w-full min-w-0 rounded-lg border sm:flex-1 sm:w-auto border-border bg-background px-4 font-mono text-base outline-none sm:text-[0.9375rem] transition-colors focus:border-accent disabled:opacity-60"
 				/>
 				<div className="flex gap-2">
 					<Select

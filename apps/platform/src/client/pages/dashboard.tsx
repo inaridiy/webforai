@@ -1,17 +1,20 @@
 import { useEffect } from "react";
 import { ClientSnippets } from "../components/client-snippets";
-import { ApiKeysSection, listKeys } from "../components/dashboard/api-keys";
+import { ApiKeysSection, keyListSchema, listKeys } from "../components/dashboard/api-keys";
 import { DeleteAccountCard } from "../components/dashboard/delete-account";
+import { InstallAppCard } from "../components/dashboard/install-app";
 import { JobsTable } from "../components/dashboard/jobs-table";
 import { SetupChecklist } from "../components/dashboard/setup-checklist";
 import { UsagePanel } from "../components/dashboard/usage-overview";
 import { UsageTable } from "../components/dashboard/usage-table";
 import { fetchUsage } from "../lib/api";
-import type { Session } from "../lib/auth-client";
+import { usageSchema } from "../lib/api-schemas";
+import { formatDateTime } from "../lib/format";
 import { links, useDeploymentOrigin } from "../lib/links";
+import { cacheKey, clearLocalCache } from "../lib/local-cache";
 import { Link, navigate } from "../lib/router";
 import { useAsyncResult } from "../lib/use-async";
-import type { SessionState } from "../lib/use-session";
+import type { AccountUser, SessionState } from "../lib/use-session";
 import { Alert } from "../ui/alert";
 import { Button, buttonClass } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -52,22 +55,43 @@ const QuickstartCard = ({ className }: { className?: string }) => {
 	);
 };
 
-const DashboardBody = ({ session, onDeleted }: { session: Session; onDeleted: () => void }) => {
-	const usage = useAsyncResult(fetchUsage);
-	const keys = useAsyncResult(listKeys);
+const DashboardBody = ({ user, onDeleted }: { user: AccountUser; onDeleted: () => void }) => {
+	const usage = useAsyncResult(fetchUsage, { cache: { key: cacheKey(user.id, "usage"), schema: usageSchema } });
+	const keys = useAsyncResult(listKeys, { cache: { key: cacheKey(user.id, "keys"), schema: keyListSchema } });
 	const ready = usage.state.status === "ready" ? usage.state.value : undefined;
+	const staleTimes = [usage.staleSince, keys.staleSince].filter((time) => time !== null);
+	const savedAt = staleTimes.length > 0 ? Math.min(...staleTimes) : null;
 
 	return (
 		<div className="mx-auto w-full max-w-6xl px-5 py-10">
 			<header className="mb-8 flex flex-wrap items-end justify-between gap-4">
 				<div className="min-w-0">
 					<h1 className="font-semibold text-3xl tracking-tight">Dashboard</h1>
-					<p className="mt-1.5 break-all text-muted-foreground text-sm">{session.user.email}</p>
+					<p className="mt-1.5 break-all text-muted-foreground text-sm">{user.email}</p>
 				</div>
 				<Link href="/playground" className={buttonClass("primary", "md")}>
 					Open playground
 				</Link>
 			</header>
+			{savedAt === null ? null : (
+				<Alert tone="info" title="Showing saved data" className="mb-4">
+					<div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+						<span>
+							Could not reach the platform — this is what you last loaded ({formatDateTime(new Date(savedAt))}).
+						</span>
+						<Button
+							size="sm"
+							variant="outline"
+							onClick={() => {
+								usage.reload();
+								keys.reload();
+							}}
+						>
+							Retry
+						</Button>
+					</div>
+				</Alert>
+			)}
 			<div className="grid grid-cols-1 gap-4 md:grid-cols-12 [&>*]:min-w-0">
 				{usage.state.status === "loading" ? (
 					<div className="md:col-span-12">
@@ -98,8 +122,12 @@ const DashboardBody = ({ session, onDeleted }: { session: Session; onDeleted: ()
 				<ApiKeysSection className="md:col-span-12" keys={keys.state} reload={keys.reload} />
 				<QuickstartCard className="md:col-span-12" />
 				{ready !== undefined ? <UsageTable events={ready.recentEvents} className="md:col-span-5" /> : null}
-				<JobsTable className={ready !== undefined ? "md:col-span-7" : "md:col-span-12"} />
-				<DeleteAccountCard email={session.user.email} onDeleted={onDeleted} className="md:col-span-12" />
+				<JobsTable cacheScope={user.id} className={ready !== undefined ? "md:col-span-7" : "md:col-span-12"} />
+				<h2 id="settings" className="mt-6 font-semibold text-xl tracking-tight md:col-span-12">
+					Settings
+				</h2>
+				<InstallAppCard className="md:col-span-12" />
+				<DeleteAccountCard email={user.email} onDeleted={onDeleted} className="md:col-span-12" />
 			</div>
 		</div>
 	);
@@ -149,8 +177,9 @@ export const DashboardPage = ({ session, reloadSession }: { session: SessionStat
 
 	return (
 		<DashboardBody
-			session={session.session}
+			user={session.user}
 			onDeleted={() => {
+				clearLocalCache();
 				reloadSession();
 				navigate("/", { replace: true });
 			}}

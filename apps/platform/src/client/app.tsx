@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { SiteShell } from "./components/site-shell";
 import { authClient } from "./lib/auth-client";
+import { clearLocalCache } from "./lib/local-cache";
 import { navigate, usePath } from "./lib/router";
 import type { SessionState } from "./lib/use-session";
 import { useSession } from "./lib/use-session";
@@ -41,6 +42,8 @@ export const App = () => {
 	}, [authenticated, onAuthPage]);
 
 	const onSignOut = (): void => {
+		// Saved dashboard data belongs to this account; drop it even if the request fails offline.
+		clearLocalCache();
 		authClient
 			.signOut()
 			.catch(() => undefined)
