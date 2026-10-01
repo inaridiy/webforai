@@ -321,3 +321,15 @@ describe("review regressions (conversion)", () => {
 		).toContain("Head<br>q");
 	});
 });
+
+describe("parsing limits", () => {
+	it("converts pathologically deep markup instead of exhausting the stack", () => {
+		const html = `${"<div>".repeat(3000)}<p>Deep text here.</p>${"</div>".repeat(3000)}`;
+		expect(htmlToMarkdown(html, { extractors: false })).toContain("Deep text here.");
+	});
+
+	it("keeps paragraph boundaries of unwrapped deep content", () => {
+		const html = `${"<div>".repeat(300)}<p>First.</p><p>Second.</p>${"</div>".repeat(300)}`;
+		expect(htmlToMarkdown(html, { extractors: false })).toMatch(/First\.\s+Second\./);
+	});
+});

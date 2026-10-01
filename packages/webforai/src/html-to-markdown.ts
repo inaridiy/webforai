@@ -1,5 +1,5 @@
 import type { Nodes as Hast } from "hast";
-import { fromHtml } from "hast-util-from-html";
+import { parseHtml } from "./utils/parse-html";
 
 import { type HtmlToMdastOptions, htmlToMdast } from "./html-to-mdast";
 import { type MdastToMarkdownOptions, mdastToMarkdown } from "./mdast-to-markdown";
@@ -58,7 +58,7 @@ export const htmlToMarkdownWithMetadata = (
 
 	// Parsed once here rather than inside `htmlToMdast`, because metadata lives in `<head>` and
 	// extraction discards it. `owned` tells the extractors they may mutate this tree in place.
-	const hast = typeof htmlOrHast === "string" ? fromHtml(htmlOrHast, { fragment: true }) : htmlOrHast;
+	const hast = typeof htmlOrHast === "string" ? parseHtml(htmlOrHast, { fragment: true }) : htmlOrHast;
 	const isOwned = typeof htmlOrHast === "string";
 
 	// Fragment parsing drops the `<html>` element, so a document-level `lang` has to be read from
