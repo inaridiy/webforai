@@ -19,6 +19,7 @@ import {
 	stringProperty,
 	walk,
 } from "../../utils/hast-fast";
+import { CodeTabCollector } from "./code-tabs";
 import {
 	CHROME_TAGS,
 	CONTEXTUAL_LANDMARK_TAGS,
@@ -89,14 +90,25 @@ const isNonContent = (node: Hast): boolean => {
  * the element also carries no visible geometry or is explicitly hidden by style.
  */
 const isHidden = (element: Element): boolean => {
+	if (!looksHidden(element)) {
+		return false;
+	}
+
 	// Renderers that show a formula as an image keep the authoritative MathML alongside it,
 	// hidden from sighted users. It is the only lossless form of the expression on the page, so
 	// visibility rules must not reach it — dropping it leaves the formula with no representation
 	// at all once the image fallback is de-duplicated away.
+	//
+	// Checked only once an element is known to be hidden: the scan walks the whole subtree, and
+	// running it on every element made this pass quadratic in document depth.
 	if (containsMath(element)) {
 		return false;
 	}
 
+	return !isHiddenCodePanel(element);
+};
+
+const looksHidden = (element: Element): boolean => {
 	if (isTruthyAttribute(element, "hidden")) {
 		return true;
 	}
@@ -114,11 +126,45 @@ const isHidden = (element: Element): boolean => {
 	// is: a zero box means the browser laid the element out to nothing.
 	const width = numericProperty(element, "data-rwidth");
 	const height = numericProperty(element, "data-rheight");
-	if (width === 0 && height === 0) {
-		return true;
-	}
+	return width === 0 && height === 0;
+};
 
-	return false;
+/** Most text, outside its code, that a hidden code panel may carry (a filename, a caption). */
+const MAX_CODE_PANEL_PROSE = 200;
+
+/**
+ * True for an inactive tab of a code-sample switcher.
+ *
+ * Documentation shows the same step for npm, yarn and pnpm, or for several languages, as tabs;
+ * every tab but the selected one is `hidden` until clicked. Those panels are the page's content
+ * in another variant — a reader can open each one — and dropping them loses most of the code on
+ * the page. A hidden panel qualifies when it is a `tabpanel` holding code, or when code is
+ * nearly all it holds, so a hidden duplicate of the article (a mobile layout) is still removed.
+ */
+const isHiddenCodePanel = (element: Element): boolean => {
+	const isTabPanel = stringProperty(element, "role") === "tabpanel";
+	let codeText = 0;
+	let proseText = 0;
+
+	const visit = (node: Element, insideCode: boolean): boolean => {
+		for (const child of node.children) {
+			if (child.type === "text") {
+				if (insideCode) {
+					codeText += child.value.length;
+				} else {
+					proseText += child.value.trim().length;
+					if (!isTabPanel && proseText > MAX_CODE_PANEL_PROSE) {
+						return false;
+					}
+				}
+			} else if (isElement(child) && !visit(child, insideCode || child.tagName === "pre")) {
+				return false;
+			}
+		}
+		return true;
+	};
+
+	return visit(element, element.tagName === "pre") && codeText > 0;
 };
 
 /** `src` values that stand in for an image until a script swaps in the real one. */
@@ -161,7 +207,7 @@ const isPlaceholderImage = (element: Element): boolean => {
  * The whole noscript body is hoisted, not just its images: fallbacks routinely include a caption
  * or a paragraph alongside the image, and keeping only the image silently loses that text.
  */
-export const hoistNoscriptImages = (tree: Hast): void => {
+export const hoistNoscriptImages = (tree: Hast, onElement?: (element: Element) => void): void => {
 	const visit = (parent: Parent): void => {
 		for (let index = 0; index < parent.children.length; index++) {
 			const child = parent.children[index];
@@ -170,6 +216,7 @@ export const hoistNoscriptImages = (tree: Hast): void => {
 			}
 
 			if (child.tagName !== "noscript") {
+				onElement?.(child);
 				visit(child);
 				continue;
 			}
@@ -217,7 +264,11 @@ const containsMath = (element: Element): boolean => {
 
 /** Removes comments, metadata elements and anything the browser did not display. */
 export const stripNonContent = (tree: Hast): Hast => {
-	hoistNoscriptImages(tree);
+	// Tab strips are chrome and disappear in later passes, so their labels are read now, in the
+	// traversal the noscript pass makes anyway.
+	const tabs = new CodeTabCollector();
+	hoistNoscriptImages(tree, (element) => tabs.visit(element));
+	tabs.apply();
 
 	return pruneInPlace(tree, (node) => {
 		if (isNonContent(node)) {
@@ -344,6 +395,12 @@ export const findUnlikelyElements = (tree: Hast, spareWeak?: (element: Element) 
 			if (landmarks.has(child)) {
 				doomed.push(child);
 				continue; // its subtree goes with it
+			}
+			// Highlighters name their token spans after the grammar — `comment`, `hljs-comment`,
+			// `token share` — and every one of those words is a furniture pattern. Nothing inside a
+			// code sample is page furniture.
+			if (PREFORMATTED_TAGS.has(child.tagName)) {
+				continue;
 			}
 			const tier = unlikelyTier(child);
 			if (tier === "strong" || (tier === "weak" && !spareWeak?.(child))) {
@@ -576,6 +633,14 @@ export const findCleanupTargets = (tree: Hast, collector: MetricsCollector): Ele
 				continue;
 			}
 
+			// Phrase matching inside code would delete tokens: a highlighted `next` or `close` is a
+			// whole-element match for a UI label. Only the copy buttons some sites nest in the
+			// block are furniture there.
+			if (LITERAL_TEXT_TAGS.has(child.tagName)) {
+				collectButtons(child, doomed);
+				continue;
+			}
+
 			if (isLinkOnlyBlock(child, collector)) {
 				condemnLinkBlock(child, siblings, index, collector, doomed);
 				continue;
@@ -655,10 +720,23 @@ const countAnchors = (element: Element): number => {
  */
 const LITERAL_TEXT_TAGS = new Set(["code", "kbd", "samp", "var", "pre"]);
 
-const isMidArticleWidget = (element: Element, collector: MetricsCollector): boolean => {
-	if (LITERAL_TEXT_TAGS.has(element.tagName)) {
-		return false;
+/** Pre-formatted elements: their content is quoted, never page furniture. */
+const PREFORMATTED_TAGS = new Set(["pre", "code"]);
+
+const collectButtons = (element: Element, into: Element[]): void => {
+	for (const child of element.children) {
+		if (!isElement(child)) {
+			continue;
+		}
+		if (child.tagName === "button") {
+			into.push(child);
+			continue;
+		}
+		collectButtons(child, into);
 	}
+};
+
+const isMidArticleWidget = (element: Element, collector: MetricsCollector): boolean => {
 	if (element.tagName === "form" || element.tagName === "fieldset") {
 		return true;
 	}

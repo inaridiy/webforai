@@ -434,3 +434,62 @@ describe("furniture removal when a wrapper matches a furniture class", () => {
 		expect(markdown).not.toContain("Product sponsored");
 	});
 });
+
+describe("code samples are never page furniture", () => {
+	it("keeps highlighted tokens that spell a UI label", () => {
+		const code = '<pre><code><span class="k">print</span>(x)\n<span class="n">next</span>(it)</code></pre>';
+		const markdown = htmlToMarkdown(article(code));
+
+		expect(markdown).toContain("print(x)");
+		expect(markdown).toContain("next(it)");
+	});
+
+	it("keeps comment tokens whose class matches a furniture pattern", () => {
+		const code = '<pre><code>x := 1 <span class="comment">// ignore first value</span></code></pre>';
+		expect(htmlToMarkdown(article(code))).toContain("// ignore first value");
+	});
+
+	it("still drops a copy button nested in the block", () => {
+		const code = "<pre><button>Copy</button><code>npm install webforai</code></pre>";
+		const markdown = htmlToMarkdown(article(code));
+
+		expect(markdown).toContain("npm install webforai");
+		expect(markdown).not.toContain("Copy");
+	});
+});
+
+describe("code tabs", () => {
+	const tabs = `<div role="tablist"><button role="tab" id="t1" aria-selected="true">npm</button><button role="tab" id="t2">pnpm</button></div>
+		<div role="tabpanel" aria-labelledby="t1"><pre><code class="language-sh">npm install webforai</code></pre></div>
+		<div role="tabpanel" aria-labelledby="t2" hidden><pre><code class="language-sh">pnpm add webforai</code></pre></div>`;
+
+	it("keeps the inactive panels of a code tab group", () => {
+		expect(htmlToMarkdown(article(tabs))).toContain("pnpm add webforai");
+	});
+
+	it("labels each block with its tab", () => {
+		const markdown = htmlToMarkdown(article(tabs));
+
+		expect(markdown).toContain('```sh title="npm"');
+		expect(markdown).toContain('```sh title="pnpm"');
+	});
+
+	it("still removes a hidden duplicate of the prose", () => {
+		const duplicate = `<div hidden>${filler(20)}<p>Mobile-only duplicate copy.</p><pre><code>x</code></pre></div>`;
+		expect(htmlToMarkdown(article(duplicate))).not.toContain("Mobile-only duplicate copy.");
+	});
+});
+
+describe("code line structure", () => {
+	it("does not add a blank line after each line-per-block line", () => {
+		const code =
+			'<pre><code><div class="cm-line">function a() {<br></div><div class="cm-line">  return 1;<br></div><div class="cm-line">}<br></div></code></pre>';
+		expect(htmlToMarkdown(article(code))).toContain("function a() {\n  return 1;\n}");
+	});
+
+	it("keeps a hover card nested in a token on the token's line", () => {
+		const code =
+			'<pre><code><span class="line"><span>const </span><span><div class="v-popper"><span>app</span><div class="v-popper__popper"></div></div></span><span> = new Hono()</span></span></code></pre>';
+		expect(htmlToMarkdown(article(code))).toContain("const app = new Hono()");
+	});
+});
