@@ -33,11 +33,14 @@ jobs:
         with:
           version: 9.1.4
           run_install: true
+      # changesets/action v1 (v2 requires Changesets CLI v3). With no NPM_TOKEN in the
+      # environment and OIDC available, it leaves .npmrc alone and npm uses trusted publishing.
       - name: create and publish versions
-        uses: changesets/action@v2
+        uses: changesets/action@v1
         with:
-          version-script: pnpm ci:version
-          publish-script: pnpm ci:publish
-          pr-title: 'chore: version packages'
-          commit-message: 'chore: version packages'
-          create-github-releases: true
+          version: pnpm ci:version
+          publish: pnpm ci:publish
+          title: 'chore: version packages'
+          commit: 'chore: version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
