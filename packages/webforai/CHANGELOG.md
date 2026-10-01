@@ -4,25 +4,6 @@
 
 ### Major Changes
 
-- [`e0a6428`](https://github.com/inaridiy/webforai/commit/e0a642840f7e180d71f56b10f4cc0e56c73d6f9e) Thanks [@inaridiy](https://github.com/inaridiy)! - Rebuild the CLI for automation-first use.
-
-  - **Non-interactive by default**: `npx webforai <url>` converts and prints Markdown to
-    stdout (logs go to stderr); `-o <path>` writes a file. The guided wizard now lives behind
-    `-i`/`--interactive`.
-  - **`--json`** emits a machine-readable envelope (`source`, `loader`, `url`, `markdown`,
-    `metadata`, plus platform fields).
-  - **Platform loader**: `-l platform` (or just `--engine`/`--region`) converts via the hosted
-    webforai platform using the new `webforai/platform` client; API key from `--api-key` or
-    `WEBFORAI_API_KEY`, self-hosted deployments via `--platform-url`/`WEBFORAI_PLATFORM_URL`.
-  - **Agent Skills**: `webforai skill` prints an Agent Skill for this CLI; `webforai skill
---install` installs it through Vercel's `skills` CLI (`npx skills add`), and
-    `npx skills add inaridiy/webforai` works straight from the repository.
-  - New conversion flags: `--extractor auto|takumi|minimal|none`, `--frontmatter`,
-    `--screenshot` (platform browser engines).
-  - `-h` documents every flag with examples, env vars and exit codes (0 ok / 1 runtime /
-    2 usage).
-  - Dropped the unused `zx` dependency.
-
 - [`8cc92da`](https://github.com/inaridiy/webforai/commit/8cc92da59724527703054eb8e5e51a3b79e2539b) Thanks [@inaridiy](https://github.com/inaridiy)! - Rewrite content extraction, add site adapters, and repair long-standing markup handling bugs.
 
   ### Extraction
@@ -195,14 +176,6 @@
     `extractors: [takumiExtractor]` for generic extraction only.
   - Extractors may mutate their input when `owned` is set. The library only sets it for trees it
     parsed itself, so callers passing their own HAST are unaffected unless they opt in.
-
-- [`e0a6428`](https://github.com/inaridiy/webforai/commit/e0a642840f7e180d71f56b10f4cc0e56c73d6f9e) Thanks [@inaridiy](https://github.com/inaridiy)! - New `webforai/platform` subpath: a typed, dependency-free client for the hosted
-  webforai platform API. Covers `scrape` (sync and async), `batch`, `crawl`, job
-  status/results with cursor paging, `waitForJob` polling, a `jobResults` async iterator
-  that transparently downloads spilled results, and the keyless `demoScrape`. Errors
-  surface as `PlatformApiError` with the API's `code`/`status`/`retryAfter`. All I/O goes
-  through an injectable, structurally-typed `fetch` (`FetchLike`) so the client runs
-  unchanged behind Cloudflare Workers service bindings, undici/node-fetch, or test stubs.
 
 ## 2.1.1
 
