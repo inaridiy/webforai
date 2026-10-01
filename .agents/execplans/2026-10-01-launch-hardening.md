@@ -104,6 +104,21 @@ Deferred, with reasons (reopen if the condition changes):
 - Deletion races (work admitted during deletion) and delete-then-resign-up renewing the free
   allowance: low value vs. a deletion tombstone with retention policy implications.
 
+## Deployment (2026-10-01)
+
+- D1 migration 0004 applied remotely (additive; old Worker compatible).
+- R2 lifecycle on `webforai-platform-artifacts`: `expire-{screenshots,images,results}-7d`
+  (job archives live under `results/job-pages/`, so all retained content is covered).
+- Production secrets already present: TURNSTILE_SECRET_KEY, GitHub OAuth, Stripe, proxy.
+  `OPS_ALERT_EMAIL` not set (optional).
+- Platform deployed 28448a87, then 574b30e1 after the browser smoke test found the Cloudflare
+  Web Analytics beacon blocked by the new CSP (fixed in `public/_headers`).
+- Docs site deployed 937592cc (llms.txt, per-page .md, sitemap, 404, /benchmarks).
+- Production smoke: health, CSP/HSTS/XFO, prerendered /terms, sitemap/robots, permalink →
+  text/markdown, metadata-IP permalink → 400, demo jp → 402, bad key → 401 with dashboard link,
+  cross-origin dashboard PUT → 403, artifact errors sandboxed; Chromium: landing, login
+  (Turnstile loaded), terms, dashboard redirect — no CSP violations.
+
 ## Outcomes & retrospective
 
 Code complete on `feat/platform` (bd68274..204ecb3), not deployed.
