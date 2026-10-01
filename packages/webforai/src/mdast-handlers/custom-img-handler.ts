@@ -26,13 +26,33 @@ const hasNoUsableSource = (node: Element): boolean => {
 	return false;
 };
 
+/**
+ * File names of the stand-in a lazy loader shows until the real image arrives.
+ *
+ * BBC renders `grey-placeholder.png` beside every real photo; the pair otherwise yields an
+ * extra, meaningless image per teaser. Matched on the last path segment only, and only for
+ * images that describe nothing, so a photo that merely lives under a `/placeholder/` path or an
+ * image with real alt text is kept.
+ */
+const PLACEHOLDER_FILE =
+	/^(?:[\w-]*[-_.])?placeholder[\w-]*\.(?:gif|png|svg|webp|jpe?g)$|^(?:spacer|blank|transparent|pixel)\.(?:gif|png)$/i;
+
+const isUndescribedPlaceholder = (node: Element): boolean => {
+	if (stringProperty(node, "alt")?.trim() || stringProperty(node, "title")?.trim()) {
+		return false;
+	}
+	const src = stringProperty(node, "src") ?? "";
+	const file = src.split(/[?#]/)[0].split("/").pop() ?? "";
+	return PLACEHOLDER_FILE.test(file);
+};
+
 export const customImgHandler =
 	(options?: { hideImage?: boolean }): Handle =>
 	(state, node) => {
 		if (options?.hideImage) {
 			return undefined;
 		}
-		if (hasNoUsableSource(node)) {
+		if (hasNoUsableSource(node) || isUndescribedPlaceholder(node)) {
 			return undefined;
 		}
 

@@ -268,3 +268,21 @@ describe("page title heading", () => {
 		expect(markdown).toContain("# Product summary");
 	});
 });
+
+describe("lazy-loading placeholder images", () => {
+	const convert = (html: string) => htmlToMarkdown(html, { extractors: false });
+
+	it("drops an undescribed placeholder beside the real image", () => {
+		const markdown = convert(
+			'<a href="/a"><img src="https://cdn.example/web/grey-placeholder.png"><img src="https://cdn.example/photo.jpg" alt="Gaza"></a>',
+		);
+		expect(markdown).not.toContain("placeholder");
+		expect(markdown).toContain("![Gaza](https://cdn.example/photo.jpg)");
+	});
+
+	it("keeps a described image even when its file is named placeholder", () => {
+		expect(convert('<img src="/img/placeholder-ui.png" alt="The placeholder state of the input">')).toContain(
+			"The placeholder state of the input",
+		);
+	});
+});
