@@ -39,7 +39,12 @@ correct short outputs, not extraction losses.
       when it repeats visible code; trailing title segment must equal the site name (+ docs/blog/…);
       tab groups scoped to the tab list's parent, labels exclude hidden text; nested `<pre>`;
       header-only code table; exact sr-only tokens; no doubled `<br>`. Corpus output unchanged.
-- [ ] Validation: biome, typecheck, tests, build, `bench:compare`, changeset.
+- [x] (2026-10-01) CSS-only radio code tabs (VitePress) labelled; radio strip removed.
+- [x] (2026-10-01) Validation: biome, typecheck, `pnpm run test --run` (829 pass; only KI-3
+      Playwright fails), build, corpus test on the build (32/32), `bench:compare` (5 rounds):
+      checks 74/74, code 97.5% (729/748), tables 26/64, nav-leak 5, boilerplate 1, empty 1,
+      3.08 s vs 3.13 s before. Interleaved same-process benchmark of main vs branch: 0.97–0.98×
+      time. Summary JSON and the site's Benchmarks page updated; changeset added (minor).
 
 ## Decision log
 
