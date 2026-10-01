@@ -98,6 +98,32 @@ Cloudflare location and eventually consistent — a cost bound, not exact accoun
 deployment without the bindings runs unlimited and logs `rate_limit_binding_missing` once;
 a failing binding lets `/v1` through but denies the demo. Constants: `src/ops/limits.ts`.
 
+## Internal RPC (`PlatformRpc`)
+
+Other Workers on the same Cloudflare account can call the converter directly through a Service
+Binding — no API key, tier limit, spend guard, usage ledger or Stripe (the binding is the
+credential). The SSRF guard and redirect walk, Browser Run's shared concurrency and a
+per-tenant safety limit (`RATE_LIMIT_INTERNAL`, 300/min) still apply; proxy engines are not
+offered. Code: `src/rpc/convert.ts`, entrypoint class in `src/index.ts`.
+
+```jsonc
+// caller's wrangler.jsonc
+"services": [{ "binding": "WEBFORAI", "service": "webforai-platform", "entrypoint": "PlatformRpc" }]
+```
+
+```ts
+const page = await env.WEBFORAI.convert("https://ui.example.com/docs/installation", {
+  tenant: "shadcn-explorer",          // required: logs and the per-tenant limit
+  formats: ["markdown", "links"],     // default ["markdown"]; "links" = every http(s) link on the page
+  extractor: "auto",                  // auto | takumi | minimal | none ("none" keeps everything)
+  engine: "auto",                     // auto | fetch | browser
+});
+// → { url, markdown, links?, metadata?, engine, warning? }
+```
+
+Errors arrive as `Error`s whose message starts with a code (`invalid_request: …`,
+`invalid_url: …`, `rate_limited: …`, `fetch_failed: …`) — Workers RPC keeps only the message.
+
 ## Local development
 
 Prereqs: Node 20+, pnpm 9, Docker (for the container engines).
@@ -158,7 +184,7 @@ dev server log), create an API key on the dashboard, then `curl -X POST localhos
 | `pnpm test:browser` | Chromium dashboard UI regression with HTTP fixtures; desktop/mobile screenshots in `.cache/dashboard-review` (no real auth/Worker) |
 | `pnpm test:integration` | against disposable local workerd D1 with the checked-in migrations: the page-accounting repository (duplicate writes, rollback) and the real Better Auth email-code sign-in (hashed codes, wrong/replayed codes, D1 rate limit, passwords off) |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm build` | production build (Worker + client assets + container image), then prerenders `/` into `dist/client/index.html` and the legal pages into `dist/client/{terms,privacy,commerce}.html` (each with its own title, description, canonical and `og:url`), and fails if webforai cannot extract any of them (`scripts/prerender.ts`) |
+| `pnpm build` | builds the `webforai` library first (the platform imports its `dist`), then the production build (Worker + client assets + container image), then prerenders `/` into `dist/client/index.html` and the legal pages into `dist/client/{terms,privacy,commerce}.html` (each with its own title, description, canonical and `og:url`), and fails if webforai cannot extract any of them (`scripts/prerender.ts`) |
 | `pnpm db:generate` | drizzle-kit migration from `src/db/schema.ts` |
 | `pnpm db:migrate:local` / `:remote` | apply migrations to D1 |
 | `pnpm stripe:setup` | create Stripe meter + metered price (prints ids) |

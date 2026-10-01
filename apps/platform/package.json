@@ -5,7 +5,7 @@
 	"description": "webforai platform — crawl-to-markdown SaaS on Cloudflare",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build && tsx scripts/prerender.ts",
+		"build": "pnpm --filter webforai build && vite build && tsx scripts/prerender.ts",
 		"deploy": "pnpm build && wrangler deploy",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",

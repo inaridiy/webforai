@@ -1,5 +1,13 @@
 # Platform Architecture
 
+Revision note (2026-10-01, internal RPC): The Worker also exports `PlatformRpc`, a
+`WorkerEntrypoint` for Service Binding callers on the same account (first: shadcn-explorer).
+`convert(url, { tenant, formats, extractor, engine })` runs `fetchForScrape` +
+`convertFetchedPage` directly, outside the product layer (no API key, tier limit, spend guard,
+ledger or Stripe); it keeps the SSRF guard, Browser Run and a per-tenant
+`RATE_LIMIT_INTERNAL` binding (300/min), and offers only `auto`/`fetch`/`browser`. Errors cross
+RPC as `code: message`. The platform build now builds the `webforai` library first: the
+Worker imports its `dist`, and a stale `dist` shipped an old converter once (2026-10-01).
 Revision note (2026-10-01, security): Hardening layer. Worker responses get baseline security
 headers (HSTS, nosniff, `X-Frame-Options: DENY`, referrer policy) and `/api/*`, `/v1/*` a 256 KiB
 body cap (`src/routes/security.ts`); state-changing `/api/dashboard/*` requests must carry

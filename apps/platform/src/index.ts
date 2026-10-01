@@ -1,3 +1,4 @@
+import { WorkerEntrypoint } from "cloudflare:workers";
 import { type Context, Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 
@@ -23,6 +24,7 @@ import { permalinkRoutes } from "./routes/permalink";
 import { playgroundRoutes } from "./routes/playground";
 import { requestBodyLimit, requireSameOrigin, securityHeaders } from "./routes/security";
 import { v1Routes } from "./routes/v1";
+import { type ConvertOptions, type ConvertResult, rpcConvert } from "./rpc/convert";
 
 /**
  * Composition root.
@@ -208,6 +210,26 @@ const scheduled: ExportedHandlerScheduledHandler<Env> = async (_controller, env)
 const RETRY_USAGE_PAGE_SIZE = 100;
 /** Each row costs a Stripe call and a D1 write; 4 pages stays well inside one invocation's D1 query limit. */
 const RETRY_USAGE_MAX_PAGES = 4;
+
+/**
+ * Internal conversion service for other Workers on this account, via a Service Binding:
+ * `services: [{ binding: "WEBFORAI", service: "webforai-platform", entrypoint: "PlatformRpc" }]`.
+ * No API key or billing — the binding is the credential; see `src/rpc/convert.ts` for what is
+ * bypassed and what is kept (SSRF guard, Browser Run, the per-tenant `RATE_LIMIT_INTERNAL`).
+ */
+export class PlatformRpc extends WorkerEntrypoint<Env> {
+	async convert(url: string, options: ConvertOptions): Promise<ConvertResult> {
+		const config = loadConfig(this.env);
+		return rpcConvert(
+			{
+				scrape: { engines: createEngines(this.env, config), artifacts: createArtifactStore(this.env, config) },
+				limiter: this.env.RATE_LIMIT_INTERNAL,
+			},
+			url,
+			options,
+		);
+	}
+}
 
 // biome-ignore lint/style/noDefaultExport: Workers entrypoint
 export default { fetch: app.fetch, scheduled };

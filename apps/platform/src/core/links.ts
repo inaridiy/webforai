@@ -57,6 +57,32 @@ export const filterCrawlUrls = (urls: string[], scope: CrawlScope): string[] => 
 	return [...found];
 };
 
+/** Links reported per page by `extractPageLinks`; beyond this a page is a link farm, not a doc. */
+export const MAX_PAGE_LINKS = 2000;
+
+/**
+ * Every http(s) link on a page — any origin — absolute, fragment-stripped, deduplicated, in
+ * document order. For callers that want the page's link list itself (the internal RPC), not a
+ * crawl frontier; same linear scanner as `discoverLinks`.
+ */
+export const extractPageLinks = (html: string, pageUrl: string): string[] => {
+	const found = new Set<string>();
+	for (const match of html.matchAll(HREF_PATTERN)) {
+		const raw = (match[2] ?? match[3] ?? match[4] ?? "").trim();
+		if (!raw || raw.startsWith("#") || /^(javascript|mailto|tel|data):/i.test(raw)) {
+			continue;
+		}
+		const normalized = normalizeCrawlUrl(raw, pageUrl);
+		if (normalized && normalized.href.length <= MAX_CRAWL_URL_LENGTH) {
+			found.add(normalized.href);
+			if (found.size >= MAX_PAGE_LINKS) {
+				break;
+			}
+		}
+	}
+	return [...found];
+};
+
 /** Resolves against the page URL, strips fragments, and keeps only http(s). */
 export const normalizeCrawlUrl = (raw: string, base: string): URL | undefined => {
 	let url: URL;
