@@ -33,8 +33,8 @@ npx webforai https://example.com --json             # machine-readable envelope 
   `npx playwright install chromium`). `platform` uses the hosted API (below).
 - `-m, --mode <default|ai>` — `ai` strips links/tables/images down to plain text
   (local conversion only).
-- `--extractor <auto|takumi|minimal|none>` — main-content extraction preset
-  (`none` converts the whole page).
+- `--extractor <auto|learned|takumi|minimal|none>` — main-content extraction preset
+  (`learned` is the block classifier, `takumi` the heuristic; `none` converts the whole page).
 - `--frontmatter` — prepend YAML front matter (title, author, canonical URL, ...).
 - `--json` — print a JSON envelope to stdout instead of raw Markdown.
 - `--engine <auto|fetch|browser|proxy-fetch|proxy-browser>` — platform acquisition engine

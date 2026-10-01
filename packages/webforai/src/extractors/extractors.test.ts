@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { htmlToMarkdown } from "../html-to-markdown";
+import { takumiExtractor } from "./presets/takumi";
 
 /** Enough prose for the extractor to accept a container as the article body. */
 const filler = (words = 120): string => `<p>${"Sentence with, some prose. ".repeat(words)}</p>`;
@@ -520,7 +521,7 @@ describe("review regressions", () => {
 			12,
 		)}</p></div></body></html>`;
 
-		expect(htmlToMarkdown(html)).toContain("topic number 24");
+		expect(htmlToMarkdown(html, { extractors: takumiExtractor })).toContain("topic number 24");
 	});
 
 	it("does not resurrect a hidden copy of visible code", () => {

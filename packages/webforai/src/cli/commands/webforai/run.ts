@@ -1,8 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { detectClientShell, htmlToMarkdownWithMetadata, minimalFilter, takumiExtractor } from "../../../index";
+import {
+	detectClientShell,
+	htmlToMarkdownWithMetadata,
+	learnedExtractor,
+	minimalFilter,
+	takumiExtractor,
+} from "../../../index";
 import type { HtmlToMarkdownOptions } from "../../../index";
-import { createPlatformClient } from "../../../platform";
+import { type ExtractorPreset, createPlatformClient } from "../../../platform";
 import { isUrl } from "../../utils";
 import { loadHtml } from "./loadHtml";
 import type { ResolvedRun, RunEnvelope } from "./options";
@@ -19,6 +25,8 @@ const extractorOptions = (name: ResolvedRun["extractor"]): HtmlToMarkdownOptions
 	switch (name) {
 		case "takumi":
 			return takumiExtractor;
+		case "learned":
+			return learnedExtractor;
 		case "minimal":
 			return minimalFilter;
 		case "none":
@@ -41,7 +49,8 @@ const convertViaPlatform = async (run: ResolvedRun): Promise<RunEnvelope> => {
 		region: run.region,
 		screenshot: run.screenshot ? true : undefined,
 		respectRobotsTxt: run.respectRobotsTxt ? true : undefined,
-		convert: { extractor: run.extractor, frontmatter: run.frontmatter },
+		// `learned` is rejected for the platform loader during option resolution.
+		convert: { extractor: run.extractor as ExtractorPreset, frontmatter: run.frontmatter },
 	});
 
 	return {

@@ -377,7 +377,7 @@ export type UnlikelyTier = "strong" | "weak";
  * Mirrors Readability's unlikely-candidate rule: a class/id match condemns the element unless it
  * also looks content-ish, with a short list of patterns strong enough to skip that reprieve.
  */
-const unlikelyTier = (element: Element): UnlikelyTier | undefined => {
+export const unlikelyTier = (element: Element): UnlikelyTier | undefined => {
 	// Semantic content elements are never furniture, whatever they are called.
 	if (element.tagName === "article" || element.tagName === "main" || element.tagName === "body") {
 		return undefined;
@@ -585,7 +585,7 @@ const hasEmbeddedDescendant = (element: Element): boolean => {
  * vocabulary is deliberately short and specific; generic section names like "Resources" are
  * excluded because footer sitemaps use the same word.
  */
-const REFERENCE_HEADING =
+export const REFERENCE_HEADING =
 	/^(see also|references?|further reading|external links?|bibliography|sources|footnotes|citations|関連項目|参考文献|外部リンク|脚注|出典|参考リンク|参考資料)$/i;
 
 /** Longest heading the dangling-heading rule will remove alongside its list. */

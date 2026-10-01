@@ -77,6 +77,27 @@ one Markdown file per page. `--engine` and `--region` select the platform loader
 them with an explicit local loader exits with usage error `2`. The interactive wizard applies
 the same validation and honors `WEBFORAI_PLATFORM_URL`.
 
+## Learned main-content extraction
+
+Pages without a site adapter go through a small **learned block classifier**: the page is split
+into text blocks, each scored by gradient-boosted trees over cheap features (text statistics,
+structure, neighbours, and what the Readability-style heuristic would keep), and the tree is
+pruned to the kept blocks. The model is ~100 KB of plain TypeScript arrays — no WASM, no extra
+dependency — and runs comfortably inside a Cloudflare Worker.
+
+On the [WCEB](https://github.com/chatnoir-eu/web-content-extraction-benchmark) benchmark it raised
+token F1 from 0.874 to 0.892. The previous heuristic remains available:
+
+```ts
+import { htmlToMarkdown, createAutoExtractor, takumiExtractor } from "webforai";
+
+// Site adapters, then the heuristic extractor (the pre-4.1 default).
+const markdown = htmlToMarkdown(html, { url, extractors: [createAutoExtractor({ fallback: takumiExtractor })] });
+```
+
+On the CLI, `--extractor learned` runs the classifier without site adapters and
+`--extractor takumi` the heuristic alone.
+
 ## What v3 changes
 
 **Better extraction.** The main-content extractor scores candidate containers the way Readability
