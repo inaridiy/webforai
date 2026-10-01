@@ -14,27 +14,30 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # npm Trusted Publishing: npm exchanges this job's OIDC token for a short-lived publish
+      # credential. The trusted publisher (inaridiy/webforai, release.yaml) is configured on
+      # npmjs.com; no NPM_TOKEN secret is used.
       id-token: write
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - run: |
           echo "SKIP_SIMPLE_GIT_HOOKS=1" >> $GITHUB_ENV
+      # Trusted publishing needs npm >= 11.5.1; Node 24 bundles npm 11.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - uses: pnpm/action-setup@v2
         name: Install pnpm
         id: pnpm-install
         with:
           version: 9.1.4
           run_install: true
-      - name: Setup npmrc
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
       - name: create and publish versions
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
-          version: pnpm ci:version
-          publish: pnpm ci:publish
-          title: 'chore: version packages'
-          commit: 'chore: version packages'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          version-script: pnpm ci:version
+          publish-script: pnpm ci:publish
+          pr-title: 'chore: version packages'
+          commit-message: 'chore: version packages'
+          create-github-releases: true
