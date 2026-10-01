@@ -9,7 +9,8 @@ The **Loaders Utilities** provide simple tools to easily fetch HTML from website
 All the utilities are designed to be straightforward, requiring no configuration. 
 
 :::warning
-However, they are not recommended for production use.
+However, they are not recommended for production use. For production crawling — JavaScript
+rendering, proxies, retries and queues — use the [hosted platform](/platform).
 :::
 
 ## Overview of Loaders
@@ -41,18 +42,12 @@ fetch HTML from websites that need JavaScript execution, like SPAs (Single Page 
 
 ### Usage
 
-Before using the Playwright Loader, you need to install the Playwright browser and its dependencies.
+The loader imports `playwright-core`, a peer dependency of webforai (npm 7+ and pnpm install it
+with webforai; otherwise run `npm i playwright-core`). Download a browser once:
 
-:::code-group
-
-```bash [npm]
-npx playwright-core install
+```bash
+npx playwright install chromium
 ```
-
-```bash [pnpm]
-pnpm install playwright-core
-```
-:::
 
 And then you can use the Playwright Loader as follows:
 
@@ -112,18 +107,24 @@ Before using the CF Puppeteer Loader, you need to prepare a wrangler environment
 :::code-group
 
 ```bash [npm]
-npm install @cloudflare/puppeteer --save-dev
+npm install @cloudflare/puppeteer
 ```
 
 ```bash [pnpm]
-pnpm install -D @cloudflare/puppeteer
+pnpm install @cloudflare/puppeteer
 ```
 :::
 
-And then you can use the Playwright Loader as follows:
+Add a Browser Rendering binding to your Wrangler config (`"browser": { "binding": "BROWSER" }`),
+then pass the binding to the CF Puppeteer Loader — it launches and closes the browser for you:
 
 ```ts
 import { loadHtml } from "webforai/loaders/cf-puppeteer";
 
-const html = await loadHtml("https://example.com", browser); // browser is the puppeteer browser instance
+export default {
+  async fetch(request: Request, env: { BROWSER: Fetcher }) {
+    const html = await loadHtml("https://example.com", env.BROWSER);
+    return new Response(html);
+  },
+};
 ```

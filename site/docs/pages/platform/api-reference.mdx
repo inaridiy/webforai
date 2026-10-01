@@ -78,8 +78,7 @@ subscription.
 | URLs per batch job | 100 | 100 | `400 invalid_request` |
 | crawl depth / pages per crawl | 5 / 500 | 5 / 500 | `400 invalid_request` |
 
-Counters are kept per Cloudflare location and are eventually consistent, so treat the numbers
-as a fairness bound rather than exact accounting. The [public demo](#post-v1demoscrape) is
+Counters are approximate, so treat the numbers as a fairness bound rather than exact accounting. The [public demo](#post-v1demoscrape) is
 limited per client IP instead. The [CLI](/cli)'s `crawl` and `batch` commands retry
 `rate_limited` automatically; the [TypeScript client](/platform/client)'s `waitForJob` waits
 out a 429, and other calls expose `retryAfter` and leave retrying to you.
@@ -106,7 +105,8 @@ It only affects the proxy engines (`proxy-fetch`, `proxy-browser`), which select
 node in the requested area; a non-`auto` region also pins `engine: "auto"` to the proxy tier so
 the preference can be honoured — which makes it [paid-only](#proxy-engines-are-paid-only). The `fetch` and `browser` engines egress from Cloudflare's own
 network and ignore the field rather than failing, so one default can be set for a mixed-engine
-workload. Other values are rejected with `400 invalid_request`. Pricing is unaffected.
+workload. Other values are rejected with `400 invalid_request`. The region itself adds no credits;
+you pay for the engine that ran, so `auto` with a region bills at proxy prices (2–3 credits).
 
 ## robots.txt
 
@@ -133,7 +133,7 @@ and query string.
 
 ## POST /v1/scrape
 
-Synchronous, single URL. Runs on the plain Worker — fast, but not durable. With `"async": true` it
+Synchronous, single URL — fast, but not retried if the connection drops. With `"async": true` it
 instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and returns
 `202 { "jobId": "job_..." }`.
 
@@ -149,7 +149,7 @@ instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and retu
   "respectRobotsTxt": false,    // opt-in; see robots.txt above
   "async": false,
   "convert": {                   // passthrough to webforai (all optional)
-    "extractor": "auto",         // auto | takumi | minimal | none
+    "extractor": "auto",         // auto (learned) | takumi (heuristic) | minimal | none — see /how-it-works
     "frontmatter": true,
     "baseUrl": "..."
   }
@@ -286,7 +286,7 @@ Job status snapshot — cheap to poll.
 ```jsonc
 {
   "jobId": "job_...",
-  "type": "crawl",               // batch | crawl
+  "type": "crawl",               // batch | crawl (an async scrape is a 1-URL batch)
   "status": "running",           // queued | running | completed | failed
   "total": 50,
   "completed": 12,
@@ -414,11 +414,10 @@ code (and `Retry-After` on a 429).
 
 ## Behavioural rules
 
-- **Billing guard runs before side effects**, usage is recorded **after success only**. In async
-  jobs this is per page — a failed page is not billed.
-- **SSRF guard**: public `http(s)` URLs only. Private IP ranges, localhost and non-standard ports
-  are rejected at validation time for every engine, and re-checked inside the container fetcher —
-  redirect targets included.
+- **You are billed only for success**: a request refused for billing reasons runs nothing, and a
+  failed page (in a job, per page) is not billed.
+- **Public URLs only**: private IP ranges, localhost and non-standard ports are rejected with
+  `400`, for every engine and for redirect targets too.
 - **robots.txt**: checked when `respectRobotsTxt` is `true` — the default for crawl only; see
   [robots.txt](#robotstxt).
 - **Rate limits**: per account, by tier — see [Rate limits](#rate-limits). The public demo

@@ -1,55 +1,36 @@
 ---
 title: Installation
-description: Install the webforai package with your package manager, or run the CLI directly with npx webforai.
+description: Install the webforai package with your package manager, add the optional dependency for your loader, or run the CLI directly with npx webforai.
 ---
 
 # Installation
 
-Install the `webforai` package with your preferred package manager.
-
-## Package Manager
+The CLI needs no install at all — `npx webforai@latest <url>` prints Markdown to stdout.
+See the [CLI reference](/cli). For the library, install `webforai`:
 
 :::code-group
 
 ```bash [npm]
-# install core package
 npm i webforai
-
-# or install with playwright browser binaries to use the playwright loader.
-npm i webforai
-npx playwright install
-
-# or install with puppeteer browser binaries to use the puppeteer loader.
-npm i webforai puppeteer
 ```
 
 ```bash [pnpm]
-# install core package
 pnpm i webforai
-
-# or install with playwright browser binaries to use the playwright loader.
-pnpm i webforai
-pnpm exec playwright install
-
-# or install with puppeteer browser binaries to use the puppeteer loader.
-pnpm i webforai puppeteer
 ```
 
 ```bash [yarn]
-# install core package
 yarn add webforai
-
-# or install with playwright browser binaries to use the playwright loader.
-yarn add webforai
-npx playwright install
-
-# or install with puppeteer browser binaries to use the puppeteer loader.
-yarn add webforai puppeteer
 ```
+
 :::
 
+## Loader dependencies
 
-## CLI only
+Each [loader](/docs/loaders) needs its own extra setup; the core conversion functions need nothing more.
 
-The CLI needs no install at all — `npx webforai@latest <url>` prints Markdown to stdout.
-See the [CLI reference](/cli).
+| loader | import | setup |
+| --- | --- | --- |
+| fetch | `webforai/loaders/fetch` | None. |
+| Playwright | `webforai/loaders/playwright` | `playwright-core` is a peer dependency (installed with `webforai` by npm 7+ and pnpm; otherwise `npm i playwright-core`). Download a browser once with `npx playwright install chromium`. |
+| Puppeteer | `webforai/loaders/puppeteer` | `npm i puppeteer` (downloads its own Chromium). |
+| Cloudflare Browser Rendering | `webforai/loaders/cf-puppeteer` | `npm i @cloudflare/puppeteer` and a `browser` binding in your Wrangler config. |

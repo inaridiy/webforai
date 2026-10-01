@@ -26,9 +26,6 @@ sufficed, 2 when the page needed browser rendering), and only that engine.
 Batch and crawl jobs bill **per successfully converted page** using the same schedule. A page that
 fails is not billed, and neither is a request that errors before the conversion runs.
 
-The schedule is a single source of truth in the codebase
-([`src/billing/credits.ts`](https://github.com/inaridiy/webforai/blob/main/apps/platform/src/billing/credits.ts)).
-
 ## Price
 
 - **1,000 credits per month free** — no subscription, no card.
@@ -49,7 +46,7 @@ month where 20% need a browser is 60,000 credits: 1,000 free + 59,000 × $0.001 
 **Price change (2026-09-24).** Prices went down: `browser` from 5 to 2 credits,
 `proxy-browser` from 5 to 3, the per-credit price from $0.002 to graduated tiers starting at
 $0.001, and the free allowance from 500 to 1,000 credits a month. Routing through the proxy
-adds one credit to either tier.
+adds one credit to the engine (`fetch` 1 → `proxy-fetch` 2, `browser` 2 → `proxy-browser` 3).
 :::
 
 ## Proxy engines need a subscription
@@ -71,18 +68,11 @@ overshoot it by their own credits (a few cents at most in practice).
 
 ## How usage is counted
 
-1. The API key resolves to a user, their Stripe customer and their subscription state.
-2. **No active subscription** → the request is allowed only within the free monthly allowance,
-   tracked against the local usage ledger for the current calendar month, and never on a proxy
-   engine. Past the allowance, the API returns `402 payment_required`.
-3. **Active subscription** → the request proceeds, until the month's estimated bill reaches the
-   [spend cap](#spend-cap) (`402 spend_cap_reached`).
-4. The operation runs. **Only on success** a usage row is written to the ledger and mirrored to a
-   Stripe meter event, using the row id as the idempotency key.
-
-The local ledger is the audit source and the dashboard's `Usage` view reads from it; the Stripe
-meter is what the invoice is computed from. Unreported rows are retried automatically, so a
-transient Stripe outage never loses or double-counts usage.
+- Without a subscription, requests run until the month's free 1,000 credits are used, then
+  return `402 payment_required`.
+- With a subscription, requests run until the [spend cap](#spend-cap).
+- Only successful operations are billed, each exactly once — retries on our side never
+  double-count. The dashboard's `Usage` view shows the same records your invoice is built from.
 
 ## Managing the subscription
 

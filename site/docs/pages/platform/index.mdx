@@ -32,13 +32,16 @@ curl -X POST https://platform.webforai.dev/v1/scrape \
   -d '{ "url": "https://example.com/article" }'
 ```
 
-Try it without an account on the [live demo](/#demo), or read the full [API reference](/platform/api-reference).
+Try it without an account on the [live demo](/#demo), or just put a URL after the host —
+`https://platform.webforai.dev/https://example.com/article` returns the page as Markdown, no key
+needed (rate-limited and truncated; see [Markdown permalinks](/platform/api-reference#markdown-permalinks--get-https)).
+The full reference is in the [API reference](/platform/api-reference).
 
 ## Quickstart
 
 1. **Create an account** at [platform.webforai.dev](https://platform.webforai.dev/signup) with
-   your email address — we send a 6-digit sign-in code, no password needed —
-   no card required, 1,000 credits per month are free.
+   your email address. We send a 6-digit sign-in code (no password), no card is required,
+   and 1,000 credits per month are free.
 2. **Mint an API key** on the [dashboard](https://platform.webforai.dev/dashboard). Keys look
    like `wfa_...` and are shown once at creation.
 3. **Send the first request** — with curl (above), the [TypeScript client](/platform/client),
@@ -86,7 +89,7 @@ they egress through a proxy, and what they cost in credits.
 
 | engine | how it fetches | proxy | screenshot | plan | credits |
 | --- | --- | --- | --- | --- | --- |
-| `auto` (default) | Cheapest first, escalates to browser rendering when the page needs JavaScript | with region | yes | free (subscription with a region) | 1–2 (2–3 with a region) |
+| `auto` (default) | `fetch`, escalating to `browser` when the page needs JavaScript | only with a `region` | yes (runs `browser`) | free (subscription with a `region`) | 1–2 (2–3 with a `region`) |
 | `fetch` | Workers `fetch()` | no | no | free | 1 |
 | `browser` | Browser rendering | no | yes | free | 2 |
 | `proxy-fetch` | Plain fetch through a rotating proxy | yes | no | subscription | 2 |
@@ -103,10 +106,10 @@ active subscription — on the free allowance they return `402 payment_required`
 
 ## Options
 
-- `screenshot` — PNG of the rendered page, stored in R2 and returned as an expiring URL.
+- `screenshot` — PNG of the rendered page, returned as an expiring URL.
   Browser engines only (`browser`, `proxy-browser`).
-- `rehostImages` — downloads the images referenced by the resulting Markdown, re-uploads them to
-  R2 with a TTL, and rewrites the Markdown to point at those copies.
+- `rehostImages` — downloads the images referenced by the resulting Markdown, re-hosts them
+  temporarily, and rewrites the Markdown to point at those copies.
 - `respectRobotsTxt` — honor the target site's robots.txt rules. Off by default for scrape and
   batch, on by default for crawl (send `false` to turn it off); when on, a URL
   the rules disallow fails with `robots_disallowed` and is not billed. See
@@ -118,7 +121,9 @@ active subscription — on the free allowance they return `402 payment_required`
 
 Accounts and API keys live on the [dashboard](https://platform.webforai.dev/dashboard); requests authenticate with
 `Authorization: Bearer wfa_...`. Usage is metered in credits with **1,000 credits per month free** —
-see [Billing](/platform/billing) for the full schedule and the monthly spend cap. Requests are
+past that, a subscription bills from **$0.001 per credit** (about $1 per 1,000 `fetch` pages),
+cheaper at volume, with a **$50/month spend cap** by default. See [Billing](/platform/billing)
+for the full schedule. Requests are
 rate-limited per account (60 per minute free, 600 with a subscription) — see
 [Rate limits](/platform/api-reference#rate-limits).
 
