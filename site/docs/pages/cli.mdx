@@ -5,7 +5,7 @@ description: npx webforai converts a URL or local HTML file to clean Markdown on
 
 # CLI
 
-`npx webforai` converts a URL or a local HTML file to clean Markdown. Since v3 it is
+`npx webforai` converts a URL or a local HTML file to clean Markdown. It is
 **non-interactive by default**: the Markdown goes to stdout and every log goes to stderr, so
 the command composes with pipes, scripts and AI agents. The guided wizard is still there
 behind `-i`.
@@ -31,7 +31,7 @@ npx webforai@latest https://example.com --json | jq -r .markdown
 | `-o, --output <path>` | Write Markdown to a file instead of stdout. |
 | `-l, --loader <loader>` | `fetch` (default for URLs), `playwright`, or `platform`. Local files are detected automatically. |
 | `-m, --mode <mode>` | `default` or `ai` — `ai` strips links, tables and images down to plain text (local conversion only). |
-| `--extractor <name>` | Main-content extraction preset: `auto` (default), `takumi`, `minimal`, or `none` for the whole page. |
+| `--extractor <name>` | Main-content extraction preset: `auto` (default: site adapters, then the learned `kiwame` classifier), `kiwame`, `takumi` (the heuristic, Readability-style extractor), `minimal`, or `none` for the whole page. The platform loader accepts all but `kiwame`. |
 | `--frontmatter` | Prepend YAML front matter built from the page metadata (title, author, canonical URL, …). |
 | `--json` | Print a JSON envelope instead of raw Markdown (below). |
 | `--engine <engine>` | Platform engine: `auto` (renders JavaScript only when the page needs it), `fetch`, `browser`, `proxy-fetch`, `proxy-browser` (proxy engines need a subscription). Implies `-l platform`. |
@@ -56,8 +56,8 @@ making a request. Interactive mode applies the same flag validation and environm
 - **fetch** — plain HTTP fetch. Fast, no JavaScript execution. Follows
   `<meta http-equiv="refresh">` redirect stubs (an HTTP 200 "Redirecting…" page) like
   ordinary redirects, up to 3 hops.
-- **playwright** — renders the page in local headless Chromium first. Install it once with
-  `npx playwright install chromium`.
+- **playwright** — renders the page in local headless Chromium first. Install the browser once
+  with `npx playwright install chromium`.
 - **platform** — the [hosted webforai platform](/platform) fetches and converts server-side.
   Useful for JavaScript-heavy pages without a local browser, bot-protected sites (proxy
   engines), region-pinned fetching, and screenshots.
@@ -118,13 +118,12 @@ concurrent jobs on the free tier, 20 with a subscription) is reported instead.
   "region": "auto",
   "markdown": "# …",
   "metadata": { "title": "…" },
-  "credits": 3,
-  "screenshotUrl": "https://…",
-  "output": "article.md"
+  "credits": 2,
+    "output": "article.md"
 }
 ```
 
-`engine`, `region`, `credits` and `screenshotUrl` appear only when the platform loader ran;
+`engine`, `region` and `credits` appear only when the platform loader ran (`screenshotUrl` also with `--screenshot`, which adds 1 credit);
 `output` only when `-o` also wrote a file. A `warning` appears when the result is probably
 degraded — most commonly a client-rendered page fetched without JavaScript; rerun with
 `--engine auto` or `-l playwright` when you see one.
@@ -151,4 +150,4 @@ npx skills add inaridiy/webforai
 ## Interactive mode
 
 `npx webforai -i` walks through source, loader (including the platform), mode and output
-path with prompts — the behavior older versions had by default.
+path with prompts.

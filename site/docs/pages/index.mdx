@@ -68,7 +68,7 @@ npx webforai@latest
           <span className="font-medium text-[15px] opacity-80 leading-none w-full text-center">stars</span>
         </div>
         <div className="flex items-center h-full px-2">
-          <span className="font-medium text-[15px] text-center leading-none w-full text-black dark:text-white">46</span>
+          <span className="font-medium text-[15px] text-center leading-none w-full text-black dark:text-white">★</span>
         </div>
       </div>
       <div className="absolute left-0 right-0 top-0 bottom-0 bg-black/5 dark:bg-white/5 z-0" />
@@ -116,8 +116,8 @@ The same extraction engine, wherever you want to run it.
 # Overview
 
 ```ts twoslash
-import { htmlToMarkdown, htmlToMdast } from "webforai";
-import { loadHtml } from "webforai/loaders/playwright";
+import { htmlToMarkdown } from "webforai";
+import { loadHtml } from "webforai/loaders/fetch";
 
 // Load html from url
 const url = "https://www.npmjs.com/package/webforai";
@@ -132,9 +132,8 @@ const markdown = htmlToMarkdown(html, { baseUrl: url }); // [!code hl]
 
 - High-quality HTML to Markdown conversion with simple, customizable options
 - ESM-native, compatible with various environments (browser, Cloudflare Worker, Node.js, etc.)
-- Lightweight (only 146kb minified and gzipped)
 - Flexibility because it's built on [Syntax Tree](https://github.com/syntax-tree) ecosystem.
-- MathML to LaTeX with [mathml-to-latext](https://www.npmjs.com/package/mathml-to-latex) package.
+- MathML to LaTeX with [mathml-to-latex](https://www.npmjs.com/package/mathml-to-latex) package.
 - Out-of-the-box loaders such as fetch, [playwright](https://www.npmjs.com/package/playwright), [puppeteer](https://www.npmjs.com/package/puppeteer).
 - CLI tool [`npx webforai <url>`](/cli) — Markdown on stdout, `--json` for scripts and AI agents
 

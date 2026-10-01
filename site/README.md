@@ -4,6 +4,8 @@ The documentation site for everything in this repository, built with [Vocs](http
 and served by a Cloudflare Worker (`workers/index.tsx` adds the `/api/ogp` image route; the
 static build is bound as `ASSETS`).
 
+Run locally: `pnpm --filter site dev` (no library build needed; `build` does need one).
+
 It is the **only** documentation source: the library (`packages/webforai`), the CLI
 (`npx webforai`), the `webforai/platform` client and the hosted platform API are all
 documented here. The platform app (platform.webforai.dev) has no docs of its own and links

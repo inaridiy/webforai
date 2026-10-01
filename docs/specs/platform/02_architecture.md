@@ -1,5 +1,31 @@
 # Platform Architecture
 
+Revision note (2026-10-01): moved from README (operator/dashboard internals). Dashboard: a
+"Get set up" checklist (key → first request → optional billing) until the account has a key and
+usage; one usage panel (credits this month, estimate from `PRICE_TIERS`, plan + billing
+actions); a "Use your key" card (curl / TS client / CLI, `baseUrl` / `WEBFORAI_PLATFORM_URL`
+filled in on self-hosted origins). Doc URLs live in `src/client/lib/links.ts`. Account deletion
+(`POST /api/dashboard/account/delete` with `{ confirmEmail }`): terminate queued/running job
+Workflows (best-effort), flush unreported usage to the Stripe meter and cancel an active
+subscription with an immediate final invoice (either failing deletes nothing), then delete keys,
+jobs, usage, billing state, pending codes, sessions, linked accounts and the user row in one D1
+batch; R2 job archives are removed best-effort (paging past 1,000; the 7-day lifecycle catches
+the rest). Legal pages `/terms`, `/privacy`, `/commerce` are SPA routes also prerendered by
+`pnpm build` to `dist/client/*.html` (served under `html_handling: auto-trailing-slash`, metadata
+from `src/client/lib/page-meta.ts`); `public/` holds `og.png`, `robots.txt`, `sitemap.xml` and
+the PWA files. PWA: manifest starts on `/dashboard`; the service worker registers only in
+production builds (`pnpm build && pnpm exec vite preview` locally, Docker required), loads
+navigations network-first with a 4 s cached-shell fallback, `/assets/*` cache-first, other
+static files stale-while-revalidate, never stores prerendered legal pages as the shell
+(`OWN_DOCUMENT` in `sw.js`); display cache keys `wfa-cache:v1:*` (`src/client/lib/local-cache.ts`)
+with a "Showing saved data" notice and **Clear saved data**; `share_target` GET
+`/share?url=&text=&title=` prefills the playground (signed in) or landing demo (signed out) via
+`?url=` without running. Shell uses `min-h-dvh` and safe-area insets; phone inputs are 16px.
+Rollout of the page-accounting migration (`drizzle/0001_wild_miek.sql`): stop accepting new
+async jobs, let old workflows finish, apply the migration, deploy the matching Worker, resume
+job creation; do not roll back while new jobs are active. Migration 0004
+(`usage_events.report_skipped_reason`, its index, `billing_state.spend_cap_usd`) must be applied
+before deploying the code that uses it.
 Revision note (2026-10-01, internal RPC): The Worker also exports `PlatformRpc`, a
 `WorkerEntrypoint` for Service Binding callers on the same account (first: shadcn-explorer).
 `convert(url, { tenant, formats, extractor, engine })` runs `fetchForScrape` +
@@ -148,7 +174,8 @@ Archive reads and oversized-result serialization run one page at a time to bound
 memory; the returned page holds only inline results or small URL stubs.
 Drain old in-flight workflows before upgrading: historical page usage has random ids
 and cannot be retrospectively deduplicated. The generated migration and matching Worker
-must be deployed together; see the platform README rollout procedure.
+must be deployed together; see the rollout procedure in the 2026-10-01 "moved from README"
+revision note above.
 
 
 - KV `job:<id>:meta` (status snapshot for cheap polling) + `job:<id>:<n>` per-page result,
