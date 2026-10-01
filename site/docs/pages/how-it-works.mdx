@@ -41,8 +41,23 @@ type Extractor = (params: ExtractParams) => Hast;
 
 ### Default Extractor
 
-By default, webforai provides a built-in Extractor called `takumi-extractor`. This extractor is adjusted to produce a high average quality for a typical web page.
-I do my best to adjust it to the best of my ability using various flags and scoring with reference to **Mozilla's readability** and other algorithms.
+The default, `autoExtractor`, first tries the **site adapters** (GitHub, MDN, Wikipedia, YouTube,
+Hacker News, documentation generators, …). For every other page it runs `kiwameExtractor` — kiwame (極め, an appraiser's verdict), a learned
+block classifier:
+
+1. The page is split into **text blocks** — runs of inline content inside one block-level element.
+2. Each block gets cheap features: its text statistics and those of its neighbours, where it sits
+   in the document, class and role hints, and what the heuristic `takumiExtractor` (Readability-style
+   container scoring) would keep.
+3. A small **gradient-boosted tree model**, plus a second stage that looks at its neighbours'
+   scores, estimates the probability that each block is main content.
+4. The tree is pruned to the kept blocks, keeping the original structure, so headings, lists,
+   tables and code convert as before.
+
+The model ships as plain TypeScript arrays (no WASM, no runtime dependency). On the independent
+WCEB benchmark it raised token F1 from 0.874 to 0.892. The heuristic extractor is still available
+as `takumiExtractor` (CLI: `--extractor takumi`), and it is what `kiwameExtractor` falls back to
+if the model keeps nothing.
 
 ### Customizing the Extraction
 

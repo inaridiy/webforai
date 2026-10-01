@@ -1,7 +1,7 @@
 import type { Nodes as Hast } from "hast";
-import { fromHtml } from "hast-util-from-html";
 import { toMdast } from "hast-util-to-mdast";
 import type { Nodes as Mdast } from "mdast";
+import { parseHtml } from "./utils/parse-html";
 
 import { extractMdast } from "./extract-mdast";
 import { type ExtractorSelectors, pipeExtractors } from "./extractors";
@@ -69,7 +69,7 @@ export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOpti
 	// handed in by the caller is read-only unless the caller says otherwise.
 	const [lang, hast] =
 		typeof htmlOrHast === "string"
-			? [defaultLang || getLangFromStr(htmlOrHast), fromHtml(htmlOrHast, { fragment: true })]
+			? [defaultLang || getLangFromStr(htmlOrHast), parseHtml(htmlOrHast, { fragment: true })]
 			: [defaultLang || getLangFromHast(htmlOrHast), htmlOrHast];
 
 	const isOwned = typeof htmlOrHast === "string" || (options?.owned ?? false);

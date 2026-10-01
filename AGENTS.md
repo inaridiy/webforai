@@ -21,7 +21,9 @@ README.md, update that README in the same commit.
 ## Where things live
 
 - `packages/webforai` — the published library (html→markdown). Do not couple it to the
-  platform; the platform consumes it via `workspace:*`.
+  platform; the platform consumes it via `workspace:*`. The block classifier's weights
+  (`src/extractors/lib/block-model.generated.ts`) are generated elsewhere — never edit by hand;
+  measure changes with `evals` (`gold:eval` on WCEB, the corpus, `stress`).
 - `apps/platform` — the Cloudflare SaaS platform. Design ledger: `docs/specs/platform/`.
 - Enduring decisions go to `docs/specs/**` with a dated `Revision note (YYYY-MM-DD): ...`;
   workflow rules live here; task history lives in `.agents/execplans/`.

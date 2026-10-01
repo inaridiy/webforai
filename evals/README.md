@@ -55,6 +55,8 @@ sites the direct route is both faster and more reliable.
 | `bench` | End-to-end throughput, interleaved and median-of-N |
 | `bench:extract` | Extraction stage in isolation, with parsing outside the timed region |
 | `bench:compare` | webforai against Readability + Turndown, full-page Turndown and node-html-markdown. `--rounds=`, `--no-summary` |
+| `firecrawl-oss` | Run a self-hosted Firecrawl over the corpus and WCEB and cache its Markdown for the `firecrawl-oss` pipeline (see below) |
+| `stress` | Adversarial and very large pages, each in a child process with a 128 MB heap (a Worker's budget). `--case=` |
 
 The accuracy suite runs under the repository's vitest:
 
@@ -64,6 +66,19 @@ npx vitest run evals/src/corpus.test.ts
 
 It skips any site that is not cached, so it is meaningful locally and harmless in CI.
 
+## Ground truth
+
+The corpus above has assertions, not answers. `gold:eval` scores extraction against reference
+main-content text instead: token precision, recall and F1 per page, averaged per dataset.
+
+| Command | What it does |
+| --- | --- |
+| `gold:fetch-wceb` | Download WCEB (Bevendorff et al., SIGIR 2023; Apache-2.0, ≈50 MB) into the cache |
+| `gold:eval` | Token precision/recall/F1 against WCEB's reference text. `--pipelines=webforai,webforai-kiwame,readability-turndown`, `--impl=<path>` to measure another checkout, `--threshold=`, `--limit=` |
+
+The learned block classifier's weights (`packages/webforai/src/extractors/lib/block-model.generated.ts`)
+are generated outside this repository; WCEB is used to measure them, never to tune them.
+
 ## Cross-tool comparison
 
 `bench:compare` scores every pipeline in `src/competitors.ts` with the existing assertions (minus
@@ -71,6 +86,33 @@ the webforai-specific ones it lists) and the signals defined in `src/compare-met
 writes per-capture results, a report and every output to `.reports/<date>-compare/`, and rewrites
 the committed aggregate `benchmarks/compare-summary.json`, which the site's Benchmarks page
 quotes. jsdom 30, used for the Readability pipeline, needs Node 22.22.2+ or 24.15.0+.
+
+## Firecrawl OSS
+
+Firecrawl is a service, so `bench:compare` and `gold:eval` read its output from
+`.cache/firecrawl/` (keyed by the HTML's hash) instead of converting in-process. To refresh it,
+run Firecrawl from its repository (AGPL-3.0; nothing of it is vendored here) with the browser
+engine disabled, so it converts exactly the cached HTML, and local fetching allowed:
+
+```yaml
+# docker-compose.override.yaml in the Firecrawl checkout
+services:
+  api:
+    environment:
+      PLAYWRIGHT_MICROSERVICE_URL: ""
+      ALLOW_LOCAL_WEBHOOKS: "true"
+      TEST_SUITE_SELF_HOSTED: "true"
+```
+
+```bash
+docker compose up -d                       # in the Firecrawl checkout
+docker run -d --name fc-stage --network firecrawl_backend -v "$PWD/.cache/fc-stage:/usr/share/nginx/html:ro" nginx:alpine
+pnpm --filter @webforai/evals firecrawl-oss -- --sets=corpus,wceb --commit=<firecrawl commit> \
+  --stage-dir=.cache/fc-stage --serve-base=http://<fc-stage container IP>
+```
+
+With rootful Docker the stage container is unnecessary: omit `--stage-dir`, and the script serves
+the pages itself on `--serve-host` (the host's address on Docker's bridge).
 
 ## Reading the numbers
 

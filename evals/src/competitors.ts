@@ -14,6 +14,8 @@ import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import { htmlToMarkdown } from "webforai";
 
+import { firecrawlMarkdown, readFirecrawlRecord } from "./firecrawl.js";
+
 export interface Competitor {
 	id: string;
 	label: string;
@@ -22,6 +24,11 @@ export interface Competitor {
 	/** Whether the pipeline tries to isolate the main content. */
 	extracts: boolean;
 	convert: (html: string, url: string) => string;
+	/**
+	 * For a pipeline that runs as a service and is read from a cache: the time the service took for
+	 * this page, reported instead of the (meaningless) time to read the cache.
+	 */
+	serviceMs?: (html: string) => number;
 }
 
 /** Turndown configured the way its README and most integrations do for GFM output. */
@@ -93,5 +100,14 @@ export const COMPETITORS: Competitor[] = [
 		pipeline: "NodeHtmlMarkdown.translate(html) on the whole document, default options",
 		extracts: false,
 		convert: (html) => NodeHtmlMarkdown.translate(html),
+	},
+	{
+		id: "firecrawl-oss",
+		label: "Firecrawl OSS",
+		pipeline:
+			"self-hosted Firecrawl (open source) POST /v2/scrape { formats: [markdown], onlyMainContent: true } on the same HTML served locally; output cached by `firecrawl-oss`",
+		extracts: true,
+		convert: (html) => firecrawlMarkdown(html),
+		serviceMs: (html) => readFirecrawlRecord(html).ms,
 	},
 ];
