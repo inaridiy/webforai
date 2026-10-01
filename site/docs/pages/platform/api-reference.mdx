@@ -1,5 +1,6 @@
 ---
 title: Platform API Reference
+description: HTTP reference for the webforai platform — scrape, batch, crawl, jobs and the public demo, with error codes, rate limits and robots.txt behaviour.
 ---
 
 # Platform API Reference
@@ -31,14 +32,69 @@ curl -X POST https://platform.webforai.dev/v1/scrape \
 Failures use the appropriate HTTP status and a uniform body:
 
 ```jsonc
-{ "error": { "code": "payment_required", "message": "Free allowance exhausted" } }
+{
+  "error": {
+    "code": "payment_required",
+    "message": "Free monthly allowance of 1000 credits is used up. Start a subscription at https://platform.webforai.dev/dashboard."
+  }
+}
 ```
 
-Failed operations are **never billed**.
+Failed operations are **never billed**. Branch on `code`, not on `message` — messages are for
+people and may change.
+
+| status | code | meaning | what to do |
+| --- | --- | --- | --- |
+| 400 | `invalid_request` | The body failed validation: unknown key, bad enum value, invalid regex, more than 100 URLs, … | Fix the request; the message names the field. |
+| 400 | `invalid_url` | The target is not a public `http(s)` URL (private ranges, localhost and non-standard ports are refused). | Use a public URL. |
+| 400 | `invalid_cursor` | A results `cursor` was altered or belongs to another job. | Pass cursors back unchanged. |
+| 401 | `invalid_api_key` | The `Authorization` header is missing, or the key is unknown or revoked. | Create or copy a key on the [dashboard](https://platform.webforai.dev/dashboard). |
+| 402 | `payment_required` | The free monthly allowance (1,000 credits) is used up, or a [proxy engine](#proxy-engines-are-paid-only) was requested without a subscription. | Subscribe on the dashboard, or use `fetch` / `browser` / `auto` without a region. |
+| 402 | `spend_cap_reached` | This month's estimated bill reached your [spend cap](/platform/billing#spend-cap) (default $50). | Raise the cap on the dashboard, or wait for the next month. |
+| 403 | `robots_disallowed` | `respectRobotsTxt` is on and the site's robots.txt disallows the URL. | Not billed. Respect it, or (for URLs you chose) send `respectRobotsTxt: false`. |
+| 404 | `job_not_found` | No job with this id for your account (or its results expired after 7 days). | Check the id. |
+| 429 | `rate_limited` | Over your account's [request rate](#rate-limits). Carries `Retry-After`. | Wait `Retry-After` seconds, then retry; group URLs into a batch job. |
+| 429 | `too_many_jobs` | Your account already has its maximum of batch/crawl jobs queued or running. | Wait for one to finish, then resubmit. |
+| 413 / 415 | `response_too_large` / `unsupported_content_type` | The target answered with an oversized or non-HTML body. | Nothing to retry; the page cannot be converted. |
+| 502 / 504 | `fetch_failed` / `engine_failed` | The target site failed, refused or timed out (the message carries the upstream status). | Retry later, or try `auto` / a browser engine. |
+| 503 | `engine_unavailable` | The requested engine is not configured on this deployment (e.g. no proxy credentials). | Pick another engine. |
+| 503 | `scheduling_unknown` | A job was created but the platform could not confirm it was scheduled; the message carries the job id. | Query that job before submitting a replacement. |
+| 503 | `result_unavailable` | A stored result could not be read right now. | Retry the same request later. |
+
+In batch and crawl results, a failed page carries the same `{ code, message }` pair in its
+`error` field (for example `fetch_failed` or `robots_disallowed`); the job itself still
+completes.
+
+## Rate limits
+
+Limits are per **account** — all of an account's API keys share them. "Paid" means an active
+subscription.
+
+| limit | free | paid | over the limit |
+| --- | --- | --- | --- |
+| `/v1` requests per minute | 60 | 600 | `429 rate_limited` with `Retry-After: 60` |
+| batch + crawl jobs queued or running at once (async scrape included) | 3 | 20 | `429 too_many_jobs` |
+| API keys per account | 50 | 50 | key creation refused |
+| URLs per batch job | 100 | 100 | `400 invalid_request` |
+| crawl depth / pages per crawl | 5 / 500 | 5 / 500 | `400 invalid_request` |
+
+Counters are kept per Cloudflare location and are eventually consistent, so treat the numbers
+as a fairness bound rather than exact accounting. The [public demo](#post-v1demoscrape) is
+limited per client IP instead. The [CLI](/cli)'s `crawl` and `batch` commands retry
+`rate_limited` automatically; the [TypeScript client](/platform/client) exposes `retryAfter`
+and leaves retrying to you.
+
+## Proxy engines are paid-only
+
+`proxy-fetch` and `proxy-browser` — and anything that resolves to them, such as `auto` with
+`region: "jp"` — need an active subscription. Without one they fail with
+`402 payment_required` before anything runs; the free monthly allowance covers `fetch`,
+`browser` and `auto`. The public demo never runs them.
 
 ## Region
 
-`region` is an optional field on `/v1/scrape`, `/v1/batch`, `/v1/crawl` and `/v1/demo/scrape`.
+`region` is an optional field on `/v1/scrape`, `/v1/batch` and `/v1/crawl` (the demo accepts
+only `auto`).
 It expresses a coarse geographic preference for the egress location:
 
 | value | meaning |
@@ -48,7 +104,7 @@ It expresses a coarse geographic preference for the egress location:
 
 It only affects the proxy engines (`proxy-fetch`, `proxy-browser`), which select a proxy exit
 node in the requested area; a non-`auto` region also pins `engine: "auto"` to the proxy tier so
-the preference can be honoured. The `fetch` and `browser` engines egress from Cloudflare's own
+the preference can be honoured — which makes it [paid-only](#proxy-engines-are-paid-only). The `fetch` and `browser` engines egress from Cloudflare's own
 network and ignore the field rather than failing, so one default can be set for a mixed-engine
 workload. Other values are rejected with `400 invalid_request`. Pricing is unaffected.
 
@@ -152,7 +208,9 @@ curl -X POST https://platform.webforai.dev/v1/scrape \
 
 ## POST /v1/batch
 
-Asynchronous, a list of URLs. Limit: **100 URLs per job**.
+Asynchronous, a list of URLs. Limit: **100 URLs per job**. Counts towards your
+[concurrent job limit](#rate-limits). From a shell, [`npx webforai batch`](/cli#batch-and-crawl)
+submits, waits and writes one Markdown file per page.
 
 ```jsonc
 {
@@ -161,7 +219,7 @@ Asynchronous, a list of URLs. Limit: **100 URLs per job**.
   "region": "auto",
   "screenshot": false,
   "rehostImages": false,
-  "respectRobotsTxt": true,      // default for crawl; false skips robots.txt
+  "respectRobotsTxt": false,     // opt-in for batch; see robots.txt above
   "convert": {}
 }
 ```
@@ -181,7 +239,9 @@ curl -X POST https://platform.webforai.dev/v1/batch \
 
 ## POST /v1/crawl
 
-Asynchronous, recursive same-origin crawl from a seed URL.
+Asynchronous, recursive same-origin crawl from a seed URL. Counts towards your
+[concurrent job limit](#rate-limits). From a shell, [`npx webforai crawl`](/cli#batch-and-crawl)
+does the whole round trip and can also write `llms.txt` / `llms-full.txt`.
 
 ```jsonc
 {
@@ -193,9 +253,10 @@ Asynchronous, recursive same-origin crawl from a seed URL.
   "includePaths": ["^/docs"],    // regex on pathname, optional
   "excludePaths": [],
   "sameOrigin": true,            // only true is accepted (sending false is a 400)
+  "sitemap": "skip",             // skip (default) | include | only — see below
   "screenshot": false,
   "rehostImages": false,
-  "respectRobotsTxt": false,
+  "respectRobotsTxt": true,      // default for crawl; false skips robots.txt
   "convert": {}
 }
 ```
@@ -203,6 +264,13 @@ Asynchronous, recursive same-origin crawl from a seed URL.
 Links are discovered from the `<a href>` elements of the fetched HTML *before* extraction, then
 normalized, deduped, fragment-stripped and same-origin filtered, and walked breadth-first by depth
 until `limit` is reached. Returns `202 { "jobId": "job_..." }`.
+
+`sitemap` seeds the crawl from the site's sitemaps — the `Sitemap:` lines of its robots.txt, or
+`/sitemap.xml` when there are none (sitemap indexes and gzipped sitemaps are expanded, up to 8
+documents). `include` adds their same-origin URLs that pass `includePaths`/`excludePaths` (up to
+`limit`) at depth 1, next to the links found on the seed page, so `maxDepth: 0` ignores them;
+`only` crawls the seed plus those URLs and follows no links found on pages. A sitemap that
+cannot be read contributes nothing and the crawl carries on.
 
 ```bash
 curl -X POST https://platform.webforai.dev/v1/crawl \
@@ -285,7 +353,7 @@ output near 40,000 characters, cutting at a paragraph boundary and appending a v
 ```jsonc
 {
   "url": "https://example.com",
-  "region": "auto"               // optional: auto | jp
+  "region": "auto"               // optional; only "auto" — "jp" is 402 payment_required
 }
 ```
 
@@ -305,8 +373,10 @@ output near 40,000 characters, cutting at a paragraph boundary and appending a v
 
 ### Response — 429
 
-Rate limited to **5 requests per 10 minutes per IP**. The response carries a `Retry-After` header
-and repeats the value in the body.
+Rate limited per client IP (IPv6 clients by /64): **3 requests per minute** and **5 per 10
+minutes**, plus a global daily cap. Successful responses are cached for 10 minutes, and a
+cached answer does not count. The response carries a `Retry-After` header and repeats the value
+in the body.
 
 ```jsonc
 {
@@ -324,6 +394,24 @@ curl -X POST https://platform.webforai.dev/v1/demo/scrape \
   -d '{ "url": "https://example.com", "region": "auto" }'
 ```
 
+## Markdown permalinks — GET /https://…
+
+Put any http(s) URL after the host and get the page back as plain Markdown
+(`text/markdown`) — handy in a browser, `curl`, or a tool that only does GET.
+
+```bash
+# No key: the free demo (same limits, 10-minute cache and 40,000-character cut as above)
+curl https://platform.webforai.dev/https://example.com/article
+
+# With a key: a normal billed /v1/scrape with the auto engine, full length
+curl -H "Authorization: Bearer wfa_..." https://platform.webforai.dev/https://example.com/article
+```
+
+Everything after the first `/`, query string included, is the target URL. Response headers say
+which engine ran (`X-Webforai-Engine`) and, for keyed requests, the credits charged
+(`X-Webforai-Credits`). Errors come back as a single `code: message` line with the usual status
+code (and `Retry-After` on a 429).
+
 ## Behavioural rules
 
 - **Billing guard runs before side effects**, usage is recorded **after success only**. In async
@@ -333,5 +421,7 @@ curl -X POST https://platform.webforai.dev/v1/demo/scrape \
   redirect targets included.
 - **robots.txt**: checked when `respectRobotsTxt` is `true` — the default for crawl only; see
   [robots.txt](#robotstxt).
-- **Rate limits**: per-key requests per minute, plus the job-level caps above (≤100 URLs per
-  batch, ≤5 crawl depth, ≤500 crawl pages). The public demo endpoint is limited per IP instead.
+- **Rate limits**: per account, by tier — see [Rate limits](#rate-limits). The public demo
+  endpoint is limited per IP instead.
+- **Spend cap**: subscribed accounts stop at their monthly [spend cap](/platform/billing#spend-cap)
+  (`402 spend_cap_reached`); proxy engines need a subscription.

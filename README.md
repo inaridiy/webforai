@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  A esm-native library that converts HTML to Markdown & Useful Utilities with simple, lightweight and epic quality.
-<p>
+  Convert web pages and local HTML to clean, LLM-ready Markdown — with a TypeScript library, the <code>npx webforai</code> CLI, or a hosted API.
+</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/webforai">
@@ -51,6 +51,8 @@ npx webforai@latest https://example.com/article
 # machine-readable output, hosted-platform fetching, agent installation
 npx webforai@latest https://example.com --json
 npx webforai@latest https://example.com --engine auto      # platform, renders JS when needed
+npx webforai@latest crawl https://docs.example.com -o docs --llms-txt   # site → .md files + llms.txt
+npx webforai@latest batch --file urls.txt -o pages         # many URLs → one .md per page
 npx webforai@latest skill --install                        # Agent Skill via `npx skills add`
 ```
 
@@ -69,8 +71,9 @@ const markdown = htmlToMarkdown(html, { baseUrl: url });
 ```
 
 The CLI keeps Markdown/JSON on stdout and API failures on stderr, including the error code
-and `retryAfter` when supplied; `invalid_api_key` and `payment_required` add a hint pointing at
-the platform dashboard. `--engine` and `--region` select the platform loader; combining
+and `retryAfter` when supplied; `invalid_api_key`, `payment_required` and `spend_cap_reached`
+name the platform dashboard. `crawl` and `batch` run hosted jobs (API key required) and write
+one Markdown file per page. `--engine` and `--region` select the platform loader; combining
 them with an explicit local loader exits with usage error `2`. The interactive wizard applies
 the same validation and honors `WEBFORAI_PLATFORM_URL`.
 

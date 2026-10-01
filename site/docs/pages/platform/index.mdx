@@ -1,5 +1,6 @@
 ---
 title: Platform
+description: webforai platform — a hosted, open-source crawl-to-Markdown API with scrape, batch and crawl endpoints, browser and proxy engines, and 1,000 free credits a month.
 ---
 
 import { HomePage } from "vocs/components";
@@ -56,10 +57,12 @@ Try it without an account on the [live demo](/#demo), or read the full [API refe
   const { markdown } = await platform.scrape({ url: "https://example.com", engine: "browser" });
   ```
 
-- **CLI** — [`npx webforai`](/cli) uses the platform as a loader:
+- **CLI** — [`npx webforai`](/cli) uses the platform as a loader, and runs batch and crawl
+  jobs straight into a folder of Markdown files:
 
   ```bash
   WEBFORAI_API_KEY=wfa_... npx webforai https://example.com --engine browser --json
+  WEBFORAI_API_KEY=wfa_... npx webforai crawl https://docs.example.com -o docs --llms-txt
   ```
 
 - **Anything that speaks HTTP** — the [API reference](/platform/api-reference) documents every
@@ -81,20 +84,22 @@ durable execution and retries. Results are retained for 7 days and read back thr
 Every request picks how the HTML is acquired. Engines differ in what they can render, whether
 they egress through a proxy, and what they cost in credits.
 
-| engine | how it fetches | proxy | screenshot | credits |
-| --- | --- | --- | --- | --- |
-| `auto` (default) | Cheapest first, escalates to browser rendering when the page needs JavaScript | with region | yes | 1–2 (2–3 with a region) |
-| `fetch` | Workers `fetch()` | no | no | 1 |
-| `browser` | Browser rendering | no | yes | 2 |
-| `proxy-fetch` | Plain fetch through a rotating proxy | yes | no | 2 |
-| `proxy-browser` | Browser rendering behind the rotating proxy | yes | yes | 3 |
+| engine | how it fetches | proxy | screenshot | plan | credits |
+| --- | --- | --- | --- | --- | --- |
+| `auto` (default) | Cheapest first, escalates to browser rendering when the page needs JavaScript | with region | yes | free (subscription with a region) | 1–2 (2–3 with a region) |
+| `fetch` | Workers `fetch()` | no | no | free | 1 |
+| `browser` | Browser rendering | no | yes | free | 2 |
+| `proxy-fetch` | Plain fetch through a rotating proxy | yes | no | subscription | 2 |
+| `proxy-browser` | Browser rendering behind the rotating proxy | yes | yes | subscription | 3 |
 
 The default `auto` starts with a plain fetch and reruns in a browser only when the fetched HTML
 turns out to be a client-rendered shell (or an anti-bot interstitial) — you are billed for the
 engine that produced the result, and the response names it. Pin `fetch` for static HTML at a
 guaranteed 1 credit, the `proxy-*` engines when a site blocks datacenter IPs or you need
 [a specific region](/platform/api-reference#region), and either browser engine when the content
-only exists after JavaScript runs.
+only exists after JavaScript runs. The proxy engines (and any `region` other than `auto`) need an
+active subscription — on the free allowance they return `402 payment_required`; see
+[Billing](/platform/billing#proxy-engines-need-a-subscription).
 
 ## Options
 
@@ -113,7 +118,9 @@ only exists after JavaScript runs.
 
 Accounts and API keys live on the [dashboard](https://platform.webforai.dev/dashboard); requests authenticate with
 `Authorization: Bearer wfa_...`. Usage is metered in credits with **1,000 credits per month free** —
-see [Billing](/platform/billing) for the full schedule.
+see [Billing](/platform/billing) for the full schedule and the monthly spend cap. Requests are
+rate-limited per account (60 per minute free, 600 with a subscription) — see
+[Rate limits](/platform/api-reference#rate-limits).
 
 ## Self-hosting
 

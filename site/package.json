@@ -5,7 +5,7 @@
 	"private": true,
 	"scripts": {
 		"dev": "vocs dev",
-		"build": "vocs build",
+		"build": "vocs build && node scripts/postbuild.mjs",
 		"preview": "vocs preview",
 		"worker:dev": "wrangler dev",
 		"worker:deploy": "wrangler deploy",

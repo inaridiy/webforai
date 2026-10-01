@@ -1,5 +1,6 @@
 ---
 title: Platform Client (TypeScript)
+description: webforai/platform — a typed, dependency-free TypeScript client for the webforai platform API with job polling, result paging and structured errors.
 ---
 
 # TypeScript client — `webforai/platform`
@@ -88,15 +89,19 @@ try {
 } catch (error) {
   if (error instanceof PlatformApiError) {
     switch (error.code) {
-      case "payment_required": // out of credits
-      case "rate_limited":     // back off; error.retryAfter may be set
+      case "payment_required":  // free allowance used up, or a proxy engine without a subscription
+      case "spend_cap_reached": // monthly spend cap hit; raise it on the dashboard
+      case "rate_limited":      // 60/min free, 600/min paid; wait error.retryAfter seconds
+      case "too_many_jobs":     // 3 (free) / 20 (paid) batch+crawl jobs already active
       case "engine_unavailable": // deployment lacks that engine's config
     }
   }
 }
 ```
 
-The full list of codes and shapes lives in the [API reference](/platform/api-reference).
+401 and 402 messages end with a pointer to the deployment's dashboard (`<baseUrl>/dashboard`).
+The full list of codes, with what to do about each, lives in the
+[API reference](/platform/api-reference#errors).
 
 ## Custom fetch (Cloudflare Workers and other special runtimes)
 

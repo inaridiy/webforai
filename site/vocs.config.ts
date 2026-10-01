@@ -4,7 +4,7 @@ import { version } from "../packages/webforai/package.json";
 // biome-ignore lint/style/noDefaultExport: This is a config file
 export default defineConfig({
 	title: "Webforai",
-	description: "A esm-native library that converts HTML to Markdown.",
+	description: "Convert web pages and local HTML to clean, LLM-ready Markdown — library, CLI and hosted API.",
 	baseUrl: "https://webforai.dev",
 	logoUrl: {
 		light: "/images/logo-light.png",

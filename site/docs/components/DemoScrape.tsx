@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
-import { PLATFORM_DEMO_ENDPOINT, PLATFORM_ORIGIN, PLATFORM_REGIONS, type PlatformRegion } from "./platform";
+import { PLATFORM_DEMO_ENDPOINT, PLATFORM_ORIGIN, type PlatformRegion } from "./platform";
 import "streamdown/styles.css";
 
 type DemoSuccess = {
@@ -35,11 +35,6 @@ const EXAMPLES: { label: string; url: string }[] = [
 	{ label: "MDN", url: "https://developer.mozilla.org/en-US/docs/Web/HTML" },
 	{ label: "Vite docs", url: "https://vite.dev/guide/" },
 ];
-
-const REGION_LABELS: Record<PlatformRegion, string> = {
-	auto: "Region: auto",
-	jp: "Region: Japan",
-};
 
 const ENGINE_LABELS: Record<string, string> = {
 	fetch: "plain fetch",
@@ -101,7 +96,14 @@ const readRetryAfter = (response: Response, body: DemoErrorBody): number | undef
 	return Number.isFinite(header) ? header : undefined;
 };
 
-const runDemo = async (url: string, region: PlatformRegion, startedAt: number): Promise<RunState> => {
+/**
+ * The keyless demo always runs region `auto`: geo-targeted regions run on the paid proxy tier,
+ * which the demo refuses with `402 payment_required` (owner decision 2026-10-01).
+ */
+const DEMO_REGION: PlatformRegion = "auto";
+
+const runDemo = async (url: string, startedAt: number): Promise<RunState> => {
+	const region = DEMO_REGION;
 	let response: Response;
 	try {
 		response = await fetch(PLATFORM_DEMO_ENDPOINT, {
@@ -118,7 +120,7 @@ const runDemo = async (url: string, region: PlatformRegion, startedAt: number): 
 		return {
 			status: "error",
 			kind: "rate_limited",
-			message: `The public demo allows 5 conversions per 10 minutes. Try again ${retry}.`,
+			message: `The public demo allows a few conversions per minute (5 per 10 minutes). Try again ${retry}, or sign up for 1,000 free credits a month.`,
 		};
 	}
 	if (!response.ok) {
@@ -333,7 +335,6 @@ const ErrorView = ({
  */
 export const DemoScrape = () => {
 	const [url, setUrl] = useState(DEFAULT_URL);
-	const [region, setRegion] = useState<PlatformRegion>("auto");
 	const [run, setRun] = useState<RunState>({ status: "idle" });
 	const running = run.status === "running";
 
@@ -344,7 +345,7 @@ export const DemoScrape = () => {
 		}
 		const startedAt = performance.now();
 		setRun({ status: "running", startedAt });
-		runDemo(trimmed, region, startedAt)
+		runDemo(trimmed, startedAt)
 			.then(setRun)
 			.catch(() => setRun({ status: "error", kind: "failed", message: "Something went wrong. Please try again." }));
 	};
@@ -370,22 +371,6 @@ export const DemoScrape = () => {
 					placeholder="https://any-page-you-like.com/article"
 					className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-[14px] outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
 				/>
-				<label className="sr-only" htmlFor="demo-region">
-					Egress region
-				</label>
-				<select
-					id="demo-region"
-					value={region}
-					disabled={running}
-					onChange={(event) => setRegion(event.target.value as PlatformRegion)}
-					className="rounded-lg border border-border bg-background px-3 py-2.5 text-[14px] outline-none focus:border-accent disabled:opacity-60"
-				>
-					{PLATFORM_REGIONS.map((value) => (
-						<option key={value} value={value}>
-							{REGION_LABELS[value]}
-						</option>
-					))}
-				</select>
 				<button
 					type="submit"
 					disabled={running || url.trim().length === 0}
@@ -410,6 +395,12 @@ export const DemoScrape = () => {
 						{example.label}
 					</button>
 				))}
+				<span className="ml-auto text-[12px] text-muted-foreground">
+					Japan egress (<code>region: "jp"</code>) is on{" "}
+					<a href={`${PLATFORM_ORIGIN}/dashboard`} className="underline hover:text-accent">
+						paid plans
+					</a>
+				</span>
 			</div>
 
 			<div className="border-border border-t">

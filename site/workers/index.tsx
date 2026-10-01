@@ -52,6 +52,24 @@ const app = new Hono<{ Bindings: Env }>().get(
 	},
 );
 
+/**
+ * Unknown paths. Static assets are matched before the Worker runs, so anything reaching this
+ * point has no page: answer with the static 404 page that `scripts/postbuild.mjs` writes, with
+ * a real 404 status. (Handled here rather than with `not_found_handling = "404-page"` in
+ * wrangler.toml so `/api/ogp` keeps reaching the Worker however asset routing evolves.) The
+ * asset is requested as `/404` because `html_handling` redirects `/404.html` to it.
+ */
+app.notFound(async (c) => {
+	const page = await c.env.ASSETS.fetch(new URL("/404", c.req.url).toString());
+	if (!page.ok) {
+		return c.text("404 Not Found", 404);
+	}
+	return new Response(page.body, {
+		status: 404,
+		headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" },
+	});
+});
+
 // biome-ignore lint/style/noDefaultExport: worker
 export default app;
 

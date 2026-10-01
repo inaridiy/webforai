@@ -1,5 +1,6 @@
 ---
 title: CLI
+description: npx webforai converts a URL or local HTML file to clean Markdown on stdout, and crawls or batch-converts sites into Markdown files and llms.txt through the hosted platform.
 ---
 
 # CLI
@@ -33,8 +34,8 @@ npx webforai@latest https://example.com --json | jq -r .markdown
 | `--extractor <name>` | Main-content extraction preset: `auto` (default), `takumi`, `minimal`, or `none` for the whole page. |
 | `--frontmatter` | Prepend YAML front matter built from the page metadata (title, author, canonical URL, …). |
 | `--json` | Print a JSON envelope instead of raw Markdown (below). |
-| `--engine <engine>` | Platform engine: `auto` (renders JavaScript only when the page needs it), `fetch`, `browser`, `proxy-fetch`, `proxy-browser`. Implies `-l platform`. |
-| `--region <region>` | Platform proxy egress region: `auto` or `jp`. Implies `-l platform`. |
+| `--engine <engine>` | Platform engine: `auto` (renders JavaScript only when the page needs it), `fetch`, `browser`, `proxy-fetch`, `proxy-browser` (proxy engines need a subscription). Implies `-l platform`. |
+| `--region <region>` | Platform proxy egress region: `auto` or `jp` (`jp` runs on the proxy tier, so it needs a subscription). Implies `-l platform`. |
 | `--screenshot` | Platform browser engines only: also capture a screenshot (expiring URL). |
 | `--respect-robots` | Platform loader only: honor the target site's robots.txt rules (off by default). A disallowed URL fails with `robots_disallowed` and is not billed. See [robots.txt](/platform/api-reference#robotstxt). |
 | `--api-key <key>` | Platform API key; defaults to `$WEBFORAI_API_KEY`. |
@@ -43,9 +44,10 @@ npx webforai@latest https://example.com --json | jq -r .markdown
 | `-d, --debug` | Verbose logs on stderr. |
 
 Exit codes: `0` success, `1` runtime failure, `2` usage error. API failures include the
-platform error code and `retryAfter` (seconds, when supplied) on stderr; `invalid_api_key` and
-`payment_required` add a `hint:` line with the platform
-[dashboard](https://platform.webforai.dev/dashboard) URL (your `--platform-url` when set). Explicit local
+platform [error code](/platform/api-reference#errors) and `retryAfter` (seconds, when supplied)
+on stderr; `invalid_api_key`, `payment_required` and `spend_cap_reached` name the platform
+[dashboard](https://platform.webforai.dev/dashboard) URL (your `--platform-url` when set), as
+does the usage error for a missing API key. Explicit local
 loaders cannot be combined with `--engine` or `--region`; this exits with code `2` before
 making a request. Interactive mode applies the same flag validation and environment defaults.
 
@@ -63,8 +65,45 @@ making a request. Interactive mode applies the same flag validation and environm
 ```bash
 export WEBFORAI_API_KEY=wfa_...   # from https://platform.webforai.dev/dashboard
 npx webforai@latest https://spa.example.com --engine auto
-npx webforai@latest https://blocked.example.com --engine proxy-fetch --region jp
+npx webforai@latest https://blocked.example.com --engine proxy-fetch --region jp   # subscription
 ```
+
+## Batch and crawl
+
+Two subcommands run asynchronous [platform jobs](/platform/api-reference#post-v1batch) end to
+end: submit, wait (a live progress line on a terminal, quiet when piped), page through the
+results and write **one Markdown file per page** into a directory.
+
+```bash
+export WEBFORAI_API_KEY=wfa_...
+
+# crawl a docs site (same-origin), plus llms.txt and llms-full.txt
+npx webforai@latest crawl https://docs.example.com -o docs --limit 100 --include '^/docs' --llms-txt
+
+# convert a list of URLs (arguments, or one per line with --file; "-" reads stdin)
+npx webforai@latest batch https://a.example/post https://b.example/news -o pages
+cat urls.txt | npx webforai@latest batch --file - -o pages --json
+```
+
+| flag | meaning |
+| --- | --- |
+| `-o, --output <dir>` | Required. Files mirror URL paths: `/docs/intro` → `docs/intro.md`, `/` → `index.md`; batch prefixes the host (`a.example/post.md`). A query string adds a short hash; collisions get `_1`, `_2`. |
+| `--max-depth <n>` | crawl: link depth from the seed, `0`–`5` (default 2). |
+| `--limit <n>` | crawl: maximum pages, `1`–`500` (default 50). |
+| `--include <regex>` / `--exclude <regex>` | crawl: pathname filters; repeat the flag for several patterns. |
+| `--sitemap <mode>` | crawl: `skip` (default), `include` (also queue the site's sitemap URLs) or `only` (seed + sitemap URLs, no link following). See [crawl](/platform/api-reference#post-v1crawl). |
+| `--respect-robots` / `--no-respect-robots` | crawl honors robots.txt by default; batch only with `--respect-robots`. |
+| `--llms-txt` | crawl: also write [`llms.txt`](https://llmstxt.org) (site title, summary and a `- [title](url): description` link per page, grouped by top-level path) and `llms-full.txt` (every page's Markdown, concatenated). |
+| `-f, --file <path>` | batch: read URLs from a file, one per line (`#` comments allowed); up to 100 URLs per job. |
+| `--json` | Print `{ jobId, status, credits, pages: [{ url, file, title, … }], failures: [{ url, code, message }], llmsTxt?, llmsFullTxt? }` instead of the file list. |
+| `--timeout <seconds>` | Stop waiting after this long (default 1800). The job keeps running; results stay available for 7 days. |
+| `--engine`, `--region`, `--extractor`, `--frontmatter`, `--api-key`, `--platform-url`, `-d` | As above. |
+
+stdout lists the written files, one per line (or the `--json` envelope); the progress and a
+summary — including every failed page with its error code — go to stderr. Failed pages are not
+billed and do not fail the command; it exits `1` when the job itself failed or no page was
+converted. `rate_limited` responses are retried after `Retry-After`; `too_many_jobs` (3
+concurrent jobs on the free tier, 20 with a subscription) is reported instead.
 
 ## JSON output
 

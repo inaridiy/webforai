@@ -24,7 +24,23 @@ platform host used by components (the landing's live demo and "ways to use" card
 
 ```bash
 pnpm --filter site dev            # vocs dev server
-pnpm --filter site build          # static build into docs/dist
+pnpm --filter site build          # static build into docs/dist (needs `pnpm --filter webforai build` first)
 pnpm --filter site worker:dev     # serve the build through the Worker (wrangler dev)
 pnpm --filter site worker:deploy  # deploy webforai.dev (run build first)
 ```
+
+## Build outputs for agents and crawlers
+
+`pnpm --filter site build` runs `vocs build`, then `scripts/postbuild.mjs`, which converts every
+prerendered page **with webforai itself** and writes, next to the HTML in `docs/dist`:
+
+- `/<path>.md` — each page as Markdown (`/cli.md`, `/platform/api-reference.md`, `/index.md`),
+  linked from the page head as `rel="alternate" type="text/markdown"`;
+- `/llms.txt` (an [llmstxt.org](https://llmstxt.org) index of those files) and `/llms-full.txt`
+  (all of them concatenated);
+- `/sitemap.xml`, `/robots.txt` (with its `Sitemap:` line) and `/404.html`, which the Worker
+  serves with status 404 for unknown paths.
+
+It also gives each page a canonical link and its own `og:url`, and URL-encodes the OG image
+query. The build fails when a page converts to (near-)empty Markdown, so extraction regressions
+cannot ship silently.
