@@ -36,6 +36,7 @@ import { COMPETITORS, type Competitor } from "../competitors.js";
 import { EVALS_ROOT, REPORTS_DIR } from "../config.js";
 import { CORPUS, type CorpusSite } from "../corpus.js";
 import { type RenderMode, readCached } from "../fetch.js";
+import { readFirecrawlRecord } from "../firecrawl.js";
 
 const args = process.argv.slice(2);
 const flagValue = (name: string): string | undefined =>
@@ -138,6 +139,7 @@ const environment = {
 		turndown: await packageVersion("turndown"),
 		"turndown-plugin-gfm": await packageVersion("turndown-plugin-gfm"),
 		"node-html-markdown": await packageVersion("node-html-markdown"),
+		"firecrawl-oss": firecrawlCommit(),
 	},
 };
 
@@ -146,6 +148,18 @@ const environment = {
 interface Run {
 	markdown: string;
 	error?: string;
+}
+
+/** The Firecrawl commit recorded with the cached outputs, if any were produced. */
+function firecrawlCommit(): string {
+	for (const capture of captures) {
+		try {
+			return readFirecrawlRecord(capture.html).commit;
+		} catch {
+			// not cached for this capture
+		}
+	}
+	return "not run";
 }
 
 const runOnce = (competitor: Competitor, capture: Capture): Run => {
@@ -166,6 +180,14 @@ for (const capture of captures) {
 	}
 }
 
+const serviceTime = (competitor: Competitor, capture: Capture, fallback: number): number => {
+	try {
+		return competitor.serviceMs?.(capture.html) ?? fallback;
+	} catch {
+		return fallback;
+	}
+};
+
 // Measured rounds. Pipelines are interleaved per capture and the starting pipeline rotates each
 // round, so CPU frequency drift and GC pressure are spread across all of them.
 const timings = new Map<string, number[]>();
@@ -176,7 +198,9 @@ for (let round = 0; round < rounds; round++) {
 		for (const competitor of order) {
 			const t0 = performance.now();
 			runOnce(competitor, capture);
-			const elapsed = performance.now() - t0;
+			const measured = performance.now() - t0;
+			// A service's output is read from a cache; its own recorded time is the comparable figure.
+			const elapsed = competitor.serviceMs ? serviceTime(competitor, capture, measured) : measured;
 			const samples = timings.get(key(competitor, capture)) ?? [];
 			samples.push(elapsed);
 			timings.set(key(competitor, capture), samples);
@@ -317,15 +341,15 @@ const methodology = {
 		1024
 	).toFixed(2)} MiB of UTF-8 HTML; missing: ${missing.join(", ") || "none"}`,
 	assertions:
-		"Existing evals/src/assertions.ts expectations, unchanged, applied to every pipeline's output with the harness's own regexes (ATX headings, ``` fences, GFM delimiter rows, UTF-16 length, link-only-line ratio, presence/absence anchors). Excluded from the cross-tool score: adapter-claim checks and anchors that match webforai's own adapter output format (listed in excludedChecks). A crash fails every check of that capture.",
+		"Existing evals/src/assertions.ts expectations, unchanged, applied to every pipeline's output; headings, code blocks and tables are counted from a CommonMark + GFM parse (so setext headings and indented code count like ATX headings and fences), plus UTF-16 length, link-only-line ratio and presence/absence anchors. Excluded from the cross-tool score: adapter-claim checks and anchors that match webforai's own adapter output format (listed in excludedChecks). A crash fails every check of that capture.",
 	emptyOutput: `trimmed output shorter than ${EMPTY_THRESHOLD} characters (a crash is counted separately)`,
 	navLeak: `link-only-line ratio above ${NAV_LEAK_THRESHOLD}`,
 	boilerplateMarkers: `case-insensitive substrings: ${BOILERPLATE_MARKERS.join(", ")}`,
 	codeFenceRecall:
-		"for every <pre> in the source with a line of 12–200 characters (block elements inside <pre> count as line breaks), its longest such line (whitespace-collapsed) must appear as a line inside a fenced block of the output; pooled over the corpus. Measures recall only — it cannot penalize keeping code from page chrome.",
+		"for every <pre> in the source with a line of 12–200 characters (block elements inside <pre> count as line breaks), its longest such line (whitespace-collapsed) must appear as a line inside a code block of the output (fenced or indented, from a CommonMark parse); pooled over the corpus. Measures recall only — it cannot penalize keeping code from page chrome.",
 	tableRecall:
 		"source data tables = <table> with a <th> and no nested table; preserved = min(GFM tables in output, source data tables) per capture; pooled. Recall only.",
-	timing: `1 warm-up round, then ${rounds} measured rounds; each conversion timed individually with pipelines interleaved per capture and the starting pipeline rotated each round; per-capture median, summed over the corpus. Includes HTML parsing (jsdom for Readability). Single process, not CPU-pinned.`,
+	timing: `1 warm-up round, then ${rounds} measured rounds; each conversion timed individually with pipelines interleaved per capture and the starting pipeline rotated each round; per-capture median, summed over the corpus. Includes HTML parsing (jsdom for Readability). Single process, not CPU-pinned. Firecrawl OSS runs as a service: its figure is the per-page wall time of its scrape request recorded by \`firecrawl-oss\` (queueing, fetching the locally served page, extraction and conversion; 8 concurrent requests), not an in-process conversion, so it is not directly comparable.`,
 };
 
 // ---------------------------------------------------------------------------- outputs

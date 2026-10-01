@@ -7,6 +7,10 @@
  */
 
 import { fromHtml } from "hast-util-from-html";
+import type { Nodes as Mdast } from "mdast";
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { gfmFromMarkdown } from "mdast-util-gfm";
+import { gfm } from "micromark-extension-gfm";
 
 import { EXPECTATIONS, type SiteExpectation } from "./assertions.js";
 import type { CorpusSite } from "./corpus.js";
@@ -138,16 +142,63 @@ type HastContent = HastRoot["children"][number];
 type Hast = HastRoot | HastContent;
 type Element = Extract<HastContent, { type: "element" }>;
 
+/**
+ * Block structure of a Markdown document, from a CommonMark + GFM parse.
+ *
+ * Parsed rather than pattern-matched so every pipeline is measured on what its Markdown means, not
+ * on its syntax: setext (`===`) and ATX (`#`) headings are both headings, and indented code blocks
+ * count as code like fenced ones (Firecrawl emits both of the former).
+ */
+interface MarkdownStructure {
+	headings: number;
+	codeBlocks: number;
+	tables: number;
+	/** Whitespace-normalised lines inside code blocks. */
+	codeLines: Set<string>;
+}
+
+const structureCache = new Map<string, MarkdownStructure>();
+
+const markdownStructure = (markdown: string): MarkdownStructure => {
+	const cached = structureCache.get(markdown);
+	if (cached) {
+		return cached;
+	}
+	const structure: MarkdownStructure = { headings: 0, codeBlocks: 0, tables: 0, codeLines: new Set() };
+	const tree = fromMarkdown(markdown, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] });
+	const stack: Mdast[] = [tree];
+	while (stack.length > 0) {
+		const node = stack.pop() as Mdast;
+		if (node.type === "heading") {
+			structure.headings += 1;
+		} else if (node.type === "code") {
+			structure.codeBlocks += 1;
+			for (const line of node.value.split("\n")) {
+				structure.codeLines.add(normalizeLine(line));
+			}
+		} else if (node.type === "table") {
+			structure.tables += 1;
+		}
+		if ("children" in node) {
+			stack.push(...(node.children as Mdast[]));
+		}
+	}
+	structureCache.clear();
+	structureCache.set(markdown, structure);
+	return structure;
+};
+
 export const measureOutput = (markdown: string): OutputMetrics => {
 	const lines = markdown.split("\n").filter((line) => line.trim().length > 0);
 	const linkOnly = lines.filter((line) => /^\s*[-*]?\s*!?\[[^\]]*\]\([^)]*\)\s*$/.test(line)).length;
 	const lower = markdown.toLowerCase();
+	const structure = markdownStructure(markdown);
 
 	return {
 		characters: markdown.length,
-		headings: countMatches(markdown, /^#{1,6} /gm),
-		codeBlocks: countMatches(markdown, /^```/gm) / 2,
-		tables: countMatches(markdown, /^\|[-: |]+\|$/gm),
+		headings: structure.headings,
+		codeBlocks: structure.codeBlocks,
+		tables: structure.tables,
 		navLinkRatio: lines.length === 0 ? 0 : linkOnly / lines.length,
 		rawHtmlTables: countMatches(markdown, /<table[\s>]/gi),
 		boilerplateMarkers: BOILERPLATE_MARKERS.filter((marker) => lower.includes(marker)),
@@ -242,27 +293,6 @@ export const analyzeSource = (html: string): SourceFacts => {
 	return { codeProbes, dataTables };
 };
 
-/** Normalized lines that sit inside fenced code blocks (``` or ~~~) of the output. */
-const fencedLines = (markdown: string): Set<string> => {
-	const result = new Set<string>();
-	let fence: string | undefined;
-	for (const line of markdown.split("\n")) {
-		const marker = line.match(/^\s*(`{3,}|~{3,})/)?.[1];
-		if (fence === undefined) {
-			if (marker) {
-				fence = marker;
-			}
-			continue;
-		}
-		if (marker && marker[0] === fence[0] && marker.length >= fence.length && line.trim() === marker) {
-			fence = undefined;
-			continue;
-		}
-		result.add(normalizeLine(line));
-	}
-	return result;
-};
-
 export interface FidelityCounts {
 	codeProbes: number;
 	/** Probes found verbatim on a line inside a fenced block. */
@@ -273,7 +303,7 @@ export interface FidelityCounts {
 }
 
 export const measureFidelity = (source: SourceFacts, markdown: string, metrics: OutputMetrics): FidelityCounts => {
-	const fenced = fencedLines(markdown);
+	const fenced = markdownStructure(markdown).codeLines;
 	return {
 		codeProbes: source.codeProbes.length,
 		codeProbesFenced: source.codeProbes.filter((probe) => fenced.has(probe)).length,

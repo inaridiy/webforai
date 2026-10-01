@@ -89,7 +89,10 @@ export const EXPECTATIONS: SiteExpectation[] = [
 	{
 		id: "python-datetime",
 		mode: "static",
-		structure: { minHeadings: 20, minLength: 50_000, maxNavLinkRatio: 0.05 },
+		// The page has exactly 19 content headings (h1 plus 18 sections; the other 10 are sidebar
+		// navigation). The earlier floor of 20 was set when headings were counted by a line regex
+		// that also matched `# ` comments inside code blocks.
+		structure: { minHeadings: 19, minLength: 50_000, maxNavLinkRatio: 0.05 },
 	},
 
 	// ---------------------------------------------------------- tech communities

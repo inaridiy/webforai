@@ -59,3 +59,13 @@ covers only the runtime that evaluates them.
   `kiwameExtractor`, `createKiwameExtractor`, `KiwameExtractorOptions`, CLI `--extractor kiwame` —
   paired with the heuristic `takumi` (匠, the craftsman) whose choice it takes into account.
   `auto` keeps kiwame as its default behind the site adapters.
+- Firecrawl comparison (owner, 2026-10-01): self-hosted Firecrawl OSS at commit `034293a`, v2
+  scrape defaults (`onlyMainContent: true`), fetch engine only (Playwright rendering would let the
+  cached pages' scripts rewrite the DOM and took ~3.6 s/page). Pages served from a container on its
+  network (rootless Docker cannot reach the host). Output cached by `firecrawl-oss`; nothing of
+  Firecrawl (AGPL-3.0) is vendored. WCEB: F1 0.743 / dataset mean 0.760, precision 0.668 (lowest
+  on all 8 datasets), recall 0.939 (highest). Corpus: checks 52/74, nav-leak 15, boilerplate 22.
+- Metric revision prompted by Firecrawl: cross-tool output metrics now come from a CommonMark + GFM
+  parse (setext headings, indented code, valid tables). The line regexes had counted `# ` code
+  comments as headings and credited Turndown's unparseable Sphinx tables. The Python-docs heading
+  floor was set from inflated counts; corrected 20 → 19 (its real content headings, all kept).

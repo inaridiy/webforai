@@ -16,7 +16,8 @@
 		"judge:report": "tsx src/cli/judge-report.ts",
 		"gold:eval": "tsx src/cli/gold-eval.ts",
 		"gold:fetch-wceb": "tsx src/cli/gold-fetch-wceb.ts",
-		"stress": "tsx src/cli/stress.ts"
+		"stress": "tsx src/cli/stress.ts",
+		"firecrawl-oss": "tsx src/cli/firecrawl-oss.ts"
 	},
 	"dependencies": {
 		"playwright-core": "^1.40.1",
@@ -27,11 +28,15 @@
 		"@mozilla/readability": "0.6.0",
 		"@tsconfig/recommended": "^1.0.3",
 		"@types/jsdom": "30.0.0",
+		"@types/mdast": "^4.0.2",
 		"@types/node": "^20.14.10",
 		"@types/turndown": "5.0.6",
 		"hast-util-from-html": "^2.0.3",
 		"hast-util-to-mdast": "^10.1.0",
 		"jsdom": "30.0.1",
+		"mdast-util-from-markdown": "^2.0.1",
+		"mdast-util-gfm": "^3.0.0",
+		"micromark-extension-gfm": "^3.0.0",
 		"node-html-markdown": "2.0.0",
 		"tsx": "^4.19.1",
 		"turndown": "7.2.4",
