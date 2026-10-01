@@ -91,3 +91,27 @@ export const guardAuthRequest = async (path: string, deps: AuthGuardDeps): Promi
 		}
 	}
 };
+
+/** User columns only the server may write; never accepted from a request body. */
+export const SERVER_ONLY_USER_FIELDS = ["stripeCustomerId"] as const;
+
+interface PluginWithUserSchema {
+	schema?: { user?: { fields?: object } };
+}
+
+/**
+ * The Stripe plugin declares `user.stripeCustomerId` without `input: false`, so Better Auth's
+ * `update-user`, `sign-up/email` and email-OTP sign-up would accept it from the client — a user
+ * could point their metered usage, Checkout and billing portal at another customer. Plugin
+ * schemas override `user.additionalFields`, so the flag has to be set on the plugin itself.
+ */
+export const lockServerOnlyUserFields = <P extends PluginWithUserSchema>(plugin: P): P => {
+	const fields = plugin.schema?.user?.fields as Record<string, { input?: boolean } | undefined> | undefined;
+	for (const name of SERVER_ONLY_USER_FIELDS) {
+		const field = fields?.[name];
+		if (field) {
+			field.input = false;
+		}
+	}
+	return plugin;
+};

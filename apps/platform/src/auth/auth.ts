@@ -9,7 +9,7 @@ import { createStripe } from "../billing/stripe";
 import { createDb } from "../db/client";
 import * as schema from "../db/schema";
 import type { AppConfig } from "../env";
-import { OTP_SEND_PATHS, guardAuthRequest, isMailedOtpType } from "./guards";
+import { OTP_SEND_PATHS, guardAuthRequest, isMailedOtpType, lockServerOnlyUserFields } from "./guards";
 import { SIGN_IN_CODE_TTL_MINUTES, sendSignInCode } from "./sign-in-email";
 
 const DAY_SECONDS = 24 * 60 * 60;
@@ -59,14 +59,16 @@ export const createAuth = (env: Env, config: AppConfig) => {
 	const billing =
 		stripeClient && webhookSecret
 			? [
-					stripePlugin({
-						stripeClient,
-						stripeWebhookSecret: webhookSecret,
-						createCustomerOnSignUp: true,
-						onEvent: async (event) => {
-							await mirrorStripeEvent(db, event, stripeClient);
-						},
-					}),
+					lockServerOnlyUserFields(
+						stripePlugin({
+							stripeClient,
+							stripeWebhookSecret: webhookSecret,
+							createCustomerOnSignUp: true,
+							onEvent: async (event) => {
+								await mirrorStripeEvent(db, event, stripeClient);
+							},
+						}),
+					),
 				]
 			: [];
 
