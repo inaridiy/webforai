@@ -67,8 +67,9 @@ export class PlatformRpcError extends Error {
 		readonly code: string,
 		message: string,
 	) {
+		// The default `Error` name on purpose: Workers RPC folds a custom name into the message
+		// (`PlatformRpcError: code: …`), which would break the `code: message` convention.
 		super(`${code}: ${message}`);
-		this.name = "PlatformRpcError";
 	}
 }
 
