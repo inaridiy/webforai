@@ -7,7 +7,9 @@ import { type BillingDeps, ensureSpendable, usesProxyTier } from "../billing/gua
 import { createBillingRepo } from "../billing/repo";
 import { createStripe } from "../billing/stripe";
 import { reportToStripe } from "../billing/usage";
-import type { CrawlScope } from "../core/links";
+import { type CrawlScope, filterCrawlUrls } from "../core/links";
+import { createRobotsTxtLoader } from "../core/robots-fetch";
+import { type SitemapLoader, createSitemapLoader } from "../core/sitemap-fetch";
 import { PlatformError, type ScrapeRequest } from "../core/types";
 import { createDb } from "../db/client";
 import { usageEvents } from "../db/schema";
@@ -66,6 +68,7 @@ const ABORT_CODES = [PAYMENT_REQUIRED, "spend_cap_reached"] as const;
 
 interface JobDeps extends PageDeps {
 	jobsRepo: JobsRepo;
+	sitemaps: SitemapLoader;
 }
 
 const buildDeps = (env: Env, params: JobParams): JobDeps => {
@@ -78,6 +81,7 @@ const buildDeps = (env: Env, params: JobParams): JobDeps => {
 		scrape: { engines: createEngines(env, config), artifacts: createArtifactStore(env, config) },
 		results: createJobResultsDeps(env, config),
 		jobsRepo: createJobsRepo(db),
+		sitemaps: createSitemapLoader(createRobotsTxtLoader()),
 		guard: (userId) => spendGuard({ repo: billingRepo, config }, userId, { proxy: usesProxyTier(params.request) }),
 		accounting: createPageAccountingRepo(db),
 		archives: createPageArchiveStore(env.ARTIFACTS),
@@ -214,6 +218,8 @@ const runCrawl = async (
 		...(request.includePaths ? { includePaths: request.includePaths } : {}),
 		...(request.excludePaths ? { excludePaths: request.excludePaths } : {}),
 	};
+	const sitemapMode = request.sitemap ?? "skip";
+	const sitemapUrls = sitemapMode === "skip" ? [] : await loadSitemapUrls(deps, step, request, scope);
 	const traversal = await traverseCrawl(
 		new URL(request.url).href,
 		{ maxDepth: request.maxDepth, limit: request.limit },
@@ -233,10 +239,40 @@ const runCrawl = async (
 			applyOutcome(summary, outcome);
 			return { links: outcome.links };
 		},
+		{ sitemapUrls, followLinks: sitemapMode !== "only" },
 	);
 
 	return traversal.aborted ? { ...summary, error: abort } : summary;
 };
+
+/**
+ * The site's in-scope sitemap URLs, as one step so a replayed `run()` sees the same list and
+ * therefore rebuilds the same visit order. Best-effort: a step that keeps failing means none.
+ */
+const loadSitemapUrls = async (
+	deps: JobDeps,
+	step: WorkflowStep,
+	request: CrawlRequest,
+	scope: CrawlScope,
+): Promise<string[]> => {
+	try {
+		return await step.do("sitemap", SITEMAP_STEP_CONFIG, async () =>
+			filterCrawlUrls(await deps.sitemaps(new URL(request.url), request.limit * SITEMAP_OVERSAMPLE), scope).slice(
+				0,
+				request.limit,
+			),
+		);
+	} catch {
+		return [];
+	}
+};
+
+/** Sitemap entries outside include/exclude are dropped after loading, so read a few more. */
+const SITEMAP_OVERSAMPLE = 4;
+const SITEMAP_STEP_CONFIG = {
+	retries: { limit: 1, delay: "5 seconds", backoff: "constant" },
+	timeout: "2 minutes",
+} as const;
 
 const applyOutcome = (summary: JobSummary, outcome: PageOutcome): void => {
 	if (outcome.ok) {

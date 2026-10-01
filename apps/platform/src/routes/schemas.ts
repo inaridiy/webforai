@@ -113,6 +113,9 @@ export const batchBodySchema = z
 	.strict()
 	.superRefine(requireScreenshotCapableEngine);
 
+export const CRAWL_SITEMAP_MODES = ["skip", "include", "only"] as const;
+export type CrawlSitemapMode = (typeof CRAWL_SITEMAP_MODES)[number];
+
 export const crawlBodySchema = z
 	.object({
 		url: urlSchema,
@@ -123,6 +126,9 @@ export const crawlBodySchema = z
 		// Cross-origin crawling is a non-goal for now; accepting only `true` keeps a client that
 		// asks for it from believing it was honoured.
 		sameOrigin: z.literal(true).default(true),
+		// `include` adds the site's sitemap URLs to the links found on pages; `only` visits the
+		// seed plus sitemap URLs and follows no links. Sitemap URLs count as depth 1.
+		sitemap: z.enum(CRAWL_SITEMAP_MODES).default("skip"),
 		...commonFields,
 		respectRobotsTxt: z.boolean().default(true),
 	})

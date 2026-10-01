@@ -28,7 +28,7 @@ const isTextual = (contentType: string | null): boolean => {
 };
 
 /** Reads at most `maxBytes` of the body and drops the rest instead of failing. */
-const readTruncated = async (body: ReadableStream<Uint8Array> | null, maxBytes: number): Promise<string> => {
+export const readTruncated = async (body: ReadableStream<Uint8Array> | null, maxBytes: number): Promise<string> => {
 	if (!body) {
 		return "";
 	}

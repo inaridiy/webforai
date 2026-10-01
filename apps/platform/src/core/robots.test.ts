@@ -36,6 +36,13 @@ describe("parseRobotsTxt", () => {
 		expect(robots.groups).toEqual([{ agents: ["a"], rules: [{ allow: false, pattern: "/x" }] }]);
 	});
 
+	it("collects absolute Sitemap lines from anywhere in the file, deduplicated", () => {
+		const robots = parseRobotsTxt(
+			"Sitemap: https://x.com/a.xml\nUser-agent: *\nSitemap: https://x.com/b.xml\nsitemap: /relative.xml\nSITEMAP: https://x.com/a.xml",
+		);
+		expect(robots.sitemaps).toEqual(["https://x.com/a.xml", "https://x.com/b.xml"]);
+	});
+
 	it("ignores comments, blank lines, malformed lines and case in keys", () => {
 		const robots = parseRobotsTxt(
 			"# header\n\nUSER-AGENT: *   # everyone\nnot a directive\nDISALLOW: /private # secret\r\nallow:/private/ok",

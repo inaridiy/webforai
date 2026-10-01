@@ -16,7 +16,10 @@
       "/v1/*",
       "/api/*",
       "/artifacts/*",
-      "/health"
+      "/health",
+      // Markdown permalinks: GET /https://example.com → text/markdown (routes/permalink.ts).
+      "/http:*",
+      "/https:*"
     ]
   },
   "observability": {

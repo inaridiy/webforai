@@ -29,10 +29,18 @@ export interface CrawlTraversal {
 	aborted: boolean;
 }
 
+export interface CrawlSeeding {
+	/** Extra URLs (from the site's sitemaps) queued at depth 1 right after the seed's own links. */
+	sitemapUrls?: string[];
+	/** `false` visits only the seed and `sitemapUrls`: links found on pages are not followed. */
+	followLinks?: boolean;
+}
+
 export const traverseCrawl = async (
 	seedUrl: string,
 	limits: CrawlLimits,
 	visit: CrawlVisitor,
+	{ sitemapUrls = [], followLinks = true }: CrawlSeeding = {},
 ): Promise<CrawlTraversal> => {
 	// `enqueueLinks` only ever appends, so a read cursor over the queue stays valid across every
 	// rebuild — no shifting, and therefore no dependence on mutation order.
@@ -54,7 +62,12 @@ export const traverseCrawl = async (
 			return { visited: index, aborted: true };
 		}
 
-		frontier = enqueueLinks(frontier, outcome.links, depth + 1, limits);
+		if (followLinks) {
+			frontier = enqueueLinks(frontier, outcome.links, depth + 1, limits);
+		}
+		if (index === 1 && sitemapUrls.length > 0) {
+			frontier = enqueueLinks(frontier, sitemapUrls, 1, limits);
+		}
 	}
 
 	return { visited: index, aborted: false };

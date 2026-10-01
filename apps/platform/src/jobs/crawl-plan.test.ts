@@ -102,4 +102,36 @@ describe("traverseCrawl", () => {
 
 		expect(second.visits).toEqual(first.visits);
 	});
+
+	it("queues sitemap URLs at depth 1 after the seed's own links, without duplicates", async () => {
+		const { visits, visit } = visitorOver({
+			[SEED]: ["https://docs.example.com/a"],
+			"https://docs.example.com/a": ["https://docs.example.com/a1"],
+		});
+
+		await traverseCrawl(SEED, { maxDepth: 2, limit: 50 }, visit, {
+			sitemapUrls: ["https://docs.example.com/s", "https://docs.example.com/a"],
+		});
+
+		expect(visits.map((entry) => [entry.url, entry.depth])).toEqual([
+			[SEED, 0],
+			["https://docs.example.com/a", 1],
+			["https://docs.example.com/s", 1],
+			["https://docs.example.com/a1", 2],
+		]);
+	});
+
+	it("follows no links in sitemap-only mode", async () => {
+		const { visits, visit } = visitorOver({
+			[SEED]: ["https://docs.example.com/a"],
+			"https://docs.example.com/s": ["https://docs.example.com/b"],
+		});
+
+		await traverseCrawl(SEED, { maxDepth: 3, limit: 50 }, visit, {
+			sitemapUrls: ["https://docs.example.com/s"],
+			followLinks: false,
+		});
+
+		expect(visits.map((entry) => entry.url)).toEqual([SEED, "https://docs.example.com/s"]);
+	});
 });

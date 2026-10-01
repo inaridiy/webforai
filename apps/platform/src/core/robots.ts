@@ -34,10 +34,15 @@ export interface RobotsGroup {
 
 export interface RobotsTxt {
 	groups: RobotsGroup[];
+	/** Absolute `Sitemap:` URLs (any group or none), for the crawl `sitemap` option. */
+	sitemaps: string[];
 }
 
+/** Sitemap lines kept from one robots.txt; more is noise, not coverage. */
+export const MAX_ROBOTS_SITEMAPS = 10;
+
 /** Everything allowed: what an unavailable or unparseable robots.txt means here. */
-export const ALLOW_ALL: RobotsTxt = { groups: [] };
+export const ALLOW_ALL: RobotsTxt = { groups: [], sitemaps: [] };
 
 const LINE_PATTERN = /^\s*([A-Za-z-]+)\s*:\s*(.*?)\s*$/;
 
@@ -76,6 +81,7 @@ const parseLine = (rawLine: string): [key: string, value: string] | undefined =>
 
 export const parseRobotsTxt = (text: string): RobotsTxt => {
 	const groups: RobotsGroup[] = [];
+	const sitemaps: string[] = [];
 	let current: RobotsGroup | undefined;
 	// A `user-agent` line directly after another one extends the same group; after a rule it
 	// starts a new group.
@@ -107,11 +113,28 @@ export const parseRobotsTxt = (text: string): RobotsTxt => {
 			addAgent(value ?? "");
 		} else if (key === "allow" || key === "disallow") {
 			addRule(key === "allow", value ?? "");
+		} else if (key === "sitemap") {
+			addSitemap(sitemaps, value ?? "");
 		}
-		// Other keys (sitemap, crawl-delay, …) neither end a group nor carry rules we act on.
+		// Other keys (crawl-delay, …) neither end a group nor carry rules we act on; `sitemap`
+		// is global and does not end a group either.
 	}
 
-	return { groups };
+	return { groups, sitemaps };
+};
+
+const addSitemap = (sitemaps: string[], value: string): void => {
+	if (sitemaps.length >= MAX_ROBOTS_SITEMAPS) {
+		return;
+	}
+	try {
+		const url = new URL(value);
+		if ((url.protocol === "http:" || url.protocol === "https:") && !sitemaps.includes(url.href)) {
+			sitemaps.push(url.href);
+		}
+	} catch {
+		// Relative or malformed: the protocol requires absolute URLs.
+	}
 };
 
 /** The rules that apply to `token`: every group naming it, else every `*` group. */

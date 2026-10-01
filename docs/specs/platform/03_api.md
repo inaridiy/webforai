@@ -1,5 +1,35 @@
 # Platform API
 
+Revision note (2026-10-01, permalinks and sitemaps): `GET /<http(s) URL>` returns Markdown as
+`text/markdown`, re-dispatched internally to `POST /v1/scrape` (with a Bearer key) or
+`POST /v1/demo/scrape` (without), so auth, limits and billing are those routes' own. Crawl
+gains `sitemap: "skip" | "include" | "only"` (default `skip`): sitemap URLs from robots.txt
+`Sitemap:` lines (else `/sitemap.xml`, indexes and `.gz` expanded, ≤ 8 documents) are
+scope-filtered and queued at depth 1; `only` follows no page links.
+Revision note (2026-10-01, security): Every engine follows HTTP redirects itself, hop by hop
+(≤ 10), and each hop target passes the SSRF guard *before* it is requested (robots.txt and
+image rehosting too); browser engines abort subresource/frame requests to private addresses and
+refuse a page whose redirect hop reached one (`400 invalid_url`). The guard also refuses
+NAT64/6to4/IPv4-compatible IPv6 forms of private IPv4, 198.18.0.0/15, TEST-NETs, multicast and
+reserved space; it is lexical (no DNS resolution on Workers). Input caps: URLs ≤ 2,048 chars;
+`/v1` and `/api` bodies ≤ 256 KiB (`413 payload_too_large`); `includePaths`/`excludePaths` ≤ 20
+patterns of ≤ 200 chars each, still regex but screened for catastrophic backtracking (repeated
+groups around a quantifier or alternation, backreferences, > 3 unbounded quantifiers →
+`400 invalid_request`). Rendered HTML ≤ 5 MiB; screenshots clip at 16,384 px tall and fall back
+to the viewport above 10 MiB. Image rehosting stores raster formats only (png, jpeg, gif,
+webp, avif, bmp, ico, tiff; SVG stays at its origin, failure reason "raster formats only") and
+runs 4 downloads at a time. `/artifacts/*` responses carry `Content-Security-Policy:
+default-src 'none'; sandbox`, `nosniff` and `Cross-Origin-Resource-Policy: cross-origin`;
+anything but raster images and JSON downloads as an attachment. State-changing
+`/api/dashboard/*` requests need `Origin` equal to `BASE_URL`'s origin (`403 forbidden_origin`).
+Revision note (2026-10-01, limits): `/v1` is limited per account, not per key — free 60,
+paid (active subscription) 600 requests/minute on Workers Rate Limiting bindings, over it
+`429 rate_limited` with `Retry-After: 60`; Better Auth's per-key D1 limiter (120/min) is off.
+Batch/crawl creation (async scrape included) answers `429 too_many_jobs` while the account
+has 3 (free) / 20 (paid) jobs queued or running. API keys: 50 per account. The demo adds a
+per-client burst cap (3/minute, binding) and keys IPv6 clients by /64; its KV counters are
+documented as approximate. Missing/invalid key errors name `<BASE_URL>/dashboard`. See
+"Rate limits" below.
 Revision note (2026-09-24, robots default): `respectRobotsTxt` now defaults to `true` for
 `/v1/crawl` (still `false` for scrape and batch); callers may pass `false`. Owner decision after
 comparing Firecrawl (crawl honors robots.txt by default, overridable only on Enterprise;
@@ -120,7 +150,8 @@ and batch, `true` for crawl. When on:
 - Before any engine runs, the Worker fetches `<origin>/robots.txt` (Workers `fetch` with
   `cf: { cacheTtl: 3600, cacheEverything: true }`, so repeat checks hit Cloudflare's edge
   cache; 5 s timeout; first 512 KiB parsed). Meta-refresh hop targets are checked the same way;
-  HTTP redirects followed inside an engine are not re-checked.
+  HTTP redirects followed inside an engine are not re-checked against robots.txt (they are
+  against the SSRF guard).
 - Rules come from the group naming the product token `webforai-platform` (case-insensitive),
   else the `*` group, else nothing is disallowed. Matching is RFC 9309: the longest matching
   `allow`/`disallow` pattern wins (`allow` on a tie), `*` wildcards, trailing `$` anchor,
@@ -156,9 +187,10 @@ Limits: ≤100 URLs per job (initial). Returns `202 { "jobId": "job_..." }`.
   "engine": "auto",
   "maxDepth": 2,                 // ≤ 5
   "limit": 50,                   // pages, ≤ 500
-  "includePaths": ["^/docs"],   // regex on pathname, optional
-  "excludePaths": [],
+  "includePaths": ["^/docs"],   // regex on pathname, optional; ≤ 20 patterns, ≤ 200 chars each
+  "excludePaths": [],            // same rules; backtracking-prone patterns are refused (below)
   "sameOrigin": true,            // fixed true initially
+  "sitemap": "skip",             // "skip" | "include" | "only"
   "screenshot": false, "rehostImages": false, "region": "auto", "respectRobotsTxt": true,
   "convert": { }
 }
@@ -166,6 +198,21 @@ Limits: ≤100 URLs per job (initial). Returns `202 { "jobId": "job_..." }`.
 
 Link discovery: `<a href>` from the fetched HTML (before extraction), normalized, deduped,
 fragment-stripped, same-origin filtered, BFS by depth until `limit`. Returns `202 { jobId }`.
+Discovered links longer than 2,048 characters are skipped.
+
+`sitemap`: with `include` or `only`, one Workflow step (`sitemap`, replay-stable) reads the
+site's sitemaps — the robots.txt `Sitemap:` lines, else `<origin>/sitemap.xml`; sitemap indexes
+and gzipped files are expanded, at most 8 documents, every redirect hop SSRF-checked —
+keeps the URLs that pass the same origin and include/exclude rules (up to `limit`), and queues
+them at depth 1 right after the seed's own links (so `maxDepth: 0` ignores them). `only` follows
+no links found on pages. A sitemap that cannot be read contributes nothing; the crawl goes on.
+
+Path patterns run on a backtracking regex engine, so `src/core/links.ts`
+(`pathPatternProblem`) refuses, with `400 invalid_request`, a pattern that repeats a group
+containing a quantifier or an alternation (`(a+)+`, `(a|ab)*`; an optional `(…)?` is fine),
+uses backreferences, repeats more than 1,000 times, or has more than three unbounded
+quantifiers (`*`, `+`, `{n,}`). Prefix/suffix patterns such as `^/docs/`, `\.html$` and
+`^/(en|ja)/blog/.+` pass.
 
 If Workflow creation throws, the server checks the persisted instance id before deciding
 whether it was accepted. If both scheduling and lookup are inconclusive, it returns
@@ -221,13 +268,19 @@ Successful responses are cached for 10 minutes per data center, keyed by the nor
 (fragment dropped) and region. A cache hit is answered first — `X-Demo-Cache: hit`, no scrape,
 no rate-limit count — so the docs site's example buttons do not re-run the engines.
 
-Rate limits (KV counters checked *before* the proxy runs, so a rejection costs nothing;
-fail-closed — a KV failure denies rather than allows):
+Rate limits (checked *before* the proxy runs, so a rejection costs nothing; fail-closed — a
+KV or binding failure denies rather than allows). The client is `CF-Connecting-IP`, bucketed
+as the IPv4 address or the IPv6 /64 (`src/ops/ip.ts`):
 
-| scope | key | limit |
+| scope | where | limit |
 |---|---|---|
-| per IP (`CF-Connecting-IP`) | `demo:ip:<ip>` | 5 requests / 10 minutes from the first one |
-| global, per UTC day | `demo:global:<YYYY-MM-DD>` | 500 requests, resets at UTC midnight |
+| per client, burst | `DEMO_RATE_LIMIT` binding | 3 requests / 60 s (per Cloudflare location) |
+| per client | KV `demo:ip:<ipv4 \| ipv6-prefix::/64>` | 5 requests / 10 minutes from the first one |
+| global, per UTC day | KV `demo:global:<YYYY-MM-DD>` | 500 requests, resets at UTC midnight |
+
+The KV windows are read-modify-write, not atomic: concurrent requests can overshoot them
+slightly (approximate by design; the binding bounds bursts). A deployment without the
+binding applies only the KV windows.
 
 429 carries a `Retry-After` header and an extended error body:
 
@@ -239,6 +292,20 @@ A deployment without proxy settings answers `503 engine_unavailable` only for ge
 requests (`region` ≠ `auto`); auto-region requests run on the plain engines and need no
 proxy. Constants live in `src/routes/demo.ts`.
 
+## GET /<http(s) URL> — Markdown permalink
+
+`GET /https://example.com/page?x=1` → `200 text/markdown; charset=utf-8`, body = the Markdown.
+Everything after the first `/` (query included) is the target; `/https:/host` (a collapsed
+`//`) is accepted. The route re-dispatches through the Worker's router:
+
+- `Authorization: Bearer wfa_…` → `POST /v1/scrape { url }` (engine `auto`): billed, API-key
+  limits; `Cache-Control: private, no-store`; `X-Webforai-Credits`.
+- no key → `POST /v1/demo/scrape { url }`: the demo's limits, cache and 40k truncation;
+  `Cache-Control: public, max-age=600`; `X-Webforai-Truncated`.
+
+Both set `X-Webforai-Engine`, `X-Webforai-Source`, `Vary: Authorization`, CORS `*`. An error
+envelope becomes one `code: message` text line with the original status and `Retry-After`.
+
 ## Dashboard API (session cookie, not API key)
 
 `/api/dashboard/usage` (period usage from D1 ledger), key CRUD via Better Auth client,
@@ -247,13 +314,32 @@ proxy. Constants live in `src/routes/demo.ts`.
 with Retry. Authentication service errors keep the dashboard open rather than treating
 an outage as a signed-out session.
 
+CSRF: `/api/dashboard/*` is cookie-authenticated, so any non-GET/HEAD/OPTIONS request must
+carry an `Origin` header equal to `BASE_URL`'s origin, else `403 forbidden_origin` (a missing
+`Origin` included). `/api/auth/*` is exempt — Better Auth enforces its own trusted origins,
+and the Stripe webhook there is server-to-server.
+
 ## Behavioural rules
 
 - Billing guard runs **before** side effects; usage recorded **after** success only
   (per-page in async jobs — a failed page is not billed).
-- SSRF guard: public http(s) URLs only — private IP ranges, localhost, and non-standard
-  ports are rejected at validation time for every engine, and re-checked in the container
-  fetcher (redirect targets included). Meta-refresh hop targets pass the same guard.
+- SSRF guard (`src/core/ssrf.ts`): public http(s) URLs only — private, loopback, link-local,
+  CGNAT, benchmarking, documentation, multicast and reserved IPv4 ranges (including their
+  IPv4-mapped, IPv4-compatible, NAT64 and 6to4 IPv6 forms), ULA/link-local/multicast IPv6,
+  localhost/`.local`/`.internal`, credentials in the URL and non-standard ports are rejected at
+  validation time. The check is lexical: Workers has no resolver, so a public name that
+  resolves privately is left to the egress network (Cloudflare's edge or the proxy gateway).
+  Every fetcher walks HTTP redirects itself (`src/core/redirects.ts`, ≤ 10 hops) and checks
+  each hop before requesting it; browser engines abort private subresource/frame requests and
+  refuse the page (`400 invalid_url`) if a redirect hop — which Playwright cannot intercept —
+  reached a private address. Meta-refresh hop targets pass the same guard.
+- Request caps: bodies on `/v1/*` and `/api/*` ≤ 256 KiB (`413 payload_too_large`; a chunked
+  body is cut at the cap and fails as invalid JSON), URLs ≤ 2,048 characters. Rendered HTML
+  from the browser engines ≤ 5 MiB like fetched HTML (`413 response_too_large`).
+- Artifacts (`GET /artifacts/*`): served with `Content-Security-Policy: default-src 'none';
+  sandbox`, `X-Content-Type-Options: nosniff`, `Cross-Origin-Resource-Policy: cross-origin`
+  (rehosted images are embedded by other sites) and `Referrer-Policy: no-referrer`; only
+  raster images and JSON render inline, anything else is `Content-Disposition: attachment`.
 - Meta-refresh redirects: fetch-tier engines follow `<meta http-equiv="refresh">` stubs
   (≤ 3 hops, delay ≤ 10s, http(s) targets only) before shell detection, so an HTTP 200
   redirect page converts as its destination rather than as "Redirecting…".
@@ -262,5 +348,30 @@ an outage as a signed-out session.
   (Cloudflare answers the looping subrequest with a 522). Same bytes as the public URL,
   same pricing. (Revision note 2026-08-24: added after the deployed demo answered
   `fetch_failed: upstream responded 522` for platform.webforai.dev itself.)
-- Rate limit: per-key requests/min via Better Auth apiKey rate limiting (initial),
-  plus job-level caps above.
+- Rate limits (Revision note 2026-10-01, limits: replaces "per-key requests/min via Better
+  Auth apiKey rate limiting"): see "Rate limits" below.
+
+## Rate limits
+
+Per account, by tier — "paid" is an active subscription (`isSpendable`, the spend guard's
+predicate), everyone else (including every user of a deployment without Stripe) is "free".
+Constants: `src/ops/limits.ts`.
+
+| limit | free | paid | refusal |
+|---|---|---|---|
+| `/v1/*` requests per minute (all of the account's keys together) | 60 | 600 | `429 rate_limited`, `Retry-After: 60` |
+| batch + crawl jobs (async scrape included) in `queued`/`running` | 3 | 20 | `429 too_many_jobs` |
+| API keys | 50 | 50 | `403` from `POST /api/auth/api-key/create` |
+
+- Request limits run in `requireApiKey` after key verification, on the Workers Rate Limiting
+  binding of the owner's tier (`RATE_LIMIT_FREE`, `RATE_LIMIT_PAID`), keyed by user id —
+  keys are free to create, so a per-key limit would bound nothing. Counters are per Cloudflare
+  location and eventually consistent: a cost/fairness bound, not exact accounting. Without
+  the binding the API runs unlimited (one warning per isolate); a binding error fails open
+  (the spend guard still bounds cost).
+- The job limit is a count check before the job row is created, not a reservation: racing
+  creations can exceed it by the race width.
+- The key limit is a Better Auth `hooks.before` check on key creation (same race caveat).
+- Error bodies keep the `{ error: { code, message } }` envelope; `rate_limited` and
+  `too_many_jobs` messages state the limit and tier. `401 invalid_api_key` messages end with
+  `Create a key at <BASE_URL>/dashboard`.

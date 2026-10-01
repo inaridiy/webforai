@@ -36,6 +36,22 @@ export const discoverLinks = (html: string, pageUrl: string, scope: CrawlScope):
 	return [...found];
 };
 
+/**
+ * The subset of already-absolute URLs (e.g. from a sitemap) a crawl may visit: the same scope
+ * rules as discovered links, in input order, deduplicated.
+ */
+export const filterCrawlUrls = (urls: string[], scope: CrawlScope): string[] => {
+	const found = new Set<string>();
+	const matchers = compileScope(scope);
+	for (const raw of urls) {
+		const normalized = normalizeCrawlUrl(raw, scope.origin);
+		if (normalized && normalized.href.length <= MAX_CRAWL_URL_LENGTH && inScope(normalized, scope.origin, matchers)) {
+			found.add(normalized.href);
+		}
+	}
+	return [...found];
+};
+
 /** Resolves against the page URL, strips fragments, and keeps only http(s). */
 export const normalizeCrawlUrl = (raw: string, base: string): URL | undefined => {
 	let url: URL;

@@ -7,6 +7,7 @@ import {
 	createFrontier,
 	discoverLinks,
 	enqueueLinks,
+	filterCrawlUrls,
 	pathPatternProblem,
 } from "./links";
 import { assertPublicHttpUrl, isForbiddenHost } from "./ssrf";
@@ -160,6 +161,21 @@ describe("link discovery", () => {
 			"https://docs.example.com/dir/b",
 			"https://docs.example.com/dir/c",
 		]);
+	});
+
+	it("filters absolute sitemap URLs by origin and path scope, dropping fragments and duplicates", () => {
+		expect(
+			filterCrawlUrls(
+				[
+					"https://docs.example.com/docs/x#top",
+					"https://docs.example.com/docs/x",
+					"https://other.com/docs/y",
+					"https://docs.example.com/blog/z",
+					"ftp://docs.example.com/docs/f",
+				],
+				{ ...scope, excludePaths: ["^/blog"] },
+			),
+		).toEqual(["https://docs.example.com/docs/x"]);
 	});
 
 	it("applies include/exclude path patterns; invalid patterns match nothing", () => {

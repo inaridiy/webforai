@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 
 import { createArtifactStore } from "./artifacts/store";
@@ -19,6 +19,7 @@ import { dashboardRoutes } from "./routes/dashboard";
 import { dashboardJobsRoutes } from "./routes/dashboard-jobs";
 import { DEMO_CACHE_TTL_SECONDS, type DemoCache, type DemoDeps, type DemoResponse, demoRoutes } from "./routes/demo";
 import { onPlatformError } from "./routes/errors";
+import { permalinkRoutes } from "./routes/permalink";
 import { playgroundRoutes } from "./routes/playground";
 import { requestBodyLimit, requireSameOrigin, securityHeaders } from "./routes/security";
 import { v1Routes } from "./routes/v1";
@@ -65,6 +66,15 @@ app.get("/api/auth-methods", (c) => {
 app.route("/", artifactRoutes());
 
 const authOf = (env: Env): Auth => createAuth(env, loadConfig(env));
+
+/** Hono's `executionCtx` getter throws outside a Workers invocation (unit tests). */
+const executionContextOf = (c: Context<AppEnv>): Context<AppEnv>["executionCtx"] | undefined => {
+	try {
+		return c.executionCtx;
+	} catch {
+		return undefined;
+	}
+};
 
 // Better Auth owns sign-in, sign-out, API-key CRUD and the Stripe webhook under this prefix.
 app.on(["GET", "POST"], "/api/auth/*", (c) => authOf(c.env).handler(c.req.raw));
@@ -134,6 +144,16 @@ app.use(
 	createMiddleware<AppEnv>((c, next) => requireApiKey(authOf(c.env))(c, next)),
 );
 app.route("/v1", v1Routes());
+
+/**
+ * `GET /https://…` → text/markdown. Re-dispatched through this same router, so the key path
+ * gets API-key auth, limits and billing and the keyless path gets the demo's limits; registered
+ * last because its catch-all only claims paths that start with a URL scheme.
+ */
+app.route(
+	"/",
+	permalinkRoutes<AppEnv>(async (request, c) => app.fetch(request, c.env, executionContextOf(c))),
+);
 
 /**
  * Reconciliation for meter events Stripe never acknowledged. Cron-driven (see wrangler.jsonc):
