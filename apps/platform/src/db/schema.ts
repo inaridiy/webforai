@@ -89,11 +89,12 @@ export const usageEvents = sqliteTable(
 		reportedAt: integer("reported_at", { mode: "timestamp" }),
 		/**
 		 * Why an unsent row will never be sent: its user has no Stripe customer (free usage on a
-		 * customerless account), or it is older than the meter accepts (35 days). Such rows leave
-		 * the retry queue instead of blocking it; `reportedAt` stays null so they are never
-		 * mistaken for billed usage.
+		 * customerless account), it is older than the meter accepts (35 days), or Stripe rejected
+		 * the event for good (`rejected`, e.g. unknown customer). Such rows leave the retry queue
+		 * instead of blocking it; `reportedAt` stays null so they are never mistaken for billed
+		 * usage. Plain text in SQL (no CHECK), so the value set is TypeScript-only.
 		 */
-		reportSkippedReason: text("report_skipped_reason", { enum: ["no_customer", "expired"] }),
+		reportSkippedReason: text("report_skipped_reason", { enum: ["no_customer", "expired", "rejected"] }),
 		createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 	},
 	(table) => [

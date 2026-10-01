@@ -88,8 +88,8 @@ curl -H "Authorization: Bearer wfa_..." https://<your-host>/https://example.com/
 
 | limit | free | paid (active subscription) | over the limit |
 |---|---|---|---|
-| `/v1` requests per minute, per account (all keys together) | 60 | 600 | `429 rate_limited` + `Retry-After: 60` |
-| batch/crawl jobs (async scrape included) queued or running at once | 3 | 20 | `429 too_many_jobs` |
+| `/v1` requests per minute, per account (all keys together; `GET /v1/jobs/*` not counted) | 60 | 600 | `429 rate_limited` + `Retry-After: 60` |
+| batch/crawl jobs (async scrape included) queued or running at once (silent > 1h: not counted) | 3 | 20 | `429 too_many_jobs` |
 | API keys per account | 50 | 50 | `403` on key creation |
 
 The request limits use Workers Rate Limiting bindings (`RATE_LIMIT_FREE`, `RATE_LIMIT_PAID`,
@@ -136,9 +136,11 @@ server logs it and saves it under the Miniflare temp directory, so read the code
 same code (stored encrypted), so every email the user received works. With
 `TURNSTILE_SITE_KEY` (var) and `TURNSTILE_SECRET_KEY` (secret) set, sending a code also
 requires a Cloudflare Turnstile token (Better Auth captcha plugin; action `sign-in`, hostname
-from `BASE_URL`). A production `BASE_URL` (https, not localhost) with the site key but no
-secret refuses to send codes (500, `turnstile_secret_missing` in the logs) instead of running
-without the bot check. OAuth failures such as `account_not_linked` return to `/login?error=…` —
+from `BASE_URL`), as do the plugin's password-reset OTP endpoints
+(`/email-otp/request-password-reset`, `/forget-password/email-otp`). Only sign-in codes are
+ever emailed; other OTP types are dropped (`otp_email_suppressed` in the logs). A production
+`BASE_URL` (https, not localhost) with the site key but no secret refuses those paths (500,
+`turnstile_secret_missing` in the logs) instead of running without the bot check. OAuth failures such as `account_not_linked` return to `/login?error=…` —
 an existing email account must sign in by code once (which verifies its email) before
 GitHub can link to it.
 
@@ -198,9 +200,12 @@ page and dashboard render prices from the same file. Usage is recorded in D1
 idempotency `identifier` and the usage time as `timestamp`; unreported rows are retried by a
 15-minute cron (up to 10 pages of 100 per run) through a partial index. Rows that can never be
 billed leave that queue with `report_skipped_reason` set: `no_customer` (free usage of an
-account without a Stripe customer) or `expired` (older than Stripe's 35-day meter window,
-logged as `usage_report_expired`). Migration `0004` adds that column, the replacement index and
-`billing_state.spend_cap_usd`; apply it with `pnpm db:migrate:remote` **before** deploying.
+account without a Stripe customer), `expired` (older than Stripe's 35-day meter window,
+logged as `usage_report_expired`) or `rejected` (Stripe refused the event for good, e.g. an
+unknown customer after a test→live key switch; logged as `usage_report_rejected` — clear the
+column within 35 days to re-send). A "duplicate identifier" answer counts as reported; rate
+limits, 5xx and key/meter configuration errors stay queued. Migration `0004` adds that
+column, the replacement index and `billing_state.spend_cap_usd`; apply it with `pnpm db:migrate:remote` **before** deploying.
 
 Proxy engines (`proxy-fetch`, `proxy-browser`, or `auto` with a region such as `jp`) need an
 active subscription (`402 payment_required`); the keyless demo refuses non-`auto` regions.
@@ -239,9 +244,9 @@ docs (webforai.dev/platform); the footer links library, CLI, client and self-hos
 The URLs live in `src/client/lib/links.ts`.
 
 Accounts can be deleted from the dashboard (`POST /api/dashboard/account/delete` with
-`{ confirmEmail }`): unreported usage is sent to the Stripe meter and an active subscription is
-cancelled with an immediate final invoice first — if either fails, nothing is deleted — then
-queued/running job Workflows are terminated (best-effort) and the user's keys, jobs, usage, billing state, pending codes, sessions, linked accounts and user
+`{ confirmEmail }`): queued/running job Workflows are terminated first (best-effort), then
+unreported usage is sent to the Stripe meter and an active subscription is cancelled with an
+immediate final invoice — if either fails, nothing is deleted — and then the user's keys, jobs, usage, billing state, pending codes, sessions, linked accounts and user
 row go in one D1 batch; job archives in R2 are removed best-effort, paging past 1,000 objects
 (the 7-day lifecycle catches the rest). Stripe keeps its invoices.
 

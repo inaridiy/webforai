@@ -1,6 +1,7 @@
 /**
  * Billing SQL against disposable workerd D1 with the checked-in migrations: the usage report
- * queue (customer join, keyset paging, customerless/expired rows leaving the queue), the spend
+ * queue (customer join, keyset paging, customerless/expired/rejected rows leaving the queue,
+ * rejected head rows no longer starving newer billable ones), the spend
  * cap surviving subscription mirror rewrites, and the webhook mirror re-fetching subscriptions
  * so out-of-order or stale events cannot regress the stored state.
  */
@@ -10,11 +11,14 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import type Stripe from "stripe";
+import Stripe from "stripe";
 import { createBillingRepo } from "../../src/billing/repo";
 import { type SubscriptionFetcher, mirrorStripeEvent, upsertBillingState } from "../../src/billing/state";
+import { retryUnreportedUsage } from "../../src/billing/usage";
 import * as schema from "../../src/db/schema";
+import type { AppConfig } from "../../src/env";
 
+const StripeErrors = Stripe.errors;
 const require = createRequire(import.meta.url);
 const wranglerRequire = createRequire(require.resolve("wrangler/package.json"));
 const { Miniflare } = wranglerRequire("miniflare");
@@ -124,6 +128,64 @@ try {
 		JSON.stringify(plan.results),
 	);
 
+	// 3b. Rejected rows leave the queue; a pass reaches the billable rows behind them, a row
+	// Stripe already holds is marked reported, and a later pass does not revisit the rejected.
+	await seedUser("stale", "cus_test_only");
+	for (let chunk = 0; chunk < 3; chunk += 1) {
+		await db
+			.insert(schema.usageEvents)
+			.values(Array.from({ length: 10 }, (_, i) => usage(`stale-${chunk}-${i}`, "stale", at(0))));
+	}
+	const sent: string[] = [];
+	const meter = {
+		billing: {
+			meterEvents: {
+				create: async (params: { identifier: string; payload: { stripe_customer_id: string } }) => {
+					sent.push(params.identifier);
+					if (params.payload.stripe_customer_id === "cus_test_only") {
+						throw new StripeErrors.StripeInvalidRequestError({
+							message: "No such customer: 'cus_test_only'",
+							code: "resource_missing",
+							statusCode: 400,
+						});
+					}
+					if (params.identifier === "p2a") {
+						throw new StripeErrors.StripeInvalidRequestError({
+							message: "An event with identifier 'p2a' already exists.",
+							code: "resource_already_exists",
+							statusCode: 400,
+						});
+					}
+					return {};
+				},
+			},
+		},
+	} as unknown as Stripe;
+	const config = { billingEnabled: true, STRIPE_METER_EVENT_NAME: "webforai_credits" } as AppConfig;
+	const { error: logError, info: logInfo } = console;
+	console.error = () => undefined;
+	console.info = () => undefined;
+	try {
+		// pageSize 10 x 4 pages: 30 rejected rows ahead, the 4 billable rows still land.
+		assert.equal(await retryUnreportedUsage({ repo, config, stripe: meter, now: () => now }, 10, 4), 4);
+	} finally {
+		console.error = logError;
+		console.info = logInfo;
+	}
+	assert.deepEqual(await repo.listUnreported(100), []);
+	const stale = await db.select().from(schema.usageEvents).where(eq(schema.usageEvents.userId, "stale"));
+	assert.equal(stale.length, 30);
+	assert.ok(stale.every((row) => row.reportSkippedReason === "rejected" && row.reportedAt === null));
+	const p2a = (await db.select().from(schema.usageEvents).where(eq(schema.usageEvents.id, "p2a")))[0];
+	assert.ok(p2a?.reportedAt && p2a.reportSkippedReason === null);
+	sent.length = 0;
+	assert.equal(await retryUnreportedUsage({ repo, config, stripe: meter, now: () => now }, 10, 4), 0);
+	assert.deepEqual(sent, []);
+	// markRejected never touches a row already reported.
+	await repo.markRejected("p1");
+	const p1 = (await db.select().from(schema.usageEvents).where(eq(schema.usageEvents.id, "p1")))[0];
+	assert.equal(p1?.reportSkippedReason, null);
+
 	// 4. Spend cap: created on demand, preserved across mirror rewrites.
 	await repo.setSpendCap("free", 20, now);
 	assert.equal((await repo.getBillingState("free"))?.spendCapUsd, 20);
@@ -178,7 +240,7 @@ try {
 	assert.equal((await repo.getBillingState("paid"))?.status, "canceled");
 
 	console.log(
-		"Billing repo passed: customer-only keyset queue, customerless/expired rows marked, partial index used, spend cap preserved, webhook mirror re-fetches and ignores stale events.",
+		"Billing repo passed: customer-only keyset queue, customerless/expired/rejected rows marked, rejected head rows do not starve billable ones, duplicates count as reported, partial index used, spend cap preserved, webhook mirror re-fetches and ignores stale events.",
 	);
 } finally {
 	await runtime.dispose();

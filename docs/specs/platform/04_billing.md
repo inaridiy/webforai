@@ -15,7 +15,19 @@ period is a short stub; the anchor is evaluated by Stripe in UTC). Meter events 
 `timestamp` = the row's `createdAt`. The reconciliation cron (not `waitUntil`) drains up to 10
 pages of 100 rows per run, only for users with a Stripe customer; rows that can never be billed
 are marked in `usage_events.report_skipped_reason` (`no_customer`, or `expired` past Stripe's
-35-day window — logged) instead of blocking the queue. The webhook route is
+35-day window — logged) instead of blocking the queue. A row Stripe refuses for good
+(`StripeInvalidRequestError`, i.e. a 400/404 that is not a rate limit — e.g. an unknown or
+deleted customer after switching test→live keys) is marked `rejected` and logged as
+`usage_report_rejected` (row id, user, customer, credits, `createdAt`, Stripe code/param/request
+id), so it cannot hold newer billable rows behind it; to bill it after fixing the customer,
+clear `report_skipped_reason` within the 35-day window and the next run re-sends it.
+Rejections naming the meter configuration (`param` `event_name`, codes `archived_meter`/
+`no_meter`), authentication/permission errors, 429, 409, 5xx, network and D1 failures stay
+retryable and stop the run. A rejection saying the event already exists is treated as reported:
+Stripe documents identifier uniqueness but not the error it returns, so this is an assumption
+matched conservatively (code `resource_already_exists`, or a message saying the identifier
+already exists / is a duplicate); anything less specific is `rejected`, never silently
+reported. `report_skipped_reason` is plain `text` in SQL, so `rejected` needed no migration. The webhook route is
 `/api/auth/stripe/webhook` (Better Auth plugin), and each subscription event re-fetches the
 subscription from Stripe rather than trusting payload order. No automatic tax: the operator is a
 免税事業者 and not an invoice issuer.

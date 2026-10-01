@@ -1,7 +1,9 @@
 /**
  * The real Better Auth instance (`createAuth`) against disposable workerd D1 with the checked-in
- * migrations: email-code sign-in end to end, the D1-backed rate limiter, hashed code storage and
- * the disabled password flow. Only the email binding is fake — it records what would be sent.
+ * migrations: email-code sign-in end to end, the D1-backed rate limiter, encrypted code storage,
+ * the disabled password flow, and that only sign-in codes are ever mailed (the password-reset
+ * OTP endpoints stay silent) and every OTP-sending path needs Turnstile when it is configured.
+ * Only the email binding is fake — it records what would be sent.
  */
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
@@ -114,6 +116,28 @@ try {
 	const password = await call("/sign-up/email", { email: "pw@example.test", password: "Passw0rd!long", name: "x" });
 	assert.notEqual(password.status, 200);
 
+	// 6b. Password-reset and non-sign-in OTP requests for an existing user answer success (no
+	//     account oracle) but send nothing: our mailer only sends sign-in codes. Distinct IPs
+	//     keep the plugin's 3-per-minute send limit out of the picture.
+	const silent: [string, Record<string, string>][] = [
+		["/email-otp/request-password-reset", { email: address }],
+		["/forget-password/email-otp", { email: address }],
+		["/email-otp/send-verification-otp", { email: address, type: "forget-password" }],
+		["/email-otp/send-verification-otp", { email: address, type: "email-verification" }],
+	];
+	const quietWarn = console.warn;
+	console.warn = () => undefined;
+	try {
+		for (const [index, [path, body]] of silent.entries()) {
+			const before = sent.length;
+			const response = await call(path, body, `192.0.2.${100 + index}`);
+			assert.equal(response.status, 200, `${path} ${JSON.stringify(body)}: ${await response.clone().text()}`);
+			assert.equal(sent.length, before, `${path} ${JSON.stringify(body)} must not send mail`);
+		}
+	} finally {
+		console.warn = quietWarn;
+	}
+
 	// 7. With Turnstile configured, sending a code without a widget token is refused before
 	//    any email goes out (siteverify itself is exercised against production, not here).
 	const guarded = createAuth(
@@ -138,9 +162,21 @@ try {
 	);
 	assert.equal(noToken.status, 400, await noToken.clone().text());
 	assert.equal(sent.length, before, "no email without a Turnstile token");
+	// The password-reset OTP paths are behind the same check.
+	for (const path of ["/email-otp/request-password-reset", "/forget-password/email-otp"]) {
+		const reset = await guarded.handler(
+			new Request(`${BASE_URL}/api/auth${path}`, {
+				method: "POST",
+				headers: { "content-type": "application/json", origin: BASE_URL, "cf-connecting-ip": "192.0.2.10" },
+				body: JSON.stringify({ email: address }),
+			}),
+		);
+		assert.equal(reset.status, 400, `${path}: ${await reset.clone().text()}`);
+		assert.match(await reset.text(), /captcha/iu);
+	}
 
 	console.log(
-		"Email OTP sign-in passed: code email, encrypted storage, resend reuses the code, wrong/replayed code rejected, account created, D1 rate limit (4th send → 429), passwords disabled, Turnstile required when configured.",
+		"Email OTP sign-in passed: code email, encrypted storage, resend reuses the code, wrong/replayed code rejected, account created, D1 rate limit (4th send → 429), passwords disabled, reset/non-sign-in OTP requests send no mail, Turnstile required on every OTP-sending path when configured.",
 	);
 } finally {
 	await runtime.dispose();

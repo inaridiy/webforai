@@ -12,6 +12,28 @@ import { MAX_API_KEYS_PER_ACCOUNT } from "../ops/limits";
 export const SEND_SIGN_IN_CODE_PATH = "/email-otp/send-verification-otp";
 export const CREATE_API_KEY_PATH = "/api-key/create";
 
+/**
+ * Every Better Auth 1.6.26 endpoint that calls the email-OTP plugin's `sendVerificationOTP`
+ * for an unauthenticated caller: our sign-in path, plus the password-reset requests
+ * (`/email-otp/request-password-reset` and its deprecated alias `/forget-password/email-otp`),
+ * which mail existing users. (`/email-otp/request-email-change` needs a session and is off.)
+ * All of them get the Turnstile check and the fail-closed guard, although only sign-in codes
+ * are ever mailed (`isMailedOtpType`).
+ */
+export const OTP_SEND_PATHS: readonly string[] = [
+	SEND_SIGN_IN_CODE_PATH,
+	"/email-otp/request-password-reset",
+	"/forget-password/email-otp",
+];
+
+/**
+ * The only OTP type we email. Passwords are off in production and email verification is not
+ * wired to the plugin (`overrideDefaultEmailVerification`/`sendVerificationOnSignUp` unset), so
+ * `forget-password`, `email-verification` and `change-email` codes are never mailed — the
+ * plugin would otherwise send them, worded as sign-in codes, to any existing user.
+ */
+export const isMailedOtpType = (type: string): boolean => type === "sign-in";
+
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 
 /** A public https deployment — local dev (`http://localhost:5173`) and e2e runs are not. */
@@ -41,13 +63,13 @@ export interface AuthGuardDeps {
 /**
  * Throws a Better Auth `APIError` to refuse the request, or returns to let it through.
  *
- * - Sending a sign-in code with Turnstile half-configured in production is a 500 with a loud
- *   log line, never a code sent without the bot check.
+ * - Any OTP-sending path (`OTP_SEND_PATHS`) with Turnstile half-configured in production is a
+ *   500 with a loud log line, never a code sent without the bot check.
  * - Creating an API key is refused at `MAX_API_KEYS_PER_ACCOUNT`. A check, not a reservation:
  *   two concurrent creations at 49 can both pass, which a fairness cap tolerates.
  */
 export const guardAuthRequest = async (path: string, deps: AuthGuardDeps): Promise<void> => {
-	if (path === SEND_SIGN_IN_CODE_PATH && turnstileSecretMissing(deps.config)) {
+	if (OTP_SEND_PATHS.includes(path) && turnstileSecretMissing(deps.config)) {
 		deps.log.error("turnstile_secret_missing", {
 			reason:
 				"TURNSTILE_SITE_KEY is set but TURNSTILE_SECRET_KEY is not; refusing to send sign-in codes without the bot check. Run `wrangler secret put TURNSTILE_SECRET_KEY`.",

@@ -9,7 +9,7 @@ import { createStripe } from "../billing/stripe";
 import { createDb } from "../db/client";
 import * as schema from "../db/schema";
 import type { AppConfig } from "../env";
-import { guardAuthRequest } from "./guards";
+import { OTP_SEND_PATHS, guardAuthRequest, isMailedOtpType } from "./guards";
 import { SIGN_IN_CODE_TTL_MINUTES, sendSignInCode } from "./sign-in-email";
 
 const DAY_SECONDS = 24 * 60 * 60;
@@ -70,8 +70,9 @@ export const createAuth = (env: Env, config: AppConfig) => {
 				]
 			: [];
 
-	// Bot check on sending sign-in codes, only when both Turnstile keys are configured. The
-	// hostname allowlist comes from BASE_URL, so production never accepts localhost tokens.
+	// Bot check on every OTP-sending path (`OTP_SEND_PATHS`: sign-in and the password-reset
+	// requests), only when both Turnstile keys are configured. The hostname allowlist comes
+	// from BASE_URL, so production never accepts localhost tokens.
 	// A production deployment with the site key but no secret is refused by `guardAuthRequest`
 	// rather than served without the check.
 	const turnstile =
@@ -80,7 +81,7 @@ export const createAuth = (env: Env, config: AppConfig) => {
 					captcha({
 						provider: "cloudflare-turnstile",
 						secretKey: config.TURNSTILE_SECRET_KEY,
-						endpoints: ["/email-otp/send-verification-otp"],
+						endpoints: [...OTP_SEND_PATHS],
 						expectedAction: TURNSTILE_ACTION,
 						allowedHostnames: [new URL(config.BASE_URL).hostname],
 					}),
@@ -121,7 +122,17 @@ export const createAuth = (env: Env, config: AppConfig) => {
 				// every resend rotate the code and silently invalidate earlier emails.
 				storeOTP: "encrypted",
 				resendStrategy: "reuse",
-				sendVerificationOTP: ({ email, otp }) => sendSignInCode(env.EMAIL, { email, otp, baseUrl: config.BASE_URL }),
+				// Only sign-in codes are mailed. Other types (password reset via
+				// `/email-otp/request-password-reset`, `type: "forget-password"` on the send endpoint,
+				// ...) are dropped silently: the endpoint answers success either way, so refusing
+				// loudly would tell a caller which emails have accounts.
+				sendVerificationOTP: async ({ email, otp, type }) => {
+					if (!isMailedOtpType(type)) {
+						console.warn("otp_email_suppressed", { type });
+						return;
+					}
+					await sendSignInCode(env.EMAIL, { email, otp, baseUrl: config.BASE_URL });
+				},
 			}),
 			apiKey({
 				defaultPrefix: "wfa_",

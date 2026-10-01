@@ -5,8 +5,10 @@ import { MAX_API_KEYS_PER_ACCOUNT } from "../ops/limits";
 import {
 	type AuthGuardDeps,
 	CREATE_API_KEY_PATH,
+	OTP_SEND_PATHS,
 	SEND_SIGN_IN_CODE_PATH,
 	guardAuthRequest,
+	isMailedOtpType,
 	isProductionBaseUrl,
 	turnstileSecretMissing,
 } from "./guards";
@@ -57,10 +59,30 @@ describe("Turnstile fail-closed", () => {
 		expect(log.error).toHaveBeenCalledWith("turnstile_secret_missing", expect.any(Object));
 	});
 
+	it.each(["/email-otp/request-password-reset", "/forget-password/email-otp"])(
+		"fails closed on %s too, which mails existing users",
+		async (path) => {
+			expect(OTP_SEND_PATHS).toContain(path);
+			const { value, log } = deps({ config: { TURNSTILE_SECRET_KEY: undefined } });
+			const error = await guardAuthRequest(path, value).catch((caught: unknown) => caught);
+			expect((error as APIError).statusCode).toBe(500);
+			expect(log.error).toHaveBeenCalledWith("turnstile_secret_missing", expect.any(Object));
+		},
+	);
+
 	it("lets the send through when configured, and other paths regardless", async () => {
 		await expect(guardAuthRequest(SEND_SIGN_IN_CODE_PATH, deps().value)).resolves.toBeUndefined();
 		const misconfigured = deps({ config: { TURNSTILE_SECRET_KEY: undefined } }).value;
 		await expect(guardAuthRequest("/sign-in/email-otp", misconfigured)).resolves.toBeUndefined();
+	});
+});
+
+describe("isMailedOtpType", () => {
+	it("mails sign-in codes only", () => {
+		expect(isMailedOtpType("sign-in")).toBe(true);
+		for (const type of ["forget-password", "email-verification", "change-email", ""]) {
+			expect(isMailedOtpType(type)).toBe(false);
+		}
 	});
 });
 

@@ -3,6 +3,9 @@ import type { PlatformDb } from "../db/client";
 import { usageEvents, user } from "../db/schema";
 import { type BillingState, getBillingState, setSpendCap } from "./state";
 
+/** Why a row left the report queue unsent — `usage_events.report_skipped_reason`. */
+export type ReportSkippedReason = "no_customer" | "expired" | "rejected";
+
 export interface UsageEventRow {
 	id: string;
 	userId: string;
@@ -11,7 +14,7 @@ export interface UsageEventRow {
 	credits: number;
 	createdAt: Date;
 	reportedAt: Date | null;
-	reportSkippedReason?: "no_customer" | "expired" | null;
+	reportSkippedReason?: ReportSkippedReason | null;
 }
 
 /** A row still owed to Stripe, joined with the customer it must be reported for. */
@@ -41,6 +44,8 @@ export interface BillingRepo {
 	sumMonthCredits(userId: string, since: Date): Promise<number>;
 	insertUsage(row: UsageEventRow): Promise<void>;
 	markReported(id: string, reportedAt: Date): Promise<void>;
+	/** Takes a pending row Stripe refused for good (e.g. unknown customer) out of the queue. */
+	markRejected(id: string): Promise<void>;
 	/**
 	 * Pending rows of users who have a Stripe customer, oldest first, strictly after `after`.
 	 * Rows marked skipped are excluded.
@@ -76,6 +81,14 @@ export const createBillingRepo = (db: PlatformDb): BillingRepo => ({
 
 	markReported: async (id, reportedAt) => {
 		await db.update(usageEvents).set({ reportedAt }).where(eq(usageEvents.id, id));
+	},
+
+	markRejected: async (id) => {
+		// Only a still-pending row: a concurrent pass that reported it wins.
+		await db
+			.update(usageEvents)
+			.set({ reportSkippedReason: "rejected" })
+			.where(and(eq(usageEvents.id, id), pending));
 	},
 
 	listUnreported: async (limit, after) => {

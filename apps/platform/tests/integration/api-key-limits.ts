@@ -115,9 +115,17 @@ try {
 	);
 	assert.equal(send.status, 500, await send.clone().text());
 	assert.equal(sent.length, before, "no sign-in email without the bot check");
+	const reset = await post(
+		prod,
+		prodBase,
+		"/email-otp/request-password-reset",
+		{ email: "prod@example.test" },
+		{ "cf-connecting-ip": "203.0.113.51" },
+	);
+	assert.equal(reset.status, 500, await reset.clone().text());
 
 	console.log(
-		`API key limits passed: ${MAX_API_KEYS_PER_ACCOUNT}-key cap (next create → 403), per-key D1 limiter off (130 verifications), Turnstile fails closed in production without its secret.`,
+		`API key limits passed: ${MAX_API_KEYS_PER_ACCOUNT}-key cap (next create → 403), per-key D1 limiter off (130 verifications), Turnstile fails closed in production without its secret (sign-in and password-reset OTP paths).`,
 	);
 } finally {
 	await runtime.dispose();

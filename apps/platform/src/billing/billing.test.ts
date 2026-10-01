@@ -1,3 +1,4 @@
+import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import { PlatformError } from "../core/types";
 import type { AppConfig } from "../env";
@@ -12,7 +13,14 @@ import {
 } from "./guard";
 import type { BillingRepo, UnreportedUsage, UsageCursor, UsageEventRow } from "./repo";
 import { type BillingState, hasLiveSubscription } from "./state";
-import { METER_EVENT_MAX_AGE_MS, isReportableAge, recordUsage, reportToStripe, retryUnreportedUsage } from "./usage";
+import {
+	METER_EVENT_MAX_AGE_MS,
+	classifyMeterError,
+	isReportableAge,
+	recordUsage,
+	reportToStripe,
+	retryUnreportedUsage,
+} from "./usage";
 
 const baseConfig = {
 	BASE_URL: "https://example.test",
@@ -41,6 +49,7 @@ const after = (row: UnreportedUsage, cursor: UsageCursor | undefined): boolean =
 const fakeRepo = (init: FakeRepoState = {}) => {
 	const inserted: UsageEventRow[] = [];
 	const reported: { id: string; at: Date }[] = [];
+	const rejected: string[] = [];
 	const caps: { userId: string; usd: number }[] = [];
 	const expiredBefore: Date[] = [];
 	const repo: BillingRepo = {
@@ -52,10 +61,13 @@ const fakeRepo = (init: FakeRepoState = {}) => {
 		markReported: async (id, at) => {
 			reported.push({ id, at });
 		},
-		// Like the SQL: reported rows leave the queue, keyset continues strictly after `cursor`.
+		markRejected: async (id) => {
+			rejected.push(id);
+		},
+		// Like the SQL: reported and rejected rows leave the queue, keyset continues after `cursor`.
 		listUnreported: async (limit, cursor) =>
 			(init.unreported ?? [])
-				.filter((row) => !reported.some((r) => r.id === row.id) && after(row, cursor))
+				.filter((row) => !(reported.some((r) => r.id === row.id) || rejected.includes(row.id)) && after(row, cursor))
 				.slice(0, limit),
 		skipCustomerless: async () => init.customerless ?? 0,
 		skipExpired: async (before) => {
@@ -68,7 +80,7 @@ const fakeRepo = (init: FakeRepoState = {}) => {
 		},
 		listRecentUsage: async () => inserted,
 	};
-	return { repo, inserted, reported, caps, expiredBefore };
+	return { repo, inserted, reported, rejected, caps, expiredBefore };
 };
 
 const row = (id: string, createdAt = new Date("2026-08-10T00:00:00Z")): UnreportedUsage => ({
@@ -87,6 +99,10 @@ const activeState: BillingState = {
 	currentPeriodEnd: null,
 	spendCapUsd: null,
 };
+
+/** Real stripe@22 error instances, as `generateV1Error` builds them from a response. */
+const invalidRequest = (raw: { message: string; code?: string; param?: string; statusCode?: number }) =>
+	new Stripe.errors.StripeInvalidRequestError({ type: "invalid_request_error", statusCode: 400, ...raw });
 
 const meterStub = () => {
 	const create = vi.fn(async () => ({}));
@@ -276,9 +292,9 @@ describe("retryUnreportedUsage", () => {
 		expect(reported.map((r) => r.id)).toEqual(["r0", "r1", "r2", "r3", "r4", "r5"]);
 	});
 
-	it("passes over a row Stripe rejects and keeps draining", async () => {
+	it("takes a row Stripe rejects out of the queue, logs it, and keeps draining", async () => {
 		const errors = quietLogs();
-		const { repo, reported } = fakeRepo({
+		const { repo, reported, rejected } = fakeRepo({
 			unreported: [
 				row("bad", new Date("2026-09-20T00:00:00Z")),
 				row("good", new Date("2026-09-20T00:01:00Z")),
@@ -287,7 +303,7 @@ describe("retryUnreportedUsage", () => {
 		});
 		const create = vi.fn(async (params: { identifier: string }) => {
 			if (params.identifier === "bad") {
-				throw Object.assign(new Error("No such customer"), { type: "StripeInvalidRequestError" });
+				throw invalidRequest({ message: "No such customer: 'cus_1'", code: "resource_missing", statusCode: 404 });
 			}
 			return {};
 		});
@@ -295,33 +311,89 @@ describe("retryUnreportedUsage", () => {
 
 		await expect(retryUnreportedUsage({ repo, config: baseConfig, stripe, now: () => now }, 2, 5)).resolves.toBe(2);
 		expect(reported.map((r) => r.id)).toEqual(["good", "next"]);
-		expect(errors).toHaveBeenCalledWith("usage_report_rejected", expect.objectContaining({ id: "bad" }));
+		expect(rejected).toEqual(["bad"]);
+		expect(errors).toHaveBeenCalledWith(
+			"usage_report_rejected",
+			expect.objectContaining({ id: "bad", stripeCustomerId: "cus_1", code: "resource_missing", statusCode: 404 }),
+		);
 	});
 
-	it("stops after a page Stripe rejected wholesale (configuration, not rows)", async () => {
+	it("does not let a head of rejected rows starve newer billable rows across passes", async () => {
+		quietLogs();
+		// The test→live key switch: every old row names a customer the live account lacks.
+		const stale = Array.from({ length: 5 }, (_, index) => ({
+			...row(`stale${index}`, new Date(Date.UTC(2026, 8, 20, 0, index))),
+			stripeCustomerId: "cus_test",
+		}));
+		const fresh = [row("fresh", new Date("2026-09-21T00:00:00Z"))];
+		const { repo, reported, rejected } = fakeRepo({ unreported: [...stale, ...fresh] });
+		const create = vi.fn(async (params: { payload: { stripe_customer_id: string } }) => {
+			if (params.payload.stripe_customer_id === "cus_test") throw invalidRequest({ message: "No such customer" });
+			return {};
+		});
+		const stripe = { billing: { meterEvents: { create } } } as never;
+
+		await expect(retryUnreportedUsage({ repo, config: baseConfig, stripe, now: () => now }, 2, 5)).resolves.toBe(1);
+		expect(reported.map((r) => r.id)).toEqual(["fresh"]);
+		expect(rejected).toHaveLength(5);
+
+		// The next pass does not revisit them.
+		create.mockClear();
+		await expect(retryUnreportedUsage({ repo, config: baseConfig, stripe, now: () => now }, 2, 5)).resolves.toBe(0);
+		expect(create).not.toHaveBeenCalled();
+	});
+
+	it("treats a duplicate identifier as already reported", async () => {
+		const infos = vi.spyOn(console, "info").mockImplementation(() => undefined);
+		const { repo, reported, rejected } = fakeRepo({ unreported: [row("dup")] });
+		const create = vi.fn(async () => {
+			throw invalidRequest({
+				message: "An event with identifier 'dup' already exists.",
+				code: "resource_already_exists",
+			});
+		});
+		const stripe = { billing: { meterEvents: { create } } } as never;
+
+		await expect(retryUnreportedUsage({ repo, config: baseConfig, stripe, now: () => now })).resolves.toBe(1);
+		expect(reported).toEqual([{ id: "dup", at: now }]);
+		expect(rejected).toEqual([]);
+		expect(infos).toHaveBeenCalledWith("usage_report_duplicate", expect.objectContaining({ id: "dup" }));
+	});
+
+	it("stops, marking nothing, on a rejection that names the meter configuration", async () => {
 		quietLogs();
 		const rows = Array.from({ length: 6 }, (_, index) => row(`r${index}`, new Date(Date.UTC(2026, 8, 20, 0, index))));
-		const { repo } = fakeRepo({ unreported: rows });
+		const { repo, reported, rejected } = fakeRepo({ unreported: rows });
 		const create = vi.fn(async () => {
-			throw Object.assign(new Error("No such meter"), { type: "StripeInvalidRequestError" });
+			throw invalidRequest({ message: "No active meter found for event_name", param: "event_name" });
 		});
 		const stripe = { billing: { meterEvents: { create } } } as never;
 
 		await expect(retryUnreportedUsage({ repo, config: baseConfig, stripe, now: () => now }, 2, 5)).resolves.toBe(0);
-		expect(create).toHaveBeenCalledTimes(2);
+		expect(create).toHaveBeenCalledTimes(1);
+		expect(reported).toEqual([]);
+		expect(rejected).toEqual([]);
 	});
 
-	it("stops the run on a transient failure", async () => {
+	it.each([
+		["rate limit", new Stripe.errors.StripeRateLimitError({ message: "Too many requests", statusCode: 429 })],
+		["5xx", new Stripe.errors.StripeAPIError({ message: "Internal error", statusCode: 500 })],
+		["network", new Stripe.errors.StripeConnectionError({ message: "fetch failed" })],
+		["bad key", new Stripe.errors.StripeAuthenticationError({ message: "Invalid API Key", statusCode: 401 })],
+	])("stops the run on a %s failure and keeps the rows queued", async (_label, failure) => {
 		quietLogs();
-		const { repo, reported } = fakeRepo({ unreported: [row("a"), row("b", new Date("2026-08-11T00:00:00Z"))] });
+		const { repo, reported, rejected } = fakeRepo({
+			unreported: [row("a"), row("b", new Date("2026-08-11T00:00:00Z"))],
+		});
 		const create = vi.fn(async () => {
-			throw Object.assign(new Error("rate limited"), { type: "StripeRateLimitError" });
+			throw failure;
 		});
 		const stripe = { billing: { meterEvents: { create } } } as never;
 
 		await expect(retryUnreportedUsage({ repo, config: baseConfig, stripe, now: () => now })).resolves.toBe(0);
 		expect(create).toHaveBeenCalledTimes(1);
 		expect(reported).toEqual([]);
+		expect(rejected).toEqual([]);
 	});
 
 	it("reports a backlog left after the pass, and survives the alert failing", async () => {
@@ -352,6 +424,29 @@ describe("retryUnreportedUsage", () => {
 			retryUnreportedUsage({ repo, config: { ...baseConfig, billingEnabled: false }, stripe }),
 		).resolves.toBe(0);
 		expect(create).not.toHaveBeenCalled();
+	});
+});
+
+describe("classifyMeterError", () => {
+	it("separates duplicates, permanent rejections and retryable failures", () => {
+		expect(classifyMeterError(invalidRequest({ message: "x", code: "resource_already_exists" }))).toBe("duplicate");
+		expect(
+			classifyMeterError(invalidRequest({ message: "Duplicate meter event identifier", param: "identifier" })),
+		).toBe("duplicate");
+		expect(classifyMeterError(invalidRequest({ message: "No such customer: 'cus_x'", code: "resource_missing" }))).toBe(
+			"rejected",
+		);
+		// "already exists" without naming the identifier is not trusted as billed.
+		expect(classifyMeterError(invalidRequest({ message: "Customer already exists" }))).toBe("rejected");
+		expect(classifyMeterError(invalidRequest({ message: "Meter archived", code: "archived_meter" }))).toBe("retry");
+		expect(classifyMeterError(new Stripe.errors.StripePermissionError({ message: "Forbidden", statusCode: 403 }))).toBe(
+			"retry",
+		);
+		expect(
+			classifyMeterError(new Stripe.errors.StripeIdempotencyError({ message: "Keys reused", statusCode: 400 })),
+		).toBe("retry");
+		expect(classifyMeterError(new Error("D1_ERROR"))).toBe("retry");
+		expect(classifyMeterError(undefined)).toBe("retry");
 	});
 });
 
