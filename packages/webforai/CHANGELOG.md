@@ -1,5 +1,11 @@
 # webforai
 
+## 4.1.1
+
+### Patch Changes
+
+- [#69](https://github.com/inaridiy/webforai/pull/69) [`dd9d233`](https://github.com/inaridiy/webforai/commit/dd9d233bd18b20827795c993fc7c0725d7de29e6) Thanks [@inaridiy](https://github.com/inaridiy)! - README: focus the npm page on the package (entry-point table, no self-hosting section) and clarify the site-adapter comment in the quick start.
+
 ## 4.1.0
 
 ### Minor Changes
