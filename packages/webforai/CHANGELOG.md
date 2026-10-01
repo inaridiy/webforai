@@ -1,5 +1,40 @@
 # webforai
 
+## 4.1.0
+
+### Minor Changes
+
+- [#66](https://github.com/inaridiy/webforai/pull/66) [`6d3d99e`](https://github.com/inaridiy/webforai/commit/6d3d99e1afb7e0053d6dc6f1afb7dd33f1ea701d) Thanks [@inaridiy](https://github.com/inaridiy)! - Conversion accuracy pass. Output changes on many pages; no API changes.
+
+  - **Code**: inactive code tabs (npm/yarn/pnpm, `example.ts`/`client.ts`) are kept and labelled as
+    fence meta (`title="pnpm"`), including VitePress radio tabs. Furniture and UI-phrase rules no
+    longer reach inside `<pre>`/`<code>` (Python's `print` and Go comments were being deleted).
+    No blank line after every CodeMirror/Sandpack line, Twoslash hover cards no longer split tokens
+    onto separate lines, and shiki-twoslash blocks get their language, drop the "Try" link and show
+    errors as `// error TS2345: …`.
+  - **Tables**: cells holding paragraphs, lists or code are flattened with `<br>`, so rows no longer
+    break or leak `&#xA;`; tables of multi-line code samples are laid out as labelled blocks.
+  - **Extraction**: when the furniture pass would cut too deep, link-dense rails are still removed
+    instead of skipping the pass (Amazon carousels, Reddit sidebars); screen-reader-only text in any
+    class spelling and consent-manager embed placeholders are removed; `not-sr-only` is no longer
+    treated as furniture.
+  - **Other**: display math inside a sentence becomes its own block; the prepended title drops the
+    site name (`Markdown - Wikipedia` → `Markdown`); long `<title>`s are accepted; undescribed
+    lazy-loading placeholder images are dropped.
+
+- [#67](https://github.com/inaridiy/webforai/pull/67) [`562ecc7`](https://github.com/inaridiy/webforai/commit/562ecc786c50fea5bdf58bb179e5787b52d9f38b) Thanks [@inaridiy](https://github.com/inaridiy)! - kiwame, a learned main-content extractor, and Worker-safe parsing.
+
+  - **New default for pages without a site adapter**: `kiwameExtractor`, a two-stage gradient-boosted
+    tree classifier over text blocks (~100 KB of generated TypeScript, no WASM or new dependencies).
+    Token F1 on the WCEB benchmark 0.874 → 0.892. `takumiExtractor` stays available, `createAutoExtractor({ fallback })`
+    selects the extractor behind the site adapters, and the CLI gains `--extractor kiwame`
+    (local conversion only; `takumi` keeps the heuristic).
+  - **Parsing for Workers**: HTML is parsed without source positions (about half the tree memory)
+    and with element nesting capped at 256 levels; 2,000 nested elements used to throw
+    `RangeError`. Documents over 2 M characters have script and style bodies emptied before
+    parsing (JSON-LD kept).
+  - New exports: `kiwameExtractor`, `createKiwameExtractor`, `KiwameExtractorOptions`.
+
 ## 4.0.0
 
 ### Major Changes
