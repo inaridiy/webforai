@@ -1,9 +1,10 @@
 # bench
 
 A quick qualitative benchmark: converts a fixed list of real-world pages (docs, Wikipedia,
-news, e-commerce, a search results page) with the `takumi` extractor and the AI-friendly
-options (`linkAsText`, `tableAsText`, `hideImage`), saving both the HTML and the Markdown so the
-output can be inspected by eye.
+news, e-commerce, a search results page) with the heuristic `takumi` extractor (set explicitly;
+the library default is the learned kiwame extractor) and the AI-friendly options (`linkAsText`,
+`tableAsText`, `hideImage`), saving both the HTML and the Markdown so the output can be
+inspected by eye.
 
 ## Run
 

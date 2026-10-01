@@ -4,7 +4,7 @@ Accuracy and performance harness for `webforai`. Private to the repository — n
 
 ## Why it exists
 
-Extraction heuristics cannot be judged from unit tests on hand-written HTML. Every improvement
+Extraction — heuristics and the learned block classifier alike — cannot be judged from unit tests on hand-written HTML. Every improvement
 here was measured against real captures of real sites, and every regression documented in
 `src/assertions.ts` was one this harness caught.
 
@@ -29,6 +29,9 @@ pnpm --filter @webforai/evals corpus:fetch
 
 Roughly 60 captures, about 25 MB. Fetching takes a few minutes.
 
+**Requirements:** Node 22.22.2+ or 24.15.0+ (jsdom 30, used for the Readability pipeline).
+Note that `bench:compare` rewrites the committed `benchmarks/compare-summary.json`.
+
 ### Optional: outbound proxy
 
 Some publishers block datacenter egress. Create a gitignored `.env` at the repository root:
@@ -46,13 +49,15 @@ sites the direct route is both faster and more reliable.
 
 ## Commands
 
+Run each as `pnpm --filter @webforai/evals <command>` (pass flags after `--`).
+
 | Command | What it does |
 | --- | --- |
 | `corpus:fetch` | Populate the cache. `--force`, `--only=id1,id2`, `--category=`, `--concurrency=` |
 | `corpus:status` | List which captures are missing |
 | `report` | Convert every capture and tabulate size, timing and structure. `--write` dumps the Markdown |
-| `compare` | Run the working tree and the published v2 baseline over the same input |
-| `bench` | End-to-end throughput, interleaved and median-of-N |
+| `compare` | Run the working tree and the published v2 baseline (`webforai@2.1.1`) over the same input |
+| `bench` | End-to-end throughput, interleaved and median-of-N (unrelated to `examples/bench`, which is an unscored by-eye demo) |
 | `bench:extract` | Extraction stage in isolation, with parsing outside the timed region |
 | `bench:compare` | webforai against Readability + Turndown, full-page Turndown and node-html-markdown. `--rounds=`, `--no-summary` |
 | `firecrawl-oss` | Run a self-hosted Firecrawl over the corpus and WCEB and cache its Markdown for the `firecrawl-oss` pipeline (see below) |
@@ -75,6 +80,10 @@ main-content text instead: token precision, recall and F1 per page, averaged per
 | --- | --- |
 | `gold:fetch-wceb` | Download WCEB (Bevendorff et al., SIGIR 2023; Apache-2.0, ≈50 MB) into the cache |
 | `gold:eval` | Token precision/recall/F1 against WCEB's reference text. `--pipelines=webforai,webforai-kiwame,readability-turndown`, `--impl=<path>` to measure another checkout, `--threshold=`, `--limit=` |
+
+Pipelines: `webforai` is the published entry point with its defaults (kiwame), or the build at
+`--impl`; `webforai-kiwame` builds the kiwame extractor from source so `--threshold=` and
+`--no-stack` can vary it; the rest are the competitors in `src/competitors.ts`.
 
 The learned block classifier's weights (`packages/webforai/src/extractors/lib/block-model.generated.ts`)
 are generated outside this repository; WCEB is used to measure them, never to tune them.
@@ -106,6 +115,7 @@ services:
 
 ```bash
 docker compose up -d                       # in the Firecrawl checkout
+# from evals/, so $PWD/.cache is evals/.cache
 docker run -d --name fc-stage --network firecrawl_backend -v "$PWD/.cache/fc-stage:/usr/share/nginx/html:ro" nginx:alpine
 pnpm --filter @webforai/evals firecrawl-oss -- --sets=corpus,wceb --commit=<firecrawl commit> \
   --stage-dir=.cache/fc-stage --serve-base=http://<fc-stage container IP>

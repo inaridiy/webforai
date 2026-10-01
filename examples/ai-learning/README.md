@@ -1,5 +1,7 @@
 # ai-learning
 
+Research scaffolding, not a supported tool; the maintained quality gate is `evals/`.
+
 An experiment in tuning extraction with an LLM in the loop. It renders a dataset of articles,
 e-commerce, news and technical-documentation pages (`src/datasets.ts`, cached locally after the
 first load), converts each with and without extraction, and has Gemini score the extracted
@@ -23,5 +25,4 @@ echo "GOOGLE_GENERATIVE_AI_API_KEY=..." > .env
 npx tsx src/index.ts                  # or src/auto-optimize.ts / src/manual.ts
 ```
 
-Writes `output/scores.json`. Expect many model calls (one per page). This is research
-scaffolding, not a supported tool; the maintained quality gate is `evals/`.
+Writes `output/scores.json`. Expect many model calls (one per page).

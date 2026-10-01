@@ -16,6 +16,7 @@ GET /?url=https://example.com/article&mode=ai     # ai mode (links/tables as tex
 pnpm install                     # from the repository root
 pnpm --filter webforai build
 cd examples/worker
+npx wrangler login                # once
 pnpm dev                         # wrangler dev --remote (Browser Rendering needs a Cloudflare account)
 pnpm run deploy                  # wrangler deploy
 ```
