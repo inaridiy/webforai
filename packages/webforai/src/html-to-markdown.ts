@@ -77,10 +77,82 @@ export const htmlToMarkdownWithMetadata = (
 	});
 
 	const body = mdastToMarkdown(mdast, { baseUrl, ...toMarkdownOptions });
-	const titled = title === false ? body : withTitle(body, metadata.title);
+	const pageUrl = toMdastOptions.url ?? metadata.canonicalUrl;
+	const titled = title === false ? body : withTitle(body, headingTitle(metadata.title, metadata.siteName, pageUrl));
 	const markdown = frontmatter ? `${toFrontmatter(metadata)}${titled}` : titled;
 
 	return { markdown, metadata };
+};
+
+/** Separators publishers put between a page's title and the site's name. */
+const TITLE_SEPARATOR = /\s+[-|–—·•:]\s+|\s*[｜|]\s*/;
+
+/** Words a site appends to its own name for a section of itself ("Svelte Docs", "WordPress News"). */
+const SITE_SECTION = /^(docs|documentation|blog|news|wiki|developers?|devblog|help|support|reference)$/;
+
+/** Lower-case letters and digits only, so "ICS MEDIA" and `ics.media` compare equal. */
+const compact = (value: string): string => value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+
+/** Names the page's own site goes by: its declared name and the labels of its host. */
+const siteNames = (siteName: string | undefined, url: string | undefined): string[] => {
+	const names = siteName ? siteName.split(TITLE_SEPARATOR).map(compact) : [];
+	try {
+		const labels = url ? new URL(url).hostname.split(".") : [];
+		// Each label but the TLD and `www`, those joined, and the whole host joined ("icsmedia").
+		const meaningful = labels.slice(0, -1).filter((label) => label !== "www");
+		names.push(...meaningful.map(compact), compact(meaningful.join("")), compact(labels.join("").replace(/^www/, "")));
+	} catch {
+		// An unparsable URL contributes nothing.
+	}
+	return names.filter((name) => name.length >= 3);
+};
+
+/**
+ * The page title without the site name the `<title>` element appends or prepends.
+ *
+ * "Euler's identity - Wikipedia" reads as a heading of the article only once " - Wikipedia" is
+ * gone. A trailing segment is removed only when it is the site's name — the declared one or the
+ * host's, optionally with a section word ("Svelte Docs" on svelte.dev) — so "Rick Astley - Never
+ * Gonna Give You Up" on YouTube and "Guide - Docker Compose" on docs.docker.com are left alone.
+ */
+export const headingTitle = (title: string | undefined, siteName?: string, url?: string): string | undefined => {
+	if (!title) {
+		return title;
+	}
+	const segments = title.split(TITLE_SEPARATOR);
+	if (segments.length < 2) {
+		return title;
+	}
+	const names = siteNames(siteName, url);
+	if (names.length === 0) {
+		return title;
+	}
+
+	const isSite = (segment: string): boolean => {
+		const value = compact(segment);
+		return (
+			value.length > 0 &&
+			names.some((name) => value === name || (value.startsWith(name) && SITE_SECTION.test(value.slice(name.length))))
+		);
+	};
+
+	const last = segments[segments.length - 1];
+	if (isSite(last)) {
+		return stripSegment(title, last, "end");
+	}
+	// A leading segment is often the product the page is about ("Hono - Web framework built on
+	// Web Standards"), so only the declared site name, matched exactly, is removed there.
+	if (siteName && compact(segments[0]) === compact(siteName)) {
+		return stripSegment(title, segments[0], "start");
+	}
+	return title;
+};
+
+/** Removes a leading or trailing segment together with the separator next to it. */
+const stripSegment = (title: string, segment: string, edge: "start" | "end"): string => {
+	const rest = edge === "end" ? title.slice(0, title.lastIndexOf(segment)) : title.slice(segment.length);
+	const trimmed = rest.replace(edge === "end" ? /[\s\-|–—·•:｜]+$/ : /^[\s\-|–—·•:｜]+/, "");
+	return trimmed.length > 0 ? trimmed : title;
 };
 
 /** How far into the output to look for an existing title before adding one. */
@@ -113,11 +185,28 @@ const withTitle = (body: string, title: string | undefined): string => {
 		return body;
 	}
 
-	if (normalizeForCompare(opening).includes(normalizeForCompare(title))) {
+	if (mentionsTitle(opening, title)) {
 		return body;
 	}
 
 	return `# ${title}\n\n${body}`;
+};
+
+/** Shorter than this, a title found inside prose is a word in a sentence, not the title. */
+const MIN_EMBEDDED_TITLE_LENGTH = 24;
+
+/**
+ * True when the opening already presents the title: as a line of its own (bold, a breadcrumb,
+ * a heading-styled paragraph), or — for a title long enough not to occur by chance — anywhere.
+ * A short title like "Markdown" appears in the first sentence of its own article and must not
+ * count as the article having a title.
+ */
+const mentionsTitle = (opening: string, title: string): boolean => {
+	const wanted = normalizeForCompare(title);
+	if (wanted.length >= MIN_EMBEDDED_TITLE_LENGTH) {
+		return normalizeForCompare(opening).includes(wanted);
+	}
+	return opening.split("\n").some((line) => normalizeForCompare(line.replace(/[#*_`>]/g, "")) === wanted);
 };
 
 /** Case- and whitespace-insensitive comparison, so punctuation-level differences do not matter. */

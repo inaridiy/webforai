@@ -2,7 +2,8 @@ import type { Element } from "hast";
 import { type Handle, defaultHandlers } from "hast-util-to-mdast";
 import { toText } from "hast-util-to-text";
 
-import { isElement, numericProperty, walk } from "../utils/hast-fast";
+import { findElement, isElement, numericProperty, walk } from "../utils/hast-fast";
+import { flattenTableCells, tableHasCodeSamples, unfoldTable } from "./table-cell-flatten";
 
 /**
  * Largest span honoured on a table cell.
@@ -30,6 +31,16 @@ const clampSpans = (node: Element): void => {
 	});
 };
 
+/** True when the table's first row consists of header cells only. */
+const startsWithHeaderRow = (table: Element): boolean => {
+	const row = findElement(table, (element) => element.tagName === "tr");
+	if (!row) {
+		return false;
+	}
+	const cells = row.children.filter(isElement);
+	return cells.length > 0 && cells.every((cell) => cell.tagName === "th");
+};
+
 export const customTableHandler =
 	(options?: { asText?: boolean }): Handle =>
 	(state, node) => {
@@ -40,5 +51,13 @@ export const customTableHandler =
 		}
 
 		clampSpans(node);
-		return defaultHandlers.table(state, node);
+		const result = defaultHandlers.table(state, node);
+		if (!result || Array.isArray(result) || result.type !== "table") {
+			return result;
+		}
+		if (tableHasCodeSamples(result)) {
+			return unfoldTable(result, startsWithHeaderRow(node));
+		}
+		flattenTableCells(result);
+		return result;
 	};

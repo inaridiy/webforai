@@ -377,3 +377,188 @@ describe("title deduplication", () => {
 		expect(markdown.match(/^# /gm)?.length ?? 0).toBe(1);
 	});
 });
+
+describe("screen-reader-only text", () => {
+	it("drops accessibility labels in every class naming convention", () => {
+		const html = article(
+			'<span class="VisuallyHidden-styles__VisuallyHiddenStyled-sc-1y1x">Site search</span><span class="srOnly">Opens in a new tab</span><span class="screen-reader-text">Skip ahead</span>',
+		);
+		const markdown = htmlToMarkdown(html);
+
+		expect(markdown).not.toContain("Site search");
+		expect(markdown).not.toContain("Opens in a new tab");
+		expect(markdown).not.toContain("Skip ahead");
+	});
+
+	it("keeps elements whose class merely contains the words", () => {
+		const markdown = htmlToMarkdown(article('<p class="not-sr-only">Visible on every screen, here.</p>'));
+		expect(markdown).toContain("Visible on every screen, here.");
+	});
+});
+
+describe("consent placeholders", () => {
+	const placeholder =
+		"This content isn't visible due to your cookie preferences. To load this content, click the Allow button below.";
+
+	it("removes the stand-in a consent manager leaves where an embed was", () => {
+		const markdown = htmlToMarkdown(article(`<div class="x7f2"><p>${placeholder}</p><button>Allow</button></div>`));
+		expect(markdown).not.toContain("cookie preferences");
+	});
+
+	it("keeps prose that discusses the same subject", () => {
+		const prose = `<p>Regulators found that this content isn't visible due to your cookie preferences on many sites.</p>`;
+		expect(htmlToMarkdown(article(prose))).toContain("Regulators found");
+	});
+});
+
+describe("furniture removal when a wrapper matches a furniture class", () => {
+	// Amazon names every block `*_feature_div celwidget`. The class match condemns the wrapper that
+	// holds the product description, which used to abandon furniture removal altogether.
+	const rail = (name: string) =>
+		`<div class="${name}_feature_div celwidget">${Array.from(
+			{ length: 30 },
+			(_, i) => `<a href="/p/${name}${i}">Product ${name} ${i}</a>`,
+		).join(" ")}</div>`;
+
+	const html = `<html lang="en"><body><div class="page celwidget">
+		${rail("sims")}
+		<div class="desc_feature_div celwidget">${filler()}</div>
+		${rail("sponsored")}
+	</div></body></html>`;
+
+	it("keeps the prose and drops the link-dense rails", () => {
+		const markdown = htmlToMarkdown(html);
+
+		expect(markdown).toContain("Sentence with, some prose.");
+		expect(markdown).not.toContain("Product sims");
+		expect(markdown).not.toContain("Product sponsored");
+	});
+});
+
+describe("code samples are never page furniture", () => {
+	it("keeps highlighted tokens that spell a UI label", () => {
+		const code = '<pre><code><span class="k">print</span>(x)\n<span class="n">next</span>(it)</code></pre>';
+		const markdown = htmlToMarkdown(article(code));
+
+		expect(markdown).toContain("print(x)");
+		expect(markdown).toContain("next(it)");
+	});
+
+	it("keeps comment tokens whose class matches a furniture pattern", () => {
+		const code = '<pre><code>x := 1 <span class="comment">// ignore first value</span></code></pre>';
+		expect(htmlToMarkdown(article(code))).toContain("// ignore first value");
+	});
+
+	it("still drops a copy button nested in the block", () => {
+		const code = "<pre><button>Copy</button><code>npm install webforai</code></pre>";
+		const markdown = htmlToMarkdown(article(code));
+
+		expect(markdown).toContain("npm install webforai");
+		expect(markdown).not.toContain("Copy");
+	});
+});
+
+describe("code tabs", () => {
+	const tabs = `<div role="tablist"><button role="tab" id="t1" aria-selected="true">npm</button><button role="tab" id="t2">pnpm</button></div>
+		<div role="tabpanel" aria-labelledby="t1"><pre><code class="language-sh">npm install webforai</code></pre></div>
+		<div role="tabpanel" aria-labelledby="t2" hidden><pre><code class="language-sh">pnpm add webforai</code></pre></div>`;
+
+	it("keeps the inactive panels of a code tab group", () => {
+		expect(htmlToMarkdown(article(tabs))).toContain("pnpm add webforai");
+	});
+
+	it("labels each block with its tab", () => {
+		const markdown = htmlToMarkdown(article(tabs));
+
+		expect(markdown).toContain('```sh title="npm"');
+		expect(markdown).toContain('```sh title="pnpm"');
+	});
+
+	it("still removes a hidden duplicate of the prose", () => {
+		const duplicate = `<div hidden>${filler(20)}<p>Mobile-only duplicate copy.</p><pre><code>x</code></pre></div>`;
+		expect(htmlToMarkdown(article(duplicate))).not.toContain("Mobile-only duplicate copy.");
+	});
+});
+
+describe("code line structure", () => {
+	it("does not add a blank line after each line-per-block line", () => {
+		const code =
+			'<pre><code><div class="cm-line">function a() {<br></div><div class="cm-line">  return 1;<br></div><div class="cm-line">}<br></div></code></pre>';
+		expect(htmlToMarkdown(article(code))).toContain("function a() {\n  return 1;\n}");
+	});
+
+	it("keeps a hover card nested in a token on the token's line", () => {
+		const code =
+			'<pre><code><span class="line"><span>const </span><span><div class="v-popper"><span>app</span><div class="v-popper__popper"></div></div></span><span> = new Hono()</span></span></code></pre>';
+		expect(htmlToMarkdown(article(code))).toContain("const app = new Hono()");
+	});
+});
+
+describe("review regressions", () => {
+	it("removes only the consent placeholder, not the caption or paragraphs beside it", () => {
+		const markdown = htmlToMarkdown(
+			article(
+				"<figure><p>We need your consent to load the YouTube embed.</p><button>Accept</button><figcaption>Figure 1: the launch, as seen from the pad.</figcaption></figure><div><p>This content isn't visible due to your cookie preferences.</p><p>The minister resigned on Tuesday, aides said.</p></div>",
+			),
+		);
+
+		expect(markdown).not.toContain("We need your consent");
+		expect(markdown).not.toContain("cookie preferences");
+		expect(markdown).toContain("Figure 1: the launch");
+		expect(markdown).toContain("The minister resigned on Tuesday");
+	});
+
+	// The furniture pass is first rejected here (it would keep under a quarter of the text), and the
+	// link-density retry must not then condemn the list just because its wrapper says "sidebar".
+	it("keeps a link-dense reading list that holds the page title", () => {
+		const items = Array.from(
+			{ length: 25 },
+			(_, i) =>
+				`<p><a href="/r/${i}">An excellent, long article about topic number ${i} by someone</a>, recommended.</p>`,
+		).join("");
+		const html = `<html lang="en"><body><div class="sidebar-page"><h1>Reading list</h1>${items}</div><div class="legal"><p>${"This website is operated by Example Corp. ".repeat(
+			12,
+		)}</p></div></body></html>`;
+
+		expect(htmlToMarkdown(html)).toContain("topic number 24");
+	});
+
+	it("does not resurrect a hidden copy of visible code", () => {
+		const markdown = htmlToMarkdown(
+			article('<pre><code>const a = 1;</code></pre><div style="display:none"><pre>const a = 1;</pre></div>'),
+		);
+		expect(markdown.match(/const a = 1;/g)?.length).toBe(1);
+	});
+
+	it("does not resurrect a hidden data dump", () => {
+		const markdown = htmlToMarkdown(article('<div style="display:none"><pre>{"items":[1,2,3]}</pre></div>'));
+		expect(markdown).not.toContain('"items"');
+	});
+
+	it("does not label code with a page-level tab strip", () => {
+		const html = article(`<div><div role="tablist"><button role="tab">Overview</button><button role="tab">Reference</button></div></div>
+			<p>Unrelated prose follows the page tabs here.</p>
+			<div><div role="tabpanel"><pre><code class="language-sh">npm i a</code></pre></div><div role="tabpanel" hidden><pre><code class="language-sh">pnpm add a</code></pre></div></div>`);
+
+		expect(htmlToMarkdown(html)).not.toContain('title="Overview"');
+	});
+
+	it("leaves screen-reader text out of tab labels", () => {
+		const html = article(`<div><div role="tablist"><button role="tab">npm<span class="sr-only"> (selected)</span></button><button role="tab">yarn</button></div>
+			<div role="tabpanel"><pre><code class="language-sh">npm i a</code></pre></div><div role="tabpanel" hidden><pre><code class="language-sh">yarn add a</code></pre></div></div>`);
+
+		expect(htmlToMarkdown(html)).toContain('```sh title="npm"\n');
+	});
+});
+
+describe("CSS-only code tabs", () => {
+	const group = `<div class="vp-code-group"><div class="tabs"><input type="radio" name="g" id="t1" checked><label data-title="npm" for="t1">npm</label><input type="radio" name="g" id="t2"><label data-title="yarn" for="t2">yarn</label></div><div class="blocks"><div class="language-sh active"><pre><code>npm i hono</code></pre></div><div class="language-sh"><pre><code>yarn add hono</code></pre></div></div></div>`;
+
+	it("labels each block and drops the radio strip", () => {
+		const markdown = htmlToMarkdown(article(group));
+
+		expect(markdown).toContain('title="npm"');
+		expect(markdown).toContain('title="yarn"');
+		expect(markdown).not.toContain("[x]");
+	});
+});

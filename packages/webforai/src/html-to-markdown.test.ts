@@ -2,7 +2,7 @@ import { distance } from "fastest-levenshtein";
 import { fromHtml } from "hast-util-from-html";
 import { describe, expect, it } from "vitest";
 import type { ExtractParams } from "./extractors/types";
-import { htmlToMarkdown } from "./html-to-markdown";
+import { headingTitle, htmlToMarkdown, htmlToMarkdownWithMetadata } from "./html-to-markdown";
 
 const html = `
 <h1>Hello, world!</h1>
@@ -172,3 +172,152 @@ describe("htmlToMarkdown", () => {
 // Conversion quality on real pages is measured by the recorded-corpus suite in `evals/`
 // (see evals/src/corpus.test.ts). The old "Converting for good" test here compared two live
 // sites by edit distance, which drifted red whenever either site shipped a redesign.
+
+describe("tables with block content", () => {
+	const convert = (html: string) => htmlToMarkdown(html, { extractors: false });
+
+	it("keeps each row on one line when cells hold lists and paragraphs", () => {
+		const markdown = convert(
+			"<table><tr><th>Name</th><th>Family</th></tr><tr><td><p>Takuya</p></td><td><ul><li>Kōki</li><li>Shunsaku</li></ul></td></tr></table>",
+		);
+
+		expect(markdown).toContain("| Takuya | - Kōki<br>- Shunsaku |");
+	});
+
+	it("separates line breaks inside a cell instead of escaping them", () => {
+		const markdown = convert("<table><tr><th>Release</th></tr><tr><td>1.0.1<br>December 17, 2004</td></tr></table>");
+
+		expect(markdown).toContain("1.0.1<br>December 17, 2004");
+		expect(markdown).not.toContain("&#xA;");
+	});
+
+	it("lays out a table of code samples as labelled blocks", () => {
+		const markdown = convert(
+			'<table><tr><th>Interface</th><th>Type</th></tr><tr><td><pre><code class="language-ts">interface A {\n  x: 1\n}</code></pre></td><td><pre><code class="language-ts">type A = {\n  x: 1\n}</code></pre></td></tr></table>',
+		);
+
+		expect(markdown).toContain("**Interface**\n\n```ts\ninterface A {\n  x: 1\n}\n```");
+		expect(markdown).toContain("**Type**\n\n```ts\ntype A = {");
+		expect(markdown).not.toContain("| ");
+	});
+
+	it("leaves ordinary tables untouched", () => {
+		const markdown = convert("<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td><code>x</code></td></tr></table>");
+		expect(markdown).toContain("| 1 | `x` |");
+	});
+});
+
+describe("display math written inside a sentence", () => {
+	it("puts the formula on its own block between the sentence halves", () => {
+		const markdown = htmlToMarkdown(
+			'<p>is the equality <math display="block" alttext="{\\displaystyle e^{i\\pi }+1=0}"><mi>e</mi></math> where</p>',
+			{ extractors: false },
+		);
+
+		expect(markdown).toBe("is the equality\n\n$$\ne^{i\\pi }+1=0\n$$\n\nwhere\n");
+	});
+});
+
+describe("page title heading", () => {
+	const page = (title: string, body: string, siteName?: string) =>
+		`<html><head><title>${title}</title>${
+			siteName ? `<meta property="og:site_name" content="${siteName}">` : ""
+		}</head><body><article>${body}</article></body></html>`;
+	const prose = `<p>${"Markdown is a lightweight markup language, here. ".repeat(20)}</p>`;
+
+	it("drops the site name the title element appends", () => {
+		const markdown = htmlToMarkdown(page("Markdown - Wikipedia", prose), {
+			url: "https://en.wikipedia.org/wiki/Markdown",
+		});
+		expect(markdown.startsWith("# Markdown\n")).toBe(true);
+	});
+
+	it("keeps a hyphenated title that is not about the site", () => {
+		const markdown = htmlToMarkdown(page("Rick Astley - Never Gonna Give You Up", prose, "YouTube"), {
+			url: "https://www.youtube.com/watch?v=x",
+		});
+		expect(markdown.startsWith("# Rick Astley - Never Gonna Give You Up\n")).toBe(true);
+	});
+
+	it("keeps a leading product name unless it is the declared site name", () => {
+		expect(headingTitle("Hono - Web framework built on Web Standards", undefined, "https://hono.dev/docs/")).toBe(
+			"Hono - Web framework built on Web Standards",
+		);
+		expect(headingTitle("GitHub - inaridiy/webforai: HTML to Markdown", "GitHub", "https://github.com/x")).toBe(
+			"inaridiy/webforai: HTML to Markdown",
+		);
+	});
+
+	it("does not mistake a short title in the first sentence for the title", () => {
+		expect(
+			htmlToMarkdown(page("Markdown - Wikipedia", prose), { url: "https://en.wikipedia.org/wiki/Markdown" }),
+		).toMatch(/^# Markdown\n/);
+	});
+
+	it("does not repeat a title the body shows as a lower-level heading", () => {
+		const markdown = htmlToMarkdown(page("Release notes - ICS MEDIA", `<h2>Release notes</h2>${prose}`), {
+			url: "https://ics.media/entry/1/",
+		});
+		expect(markdown.match(/Release notes/g)?.length).toBe(1);
+	});
+
+	it("uses a long product title rather than falling back to the first heading", () => {
+		const long = `Amazon.co.jp: ${"Mini Drone for Kids, Compact, Indoor, ".repeat(5)}`;
+		const markdown = htmlToMarkdown(page(long, `<h1>Product summary presents key product information</h1>${prose}`));
+		expect(htmlToMarkdownWithMetadata(page(long, prose)).metadata.title).toContain("Mini Drone for Kids");
+		expect(markdown).toContain("# Product summary");
+	});
+});
+
+describe("lazy-loading placeholder images", () => {
+	const convert = (html: string) => htmlToMarkdown(html, { extractors: false });
+
+	it("drops an undescribed placeholder beside the real image", () => {
+		const markdown = convert(
+			'<a href="/a"><img src="https://cdn.example/web/grey-placeholder.png"><img src="https://cdn.example/photo.jpg" alt="Gaza"></a>',
+		);
+		expect(markdown).not.toContain("placeholder");
+		expect(markdown).toContain("![Gaza](https://cdn.example/photo.jpg)");
+	});
+
+	it("keeps a described image even when its file is named placeholder", () => {
+		expect(convert('<img src="/img/placeholder-ui.png" alt="The placeholder state of the input">')).toContain(
+			"The placeholder state of the input",
+		);
+	});
+});
+
+describe("twoslash code blocks", () => {
+	it("moves the language to the fence and writes errors as compiler comments", () => {
+		const html = `<pre class="shiki light-plus twoslash lsp"><div class="language-id">ts</div><div class="code-container"><code><div class="line">greet(<data-err>42</data-err>);</div><span class="error"><span>Argument of type 'number' is not assignable.</span><span class="code">2345</span></span><span class="error-behind">Argument of type 'number' is not assignable.</span></code><a class="playground-link" href="https://www.typescriptlang.org/play">Try</a></div></pre>`;
+
+		expect(htmlToMarkdown(html, { extractors: false })).toBe(
+			"```ts\ngreet(42);\n// error TS2345: Argument of type 'number' is not assignable.\n```\n",
+		);
+	});
+});
+
+describe("review regressions (conversion)", () => {
+	const convert = (html: string) => htmlToMarkdown(html, { extractors: false });
+
+	it("keeps the code of a header-only code table", () => {
+		expect(convert("<table><tr><th><pre><code>a\nb</code></pre></th></tr></table>")).toContain("a\nb");
+	});
+
+	it("keeps nested pre blocks on separate lines", () => {
+		expect(convert("<pre><pre>inner</pre>outer</pre>")).toContain("inner\nouter");
+	});
+
+	it("does not strip a topic that merely starts with the host name", () => {
+		expect(headingTitle("Guide - Docker Compose", undefined, "https://docs.docker.com/compose/")).toBe(
+			"Guide - Docker Compose",
+		);
+		expect(headingTitle("Overview • Svelte Docs", undefined, "https://svelte.dev/docs")).toBe("Overview");
+	});
+
+	it("does not double line breaks for nested blocks in a cell", () => {
+		expect(
+			convert("<table><tr><th>A</th></tr><tr><td><p>Head</p><blockquote><p>q</p></blockquote></td></tr></table>"),
+		).toContain("Head<br>q");
+	});
+});

@@ -35,6 +35,9 @@ import type { ExtractParams } from "../types";
 /** Fraction of the parent tree's text a narrowed selection must retain to be trusted. */
 const MIN_RETAINED_FRACTION = 0.25;
 
+/** Link density above which a weakly-matched block is furniture even when it is large. */
+const FURNITURE_LINK_DENSITY = 0.5;
+
 /** Attribute-driven markers that state, unambiguously, where the content is. */
 const SEMANTIC_SELECTORS: Array<(element: Element) => boolean> = [
 	(element) => stringProperty(element, "itemprop")?.includes("articleBody") ?? false,
@@ -86,6 +89,35 @@ const collectMatching = (tree: Hast, matches: (element: Element) => boolean, int
 			}
 		}
 	}
+};
+
+const containsTag = (element: Element, tagName: string): boolean =>
+	element.children.some((child) => isElement(child) && (child.tagName === tagName || containsTag(child, tagName)));
+
+/** True when the document has an `<h1>` and every one of them lies inside a doomed element. */
+const removesEveryTitle = (root: Hast, doomed: Element[]): boolean => {
+	if (!doomed.some((element) => containsTag(element, "h1"))) {
+		return false;
+	}
+	const doomedSet = new Set(doomed);
+	let survivor = false;
+	const visit = (node: Hast): void => {
+		if (survivor || !("children" in node)) {
+			return;
+		}
+		for (const child of node.children) {
+			if (!isElement(child) || doomedSet.has(child)) {
+				continue;
+			}
+			if (child.tagName === "h1") {
+				survivor = true;
+				return;
+			}
+			visit(child);
+		}
+	};
+	visit(root);
+	return !survivor;
 };
 
 const asRootOf = (nodes: Element[]): Hast => ({ type: "root", children: nodes });
@@ -146,10 +178,24 @@ export const takumiExtractor = (params: ExtractParams): Hast => {
 	// Price the furniture-removal pass before paying for it: summing the text of the elements it
 	// would delete is far cheaper than cloning the tree, pruning the copy and re-measuring.
 	const searchText = collector.textLength(searchRoot);
-	const doomed = findUnlikelyElements(searchRoot);
-	const doomedText = doomed.reduce((sum, element) => sum + collector.metrics(element).text, 0);
+	let doomed = findUnlikelyElements(searchRoot);
+	const textOf = (elements: Element[]) => elements.reduce((sum, element) => sum + collector.metrics(element).text, 0);
 
-	if (searchText - doomedText > Math.max(minLength, searchText * MIN_RETAINED_FRACTION)) {
+	let acceptable = searchText - textOf(doomed) > Math.max(minLength, searchText * MIN_RETAINED_FRACTION);
+	if (!acceptable) {
+		// The full pass would cut too deep, usually because a class-substring match hit a wrapper
+		// that holds the article. Rather than giving up on furniture removal altogether — which
+		// leaves every carousel and footer in place on exactly the pages that have the most —
+		// retry sparing the weak matches that read as prose. Link-dense weak matches are rails,
+		// carousels and sitemaps whatever their size, so only the absolute floor guards them.
+		doomed = findUnlikelyElements(searchRoot, (element) => collector.linkDensity(element) < FURNITURE_LINK_DENSITY);
+		// A retry that would take every `<h1>` with it has condemned the page itself — a reading
+		// list, changelog or index is link-dense too — so it is abandoned like the full pass.
+		acceptable =
+			doomed.length > 0 && searchText - textOf(doomed) >= minLength && !removesEveryTitle(searchRoot, doomed);
+	}
+
+	if (acceptable) {
 		const doomedSet = new Set<Element>(doomed);
 		pruneInPlace(searchRoot, (node) => !(isElement(node) && doomedSet.has(node)));
 		collector = new MetricsCollector();

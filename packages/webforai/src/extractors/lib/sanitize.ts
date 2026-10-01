@@ -19,6 +19,7 @@ import {
 	stringProperty,
 	walk,
 } from "../../utils/hast-fast";
+import { CodeTabCollector } from "./code-tabs";
 import {
 	CHROME_TAGS,
 	CONTEXTUAL_LANDMARK_TAGS,
@@ -30,7 +31,7 @@ import {
 	RESPONSIVE_DISPLAY_OVERRIDE,
 	UNLIKELY_ROLES,
 } from "./constants";
-import { isUiChromeText } from "./ui-chrome";
+import { MAX_CONSENT_PLACEHOLDER_LENGTH, isConsentPlaceholderText, isUiChromeText } from "./ui-chrome";
 
 /** Inline styles that take an element out of the visual flow. */
 const INVISIBLE_STYLE = /(^|;)\s*(display\s*:\s*none|visibility\s*:\s*hidden)\s*(;|$)/i;
@@ -44,9 +45,28 @@ const INVISIBLE_STYLE = /(^|;)\s*(display\s*:\s*none|visibility\s*:\s*hidden)\s*
 const hasHiddenClass = (element: Element): boolean => {
 	const classes = classList(element);
 	if (!classes.some((name) => HIDDEN_CLASS_NAMES.has(name))) {
-		return classes.some((name) => REGEXPS.hidden.test(name));
+		return classes.some((name) => REGEXPS.hidden.test(name) || isScreenReaderOnlyClass(name));
 	}
 	return !classes.some((name) => RESPONSIVE_DISPLAY_OVERRIDE.test(name));
+};
+
+/**
+ * Screen-reader-only utilities, in any naming convention.
+ *
+ * `sr-only` and `visually-hidden` are the hyphenated spellings, but CSS-in-JS frameworks emit
+ * `VisuallyHidden-styles__VisuallyHiddenStyled-sc-…` or `srOnly`, which no hyphenated pattern
+ * matches. Their text is an accessibility label ("Site search", "(opens in a new tab)") that a
+ * sighted reader never sees. Responsive variants (`md:not-sr-only`) fail the leading-letter test.
+ */
+const SCREEN_READER_ONLY = /^(sronly|visuallyhidden|screenreader(only|text))(focusable|styles\w*)?$/;
+
+const isScreenReaderOnlyClass = (name: string): boolean => {
+	const first = name.charCodeAt(0) | 0x20;
+	// Every spelling starts with s or v; this keeps the normalisation off the hot path.
+	if (first !== 0x73 && first !== 0x76) {
+		return false;
+	}
+	return SCREEN_READER_ONLY.test(name.toLowerCase().replace(/[-_]/g, ""));
 };
 
 /**
@@ -69,15 +89,26 @@ const isNonContent = (node: Hast): boolean => {
  * content, and on a few frameworks to the entire pre-hydration tree. It only counts here when
  * the element also carries no visible geometry or is explicitly hidden by style.
  */
-const isHidden = (element: Element): boolean => {
+const isHidden = (element: Element, parent: Parent, siblingCode: SiblingCodeCache): boolean => {
+	if (!looksHidden(element)) {
+		return false;
+	}
+
 	// Renderers that show a formula as an image keep the authoritative MathML alongside it,
 	// hidden from sighted users. It is the only lossless form of the expression on the page, so
 	// visibility rules must not reach it — dropping it leaves the formula with no representation
 	// at all once the image fallback is de-duplicated away.
+	//
+	// Checked only once an element is known to be hidden: the scan walks the whole subtree, and
+	// running it on every element made this pass quadratic in document depth.
 	if (containsMath(element)) {
 		return false;
 	}
 
+	return !isHiddenCodePanel(element, parent, siblingCode);
+};
+
+const looksHidden = (element: Element): boolean => {
 	if (isTruthyAttribute(element, "hidden")) {
 		return true;
 	}
@@ -95,11 +126,81 @@ const isHidden = (element: Element): boolean => {
 	// is: a zero box means the browser laid the element out to nothing.
 	const width = numericProperty(element, "data-rwidth");
 	const height = numericProperty(element, "data-rheight");
-	if (width === 0 && height === 0) {
-		return true;
-	}
+	return width === 0 && height === 0;
+};
 
-	return false;
+/** Most text, outside its code, that a hidden code panel may carry (a filename, a caption). */
+const MAX_CODE_PANEL_PROSE = 200;
+
+/** Code text of a hidden panel candidate, or `undefined` when it is not code-shaped. */
+const panelCode = (element: Element): string | undefined => {
+	let code = "";
+	let prose = 0;
+
+	const visit = (node: Element, insideCode: boolean): boolean => {
+		for (const child of node.children) {
+			if (child.type === "text") {
+				if (insideCode) {
+					code += child.value;
+				} else {
+					prose += child.value.trim().length;
+					if (prose > MAX_CODE_PANEL_PROSE) {
+						return false;
+					}
+				}
+			} else if (isElement(child) && !visit(child, insideCode || child.tagName === "pre")) {
+				return false;
+			}
+		}
+		return true;
+	};
+
+	return visit(element, element.tagName === "pre") && code.trim().length > 0 ? code : undefined;
+};
+
+/** Per parent: the code of its visible children, computed once however many panels it has. */
+type SiblingCodeCache = WeakMap<Parent, Set<string>>;
+
+const visibleSiblingCode = (parent: Parent, cache: SiblingCodeCache): Set<string> => {
+	let codes = cache.get(parent);
+	if (!codes) {
+		codes = new Set();
+		for (const child of parent.children) {
+			if (isElement(child) && !looksHidden(child)) {
+				const code = panelCode(child);
+				if (code !== undefined) {
+					codes.add(code);
+				}
+			}
+		}
+		cache.set(parent, codes);
+	}
+	return codes;
+};
+
+/**
+ * True for an inactive tab of a code-sample switcher.
+ *
+ * Documentation shows the same step for npm, yarn and pnpm, or for several languages, as tabs;
+ * every tab but the selected one is `hidden` until clicked. Those panels are the page's content
+ * in another variant — a reader can open each one — and dropping them loses most of the code on
+ * the page.
+ *
+ * A hidden element qualifies only when code is nearly all it holds, and when it is evidently one
+ * variant among several: a `tabpanel`, or a sibling of a visible code block. Even then it is
+ * dropped when its code repeats a visible sibling's, which is the "copy raw source" pattern. A
+ * hidden data dump, or a hidden duplicate of the article, is still removed.
+ */
+const isHiddenCodePanel = (element: Element, parent: Parent, cache: SiblingCodeCache): boolean => {
+	const code = panelCode(element);
+	if (code === undefined) {
+		return false;
+	}
+	const siblings = visibleSiblingCode(parent, cache);
+	if (siblings.has(code)) {
+		return false;
+	}
+	return stringProperty(element, "role") === "tabpanel" || siblings.size > 0;
 };
 
 /** `src` values that stand in for an image until a script swaps in the real one. */
@@ -142,8 +243,11 @@ const isPlaceholderImage = (element: Element): boolean => {
  * The whole noscript body is hoisted, not just its images: fallbacks routinely include a caption
  * or a paragraph alongside the image, and keeping only the image silently loses that text.
  */
-export const hoistNoscriptImages = (tree: Hast): void => {
-	const visit = (parent: Parent): void => {
+export const hoistNoscriptImages = (
+	tree: Hast,
+	onElement?: (element: Element, depth: number, parent: Parent) => void,
+): void => {
+	const visit = (parent: Parent, depth: number): void => {
 		for (let index = 0; index < parent.children.length; index++) {
 			const child = parent.children[index];
 			if (!isElement(child)) {
@@ -151,7 +255,8 @@ export const hoistNoscriptImages = (tree: Hast): void => {
 			}
 
 			if (child.tagName !== "noscript") {
-				visit(child);
+				onElement?.(child, depth, parent);
+				visit(child, depth + 1);
 				continue;
 			}
 
@@ -179,7 +284,7 @@ export const hoistNoscriptImages = (tree: Hast): void => {
 	};
 
 	if ("children" in tree) {
-		visit(tree as Parent);
+		visit(tree as Parent, 0);
 	}
 };
 
@@ -198,13 +303,18 @@ const containsMath = (element: Element): boolean => {
 
 /** Removes comments, metadata elements and anything the browser did not display. */
 export const stripNonContent = (tree: Hast): Hast => {
-	hoistNoscriptImages(tree);
+	// Tab strips are chrome and disappear in later passes, so their labels are read now, in the
+	// traversal the noscript pass makes anyway.
+	const tabs = new CodeTabCollector((element) => looksHidden(element) || NON_CONTENT_TAGS.has(element.tagName));
+	hoistNoscriptImages(tree, (element, depth, parent) => tabs.visit(element, depth, parent));
+	tabs.apply();
 
-	return pruneInPlace(tree, (node) => {
+	const siblingCode: SiblingCodeCache = new WeakMap();
+	return pruneInPlace(tree, (node, parent) => {
 		if (isNonContent(node)) {
 			return false;
 		}
-		if (isElement(node) && isHidden(node)) {
+		if (isElement(node) && isHidden(node, parent, siblingCode)) {
 			return false;
 		}
 		return true;
@@ -251,43 +361,54 @@ export const findLandmarkChrome = (tree: Hast): Set<Element> => {
 };
 
 /**
- * True for containers that are almost certainly page furniture.
+ * How sure the furniture pass is about an element.
+ *
+ * `strong` comes from structure or from patterns no content container carries (a `<nav>`, a
+ * navigation role, `navbox`, a class that is exactly `breadcrumbs`). `weak` is the substring
+ * match on class and id, which hits whole-page wrappers on some sites: Amazon names every block
+ * `*_feature_div celwidget`, so `widget` condemns the product description along with the
+ * carousels around it.
+ */
+export type UnlikelyTier = "strong" | "weak";
+
+/**
+ * Classifies a container that is almost certainly page furniture.
  *
  * Mirrors Readability's unlikely-candidate rule: a class/id match condemns the element unless it
  * also looks content-ish, with a short list of patterns strong enough to skip that reprieve.
  */
-const isUnlikelyCandidate = (element: Element): boolean => {
+const unlikelyTier = (element: Element): UnlikelyTier | undefined => {
 	// Semantic content elements are never furniture, whatever they are called.
 	if (element.tagName === "article" || element.tagName === "main" || element.tagName === "body") {
-		return false;
+		return undefined;
 	}
 
 	const role = stringProperty(element, "role");
 	if (role && UNLIKELY_ROLES.has(role)) {
-		return true;
+		return "strong";
 	}
 
 	if (CHROME_TAGS.has(element.tagName)) {
-		return true;
+		return "strong";
 	}
 
 	const match = matchString(element);
 
 	if (REGEXPS.specialUnlikelyCandidates.test(match)) {
-		return true;
+		return "strong";
 	}
 
 	for (const name of [...classList(element), stringProperty(element, "id") ?? ""]) {
 		if (REGEXPS.stronglyUnlikely.test(name)) {
-			return true;
+			return "strong";
 		}
 	}
 
 	if (REGEXPS.unlikelyCandidates.test(match) && !REGEXPS.okMaybeItsaCandidate.test(match)) {
-		return true;
+		return "weak";
 	}
 
-	return false;
+	return undefined;
 };
 
 /**
@@ -295,8 +416,11 @@ const isUnlikelyCandidate = (element: Element): boolean => {
  *
  * Callers use this to price the pass before paying for it: measuring the text about to be lost
  * is far cheaper than cloning the document, pruning the copy and re-measuring the result.
+ *
+ * @param spareWeak - Called for each `weak` match; returning `true` keeps the element and
+ * searches inside it instead. Strong matches are never spared.
  */
-export const findUnlikelyElements = (tree: Hast): Element[] => {
+export const findUnlikelyElements = (tree: Hast, spareWeak?: (element: Element) => boolean): Element[] => {
 	const landmarks = findLandmarkChrome(tree);
 	const doomed: Element[] = [];
 
@@ -308,9 +432,20 @@ export const findUnlikelyElements = (tree: Hast): Element[] => {
 			if (!isElement(child)) {
 				continue;
 			}
-			if (landmarks.has(child) || isUnlikelyCandidate(child)) {
+			if (landmarks.has(child)) {
 				doomed.push(child);
 				continue; // its subtree goes with it
+			}
+			// Highlighters name their token spans after the grammar — `comment`, `hljs-comment`,
+			// `token share` — and every one of those words is a furniture pattern. Nothing inside a
+			// code sample is page furniture.
+			if (PREFORMATTED_TAGS.has(child.tagName)) {
+				continue;
+			}
+			const tier = unlikelyTier(child);
+			if (tier === "strong" || (tier === "weak" && !spareWeak?.(child))) {
+				doomed.push(child);
+				continue;
 			}
 			visit(child);
 		}
@@ -538,12 +673,20 @@ export const findCleanupTargets = (tree: Hast, collector: MetricsCollector): Ele
 				continue;
 			}
 
+			// Phrase matching inside code would delete tokens: a highlighted `next` or `close` is a
+			// whole-element match for a UI label. Only the copy buttons some sites nest in the
+			// block are furniture there.
+			if (LITERAL_TEXT_TAGS.has(child.tagName)) {
+				collectButtons(child, doomed);
+				continue;
+			}
+
 			if (isLinkOnlyBlock(child, collector)) {
 				condemnLinkBlock(child, siblings, index, collector, doomed);
 				continue;
 			}
 
-			if (isMidArticleWidget(child)) {
+			if (isMidArticleWidget(child, collector)) {
 				doomed.push(child);
 				continue; // its subtree goes with it
 			}
@@ -617,10 +760,23 @@ const countAnchors = (element: Element): number => {
  */
 const LITERAL_TEXT_TAGS = new Set(["code", "kbd", "samp", "var", "pre"]);
 
-const isMidArticleWidget = (element: Element): boolean => {
-	if (LITERAL_TEXT_TAGS.has(element.tagName)) {
-		return false;
+/** Pre-formatted elements: their content is quoted, never page furniture. */
+const PREFORMATTED_TAGS = new Set(["pre", "code"]);
+
+const collectButtons = (element: Element, into: Element[]): void => {
+	for (const child of element.children) {
+		if (!isElement(child)) {
+			continue;
+		}
+		if (child.tagName === "button") {
+			into.push(child);
+			continue;
+		}
+		collectButtons(child, into);
 	}
+};
+
+const isMidArticleWidget = (element: Element, collector: MetricsCollector): boolean => {
 	if (element.tagName === "form" || element.tagName === "fieldset") {
 		return true;
 	}
@@ -633,8 +789,45 @@ const isMidArticleWidget = (element: Element): boolean => {
 
 	// Class names are unusable on sites that hash them, so fall back to what the element says.
 	// Only whole-element matches count, and only below a length cap, so prose is never touched.
-	return isUiChromeText(elementText(element));
+	// The measured length never exceeds the raw text's, so checking it first skips building the
+	// string for every large container — which otherwise makes this pass quadratic in depth.
+	if (collector.metrics(element).text > MAX_CONSENT_PLACEHOLDER_LENGTH) {
+		return false;
+	}
+	const text = elementText(element);
+	return isUiChromeText(text) || (isConsentPlaceholderText(text) && !hasBlockDescendant(element));
 };
+
+/** Elements that make their parent a container of separate blocks rather than one block. */
+const BLOCK_TAGS = new Set([
+	"p",
+	"div",
+	"section",
+	"article",
+	"figure",
+	"figcaption",
+	"blockquote",
+	"ul",
+	"ol",
+	"table",
+	"pre",
+	"h1",
+	"h2",
+	"h3",
+	"h4",
+	"h5",
+	"h6",
+]);
+
+/**
+ * True when an element holds other blocks.
+ *
+ * The consent rule matches on the text an element *starts* with, so it must only take a single
+ * block: a wrapper that opens with the placeholder may continue with the caption or the
+ * paragraphs it belongs to, and those are visited (and kept) on their own.
+ */
+const hasBlockDescendant = (element: Element): boolean =>
+	element.children.some((child) => isElement(child) && (BLOCK_TAGS.has(child.tagName) || hasBlockDescendant(child)));
 
 /**
  * Final clean-up inside the selected article container.

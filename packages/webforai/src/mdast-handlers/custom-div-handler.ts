@@ -1,12 +1,12 @@
 import { select } from "hast-util-select";
 import { type Handle, defaultHandlers } from "hast-util-to-mdast";
 import { toString as hastToString } from "hast-util-to-string";
-import { toText } from "hast-util-to-text";
 import type { Code } from "mdast";
 import { trimTrailingLines } from "trim-trailing-lines";
 import { detectLanguage } from "../utils/detect-code-lang";
 import { classList, collectElements, isElement } from "../utils/hast-fast";
-import { codeLanguage } from "./custom-code-handler";
+import { preText } from "../utils/pre-text";
+import { codeLanguage, codeMeta } from "./custom-code-handler";
 
 const CODE_BLOCK_REGEX = /highlight-source|language-|codegroup|codeblock|code-block/i;
 
@@ -22,7 +22,7 @@ export const customDivHandler: Handle = (state, node) => {
 	const codeBlock = codeBlocks.length === 1 ? codeBlocks[0] : undefined;
 
 	if (codeBlock) {
-		const codeValue = trimTrailingLines(toText(codeBlock));
+		const codeValue = trimTrailingLines(preText(codeBlock));
 
 		const filenameElement = select(CODE_FILENAME_SELECTORS, node);
 		const fileLang = filenameElement ? hastToString(filenameElement).match(/\.(\w+)$/)?.[1] : null;
@@ -32,7 +32,7 @@ export const customDivHandler: Handle = (state, node) => {
 
 		const lang = fileLang || classLang || detectLanguage(codeValue) || null;
 
-		const result: Code = { type: "code", lang, meta: null, value: codeValue };
+		const result: Code = { type: "code", lang, meta: codeMeta(codeBlock), value: codeValue };
 		state.patch(node, result);
 		return result;
 	}

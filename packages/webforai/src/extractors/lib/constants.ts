@@ -17,7 +17,7 @@ export const REGEXPS = {
 	 * versions of those elements are handled structurally instead.
 	 */
 	unlikelyCandidates:
-		/-ad-|ai2html|banner|breadcrumb|combx|comment(?!ary)|community|cover-wrap|disqus|gdpr|legends|menu|related|remark|replies|rss|shoutbox|sidebar|site-index|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore|avatar|subscribe|newsletter|paywall|consent|cookie|toolbar|masthead|promo|share|sharing|widget|tooltip|dropdown|modal|overlay|backdrop|carousel|announcement|notification|toast|skip-link|screen-reader|visually-hidden|sr-only/i,
+		/-ad-|ai2html|banner|breadcrumb|combx|comment(?!ary)|community|cover-wrap|disqus|gdpr|legends|menu|related|remark|replies|rss|shoutbox|sidebar|site-index|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote|speechify-ignore|avatar|subscribe|newsletter|paywall|consent|cookie|toolbar|masthead|promo|share|sharing|widget|tooltip|dropdown|modal|overlay|backdrop|carousel|announcement|notification|toast|skip-link|screen-reader|(?<!not-)visually-hidden|(?<!not-)sr-only/i,
 	/** Rescues containers whose class merely happens to contain an unlikely substring. */
 	okMaybeItsaCandidate: /and|article|body|column|content|main|shadow|code|post|entry|story|markdown|prose|doc/i,
 	/** Very high-confidence boilerplate, not rescued by the clause above. */
