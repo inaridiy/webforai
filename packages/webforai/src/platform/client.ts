@@ -97,18 +97,37 @@ const parseRetryAfter = (body: unknown, response: FetchResponseLike): number | u
 	return Number.isFinite(header) && header > 0 ? header : undefined;
 };
 
-const toApiError = (response: FetchResponseLike, body: unknown): PlatformApiError => {
+/**
+ * 401/402 are fixed on the dashboard (a new key, a subscription, a higher spend cap), not by
+ * retrying, so the error names the dashboard of the deployment the client talks to.
+ */
+const dashboardHint = (status: number, dashboardUrl: string): string | undefined => {
+	if (status === 401) {
+		return `create or check API keys at ${dashboardUrl}`;
+	}
+	if (status === 402) {
+		return `manage billing, credits and the spend cap at ${dashboardUrl}`;
+	}
+	return undefined;
+};
+
+const toApiError = (response: FetchResponseLike, body: unknown, dashboardUrl: string): PlatformApiError => {
 	const envelope = body as { error?: { code?: unknown; message?: unknown } } | undefined;
 	const code = typeof envelope?.error?.code === "string" ? envelope.error.code : "invalid_response";
-	const message =
+	let message =
 		typeof envelope?.error?.message === "string"
 			? envelope.error.message
 			: `unexpected response (HTTP ${response.status})`;
+	const hint = code === "invalid_response" ? undefined : dashboardHint(response.status, dashboardUrl);
+	if (hint && !message.includes("/dashboard")) {
+		message = `${message} (${hint})`;
+	}
 	return new PlatformApiError(code, message, response.status, parseRetryAfter(body, response));
 };
 
 export const createPlatformClient = (options: PlatformClientOptions = {}): PlatformClient => {
 	const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
+	const dashboardUrl = `${baseUrl}/dashboard`;
 	const fetchImpl = resolveFetch(options.fetch);
 
 	const request = async <T>(
@@ -123,7 +142,7 @@ export const createPlatformClient = (options: PlatformClientOptions = {}): Platf
 			if (!options.apiKey) {
 				throw new PlatformApiError(
 					"missing_api_key",
-					"This endpoint needs an API key: pass `apiKey` to createPlatformClient (create one on the platform dashboard).",
+					`This endpoint needs an API key: pass \`apiKey\` to createPlatformClient (create one at ${dashboardUrl}; 1,000 free credits/month).`,
 					0,
 				);
 			}
@@ -139,7 +158,7 @@ export const createPlatformClient = (options: PlatformClientOptions = {}): Platf
 
 		const body: unknown = await response.json().catch(() => undefined);
 		if (!response.ok) {
-			throw toApiError(response, body);
+			throw toApiError(response, body, dashboardUrl);
 		}
 		if (body === undefined) {
 			throw new PlatformApiError("invalid_response", "response body is not JSON", response.status);

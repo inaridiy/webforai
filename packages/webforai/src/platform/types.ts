@@ -60,6 +60,14 @@ export interface BatchOptions extends CommonRequestOptions {
 	urls: string[];
 }
 
+/**
+ * How a crawl uses the site's sitemaps (robots.txt `Sitemap:` lines, else `/sitemap.xml`):
+ * `skip` (default) ignores them; `include` adds their same-origin URLs at depth 1 next to the
+ * links found on pages; `only` crawls the seed plus sitemap URLs and follows no page links.
+ */
+export const CRAWL_SITEMAP_MODES = ["skip", "include", "only"] as const;
+export type CrawlSitemapMode = (typeof CRAWL_SITEMAP_MODES)[number];
+
 export interface CrawlOptions extends CommonRequestOptions {
 	url: string;
 	/** 0–5, default 2. */
@@ -71,6 +79,8 @@ export interface CrawlOptions extends CommonRequestOptions {
 	excludePaths?: string[];
 	/** The platform currently only supports same-origin crawls; sending `false` is a 400. */
 	sameOrigin?: true;
+	/** Seed the crawl from the site's sitemaps; default `skip`. See {@link CRAWL_SITEMAP_MODES}. */
+	sitemap?: CrawlSitemapMode;
 }
 
 export interface ScrapeResult {

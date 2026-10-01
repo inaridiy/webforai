@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { renderSkillMarkdown } from "./content";
 import { buildSkillsAddArgs } from "./index";
 
-/** Every public flag of the main command; the skill must document each one. */
+/** Every public flag of the main command and the crawl/batch subcommands; the skill documents each. */
 const PUBLIC_FLAGS = [
 	"--output",
 	"--loader",
@@ -20,6 +20,18 @@ const PUBLIC_FLAGS = [
 	"--platform-url",
 	"--interactive",
 	"--debug",
+	// crawl / batch subcommands
+	"crawl",
+	"batch",
+	"--max-depth",
+	"--limit",
+	"--include",
+	"--exclude",
+	"--no-respect-robots",
+	"--llms-txt",
+	"--sitemap",
+	"--file",
+	"--timeout",
 ];
 
 describe("renderSkillMarkdown", () => {

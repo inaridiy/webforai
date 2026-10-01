@@ -3,9 +3,11 @@
  * `{ error: { code, message } }` envelope.
  *
  * `code` values worth branching on: `invalid_request` (400), `invalid_api_key` (401),
- * `payment_required` (402), `job_not_found` (404), `rate_limited` (429, `retryAfter` set on
- * the demo endpoint), `engine_unavailable` (503). The client never retries on its own; a
- * caller that wants backoff should honour `retryAfter` when present.
+ * `payment_required` / `spend_cap_reached` (402), `robots_disallowed` (403), `job_not_found`
+ * (404), `rate_limited` / `too_many_jobs` (429, `retryAfter` set when the server sends it),
+ * `engine_unavailable` / `result_unavailable` / `scheduling_unknown` (503). 401 and 402
+ * messages end with a hint naming the deployment's dashboard. The client never retries on its
+ * own; a caller that wants backoff should honour `retryAfter` when present.
  *
  * Network-level failures (DNS, refused connections) are NOT wrapped — they propagate as the
  * runtime's own `fetch` errors. `code` is `invalid_response` when the server answered with

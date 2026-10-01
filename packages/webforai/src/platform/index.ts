@@ -9,6 +9,7 @@ export {
 export { PlatformApiError } from "./error";
 export type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch";
 export {
+	CRAWL_SITEMAP_MODES,
 	ENGINES,
 	REGIONS,
 	REQUESTED_ENGINES,
@@ -16,6 +17,7 @@ export {
 	type BatchOptions,
 	type ConvertOptions,
 	type CrawlOptions,
+	type CrawlSitemapMode,
 	type DemoResult,
 	type DemoScrapeOptions,
 	type Engine,

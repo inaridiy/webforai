@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { REGIONS, REQUESTED_ENGINES } from "../../../platform";
 import { API_KEY_ENV, EXTRACTORS, LOADERS, MODES, PLATFORM_URL_ENV } from "../../constants";
 import type { ExtractorName, Loader, Mode } from "../../constants";
-import { isUrl } from "../../utils";
+import { isUrl, platformDashboardUrl } from "../../utils";
 
 /** A caller mistake (bad flag value, missing input) — reported without a stack, exit code 2. */
 export class UsageError extends Error {}
@@ -84,11 +84,17 @@ const applyPlatformFields = (resolved: ResolvedRun, flags: CliFlags, env: Record
 	resolved.apiKey = flags.apiKey ?? env[API_KEY_ENV];
 	resolved.platformUrl = flags.platformUrl ?? env[PLATFORM_URL_ENV];
 	if (!resolved.apiKey) {
-		throw new UsageError(
-			`the platform loader needs an API key: pass --api-key or set ${API_KEY_ENV} (create one at https://platform.webforai.dev/dashboard)`,
-		);
+		throw missingApiKeyError(resolved.platformUrl);
 	}
 };
+
+/** Shared by every platform-backed command: where to get a key, and that it starts free. */
+export const missingApiKeyError = (platformUrl?: string): UsageError =>
+	new UsageError(
+		`the platform loader needs an API key: pass --api-key or set ${API_KEY_ENV} (create one at ${platformDashboardUrl(
+			platformUrl,
+		)}; 1,000 free credits/month, no card)`,
+	);
 
 /**
  * Turns raw commander flags into a validated run description. Pure aside from one existence

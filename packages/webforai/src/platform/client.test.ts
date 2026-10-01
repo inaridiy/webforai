@@ -117,6 +117,34 @@ describe("createPlatformClient", () => {
 		expect(error).toMatchObject({ code: "rate_limited", status: 429, retryAfter: 600, message: "slow down" });
 	});
 
+	it("names the configured deployment's dashboard on 401/402, once", async () => {
+		const { impl } = stubFetch((url) =>
+			url.endsWith("/v1/scrape")
+				? json({ error: { code: "payment_required", message: "Out of credits." } }, { status: 402 })
+				: json({ error: { code: "invalid_api_key", message: "See https://x.example/dashboard." } }, { status: 401 }),
+		);
+		const client = createPlatformClient({ apiKey: "k", baseUrl: "https://self.example/", fetch: impl });
+
+		await expect(client.scrape({ url: "https://example.com" })).rejects.toMatchObject({
+			code: "payment_required",
+			status: 402,
+			message: "Out of credits. (manage billing, credits and the spend cap at https://self.example/dashboard)",
+		});
+		// A server message that already links a dashboard is left alone.
+		await expect(client.getJob("job_1")).rejects.toMatchObject({ message: "See https://x.example/dashboard." });
+	});
+
+	it("names the dashboard when no API key was configured", async () => {
+		const { impl, calls } = stubFetch(() => json(SCRAPE_OK));
+		const client = createPlatformClient({ fetch: impl });
+
+		await expect(client.scrape({ url: "https://example.com" })).rejects.toMatchObject({
+			code: "missing_api_key",
+			message: expect.stringContaining("https://platform.webforai.dev/dashboard"),
+		});
+		expect(calls).toHaveLength(0);
+	});
+
 	it("turns a non-JSON error page into invalid_response (wrong baseUrl symptom)", async () => {
 		const { impl } = stubFetch(() => new Response("<!doctype html>", { status: 404 }));
 		const client = createPlatformClient({ apiKey: "k", fetch: impl });

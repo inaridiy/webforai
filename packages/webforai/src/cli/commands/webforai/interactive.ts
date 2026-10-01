@@ -16,8 +16,8 @@ const ENGINE_HINTS: Record<(typeof REQUESTED_ENGINES)[number], string> = {
 	auto: "Cheapest first, renders when the page needs JavaScript · 1–2 credits",
 	fetch: "Plain fetch · 1 credit",
 	browser: "Browser rendering, screenshots · 2 credits",
-	"proxy-fetch": "Rotating-proxy egress · 2 credits",
-	"proxy-browser": "Browser rendering behind the proxy · 3 credits",
+	"proxy-fetch": "Rotating-proxy egress · 2 credits · paid plan",
+	"proxy-browser": "Browser rendering behind the proxy · 3 credits · paid plan",
 };
 
 const promptPlatformOptions = async (flags: CliFlags, env: Record<string, string | undefined>) => {
@@ -33,7 +33,7 @@ const promptPlatformOptions = async (flags: CliFlags, env: Record<string, string
 	const region =
 		flags.region ??
 		(await select({
-			message: "Select egress region (proxy engines only):",
+			message: "Select egress region (proxy engines only; jp needs a paid plan):",
 			initialValue: "auto",
 			options: REGIONS.map((value) => ({ value: value as string, label: value })),
 		}));

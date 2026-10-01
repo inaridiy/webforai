@@ -1,23 +1,34 @@
 {
 	"name": "webforai",
 	"version": "3.0.0",
-	"description": "A library that provides a web interface for AI",
+	"description": "Convert web pages and local HTML to clean, LLM-ready Markdown: library, CLI (npx webforai) and hosted-API client.",
 	"author": "inaridiy",
 	"license": "Apache-2.0",
 	"keywords": [
-		"web",
+		"html-to-markdown",
+		"markdown",
+		"llm",
 		"ai",
+		"scraper",
+		"crawler",
+		"readability",
+		"web-scraping",
+		"cli",
+		"rag",
 		"html",
 		"html2md",
-		"markdown",
 		"mdast",
 		"hast"
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/inaridiy/webforai.git"
+		"url": "https://github.com/inaridiy/webforai.git",
+		"directory": "packages/webforai"
 	},
 	"homepage": "https://webforai.dev/",
+	"bugs": {
+		"url": "https://github.com/inaridiy/webforai/issues"
+	},
 	"scripts": {
 		"copy:package.cjs.json": "pnpm ncp ./package.cjs.json ./dist/cjs/package.json && pnpm ncp ./package.cjs.json ./dist/types/package.json ",
 		"clean": "rimraf dist",
