@@ -9,12 +9,20 @@ type Snippet = { id: ClientId; tab: string; label: string; code: string; docs: {
 
 const CLIENT_ORDER: ClientId[] = ["curl", "typescript", "cli"];
 
+export const EXAMPLE_URL = "https://example.com/article";
+
+/** A shell word: bare when it is plainly safe, otherwise single-quoted. */
+export const shellArg = (value: string): string =>
+	/^[\w\-.:/~%+=@,]+$/u.test(value) ? value : `'${value.replaceAll("'", `'\\''`)}'`;
+
 /**
  * The three official ways to call the API. The TypeScript client and the CLI default to the
  * hosted deployment, so a self-hosted origin is spelled out only when it differs.
  */
-const snippets = (origin: string): Record<ClientId, Snippet> => {
+const snippets = (origin: string, url: string): Record<ClientId, Snippet> => {
 	const selfHosted = origin !== CANONICAL_ORIGIN;
+	// The JSON body sits inside single quotes in the shell.
+	const curlBody = `{ "url": ${JSON.stringify(url)} }`.replaceAll("'", `'\\''`);
 	return {
 		curl: {
 			id: "curl",
@@ -23,7 +31,7 @@ const snippets = (origin: string): Record<ClientId, Snippet> => {
 			code: `curl -X POST ${origin}/v1/scrape \\
   -H "Authorization: Bearer $WEBFORAI_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{ "url": "https://example.com/article" }'`,
+  -d '${curlBody}'`,
 			docs: { text: "API reference", href: links.apiReference },
 		},
 		typescript: {
@@ -35,7 +43,7 @@ const snippets = (origin: string): Record<ClientId, Snippet> => {
 const platform = createPlatformClient({
   apiKey: process.env.WEBFORAI_API_KEY,${selfHosted ? `\n  baseUrl: "${origin}",` : ""}
 });
-const { markdown } = await platform.scrape({ url: "https://example.com/article" });`,
+const { markdown } = await platform.scrape({ url: ${JSON.stringify(url)} });`,
 			docs: { text: "TypeScript client docs", href: links.clientDocs },
 		},
 		cli: {
@@ -43,15 +51,24 @@ const { markdown } = await platform.scrape({ url: "https://example.com/article" 
 			tab: "CLI",
 			label: "shell",
 			code: `export WEBFORAI_API_KEY=wfa_...${selfHosted ? `\nexport WEBFORAI_PLATFORM_URL=${origin}` : ""}
-npx webforai@latest https://example.com/article --engine auto`,
+npx webforai@latest ${shellArg(url)} --engine auto`,
 			docs: { text: "CLI docs", href: links.cliDocs },
 		},
 	};
 };
 
-export const ClientSnippets = ({ origin, className }: { origin: string; className?: string }) => {
+export const ClientSnippets = ({
+	origin,
+	url = EXAMPLE_URL,
+	className,
+}: {
+	origin: string;
+	/** The page the snippets convert; the landing demo passes the URL it just converted. */
+	url?: string;
+	className?: string;
+}) => {
 	const [active, setActive] = useState<ClientId>("curl");
-	const all = snippets(origin);
+	const all = snippets(origin, url);
 	const current = all[active];
 
 	return (

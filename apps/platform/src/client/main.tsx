@@ -18,9 +18,10 @@ const app = (
 	</StrictMode>
 );
 
-// The production build prerenders the landing page into #root (scripts/prerender.ts), and an
-// inline script in index.html clears it for every other path — so existing markup here is
-// always the landing page on "/", which `App` also renders first. Dev serves an empty root.
+// The production build prerenders "/" and the legal pages into #root (scripts/prerender.ts),
+// and an inline script clears that markup on any path other than the one it was rendered for
+// (#root's data-path) — so existing markup here is always the current route, which `App` also
+// renders first. Dev serves an empty root.
 if (container.firstElementChild === null) {
 	createRoot(container).render(app);
 } else {

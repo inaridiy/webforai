@@ -29,7 +29,8 @@ const Hero = () => (
 				<Link href="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">
 					Create an account
 				</Link>{" "}
-				for an API key with {formatNumber(FREE_MONTHLY_CREDITS)} free credits a month.
+				for an API key with {formatNumber(FREE_MONTHLY_CREDITS)} free credits a month. Japan egress (
+				<code className="font-mono text-[0.8125rem]">region: "jp"</code>) is on paid plans.
 			</p>
 		</div>
 	</section>
@@ -165,7 +166,10 @@ const Engines = () => (
 				</p>
 				<p className="mt-4 text-muted-foreground text-sm leading-relaxed">
 					Set <code className="font-mono text-foreground">"region": "jp"</code> to leave from Japanese IP addresses
-					through the proxy pair instead.
+					through the proxy pair instead. The proxy engines need an active subscription; the free credits cover{" "}
+					<code className="font-mono text-foreground">fetch</code>,{" "}
+					<code className="font-mono text-foreground">browser</code> and{" "}
+					<code className="font-mono text-foreground">auto</code>.
 				</p>
 			</div>
 			<div className="grid gap-2 md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-4">

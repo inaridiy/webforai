@@ -79,6 +79,12 @@ const OfflineBanner = () =>
  */
 export const SiteShell = ({ session, onSignOut, children }: SiteShellProps) => (
 	<div className="flex min-h-dvh flex-col pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
+		<a
+			href="#main"
+			className="sr-only z-30 rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+		>
+			Skip to content
+		</a>
 		<header className="sticky top-0 z-20 border-border border-b bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur">
 			<div className="mx-auto flex min-h-14 w-full max-w-6xl flex-wrap items-center gap-3 px-5 py-2 sm:gap-6">
 				<Link href="/" className="flex items-center gap-2.5 text-foreground" aria-label="webforai platform home">
@@ -105,7 +111,9 @@ export const SiteShell = ({ session, onSignOut, children }: SiteShellProps) => (
 			</div>
 			<OfflineBanner />
 		</header>
-		<main className="flex-1">{children}</main>
+		<main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
+			{children}
+		</main>
 		<footer className="border-border border-t pb-[env(safe-area-inset-bottom)]">
 			<div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-8 text-muted-foreground text-sm sm:flex-row sm:items-start sm:justify-between">
 				<p className="max-w-sm">

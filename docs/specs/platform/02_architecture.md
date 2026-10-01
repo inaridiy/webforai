@@ -1,5 +1,23 @@
 # Platform Architecture
 
+Revision note (2026-10-01, security): Hardening layer. Worker responses get baseline security
+headers (HSTS, nosniff, `X-Frame-Options: DENY`, referrer policy) and `/api/*`, `/v1/*` a 256 KiB
+body cap (`src/routes/security.ts`); state-changing `/api/dashboard/*` requests must carry
+`Origin` = `BASE_URL` origin. The SPA's headers (CSP with a pinned sha256 for the prerender's
+inline script, Turnstile allowances, `worker-src`/`manifest-src 'self'`, HSTS,
+`frame-ancestors 'none'`, Permissions-Policy, COOP) live in `public/_headers`, which Workers
+Assets applies; `src/routes/spa-headers.test.ts` fails when the inline script and the hash
+drift. Redirects are walked manually with the SSRF guard on every hop (`src/core/redirects.ts`,
+shared with the container); both browser engines route every request through
+`src/engines/page-guard.ts`. Rehosting is raster-only and `/artifacts/*` is served under a
+sandboxing CSP (see 03_api.md).
+Revision note (2026-10-01, limits): New Workers Rate Limiting bindings `RATE_LIMIT_FREE`
+(60/60 s), `RATE_LIMIT_PAID` (600/60 s) keyed by user id for `/v1`, and `DEMO_RATE_LIMIT`
+(3/60 s) keyed by client IPv4 / IPv6 /64 for the demo; Better Auth's per-key D1 limiter is
+disabled (key verification still writes `lastRequest`). Ops alerts (`src/ops/alert.ts`) email
+`OPS_ALERT_EMAIL` through the `EMAIL` binding when proxy bandwidth crosses 80% / 95% (once per
+threshold per period, KV marker `ops:alert:*`) or a cron pass throws (at most hourly).
+Production sign-in with `TURNSTILE_SITE_KEY` but no secret fails closed (500).
 Revision note (2026-09-30, PWA): The SPA is installable (`public/manifest.webmanifest`,
 `public/sw.js`). The service worker only caches the public app shell and static assets. It
 never intercepts the Worker's routes (`/v1`, `/api`, `/artifacts`, `/health`), so no account
@@ -54,22 +72,28 @@ Revision note (2026-08-10): Initial version.
   *inside* the step and return only small summaries (url, status, credits).
 - **Browser Run** (formerly Browser Rendering) binding for the `browser` engine, via
   `@cloudflare/playwright`.
+- **Security headers**: Worker routes set theirs in a Hono middleware
+  (`src/routes/security.ts`); static assets get theirs from `public/_headers` (Workers Assets
+  applies it without invoking the Worker, SPA fallback included).
 
 ## Bindings
 
 | binding | type | purpose |
 |---|---|---|
 | `DB` | D1 | users/sessions/api keys (Better Auth), jobs, page commits, usage ledger |
-| `JOBS_KV` | KV | job results (TTL), rate/quota counters |
+| `JOBS_KV` | KV | job results (TTL), demo quota counters, proxy bandwidth snapshot, ops-alert dedupe markers |
 | `ARTIFACTS` | R2 | screenshots, rehosted images, oversized results (lifecycle TTL) |
 | `BROWSER` | Browser Rendering | `browser` engine |
 | `CRAWL_WORKFLOW` | Workflows | async jobs |
 | `NODEJS_FN` | Container/DO | create-nodejs-fn runtime |
-| `EMAIL` | Email Sending (`send_email`) | sign-in codes, only as `login@webforai.dev` |
+| `EMAIL` | Email Sending (`send_email`) | sign-in codes and ops alerts (`OPS_ALERT_EMAIL`), only as `login@webforai.dev` |
+| `RATE_LIMIT_FREE` / `RATE_LIMIT_PAID` | Rate Limiting | `/v1` requests per account per minute: 60 / 600 by tier |
+| `DEMO_RATE_LIMIT` | Rate Limiting | demo burst cap, 3 per minute per IPv4 / IPv6 /64 |
 
 Secrets: `BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
 `PROXY_URL`, `PROXY_USERNAME`, `PROXY_PASSWORD`, optional `GITHUB_CLIENT_ID/SECRET`,
-optional `PROXY_ACCOUNT_API_URL/KEY`; `AUTH_PASSWORD_LOGIN` only in local/e2e dev vars.
+optional `PROXY_ACCOUNT_API_URL/KEY`, optional `OPS_ALERT_EMAIL` (var or secret);
+`AUTH_PASSWORD_LOGIN` only in local/e2e dev vars.
 Typed access via a zod-validated `env.ts` (fail-closed: engines whose secrets are missing are
 reported `unavailable`, not silently downgraded).
 

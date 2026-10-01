@@ -201,39 +201,40 @@
 	font-weight: 600;
 }
 
-.legal-doc dl {
-	display: grid;
-	grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+.legal-doc table {
+	width: 100%;
+	border-collapse: collapse;
 	border-top: 1px solid var(--border);
 	margin: 1.5rem 0 0;
 }
 
-/* Entries may wrap each dt/dd pair in a div; let the pair join the grid directly. */
-.legal-doc dl > div {
-	display: contents;
-}
-
-.legal-doc dt,
-.legal-doc dd {
+.legal-doc th,
+.legal-doc td {
 	border-bottom: 1px solid var(--border);
 	padding: 0.875rem 0.75rem 0.875rem 0;
-	margin: 0;
+	text-align: left;
+	vertical-align: top;
 }
 
-.legal-doc dt {
+.legal-doc th {
+	width: 12rem;
 	font-weight: 600;
 }
 
-.legal-doc dd {
+.legal-doc td {
 	color: var(--muted-foreground);
 }
 
+/* Phones: each row stacks, label above value. */
 @media (max-width: 640px) {
-	.legal-doc dl {
-		grid-template-columns: minmax(0, 1fr);
+	.legal-doc tr,
+	.legal-doc th,
+	.legal-doc td {
+		display: block;
+		width: auto;
 	}
 
-	.legal-doc dt {
+	.legal-doc th {
 		border-bottom: 0;
 		padding-bottom: 0;
 	}

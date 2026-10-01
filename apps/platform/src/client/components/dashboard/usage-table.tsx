@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { UsageEvent } from "../../lib/api";
 import { formatDateTime, formatNumber } from "../../lib/format";
+import { Link } from "../../lib/router";
 import { type UsageGroup, groupUsage } from "../../lib/usage-groups";
 import { Button } from "../../ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "../../ui/card";
@@ -49,7 +50,16 @@ export const UsageTable = ({ events, className }: { events: UsageEvent[]; classN
 					</THead>
 					<TBody>
 						{groups.length === 0 ? (
-							<TableEmpty colSpan={3}>No usage yet.</TableEmpty>
+							<TableEmpty colSpan={3}>
+								<p className="font-medium text-foreground">No usage yet.</p>
+								<p className="mx-auto mt-1.5 max-w-sm text-balance text-xs leading-relaxed">
+									Convert a page in the{" "}
+									<Link href="/playground" className="text-accent hover:underline">
+										Playground
+									</Link>
+									, or send a request with your API key (see "Use your key" above). Each successful one appears here.
+								</p>
+							</TableEmpty>
 						) : (
 							visible.map((group) => (
 								<TR key={group.id}>

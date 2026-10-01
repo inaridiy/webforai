@@ -15,9 +15,19 @@ const entries: { label: string; value: ReactNode }[] = [
 			<>
 				クレジット単位の従量課金です。毎月 1,000
 				クレジットまでは無料で、これを超える利用分は、利用量に応じて段階的に単価が変わる料金（米ドル建て）で計算されます。各価格帯の単価は
-				<a href="/#pricing">料金セクション</a>に記載のとおりです。
+				<a href="/#pricing">料金セクション</a>に記載のとおりです。表示価格はお支払いいただく総額（税込）です。
 			</>
 		),
+	},
+	{
+		label: "消費税・インボイス",
+		value:
+			"当方は消費税の免税事業者です。当方は適格請求書発行事業者ではないため、適格請求書（インボイス）は発行できません。Stripe から送付される請求書・領収書も適格請求書ではありません。",
+	},
+	{
+		label: "有料利用の内容と利用上限",
+		value:
+			'プロキシエンジン（proxy-fetch、proxy-browser、および region: "jp" の指定など、これらで実行されるリクエスト）は有料利用（サブスクリプション）でのみご利用いただけます。有料利用には月間の利用上限額があり、初期値は 50 米ドル、ダッシュボードで 1〜5,000 米ドルの範囲で変更できます。上限に達すると、その請求月の間（または上限額を引き上げるまで）課金対象のリクエストは受け付けられません。',
 	},
 	{
 		label: "商品代金以外の必要料金",
@@ -45,15 +55,18 @@ const entries: { label: string; value: ReactNode }[] = [
 export const CommerceContent = ({ className }: { className?: string }) => (
 	<article className={className}>
 		<h1>特定商取引法に基づく表記</h1>
-		<p>Effective: 2026-09-24</p>
+		<p>Effective: 2026-10-01</p>
 		<p>クロール・Markdown 変換 API「webforai platform」に関する特定商取引法に基づく表記です。</p>
-		<dl>
-			{entries.map((entry) => (
-				<div key={entry.label}>
-					<dt>{entry.label}</dt>
-					<dd>{entry.value}</dd>
-				</div>
-			))}
-		</dl>
+		{/* A table, not a <dl>: webforai's extractor (and so the prerender gate) drops <dl> content. */}
+		<table>
+			<tbody>
+				{entries.map((entry) => (
+					<tr key={entry.label}>
+						<th scope="row">{entry.label}</th>
+						<td>{entry.value}</td>
+					</tr>
+				))}
+			</tbody>
+		</table>
 	</article>
 );

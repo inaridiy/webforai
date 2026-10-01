@@ -124,7 +124,8 @@ const Tiers = () => {
 				<p className="mt-2 text-muted-foreground text-xs leading-relaxed">
 					Without a subscription the API stops at the free allowance with{" "}
 					<code className="font-mono text-accent">402 payment_required</code> — no surprise bills. No card required to
-					start.
+					start. A subscription comes with a monthly spend cap — $50 by default, adjustable on the dashboard — and
+					unlocks the proxy engines.
 				</p>
 			</CardContent>
 		</Card>
@@ -169,6 +170,7 @@ const Estimator = () => {
 								<button
 									key={preset}
 									type="button"
+									aria-pressed={pages === preset}
 									onClick={() => setPages(preset)}
 									className={cn(
 										"rounded-full border px-2.5 py-0.5 font-mono text-xs transition-colors",
@@ -200,7 +202,7 @@ const Estimator = () => {
 					</div>
 					<label className="flex items-center gap-2 text-sm">
 						<input type="checkbox" checked={region} onChange={(event) => setRegion(event.target.checked)} />
-						Send from Japanese IPs (proxy engines)
+						Send from Japanese IPs (proxy engines, paid plans)
 					</label>
 				</div>
 				<div className="flex flex-col justify-center rounded-xl bg-muted/60 p-5">

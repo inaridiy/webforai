@@ -2,6 +2,7 @@ import { fetchJobs } from "../../lib/api";
 import type { JobStatus } from "../../lib/api";
 import { jobListSchema } from "../../lib/api-schemas";
 import { formatDateTime, formatNumber } from "../../lib/format";
+import { links } from "../../lib/links";
 import { cacheKey } from "../../lib/local-cache";
 import { useAsyncResult } from "../../lib/use-async";
 import { Alert } from "../../ui/alert";
@@ -75,7 +76,17 @@ export const JobsTable = ({ className, cacheScope }: { className?: string; cache
 						</THead>
 						<TBody>
 							{jobs.length === 0 ? (
-								<TableEmpty colSpan={5}>No batch or crawl jobs yet.</TableEmpty>
+								<TableEmpty colSpan={5}>
+									<p className="font-medium text-foreground">No batch or crawl jobs yet.</p>
+									<p className="mx-auto mt-1.5 max-w-md text-balance text-xs leading-relaxed">
+										Convert up to 100 URLs with <code className="font-mono text-foreground">POST /v1/batch</code>, or a
+										whole site with <code className="font-mono text-foreground">POST /v1/crawl</code>. Jobs run in the
+										background and show up here.{" "}
+										<a href={links.apiReference} className="text-accent hover:underline">
+											See the API reference
+										</a>
+									</p>
+								</TableEmpty>
 							) : (
 								jobs.map((job) => (
 									<TR key={job.id}>

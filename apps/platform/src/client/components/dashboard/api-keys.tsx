@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { Result } from "../../lib/api";
 import type { ApiKeySummary } from "../../lib/auth-client";
 import { authClient, authErrorMessage } from "../../lib/auth-client";
-import { copyToClipboard, formatDateTime, formatNumber } from "../../lib/format";
+import { copyToClipboard, formatDateTime } from "../../lib/format";
 import type { AsyncState } from "../../lib/use-async";
 import { Alert } from "../../ui/alert";
 import { Badge } from "../../ui/badge";
@@ -15,7 +15,7 @@ import { LoadingRow } from "../../ui/spinner";
 import { TBody, TD, TH, THead, TR, Table } from "../../ui/table";
 
 /** The key fields the table shows — also what the dashboard caches locally (no secrets). */
-export type KeyListItem = Pick<ApiKeySummary, "id" | "name" | "start" | "createdAt" | "requestCount" | "enabled">;
+export type KeyListItem = Pick<ApiKeySummary, "id" | "name" | "start" | "createdAt" | "lastRequest" | "enabled">;
 
 export const keyListSchema: z.ZodType<KeyListItem[]> = z.array(
 	z.object({
@@ -24,7 +24,8 @@ export const keyListSchema: z.ZodType<KeyListItem[]> = z.array(
 		start: z.string().nullable(),
 		// JSON turns the Date into a string; the cached copy is revived here.
 		createdAt: z.coerce.date(),
-		requestCount: z.number(),
+		// When the key last authenticated a request; `null` until its first use.
+		lastRequest: z.coerce.date().nullable(),
 		enabled: z.boolean(),
 	}),
 );
@@ -42,12 +43,12 @@ export const listKeys = async (): Promise<Result<KeyListItem[]>> => {
 		const keys = response.data?.apiKeys ?? [];
 		return {
 			ok: true,
-			value: keys.map(({ id, name, start, createdAt, requestCount, enabled }) => ({
+			value: keys.map(({ id, name, start, createdAt, lastRequest, enabled }) => ({
 				id,
 				name,
 				start,
 				createdAt,
-				requestCount,
+				lastRequest: lastRequest ?? null,
 				enabled,
 			})),
 		};
@@ -125,8 +126,8 @@ const KeyRow = ({ apiKey, onRevoked }: { apiKey: KeyListItem; onRevoked: () => v
 			</TD>
 			<TD className="font-mono text-muted-foreground text-xs">{apiKey.start === null ? "—" : `${apiKey.start}...`}</TD>
 			<TD className="text-muted-foreground text-xs">{formatDateTime(apiKey.createdAt)}</TD>
-			<TD className="text-right font-mono text-muted-foreground text-xs tabular">
-				{formatNumber(apiKey.requestCount)}
+			<TD className="text-muted-foreground text-xs">
+				{apiKey.lastRequest === null ? "Never" : formatDateTime(apiKey.lastRequest)}
 			</TD>
 			<TD>{apiKey.enabled ? <Badge tone="success">active</Badge> : <Badge tone="neutral">disabled</Badge>}</TD>
 			<TD className="text-right">
@@ -292,7 +293,7 @@ export const ApiKeysSection = ({
 								<TH>Name</TH>
 								<TH>Key</TH>
 								<TH>Created</TH>
-								<TH className="text-right">Requests</TH>
+								<TH>Last used</TH>
 								<TH>Status</TH>
 								<TH className="text-right">
 									<span className="sr-only">Actions</span>

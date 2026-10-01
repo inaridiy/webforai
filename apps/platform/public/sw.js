@@ -3,7 +3,10 @@
  *
  * - Page navigations: network first (a deploy is live on the next open), falling back to the
  *   cached app shell when offline or when the network stalls. The SPA fallback serves the same
- *   index.html for every route, so one cached copy covers all of them.
+ *   index.html for every route, so one cached copy covers all of them (including /share, the
+ *   PWA share target, which the SPA turns into a redirect). The legal pages are prerendered
+ *   into their own HTML files (scripts/prerender.ts); those responses are served but never
+ *   stored as the shell — offline, the shell renders them client-side like any other route.
  * - /assets/*: Vite's content-hashed bundles — cache first, bounded.
  * - Other same-origin files (icons, manifest, og image): stale-while-revalidate.
  * - The Worker's own routes (/v1, /api — incl. auth and billing redirects —, /artifacts,
@@ -14,7 +17,7 @@
  * Bump VERSION only when this file's caching logic changes; activation drops older caches.
  * Cache names start with "wfa-" — `clearOfflineData` in src/client/lib/pwa.ts relies on it.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL_CACHE = `wfa-shell-${VERSION}`;
 const ASSET_CACHE = `wfa-assets-${VERSION}`;
 const STATIC_CACHE = `wfa-static-${VERSION}`;
@@ -26,6 +29,8 @@ const MAX_ASSETS = 80;
 const NAVIGATION_TIMEOUT_MS = 4000;
 
 const WORKER_ROUTE = /^\/(?:v1|api|artifacts)(?:\/|$)|^\/health$/;
+/** Paths with their own prerendered HTML file; keep in sync with PAGES in scripts/prerender.ts. */
+const OWN_DOCUMENT = /^\/(?:terms|privacy|commerce)(?:\.html)?\/?$/;
 
 self.addEventListener("install", (event) => {
 	event.waitUntil(
@@ -62,7 +67,8 @@ const trim = async (cacheName, max) => {
 const handleNavigation = (event) => {
 	const network = fetch(event.request).then(async (response) => {
 		const type = response.headers.get("content-type") ?? "";
-		if (cacheable(response) && type.includes("text/html")) {
+		const own = OWN_DOCUMENT.test(new URL(event.request.url).pathname);
+		if (cacheable(response) && type.includes("text/html") && !own) {
 			const cache = await caches.open(SHELL_CACHE);
 			await cache.put(SHELL_URL, response.clone());
 		}

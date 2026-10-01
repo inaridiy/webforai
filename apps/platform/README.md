@@ -37,10 +37,19 @@ curl https://<your-host>/v1/jobs/<jobId>/results  # paged results
 Engines: `auto` (default — cheapest first, escalates to browser rendering on
 client-rendered shells, bills the engine that ran, 1–2 credits), `fetch` (Workers fetch,
 1 credit), `browser` (Browser Run rendering, 2, screenshots), `proxy-fetch` (rotating proxy
-via container, 2), `proxy-browser` (Playwright behind the proxy in container, 10,
+via container, 2), `proxy-browser` (Playwright behind the proxy in container, 3,
 screenshots). Fetch-tier engines follow `<meta http-equiv="refresh">` redirect stubs like
 HTTP redirects (≤ 3 hops, SSRF-guarded, one operation). Responses carry a `warning` when a
-fetch-tier result looks like an unrendered shell. `rehostImages: true` re-uploads the page's images to R2 behind expiring signed URLs.
+fetch-tier result looks like an unrendered shell. `rehostImages: true` re-uploads the page's raster images (png, jpeg,
+gif, webp, avif, bmp, ico, tiff — never SVG) to R2 behind expiring signed URLs; `/artifacts/*` serves them under a
+sandboxing CSP with `nosniff`, and downloads anything else as an attachment.
+Every engine checks each HTTP redirect hop against the SSRF guard before requesting it (≤ 10 hops), and the browser
+engines abort requests to private addresses. Limits: URLs ≤ 2,048 characters, `/v1` and `/api` request bodies
+≤ 256 KiB (`413 payload_too_large`), crawl `includePaths`/`excludePaths` ≤ 20 regexes of ≤ 200 characters with
+backtracking-prone shapes such as `(a+)+` refused. State-changing `/api/dashboard/*` calls must send an `Origin` equal
+to `BASE_URL`'s origin (`403 forbidden_origin`). The SPA's security headers (CSP, HSTS, frame denial) are in
+`public/_headers`; if you change the inline script in `scripts/prerender.ts`, update its sha256 there
+(`src/routes/spa-headers.test.ts` fails until you do).
 `"region": "jp"` pins proxy egress to Japanese IPs (`auto` by
 default; pins `engine: "auto"` to the proxy tier, ignored by the two non-proxy engines).
 `"respectRobotsTxt"` (default `false` for scrape/batch, `true` for crawl) honors the target site's robots.txt
@@ -53,13 +62,41 @@ Full contract: `docs/specs/platform/03_api.md`.
 cut near 40,000 chars at a paragraph boundary with an in-markdown notice) behind both the
 docs-site demo and the platform landing's hero (raw Markdown + rendered preview side by side; the response names the
 engine `auto` resolved to, which both demos display; identical URL + region requests are
-served from a 10-minute cache without counting), limited to 5 requests /
-10 min per IP and 500 / day globally:
+served from a 10-minute cache without counting), limited per client (IPv4 address or IPv6
+/64) to 3 requests / minute (`DEMO_RATE_LIMIT` binding) and 5 / 10 min (KV window), and to
+500 / day globally (KV counter; the KV counters are approximate under concurrency):
 
 ```bash
 curl -X POST https://<your-host>/v1/demo/scrape \
-  -H 'content-type: application/json' -d '{ "url": "https://example.com", "region": "jp" }'
+  -H 'content-type: application/json' -d '{ "url": "https://example.com" }'
 ```
+
+The demo answers `402 payment_required` for `"region": "jp"` (proxy egress is paid-only).
+
+**Markdown permalinks.** `GET /https://example.com/page` returns the page as `text/markdown`
+(`routes/permalink.ts`; the paths are in `run_worker_first`). Without a key it is the demo
+(same limits, cache and truncation); with `Authorization: Bearer wfa_...` it is a billed
+`POST /v1/scrape` with the `auto` engine. The target's query string is part of the target.
+Errors come back as one `code: message` line with the original status (and `Retry-After`):
+
+```bash
+curl https://<your-host>/https://example.com/article
+curl -H "Authorization: Bearer wfa_..." https://<your-host>/https://example.com/article
+```
+
+### Limits
+
+| limit | free | paid (active subscription) | over the limit |
+|---|---|---|---|
+| `/v1` requests per minute, per account (all keys together) | 60 | 600 | `429 rate_limited` + `Retry-After: 60` |
+| batch/crawl jobs (async scrape included) queued or running at once | 3 | 20 | `429 too_many_jobs` |
+| API keys per account | 50 | 50 | `403` on key creation |
+
+The request limits use Workers Rate Limiting bindings (`RATE_LIMIT_FREE`, `RATE_LIMIT_PAID`,
+`DEMO_RATE_LIMIT` in `wrangler.jsonc`, keyed by user id / client IP). Their counters are per
+Cloudflare location and eventually consistent — a cost bound, not exact accounting. A
+deployment without the bindings runs unlimited and logs `rate_limit_binding_missing` once;
+a failing binding lets `/v1` through but denies the demo. Constants: `src/ops/limits.ts`.
 
 ## Local development
 
@@ -82,7 +119,10 @@ pnpm dev                                      # vite dev (first run builds the c
   `PROXY_ACCOUNT_API_URL`/`PROXY_ACCOUNT_API_KEY` (the proxy provider's v2 account API base
   and key — enables the monthly bandwidth guard: the 15-minute cron stores usage in KV, logs
   `proxy_bandwidth_high` from 80%, and from 95% the proxy engines answer
-  `503 engine_unavailable` until the provider's period renews).
+  `503 engine_unavailable` until the provider's period renews),
+  `OPS_ALERT_EMAIL` (operator address for ops alerts — proxy bandwidth crossing 80% / 95%,
+  once per threshold per period; a failed cron pass, at most hourly — sent through the
+  `EMAIL` binding as `login@webforai.dev`; unset = alerts are only logged).
   Missing optional secrets degrade explicitly: proxy engines return
   `503 engine_unavailable`, billing runs in free-allowance-only mode.
 - `browser` needs a real Browser Run session (`wrangler dev --remote` semantics); the
@@ -96,7 +136,9 @@ server logs it and saves it under the Miniflare temp directory, so read the code
 same code (stored encrypted), so every email the user received works. With
 `TURNSTILE_SITE_KEY` (var) and `TURNSTILE_SECRET_KEY` (secret) set, sending a code also
 requires a Cloudflare Turnstile token (Better Auth captcha plugin; action `sign-in`, hostname
-from `BASE_URL`). OAuth failures such as `account_not_linked` return to `/login?error=…` —
+from `BASE_URL`). A production `BASE_URL` (https, not localhost) with the site key but no
+secret refuses to send codes (500, `turnstile_secret_missing` in the logs) instead of running
+without the bot check. OAuth failures such as `account_not_linked` return to `/login?error=…` —
 an existing email account must sign in by code once (which verifies its email) before
 GitHub can link to it.
 
@@ -113,7 +155,7 @@ dev server log), create an API key on the dashboard, then `curl -X POST localhos
 | `pnpm test:browser` | Chromium dashboard UI regression with HTTP fixtures; desktop/mobile screenshots in `.cache/dashboard-review` (no real auth/Worker) |
 | `pnpm test:integration` | against disposable local workerd D1 with the checked-in migrations: the page-accounting repository (duplicate writes, rollback) and the real Better Auth email-code sign-in (hashed codes, wrong/replayed codes, D1 rate limit, passwords off) |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm build` | production build (Worker + client assets + container image), then prerenders the landing page into `dist/client/index.html` and fails if webforai cannot extract it (`scripts/prerender.ts`) |
+| `pnpm build` | production build (Worker + client assets + container image), then prerenders `/` into `dist/client/index.html` and the legal pages into `dist/client/{terms,privacy,commerce}.html` (each with its own title, description, canonical and `og:url`), and fails if webforai cannot extract any of them (`scripts/prerender.ts`) |
 | `pnpm db:generate` | drizzle-kit migration from `src/db/schema.ts` |
 | `pnpm db:migrate:local` / `:remote` | apply migrations to D1 |
 | `pnpm stripe:setup` | create Stripe meter + metered price (prints ids) |
@@ -137,7 +179,12 @@ dev server log), create an API key on the dashboard, then `curl -X POST localhos
    your host.
 5. R2 lifecycle (artifact TTL): `wrangler r2 bucket lifecycle add webforai-platform-artifacts`
    with prefix rules for `screenshots/`, `images/`, `results/` (e.g. expire after 7 days).
-6. `pnpm run deploy` (Workers Paid plan needed for Containers/Workflows/Browser Run).
+6. Ops alerts (optional): `wrangler secret put OPS_ALERT_EMAIL` (or a var). The `EMAIL`
+   binding has no destination restriction, so any address works once the sending domain is
+   onboarded; if you restrict it with `allowed_destination_addresses` /
+   `destination_address`, include this address (and remember sign-in codes go to every user).
+   Rate-limit `namespace_id`s in `wrangler.jsonc` must be unique in your account.
+7. `pnpm run deploy` (Workers Paid plan needed for Containers/Workflows/Browser Run).
 
 ## Billing model
 
@@ -148,9 +195,20 @@ without a subscription; the metered subscription uses graduated tiers per calend
 first 1,000 at $0, then $0.001, $0.0007 above 100k and $0.0005 above 1M credits. The landing
 page and dashboard render prices from the same file. Usage is recorded in D1
 (`usage_events`, ULID for sync requests or a deterministic job/page id) and mirrored to Stripe meter events with that id as the
-idempotency `identifier`; unreported rows are retried by a 15-minute cron, which reads them
-through a partial index (migration `0002`, index-only — apply it with `pnpm db:migrate:remote`
-before or after deploying).
+idempotency `identifier` and the usage time as `timestamp`; unreported rows are retried by a
+15-minute cron (up to 10 pages of 100 per run) through a partial index. Rows that can never be
+billed leave that queue with `report_skipped_reason` set: `no_customer` (free usage of an
+account without a Stripe customer) or `expired` (older than Stripe's 35-day meter window,
+logged as `usage_report_expired`). Migration `0004` adds that column, the replacement index and
+`billing_state.spend_cap_usd`; apply it with `pnpm db:migrate:remote` **before** deploying.
+
+Proxy engines (`proxy-fetch`, `proxy-browser`, or `auto` with a region such as `jp`) need an
+active subscription (`402 payment_required`); the keyless demo refuses non-`auto` regions.
+Subscribers have a monthly spend cap — default $50, settable from $1 to $5,000 in the
+dashboard (`GET`/`PUT /api/dashboard/billing/spend-cap`) — and get `402 spend_cap_reached`
+once one more credit would push this UTC month's estimate past it. Checkout refuses a second
+subscription (`409 already_subscribed`) and anchors billing periods to the 1st of the month
+(00:00 UTC), so Stripe's tiers reset with the dashboard's calendar month.
 
 ### Changing prices
 
@@ -183,13 +241,20 @@ The URLs live in `src/client/lib/links.ts`.
 Accounts can be deleted from the dashboard (`POST /api/dashboard/account/delete` with
 `{ confirmEmail }`): unreported usage is sent to the Stripe meter and an active subscription is
 cancelled with an immediate final invoice first — if either fails, nothing is deleted — then
-the user's keys, jobs, usage, billing state, pending codes, sessions, linked accounts and user
-row go in one D1 batch; job archives in R2 are removed best-effort (the 7-day lifecycle catches
-the rest). Stripe keeps its invoices.
+queued/running job Workflows are terminated (best-effort) and the user's keys, jobs, usage, billing state, pending codes, sessions, linked accounts and user
+row go in one D1 batch; job archives in R2 are removed best-effort, paging past 1,000 objects
+(the 7-day lifecycle catches the rest). Stripe keeps its invoices.
 
 Legal pages are SPA routes: `/terms`, `/privacy`, `/commerce` (特定商取引法に基づく表記),
-linked from the footer with `support@webforai.dev`. `public/` holds `og.png` (Open Graph image,
-tags in `index.html`), `robots.txt`, and the installable-app files below.
+linked from the footer with `support@webforai.dev`; the sign-in page states that continuing
+means agreeing to the Terms and the Privacy Policy, and links both. `pnpm build` also writes
+them as static files (`terms.html`, …), which Workers static assets serve at `/terms` under
+the default `html_handling` (`auto-trailing-slash`), so crawlers read real content and
+per-page metadata (`src/client/lib/page-meta.ts`, which also sets `document.title` in the
+SPA). Every other path still falls back to the prerendered `index.html`. `public/` holds
+`og.png` (Open Graph image, tags in `index.html` with the canonical link and a
+`SoftwareApplication` JSON-LD block), `robots.txt` (points to `sitemap.xml`), `sitemap.xml`
+(`/` and the three legal pages), and the installable-app files below.
 
 ### Installable app (PWA) and offline data
 
@@ -211,6 +276,13 @@ first, so Docker must be running.
   (`src/client/lib/local-cache.ts`). On reopen it is shown while fresh data loads, and it is
   kept with a "Showing saved data" notice when a load fails offline or with a 5xx. Sign-out,
   an expired session, account deletion and **Clear saved data** remove it.
+- Share target: the manifest's `share_target` (GET `/share?url=&text=&title=`) puts the app in
+  the OS share sheet. `/share` takes the first http(s) URL from `url`, else `text`, and opens
+  the playground (signed in) or the landing demo (signed out) with it prefilled via `?url=`;
+  nothing runs until Run/Convert is pressed. The navigation goes through the normal
+  network-first shell, so it also works offline.
+- The prerendered legal pages are served on navigation but never stored as the offline shell
+  (`OWN_DOCUMENT` in `sw.js`); offline, the shell renders them client-side.
 - The shell uses `min-h-dvh` (100dvh, not 100vh) and safe-area insets
   (`viewport-fit=cover`). Text fields are 16px on phones so iOS does not zoom on focus.
 

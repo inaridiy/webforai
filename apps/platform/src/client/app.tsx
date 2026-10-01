@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { SiteShell } from "./components/site-shell";
 import { authClient } from "./lib/auth-client";
 import { clearLocalCache } from "./lib/local-cache";
+import { useDocumentTitle } from "./lib/page-meta";
 import { navigate, usePath } from "./lib/router";
 import type { SessionState } from "./lib/use-session";
 import { useSession } from "./lib/use-session";
@@ -11,6 +12,7 @@ import { LandingPage } from "./pages/landing";
 import { LegalPage, isLegalPath } from "./pages/legal/legal-page";
 import { NotFoundPage } from "./pages/not-found";
 import { PlaygroundPage } from "./pages/playground";
+import { SharePage } from "./pages/share";
 
 const renderRoute = (path: string, session: SessionState, reloadSession: () => void) => {
 	switch (path) {
@@ -24,6 +26,8 @@ const renderRoute = (path: string, session: SessionState, reloadSession: () => v
 			return <DashboardPage session={session} reloadSession={reloadSession} />;
 		case "/playground":
 			return <PlaygroundPage session={session} />;
+		case "/share":
+			return <SharePage session={session} />;
 		default:
 			return isLegalPath(path) ? <LegalPage path={path} /> : <NotFoundPage path={path} />;
 	}
@@ -34,6 +38,7 @@ export const App = () => {
 	const { state, reload } = useSession();
 	const authenticated = state.status === "authenticated";
 	const onAuthPage = path === "/login" || path === "/signup";
+	useDocumentTitle(path);
 
 	useEffect(() => {
 		if (authenticated && onAuthPage) {

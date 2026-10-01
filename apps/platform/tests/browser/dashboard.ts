@@ -34,6 +34,18 @@ const signInFixture = (
 	return undefined;
 };
 
+/** Key creation: a fresh key, or the per-account limit's 403 (src/auth/guards.ts). */
+const createKeyFixture = (limitReached: boolean, serial: number): { status: number; body: unknown } =>
+	limitReached
+		? {
+				status: 403,
+				body: {
+					code: "API_KEY_LIMIT_REACHED",
+					message: "An account can hold at most 50 API keys. Revoke an unused key to create a new one.",
+				},
+			}
+		: { status: 200, body: { key: `wfa_${serial}_${"test".repeat(40)}` } };
+
 /** Newest first: 5 scrapes, then one 30-page crawl, then 10 older scrapes — 45 ledger rows. */
 const usageFixture = [
 	...Array.from({ length: 5 }, (_, index) => ({ id: `s${index}`, jobId: null, operation: "fetch" })),
@@ -77,6 +89,7 @@ try {
 	let signedOut = false;
 	let githubEnabled = false;
 	let malformedUsage = false;
+	let keyLimitReached = false;
 	const timestamp = "2026-09-06T00:00:00.000Z";
 	await page.route("**/api/**", async (route) => {
 		const path = new URL(route.request().url()).pathname;
@@ -148,7 +161,7 @@ try {
 		} else if (path === "/api/auth/api-key/list") {
 			body = { apiKeys: [], total: 0, limit: 10, offset: 0 };
 		} else if (path === "/api/auth/api-key/create") {
-			body = { key: `wfa_${++issuedKeys}_${"test".repeat(40)}` };
+			({ status, body } = createKeyFixture(keyLimitReached, ++issuedKeys));
 		} else {
 			throw new Error(`Unexpected fixture request: ${path}`);
 		}
@@ -158,6 +171,10 @@ try {
 		jobsFail = true;
 		await page.setViewportSize({ width, height: 1100 });
 		await page.goto(`${origin}/dashboard`);
+		// The previous pass saved its jobs on this device, and a failed load would show that copy
+		// ("Saved … — offline") instead of the error; start each pass from an empty cache.
+		await page.evaluate(() => localStorage.clear());
+		await page.reload();
 		await page.getByText("Jobs could not be loaded", { exact: true }).waitFor();
 		assert.equal(await page.getByText("No batch or crawl jobs yet.").count(), 0);
 		await page.screenshot({ path: `${output}/error-${width}.png`, fullPage: true });
@@ -199,10 +216,18 @@ try {
 			`dashboard overflow at ${width}px: ${JSON.stringify(overflow)}`,
 		);
 	}
+	// The per-account key limit answers 403 with a message; the form shows it as is.
+	keyLimitReached = true;
+	await page.getByRole("button", { name: "Create your first key" }).click();
+	await page.getByRole("button", { name: "Create key", exact: true }).click();
+	await page.getByText("An account can hold at most 50 API keys.", { exact: false }).waitFor();
+	keyLimitReached = false;
 	malformedUsage = true;
 	await page.reload();
 	await page.getByText("Usage could not be loaded", { exact: true }).waitFor();
 	sessionFails = true;
+	// Without a saved session the outage must surface (with one, the app opens from the cache).
+	await page.evaluate(() => localStorage.clear());
 	await page.reload();
 	await page.getByText("Session unavailable", { exact: true }).waitFor();
 	assert.equal(new URL(page.url()).pathname, "/dashboard");
@@ -216,6 +241,11 @@ try {
 	signedOut = true;
 	await page.setViewportSize({ width: 1440, height: 1100 });
 	await page.goto(`${origin}/login`);
+	await page.getByRole("heading", { name: "Sign in", level: 1 }).waitFor();
+	assert.equal(await page.title(), "Sign in — webforai platform");
+	// Agreeing to the Terms happens here, so both documents must be linked before continuing.
+	await page.getByRole("link", { name: "Terms of Service", exact: true }).waitFor();
+	await page.getByRole("link", { name: "Privacy Policy", exact: true }).waitFor();
 	await page.getByLabel("Email", { exact: true }).fill("new-user@example.test");
 	assert.equal(await page.getByRole("button", { name: "Continue with GitHub" }).count(), 0);
 	await page.getByRole("button", { name: "Email me a code", exact: true }).click();
@@ -242,8 +272,40 @@ try {
 	] as const) {
 		await page.goto(`${origin}${path}`);
 		await page.getByRole("heading", { name: heading, level: 1 }).waitFor();
+		assert.equal(await page.title(), `${heading} — webforai platform`);
 		await page.screenshot({ path: `${output}/legal${path.replace("/", "-")}.png`, fullPage: true });
 	}
+	await page.goto(`${origin}/no-such-page`);
+	await page.getByRole("heading", { name: "No page at /no-such-page", level: 1 }).waitFor();
+	assert.equal(await page.title(), "Page not found — webforai platform");
+	await page.getByRole("link", { name: "Open the dashboard", exact: true }).waitFor();
+	await page.keyboard.press("Tab");
+	assert.equal(await page.evaluate(() => document.activeElement?.textContent), "Skip to content");
+	await page.keyboard.press("Enter");
+	assert.equal(await page.evaluate(() => document.activeElement?.id), "main");
+
+	// PWA share target: the first http(s) URL in `text` prefills the playground when signed in…
+	const shared = "https://example.test/shared?a=1";
+	await page.goto(`${origin}/share?title=Hi&text=${encodeURIComponent(`Look at this: ${shared}.`)}`);
+	await page.waitForURL((url) => url.pathname === "/playground");
+	assert.equal(await page.getByLabel("URL", { exact: true }).inputValue(), shared);
+	assert.equal(await page.title(), "Playground — webforai platform");
+	// …and the proxy engines are flagged as paid-only for an account without a subscription.
+	await page.getByLabel("Engine", { exact: true }).selectOption("proxy-fetch");
+	await page.getByText("Proxy engines are on paid plans", { exact: true }).waitFor();
+	await page.getByLabel("Engine", { exact: true }).selectOption("fetch");
+	assert.equal(await page.getByText("Proxy engines are on paid plans", { exact: true }).count(), 0);
+	// …and the keyless landing demo when signed out. A signed-out device has no saved session
+	// (sign-out and an expired session clear it), so drop the one saved above.
+	signedOut = true;
+	await page.evaluate(() => localStorage.clear());
+	await page.goto(`${origin}/share?url=${encodeURIComponent(shared)}`);
+	await page.waitForURL((url) => url.pathname === "/");
+	await page.waitForFunction(
+		(expected) => (document.getElementById("demo-url") as HTMLInputElement | null)?.value === expected,
+		shared,
+	);
+	signedOut = false;
 
 	await page.route("**/v1/demo/scrape", (route) =>
 		route.fulfill({
@@ -263,6 +325,13 @@ try {
 	await page.getByRole("heading", { name: "Preview regression", exact: true }).waitFor();
 	assert.equal(previewRequests, 1, "load the renderer when a result is available");
 	await page.getByText("auto → browser", { exact: true }).waitFor();
+	// The demo has no region choice (Japan egress is paid-only) and ends with the same request
+	// for the user's own code.
+	assert.equal(await page.getByLabel("Egress region").count(), 0);
+	await page.getByRole("heading", { name: "Same page, from your code", exact: true }).waitFor();
+	await page.getByText("npx webforai https://example.test", { exact: true }).waitFor();
+	await page.getByRole("tab", { name: "CLI", exact: true }).first().click();
+	assert.equal(await page.title(), "webforai platform — any web page as clean Markdown");
 	await page.route("**/async-fixture", (route) =>
 		route.fulfill({
 			contentType: "text/html",

@@ -106,12 +106,12 @@ export type DemoResult = {
 /**
  * Runs the public, unauthenticated landing-page demo (`POST /v1/demo/scrape`): fixed `auto`
  * engine (renders client-side pages when needed), rate-limited per IP, truncated output.
- * Nothing is billed.
+ * Nothing is billed. No region: Japan egress needs the proxy engines, which are paid-only.
  */
-export const runDemoScrape = (url: string, region: string): Promise<Result<DemoResult>> =>
+export const runDemoScrape = (url: string): Promise<Result<DemoResult>> =>
 	requestJson(fetch, "/v1/demo/scrape", demoSchema, {
 		method: "POST",
-		body: JSON.stringify({ url, region }),
+		body: JSON.stringify({ url }),
 	});
 
 /** Sign-in methods this deployment offers beyond email codes (`GET /api/auth-methods`). */

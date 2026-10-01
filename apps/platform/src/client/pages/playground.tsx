@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { ENGINE_CREDITS } from "../../billing/credits";
 import { MarkdownPanes } from "../components/markdown-panes";
-import { type PlaygroundRequest, type PlaygroundResult, type Result, runPlaygroundScrape } from "../lib/api";
+import {
+	type PlaygroundRequest,
+	type PlaygroundResult,
+	type Result,
+	fetchUsage,
+	runPlaygroundScrape,
+} from "../lib/api";
 import { cn } from "../lib/cn";
 import { copyToClipboard } from "../lib/format";
 import { Link, navigate } from "../lib/router";
+import { prefillUrl } from "../lib/share";
+import { useAsyncResult } from "../lib/use-async";
 import type { SessionState } from "../lib/use-session";
 import { Alert } from "../ui/alert";
 import { Badge } from "../ui/badge";
@@ -14,12 +22,14 @@ import { Field, Input } from "../ui/input";
 import { Select, type SelectOption } from "../ui/select";
 import { LoadingRow, Spinner } from "../ui/spinner";
 
+// The proxy engines (and `region: "jp"`, which resolves to them) need an active subscription;
+// the free allowance covers fetch, browser and auto.
 const ENGINE_OPTIONS: SelectOption[] = [
 	{ value: "auto", label: "auto" },
 	{ value: "fetch", label: "fetch" },
 	{ value: "browser", label: "browser" },
-	{ value: "proxy-fetch", label: "proxy-fetch" },
-	{ value: "proxy-browser", label: "proxy-browser" },
+	{ value: "proxy-fetch", label: "proxy-fetch · paid" },
+	{ value: "proxy-browser", label: "proxy-browser · paid" },
 ];
 
 /** Shown under the engine select so the cost is visible before pressing Run. */
@@ -31,14 +41,14 @@ const ENGINE_HINTS: Record<string, string> = {
 	fetch: `Plain fetch · ${credits("fetch")}`,
 	browser: `Browser rendering · ${credits("browser")}`,
 	// biome-ignore lint/style/useNamingConvention: engine ids are kebab-case API values
-	"proxy-fetch": `Rotating-proxy egress · ${credits("proxy-fetch")}`,
+	"proxy-fetch": `Rotating-proxy egress · ${credits("proxy-fetch")} · paid plan`,
 	// biome-ignore lint/style/useNamingConvention: engine ids are kebab-case API values
-	"proxy-browser": `Headless browser via proxy · ${credits("proxy-browser")}`,
+	"proxy-browser": `Headless browser via proxy · ${credits("proxy-browser")} · paid plan`,
 };
 
 const REGION_OPTIONS: SelectOption[] = [
 	{ value: "auto", label: "auto" },
-	{ value: "jp", label: "jp" },
+	{ value: "jp", label: "jp · paid" },
 ];
 
 const EXTRACTOR_OPTIONS: SelectOption[] = [
@@ -52,6 +62,22 @@ const EXTRACTOR_OPTIONS: SelectOption[] = [
 // region is set — so both toggles stay live for it.
 const SCREENSHOT_ENGINES = new Set(["auto", "browser", "proxy-browser"]);
 const PROXY_ENGINES = new Set(["auto", "proxy-fetch", "proxy-browser"]);
+
+/** Whether the form would run on a proxy engine, which needs an active subscription. */
+const needsPaidPlan = (form: { engine: string; region: string }): boolean =>
+	form.engine === "proxy-fetch" ||
+	form.engine === "proxy-browser" ||
+	(form.engine === "auto" && form.region !== "auto");
+
+/** `null` while unknown (loading, or the usage request failed): the server decides then. */
+const useHasSubscription = (): boolean | null => {
+	const { state } = useAsyncResult(fetchUsage);
+	if (state.status !== "ready") {
+		return null;
+	}
+	// "Paid" is an active subscription, as on the server (`isSpendable`); the API decides anyway.
+	return state.value.subscriptionStatus === "active";
+};
 
 type FormState = {
 	url: string;
@@ -138,7 +164,7 @@ const Checkbox = ({
 const RunError = ({ error }: { error: Extract<Result<never>, { ok: false }> }) => {
 	if (error.status === 402) {
 		return (
-			<Alert tone="warning" title="Out of credits">
+			<Alert tone="warning" title="Payment required">
 				<div className="flex flex-col gap-2">
 					<p>{error.error}</p>
 					<div>
@@ -295,6 +321,16 @@ const CurlStrip = ({ curl }: { curl: string }) => {
 const PlaygroundBody = () => {
 	const [form, setForm] = useState<FormState>(INITIAL_FORM);
 	const [run, setRun] = useState<RunState>({ status: "idle" });
+	const subscribed = useHasSubscription();
+	const paidOnly = needsPaidPlan(form) && subscribed === false;
+
+	// `/playground?url=…` (the PWA share target, or a link) prefills the URL field.
+	useEffect(() => {
+		const shared = prefillUrl();
+		if (shared !== null) {
+			setForm((prev) => ({ ...prev, url: shared }));
+		}
+	}, []);
 
 	const screenshotAllowed = SCREENSHOT_ENGINES.has(form.engine);
 	const regionApplies = PROXY_ENGINES.has(form.engine);
@@ -372,7 +408,7 @@ const PlaygroundBody = () => {
 				</div>
 				<div className="flex flex-wrap items-start gap-x-6 gap-y-4 border-border/70 border-t px-5 pt-3.5 pb-4">
 					<div className={cn("w-[9.5rem]", regionApplies ? undefined : "opacity-60")}>
-						<Field label="Region" htmlFor="pg-region" hint="Proxy engines only.">
+						<Field label="Region" htmlFor="pg-region" hint="Proxy engines only; jp needs a paid plan.">
 							<Select
 								id="pg-region"
 								textSize="text-base sm:text-[0.8125rem]"
@@ -426,6 +462,19 @@ const PlaygroundBody = () => {
 						/>
 					</div>
 				</div>
+				{paidOnly ? (
+					<div className="border-border/70 border-t px-5 py-3">
+						<Alert tone="info" title="Proxy engines are on paid plans">
+							<span className="font-mono">proxy-fetch</span>, <span className="font-mono">proxy-browser</span> and{" "}
+							<span className="font-mono">region: "jp"</span> need an active subscription. The free credits cover{" "}
+							<span className="font-mono">auto</span>, <span className="font-mono">fetch</span> and{" "}
+							<span className="font-mono">browser</span>.{" "}
+							<Link href="/dashboard" className="font-medium underline hover:no-underline">
+								Subscribe on the dashboard
+							</Link>
+						</Alert>
+					</div>
+				) : null}
 				<CurlStrip curl={curl} />
 			</section>
 

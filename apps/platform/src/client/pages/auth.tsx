@@ -7,7 +7,7 @@ import { authClient, authErrorMessage } from "../lib/auth-client";
 import { Link, navigate } from "../lib/router";
 import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "../ui/card";
 import { Field, Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
 
@@ -258,6 +258,29 @@ const CodeStep = ({
 	</form>
 );
 
+/**
+ * The Terms make account creation the act of agreeing to them, so every way in (email code or
+ * GitHub) shows this before the user continues. New tabs keep the half-filled form.
+ */
+const Consent = () => (
+	<p className="text-center text-muted-foreground text-xs leading-relaxed">
+		By continuing, you agree to the{" "}
+		<a href="/terms" target="_blank" rel="noreferrer noopener" className="text-foreground underline underline-offset-2">
+			Terms of Service
+		</a>{" "}
+		and the{" "}
+		<a
+			href="/privacy"
+			target="_blank"
+			rel="noreferrer noopener"
+			className="text-foreground underline underline-offset-2"
+		>
+			Privacy Policy
+		</a>
+		.
+	</p>
+);
+
 const AuthCard = ({ mode, onAuthenticated }: { mode: Mode; onAuthenticated: () => void }) => {
 	const methods = useAuthMethods();
 	const [step, setStep] = useState<"email" | "code">("email");
@@ -329,7 +352,9 @@ const AuthCard = ({ mode, onAuthenticated }: { mode: Mode; onAuthenticated: () =
 		<div className="mx-auto w-full max-w-md px-5 py-16">
 			<Card>
 				<CardHeader>
-					<CardTitle className="text-xl">{step === "email" ? text.title : "Check your email"}</CardTitle>
+					<h1 className="font-medium text-xl leading-none tracking-tight">
+						{step === "email" ? text.title : "Check your email"}
+					</h1>
 					<CardDescription>
 						{step === "email" ? (
 							text.description
@@ -390,6 +415,7 @@ const AuthCard = ({ mode, onAuthenticated }: { mode: Mode; onAuthenticated: () =
 							</Button>
 						</>
 					) : null}
+					{step === "email" ? <Consent /> : null}
 					{step === "email" ? (
 						<p className="text-center text-muted-foreground text-sm">
 							{text.alt}{" "}

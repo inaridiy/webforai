@@ -2,10 +2,12 @@ import { type FormEvent, useEffect, useState } from "react";
 import { type DemoResult, type Result, runDemoScrape } from "../../lib/api";
 import { cn } from "../../lib/cn";
 import { formatNumber } from "../../lib/format";
+import { useDeploymentOrigin } from "../../lib/links";
 import { Link } from "../../lib/router";
+import { prefillUrl } from "../../lib/share";
 import { Alert } from "../../ui/alert";
 import { Button } from "../../ui/button";
-import { Select, type SelectOption } from "../../ui/select";
+import { ClientSnippets, shellArg } from "../client-snippets";
 import { MarkdownPanes } from "../markdown-panes";
 
 /**
@@ -13,7 +15,9 @@ import { MarkdownPanes } from "../markdown-panes";
  * engine, per-IP rate limit, output cut near 40,000 characters), answered with raw Markdown
  * and its rendered preview side by side. The result header states what the request actually
  * did — the engine `auto` resolved to and the size of the output — so the demo doubles as an
- * explanation of the product.
+ * explanation of the product. A successful run then shows the same request as curl, the
+ * TypeScript client and the CLI. The demo has no region choice: Japan egress (`region: "jp"`)
+ * runs on the proxy engines, which are paid-plan only.
  */
 
 const INITIAL_URL = "https://en.wikipedia.org/wiki/Markdown";
@@ -24,11 +28,6 @@ const EXAMPLES: { label: string; url: string }[] = [
 	{ label: "GitHub README", url: "https://github.com/inaridiy/webforai" },
 	{ label: "MDN reference", url: "https://developer.mozilla.org/en-US/docs/Web/HTML" },
 	{ label: "Vite docs", url: "https://vite.dev/guide/" },
-];
-
-const REGION_OPTIONS: SelectOption[] = [
-	{ value: "auto", label: "Any region" },
-	{ value: "jp", label: "Japan" },
 ];
 
 type Failure = Extract<Result<never>, { ok: false }>;
@@ -141,6 +140,33 @@ const Done = ({ result, elapsedMs }: { result: DemoResult; elapsedMs: number }) 
 					</Link>
 				</p>
 			) : null}
+			<FromYourCode url={result.url} />
+		</div>
+	);
+};
+
+/** The request that produced this result, ready to paste — the step after "that worked". */
+const FromYourCode = ({ url }: { url: string }) => {
+	const origin = useDeploymentOrigin();
+	return (
+		<div className="grid gap-5 border-border border-t px-5 py-5 md:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
+			<div className="text-sm">
+				<h3 className="font-medium">Same page, from your code</h3>
+				<p className="mt-1.5 text-muted-foreground leading-relaxed">
+					With an API key —{" "}
+					<Link href="/signup" className="font-medium text-accent hover:underline">
+						free to create
+					</Link>{" "}
+					— you get the whole page, every engine, batch and crawl.
+				</p>
+				<p className="mt-3 text-muted-foreground leading-relaxed">
+					Free &amp; local, no key:
+					<code className="mt-1 block break-all rounded bg-muted px-2 py-1 font-mono text-[0.8125rem] text-foreground">
+						npx webforai {shellArg(url)}
+					</code>
+				</p>
+			</div>
+			<ClientSnippets origin={origin} url={url} />
 		</div>
 	);
 };
@@ -169,9 +195,17 @@ const Failed = ({ error, onRetry }: { error: Failure; onRetry: () => void }) => 
 
 export const DemoConsole = ({ className }: { className?: string }) => {
 	const [url, setUrl] = useState(INITIAL_URL);
-	const [region, setRegion] = useState("auto");
 	const [run, setRun] = useState<RunState>({ status: "idle" });
 	const running = run.status === "running";
+
+	// `/?url=…` (the PWA share target, or a link) prefills the field. Read after mount: the
+	// prerendered markup, which this hydrates, always carries the default URL.
+	useEffect(() => {
+		const shared = prefillUrl();
+		if (shared !== null) {
+			setUrl(shared);
+		}
+	}, []);
 
 	const convert = (target: string): void => {
 		const trimmed = target.trim();
@@ -180,7 +214,7 @@ export const DemoConsole = ({ className }: { className?: string }) => {
 		}
 		const startedAt = performance.now();
 		setRun({ status: "running", startedAt });
-		runDemoScrape(trimmed, region).then((result) => {
+		runDemoScrape(trimmed).then((result) => {
 			setRun(
 				result.ok
 					? { status: "done", result: result.value, elapsedMs: performance.now() - startedAt }
@@ -214,21 +248,11 @@ export const DemoConsole = ({ className }: { className?: string }) => {
 					disabled={running}
 					onChange={(event) => setUrl(event.target.value)}
 					placeholder="https://any-page.example/article"
-					className="h-12 w-full min-w-0 rounded-lg border sm:flex-1 sm:w-auto border-border bg-background px-4 font-mono text-base outline-none sm:text-[0.9375rem] transition-colors focus:border-accent disabled:opacity-60"
+					className="h-12 w-full min-w-0 rounded-lg border sm:flex-1 sm:w-auto border-border bg-background px-4 font-mono text-base sm:text-[0.9375rem] transition-colors focus:border-accent disabled:opacity-60"
 				/>
-				<div className="flex gap-2">
-					<Select
-						aria-label="Egress region"
-						className="h-12 w-auto rounded-lg"
-						options={REGION_OPTIONS}
-						value={region}
-						disabled={running}
-						onChange={(event) => setRegion(event.target.value)}
-					/>
-					<Button type="submit" size="lg" className="h-12 flex-1 rounded-lg px-6 sm:flex-none" disabled={running}>
-						Convert
-					</Button>
-				</div>
+				<Button type="submit" size="lg" className="h-12 rounded-lg px-6" disabled={running}>
+					Convert
+				</Button>
 			</form>
 			<div className="flex flex-wrap items-center gap-1.5 px-4 pb-3.5 text-sm">
 				<span className="mr-1 text-muted-foreground">Or try</span>
