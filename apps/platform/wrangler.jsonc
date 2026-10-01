@@ -53,6 +53,27 @@
       "allowed_sender_addresses": ["login@webforai.dev"]
     }
   ],
+  // Per-account request limits on /v1 (keyed by user id, chosen by subscription tier) and the
+  // public demo's per-IP burst cap (keyed by IPv4 address or IPv6 /64). Counters are per
+  // Cloudflare location and eventually consistent — a cost bound, not an accounting system.
+  // namespace_id must be unique within the account (shared ids share counters).
+  "ratelimits": [
+    {
+      "name": "RATE_LIMIT_FREE",
+      "namespace_id": "20261001",
+      "simple": { "limit": 60, "period": 60 }
+    },
+    {
+      "name": "RATE_LIMIT_PAID",
+      "namespace_id": "20261002",
+      "simple": { "limit": 600, "period": 60 }
+    },
+    {
+      "name": "DEMO_RATE_LIMIT",
+      "namespace_id": "20261003",
+      "simple": { "limit": 3, "period": 60 }
+    }
+  ],
   "workflows": [
     {
       "name": "crawl-workflow",

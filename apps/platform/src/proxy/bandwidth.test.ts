@@ -4,6 +4,8 @@ import {
 	PROXY_BANDWIDTH_KEY,
 	type ProxyAccountApi,
 	SNAPSHOT_TTL_SECONDS,
+	STOP_RATIO,
+	WARN_RATIO,
 	proxyBandwidthRefusal,
 	refreshProxyBandwidth,
 } from "./bandwidth";
@@ -79,6 +81,23 @@ describe("refreshProxyBandwidth", () => {
 		const errorLog = log();
 		await refreshProxyBandwidth({ kv: fakeKv().kv, api: fakeApi(240 * GB).api, now: () => NOW, log: errorLog });
 		expect(errorLog.error).toHaveBeenCalledOnce();
+	});
+
+	it("hands the highest crossed threshold to the alert hook, and nothing below 80%", async () => {
+		const run = async (usedGb: number) => {
+			const onThreshold = vi.fn(() => Promise.resolve());
+			await refreshProxyBandwidth({
+				kv: fakeKv().kv,
+				api: fakeApi(usedGb * GB).api,
+				now: () => NOW,
+				log: log(),
+				onThreshold,
+			});
+			return onThreshold.mock.calls.map((call: unknown[]) => call[0]);
+		};
+		expect(await run(100)).toEqual([]);
+		expect(await run(200)).toEqual([WARN_RATIO]);
+		expect(await run(240)).toEqual([STOP_RATIO]);
 	});
 
 	it("treats a zero limit as an uncapped plan", async () => {

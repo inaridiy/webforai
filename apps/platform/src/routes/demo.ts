@@ -2,16 +2,14 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { z } from "zod";
 
+import { assertDemoRegionAllowed } from "../billing/guard";
 import { REGIONS, type Region } from "../core/regions";
 import { assertPublicHttpUrl } from "../core/ssrf";
-import {
-	type Engine,
-	EngineUnavailableError,
-	PlatformError,
-	type ScrapeRequest,
-	type ScrapeSuccess,
-} from "../core/types";
+import { type Engine, PlatformError, type ScrapeRequest, type ScrapeSuccess } from "../core/types";
+import { clientIpBucket } from "../ops/ip";
+import { type RateLimiter, checkRateLimit } from "../ops/limits";
 import { describeZodError, onPlatformError } from "./errors";
+import { MAX_URL_LENGTH } from "./schemas";
 
 /**
  * The public, unauthenticated demo (`POST /v1/demo/scrape`).
@@ -20,9 +18,9 @@ import { describeZodError, onPlatformError } from "./errors";
  * the one route where a stranger can make us spend proxy bandwidth or browser renders. Three
  * rules follow:
  *
- * 1. Both rate limits are checked **before** any engine runs, so a rejected request costs nothing.
- * 2. The limiter is **fail-closed**: a KV read or write we cannot complete denies the request
- *    rather than letting an unmetered flood through.
+ * 1. Every rate limit is checked **before** any engine runs, so a rejected request costs nothing.
+ * 2. The limiter is **fail-closed**: a KV read or write (or a rate-limit binding call) we cannot
+ *    complete denies the request rather than letting an unmetered flood through.
  * 3. Nothing is billed — there is no user to bill — so the caps below are the only spend bound.
  *
  * Everything with a side effect is injected (`DemoDepsFactory`), which is also why the real
@@ -37,11 +35,28 @@ import { describeZodError, onPlatformError } from "./errors";
  */
 export const DEMO_ENGINE = "auto" as const;
 
-/** Per-IP fixed window. */
+/**
+ * Per-client burst cap on the `DEMO_RATE_LIMIT` binding (wrangler.jsonc: 3 per 60 s). The
+ * binding's counter is atomic per location, unlike the KV windows below, so a parallel burst
+ * cannot slip past it; its period can only be 10 or 60 s, hence the KV window for the longer
+ * bound. Keep this constant in sync with wrangler.jsonc (it only feeds the 429 message).
+ */
+export const DEMO_BURST_LIMIT = 3;
+export const DEMO_BURST_WINDOW_SECONDS = 60;
+
+/**
+ * Per-client fixed window in KV (IPv4 address or IPv6 /64). KV read-modify-write is not
+ * atomic, so concurrent requests can overshoot it — approximate by design; the burst binding
+ * above bounds how far.
+ */
 export const DEMO_IP_LIMIT = 5;
 export const DEMO_IP_WINDOW_SECONDS = 10 * 60;
 
-/** Global daily cap — the hard ceiling on what the demo can cost in one UTC day. */
+/**
+ * Global daily cap in KV — the ceiling on what the demo can cost in one UTC day. Approximate
+ * for the same reason (non-atomic KV, eventually consistent across locations): concurrent
+ * requests near the cap can overshoot it slightly.
+ */
 export const DEMO_GLOBAL_LIMIT = 500;
 export const DEMO_GLOBAL_WINDOW_SECONDS = 24 * 60 * 60;
 
@@ -57,7 +72,7 @@ const MIN_KV_TTL_SECONDS = 60;
 
 export const demoBodySchema = z
 	.object({
-		url: z.string().url(),
+		url: z.string().max(MAX_URL_LENGTH).url(),
 		region: z.enum(REGIONS).default("auto"),
 	})
 	.strict();
@@ -95,9 +110,9 @@ export const demoCacheKey = (origin: string, url: string, region: Region): strin
 
 export interface DemoDeps {
 	kv: DemoKv;
+	/** The `DEMO_RATE_LIMIT` binding; without it only the KV windows apply (warned once). */
+	burstLimiter?: RateLimiter;
 	cache?: DemoCache;
-	/** Gates the whole endpoint: without a configured proxy there is no demo to serve. */
-	proxyEnabled: boolean;
 	/** Runs the fixed demo scrape. Injected so tests exercise the limiter without proxy egress. */
 	runScrape(request: ScrapeRequest): Promise<ScrapeSuccess>;
 	now(): Date;
@@ -106,7 +121,8 @@ export interface DemoDeps {
 /** Built per request: bindings and config only exist inside an invocation. */
 export type DemoDepsFactory = (env: Env) => DemoDeps;
 
-export const demoIpKey = (ip: string): string => `demo:ip:${ip}`;
+/** Keyed by `clientIpBucket`: an IPv4 address or an IPv6 /64. */
+export const demoIpKey = (ip: string): string => `demo:ip:${clientIpBucket(ip)}`;
 
 /** UTC day in the key, so the global window rolls over without a stored reset time. */
 export const demoGlobalKey = (now: Date): string => `demo:global:${now.toISOString().slice(0, 10)}`;
@@ -315,12 +331,9 @@ export const demoRoutes = (createDeps: DemoDepsFactory) => {
 		const body = parseDemoBody(await readJson(c.req.raw));
 		assertPublicHttpUrl(body.url);
 
-		// Before the limiter: a request we cannot serve must not consume the caller's demo
-		// allowance. Only geo-targeted requests need the proxy tier — `auto` regions run on the
-		// plain engines, so a proxy-less deployment still serves the demo.
-		if (body.region !== "auto" && !deps.proxyEnabled) {
-			throw new EngineUnavailableError("proxy-fetch", "geo-targeted demo requests require a configured proxy");
-		}
+		// Before the cache and the limiter: a request the demo will not serve must not consume
+		// the caller's allowance. A non-`auto` region pins `auto` to the paid proxy tier.
+		assertDemoRegionAllowed(body.region, `${new URL(c.req.url).origin}/dashboard`);
 
 		const cacheKey = demoCacheKey(new URL(c.req.url).origin, body.url, body.region);
 		const cached = await deps.cache?.get(cacheKey).catch(() => undefined);
@@ -329,8 +342,28 @@ export const demoRoutes = (createDeps: DemoDepsFactory) => {
 			return c.json(cached);
 		}
 
+		const client = demoClientIp(c.req.raw.headers);
+		const burstAllowed = await checkRateLimit(deps.burstLimiter, {
+			binding: "DEMO_RATE_LIMIT",
+			key: clientIpBucket(client),
+			failClosed: true,
+		});
+		if (!burstAllowed) {
+			c.header("Retry-After", String(DEMO_BURST_WINDOW_SECONDS));
+			return c.json(
+				{
+					error: {
+						code: "rate_limited",
+						message: `Demo limit reached (${DEMO_BURST_LIMIT} requests per minute). Get an API key for unrestricted access.`,
+						retryAfter: DEMO_BURST_WINDOW_SECONDS,
+					},
+				},
+				429,
+			);
+		}
+
 		const now = deps.now();
-		const decision = await checkDemoLimits(deps, demoLimitsFor(demoClientIp(c.req.raw.headers), now), now);
+		const decision = await checkDemoLimits(deps, demoLimitsFor(client, now), now);
 		if (!decision.allowed) {
 			c.header("Retry-After", String(decision.retryAfter));
 			return c.json(

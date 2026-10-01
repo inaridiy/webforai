@@ -255,11 +255,35 @@ describe("createRobotsTxtLoader", () => {
 		expect(isAllowedByRobots(robots, "/page")).toBe(true);
 	});
 
-	it("treats a redirect to a private address as allow-all", async () => {
-		const response = textResponse("User-agent: *\nDisallow: /");
-		Object.defineProperty(response, "url", { value: "http://127.0.0.1/robots.txt" });
-		const robots = await createRobotsTxtLoader(() => Promise.resolve(response))(target);
+	it("treats a redirect to a private address as allow-all, without requesting it", async () => {
+		const requested: string[] = [];
+		const robots = await createRobotsTxtLoader((input) => {
+			requested.push(input);
+			return Promise.resolve(
+				input === "https://example.com/robots.txt"
+					? new Response(null, { status: 302, headers: { location: "http://169.254.169.254/robots.txt" } })
+					: textResponse("User-agent: *\nDisallow: /"),
+			);
+		})(target);
 		expect(robots).toEqual(ALLOW_ALL);
+		expect(requested).toEqual(["https://example.com/robots.txt"]);
+	});
+
+	it("follows public redirects hop by hop with redirect: manual", async () => {
+		const calls: { input: string; redirect?: string }[] = [];
+		const robots = await createRobotsTxtLoader((input, init) => {
+			calls.push({ input, redirect: init?.redirect });
+			return Promise.resolve(
+				input === "https://example.com/robots.txt"
+					? new Response(null, { status: 301, headers: { location: "https://www.example.com/robots.txt" } })
+					: textResponse("User-agent: *\nDisallow: /page"),
+			);
+		})(target);
+		expect(isAllowedByRobots(robots, "/page")).toBe(false);
+		expect(calls).toEqual([
+			{ input: "https://example.com/robots.txt", redirect: "manual" },
+			{ input: "https://www.example.com/robots.txt", redirect: "manual" },
+		]);
 	});
 
 	it("parses a body served without a content-type", async () => {

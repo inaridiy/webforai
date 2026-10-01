@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 
 import type { AuthVariables } from "../auth/middleware";
-import { ensureSpendable } from "../billing/guard";
+import { ensureSpendable, usesProxyTier } from "../billing/guard";
 import { PlatformError, type ScrapeRequest } from "../core/types";
 import { ulid } from "../core/ulid";
 import { createDb } from "../db/client";
@@ -19,6 +19,7 @@ import {
 } from "../jobs/results";
 import { startJob as scheduleJob } from "../jobs/start";
 import type { JobParams } from "../jobs/workflow";
+import { type Tier, countActiveJobs, ensureJobCapacity } from "../ops/limits";
 import { onPlatformError } from "./errors";
 import {
 	type BatchRequest,
@@ -65,10 +66,13 @@ export const v1Routes = () => {
 	const app = new Hono<V1Env>();
 	app.onError(onPlatformError);
 
-	/** Creates the D1 row first, then the Workflow instance: a job that exists is always visible. */
+	/**
+	 * Creates the D1 row first, then the Workflow instance: a job that exists is always visible.
+	 * Refuses with `429 too_many_jobs` once the account has its tier's concurrent jobs active.
+	 */
 	const startJob = async (
 		env: Env,
-		params: { userId: string; total: number } & (
+		params: { userId: string; tier: Tier; total: number } & (
 			| { type: "batch"; request: BatchRequest }
 			| {
 					type: "crawl";
@@ -76,8 +80,11 @@ export const v1Routes = () => {
 			  }
 		),
 	): Promise<string> => {
+		const db = createDb(env);
+		await ensureJobCapacity({ countActiveJobs: (userId) => countActiveJobs(db, userId) }, params.userId, params.tier);
+
 		const jobId = `job_${ulid()}`;
-		const jobsRepo = createJobsRepo(createDb(env));
+		const jobsRepo = createJobsRepo(db);
 		const stripeCustomerId = await customerIdOf(env, params.userId);
 
 		const identity = { jobId, userId: params.userId, ...(stripeCustomerId ? { stripeCustomerId } : {}) };
@@ -103,7 +110,7 @@ export const v1Routes = () => {
 		const config = loadConfig(c.env);
 
 		// Guard first — for both the sync path and the 1-URL job the async flag creates.
-		await ensureSpendable(billingDeps(c.env, config), userId);
+		await ensureSpendable(billingDeps(c.env, config), userId, { proxy: usesProxyTier(body) });
 
 		if (body.async) {
 			const request: BatchRequest = {
@@ -115,7 +122,7 @@ export const v1Routes = () => {
 				respectRobotsTxt: body.respectRobotsTxt,
 				convert: body.convert,
 			};
-			const jobId = await startJob(c.env, { userId, type: "batch", request, total: 1 });
+			const jobId = await startJob(c.env, { userId, tier: c.get("apiKeyTier"), type: "batch", request, total: 1 });
 			return c.json({ jobId }, 202);
 		}
 
@@ -136,19 +143,25 @@ export const v1Routes = () => {
 	app.post("/batch", async (c) => {
 		const body = await parseScrapeBody(c.req.json(), batchBodySchema);
 		const userId = c.get("apiKeyUserId");
-		await ensureSpendable(billingDeps(c.env, loadConfig(c.env)), userId);
+		await ensureSpendable(billingDeps(c.env, loadConfig(c.env)), userId, { proxy: usesProxyTier(body) });
 
-		const jobId = await startJob(c.env, { userId, type: "batch", request: body, total: body.urls.length });
+		const jobId = await startJob(c.env, {
+			userId,
+			tier: c.get("apiKeyTier"),
+			type: "batch",
+			request: body,
+			total: body.urls.length,
+		});
 		return c.json({ jobId }, 202);
 	});
 
 	app.post("/crawl", async (c) => {
 		const body = await parseScrapeBody(c.req.json(), crawlBodySchema);
 		const userId = c.get("apiKeyUserId");
-		await ensureSpendable(billingDeps(c.env, loadConfig(c.env)), userId);
+		await ensureSpendable(billingDeps(c.env, loadConfig(c.env)), userId, { proxy: usesProxyTier(body) });
 
 		// A crawl discovers its pages as it runs, so `total` starts at zero and grows per page.
-		const jobId = await startJob(c.env, { userId, type: "crawl", request: body, total: 0 });
+		const jobId = await startJob(c.env, { userId, tier: c.get("apiKeyTier"), type: "crawl", request: body, total: 0 });
 		return c.json({ jobId }, 202);
 	});
 

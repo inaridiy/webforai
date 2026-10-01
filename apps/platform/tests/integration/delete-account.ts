@@ -62,7 +62,21 @@ try {
 			createdAt: now,
 			updatedAt: now,
 		} as typeof schema.apikey.$inferInsert);
-		await createJobsRepo(db).createJob({ id: `job-${id}`, userId: id, type: "crawl", request: {} });
+		await createJobsRepo(db).createJob({
+			id: `job-${id}`,
+			userId: id,
+			type: "crawl",
+			request: {},
+			workflowInstanceId: `job-${id}`,
+		});
+		const done = await createJobsRepo(db).createJob({
+			id: `job-done-${id}`,
+			userId: id,
+			type: "batch",
+			request: {},
+			workflowInstanceId: `job-done-${id}`,
+		});
+		await createJobsRepo(db).updateStatus(done.id, "completed");
 		await db.insert(schema.jobPages).values({
 			id: `job-${id}:page:0`,
 			jobId: `job-${id}`,
@@ -76,6 +90,25 @@ try {
 		await db.insert(schema.usageEvents).values([
 			{ id: `u1-${id}`, userId: id, operation: "fetch", credits: 1, createdAt: now, reportedAt: now },
 			{ id: `u2-${id}`, userId: id, operation: "browser", credits: 2, createdAt: now, reportedAt: null },
+			// Past Stripe's 35-day meter window: must not be sent (it would be refused forever).
+			{
+				id: `u3-${id}`,
+				userId: id,
+				operation: "fetch",
+				credits: 1,
+				createdAt: new Date("2026-08-01T00:00:00Z"),
+				reportedAt: null,
+			},
+			// Already taken out of the queue by the cron.
+			{
+				id: `u4-${id}`,
+				userId: id,
+				operation: "fetch",
+				credits: 1,
+				createdAt: now,
+				reportedAt: null,
+				reportSkippedReason: "no_customer",
+			},
 		]);
 		await db.insert(schema.billingState).values({
 			userId: id,
@@ -112,7 +145,7 @@ try {
 		usage: (await db.select().from(schema.usageEvents).where(eq(schema.usageEvents.userId, id))).length,
 		billing: (await db.select().from(schema.billingState).where(eq(schema.billingState.userId, id))).length,
 	});
-	const everything = { user: 1, session: 1, account: 1, apikey: 1, jobs: 1, pages: 1, usage: 2, billing: 1 };
+	const everything = { user: 1, session: 1, account: 1, apikey: 1, jobs: 2, pages: 1, usage: 4, billing: 1 };
 
 	// 1. Wrong confirmation: nothing happens.
 	await assert.rejects(deleteAccount({ db }, { id: "leaver", email: "Leaver@Example.test" }, "someone@else"), {
@@ -135,6 +168,7 @@ try {
 	const reported: string[] = [];
 	const cancelled: string[] = [];
 	const cleaned: string[] = [];
+	const terminated: string[] = [];
 	await deleteAccount(
 		{
 			db,
@@ -152,13 +186,20 @@ try {
 				cleaned.push(prefix);
 				return Promise.resolve();
 			},
+			terminateWorkflow: (instanceId) => {
+				terminated.push(instanceId);
+				return Promise.resolve();
+			},
+			now: () => now,
 		},
 		{ id: "leaver", email: "Leaver@Example.test" },
 		" leaver@example.test ",
 	);
 	assert.deepEqual(reported, ["u2-leaver@cus_leaver"]);
 	assert.deepEqual(cancelled, ["sub_leaver"]);
-	assert.deepEqual(cleaned, ["results/job-pages/job-leaver/"]);
+	assert.deepEqual(cleaned.sort(), ["results/job-pages/job-done-leaver/", "results/job-pages/job-leaver/"]);
+	// Only the live (queued/running) job's Workflow is terminated.
+	assert.deepEqual(terminated, ["job-leaver"]);
 	assert.deepEqual(await counts("leaver"), {
 		user: 0,
 		session: 0,
@@ -181,7 +222,7 @@ try {
 	assert.deepEqual(await counts("stayer"), everything);
 
 	console.log(
-		"Account deletion passed: confirmation required, billing failure deletes nothing, unreported usage reported, subscription cancelled, all rows removed, other users untouched.",
+		"Account deletion passed: confirmation required, billing failure deletes nothing, reportable usage reported (expired/skipped rows not), subscription cancelled, live workflows terminated, all rows removed, other users untouched.",
 	);
 } finally {
 	await runtime.dispose();

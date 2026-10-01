@@ -48,8 +48,8 @@ export const FREE_MONTHLY_CREDITS = 1_000;
 
 export const usdPerCredit = (tier: PriceTier): number => tier.microUsdPerCredit / 1_000_000;
 
-/** What a month of `credits` costs under the graduated tiers, in dollars. */
-export const monthlyCostUsd = (credits: number): number => {
+/** What a month of `credits` costs under the graduated tiers, in integer micro-dollars. */
+export const monthlyCostMicroUsd = (credits: number): number => {
 	let micro = 0;
 	let floor = 0;
 	for (const tier of PRICE_TIERS) {
@@ -61,5 +61,8 @@ export const monthlyCostUsd = (credits: number): number => {
 			break;
 		}
 	}
-	return micro / 1_000_000;
+	return micro;
 };
+
+/** What a month of `credits` costs under the graduated tiers, in dollars. */
+export const monthlyCostUsd = (credits: number): number => monthlyCostMicroUsd(credits) / 1_000_000;

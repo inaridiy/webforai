@@ -1,10 +1,12 @@
-import type { Page } from "playwright";
 import { chromium } from "playwright";
 import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 import { nodejsFn } from "../__generated__/create-nodejs-fn.runtime";
+import { fetchFollowingRedirects } from "../core/redirects";
 import { assertPublicHttpUrl } from "../core/ssrf";
+import { PlatformError } from "../core/types";
 import { navigate } from "./navigate";
+import { captureScreenshot, guardPageRequests, readPageHtml } from "./page-guard";
 import { buildProxyUsername } from "./proxy-username";
 import { FETCH_TIMEOUT_MS, HTML_REQUEST_HEADERS, MAX_HTML_BYTES, PLATFORM_USER_AGENT } from "./workers-fetch";
 
@@ -132,15 +134,20 @@ export const proxyFetch = nodejsFn(async (url: string, country?: string): Promis
 	const agent = new ProxyAgent(proxyUri);
 
 	try {
-		const response = await undiciFetch(target, {
-			method: "GET",
-			redirect: "follow",
-			headers: HTML_REQUEST_HEADERS,
-			dispatcher: agent,
-			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-		});
-
-		const finalUrl = assertAllowedUrl(response.url || target);
+		// One budget for the whole chain; redirects are walked by hand so every hop is checked.
+		const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+		const { response, url: finalUrl } = await fetchFollowingRedirects(
+			(hop) =>
+				undiciFetch(hop, {
+					method: "GET",
+					redirect: "manual",
+					headers: HTML_REQUEST_HEADERS,
+					dispatcher: agent,
+					signal,
+				}),
+			target,
+			{ assertUrl: assertAllowedUrl },
+		);
 		if (!response.ok) {
 			throw containerError("fetch_failed", `upstream responded ${response.status} for ${finalUrl}`);
 		}
@@ -163,13 +170,7 @@ export const proxyFetch = nodejsFn(async (url: string, country?: string): Promis
  * rendering. Every byte here is paid proxy bandwidth, so they are aborted unless a screenshot
  * needs the page to look right.
  */
-const UNUSED_RESOURCE_TYPES = new Set(["image", "media", "font"]);
-
-const blockUnusedResources = async (page: Page): Promise<void> => {
-	await page.route("**/*", (route) =>
-		UNUSED_RESOURCE_TYPES.has(route.request().resourceType()) ? route.abort() : route.continue(),
-	);
-};
+const UNUSED_RESOURCE_TYPES: ReadonlySet<string> = new Set(["image", "media", "font"]);
 
 /** `proxy-browser` engine: Playwright Chromium behind the same rotating proxy. */
 export const proxyBrowser = nodejsFn(
@@ -182,16 +183,15 @@ export const proxyBrowser = nodejsFn(
 		});
 
 		try {
-			const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT });
-			if (!screenshot) {
-				await blockUnusedResources(page);
-			}
+			// Service workers would fetch outside request interception. Loopback is not a bypass:
+			// Playwright forces it through the configured proxy, like every other request.
+			const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT, serviceWorkers: "block" });
+			const guard = await guardPageRequests(page, screenshot ? {} : { blockResourceTypes: UNUSED_RESOURCE_TYPES });
 			const response = await navigate(page, target, FETCH_TIMEOUT_MS);
+			guard.assertClean();
 			const finalUrl = assertAllowedUrl(page.url() || target);
-			const html = await page.content();
-			const screenshotBase64 = screenshot
-				? (await page.screenshot({ type: "png", fullPage: true })).toString("base64")
-				: undefined;
+			const html = await readPageHtml(page);
+			const screenshotBase64 = screenshot ? (await captureScreenshot(page)).toString("base64") : undefined;
 
 			return { html, finalUrl, status: response?.status() ?? 200, screenshotBase64 };
 		} catch (error) {
@@ -208,6 +208,11 @@ const CODED_MESSAGE = /^[a-z_]+: /;
 const normalizeFailure = (error: unknown, url: string): Error => {
 	if (error instanceof Error && CODED_MESSAGE.test(error.message)) {
 		return error;
+	}
+	// The shared guards (redirect walker, page guard) throw `PlatformError`s with codes from the
+	// same vocabulary; re-encode them for the RPC boundary.
+	if (error instanceof PlatformError) {
+		return containerError(error.code as ContainerErrorCode, error.message);
 	}
 	const detail = error instanceof Error ? error.message : String(error);
 	return containerError("fetch_failed", `${url}: ${detail}`);

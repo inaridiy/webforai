@@ -12,6 +12,7 @@ import { createDb } from "./db/client";
 import { createEngines } from "./engines";
 import { loadConfig } from "./env";
 import { CrawlWorkflow } from "./jobs/workflow";
+import { alertCronFailure, alertProxyBandwidth, alertUsageBacklog, opsAlertDeps } from "./ops/alert";
 import { refreshProxyBandwidth } from "./proxy/bandwidth";
 import { artifactRoutes } from "./routes/artifacts";
 import { dashboardRoutes } from "./routes/dashboard";
@@ -19,6 +20,7 @@ import { dashboardJobsRoutes } from "./routes/dashboard-jobs";
 import { DEMO_CACHE_TTL_SECONDS, type DemoCache, type DemoDeps, type DemoResponse, demoRoutes } from "./routes/demo";
 import { onPlatformError } from "./routes/errors";
 import { playgroundRoutes } from "./routes/playground";
+import { requestBodyLimit, requireSameOrigin, securityHeaders } from "./routes/security";
 import { v1Routes } from "./routes/v1";
 
 /**
@@ -37,6 +39,12 @@ type AppEnv = { Bindings: Env; Variables: AuthVariables };
 const app = new Hono<AppEnv>();
 
 app.onError(onPlatformError);
+
+// Hardening runs before every route (registration order is dispatch order): baseline security
+// headers on all Worker responses, and a body cap on everything that accepts one.
+app.use("*", securityHeaders);
+app.use("/api/*", requestBodyLimit);
+app.use("/v1/*", requestBodyLimit);
 
 app.get("/health", (c) => c.json({ ok: true }));
 
@@ -63,6 +71,11 @@ app.on(["GET", "POST"], "/api/auth/*", (c) => authOf(c.env).handler(c.req.raw));
 
 // Same-origin SPA: the dashboard is served from this Worker's own assets, so no CORS layer is
 // needed. Cross-origin dashboards would need one added here, not in the sub-apps.
+// Cookie-authenticated, so state-changing requests must also prove they come from that origin.
+app.use(
+	"/api/dashboard/*",
+	requireSameOrigin((c) => new URL(loadConfig(c.env as Env).BASE_URL).origin),
+);
 app.use(
 	"/api/dashboard/*",
 	createMiddleware<AppEnv>((c, next) => sessionMiddleware(authOf(c.env))(c, next)),
@@ -101,8 +114,8 @@ const demoDeps = (env: Env): DemoDeps => {
 	const scrape = { engines: createEngines(env, config), artifacts: createArtifactStore(env, config) };
 	return {
 		kv: env.JOBS_KV,
+		burstLimiter: env.DEMO_RATE_LIMIT,
 		cache: demoCache,
-		proxyEnabled: config.proxyEnabled,
 		runScrape: (request) => scrapePage(scrape, request),
 		now: () => new Date(),
 	};
@@ -127,13 +140,20 @@ app.route("/v1", v1Routes());
  * the ledger row is written first and stays unreported until this pass lands it, so a Stripe
  * outage delays billing instead of losing it.
  */
-const scheduled: ExportedHandlerScheduledHandler<Env> = async (_controller, env) => {
+const runScheduledPass = async (env: Env): Promise<void> => {
 	const config = loadConfig(env);
+	const alerts = opsAlertDeps(env);
 	// Independent jobs: a proxy-account outage must not hold back billing, nor the reverse.
 	const results = await Promise.allSettled([
 		retryUnreportedUsage(
-			{ repo: createBillingRepo(createDb(env)), config, stripe: createStripe(config) },
-			RETRY_USAGE_LIMIT,
+			{
+				repo: createBillingRepo(createDb(env)),
+				config,
+				stripe: createStripe(config),
+				onBacklog: (backlog) => alertUsageBacklog(alerts, backlog),
+			},
+			RETRY_USAGE_PAGE_SIZE,
+			RETRY_USAGE_MAX_PAGES,
 		),
 		config.proxyBandwidthGuard && config.PROXY_ACCOUNT_API_URL && config.PROXY_ACCOUNT_API_KEY
 			? refreshProxyBandwidth({
@@ -145,6 +165,7 @@ const scheduled: ExportedHandlerScheduledHandler<Env> = async (_controller, env)
 					},
 					now: () => new Date(),
 					log: console,
+					onThreshold: (threshold, snapshot, ratio) => alertProxyBandwidth(alerts, { ...snapshot, threshold, ratio }),
 				})
 			: Promise.resolve(undefined),
 	]);
@@ -154,7 +175,19 @@ const scheduled: ExportedHandlerScheduledHandler<Env> = async (_controller, env)
 	}
 };
 
-const RETRY_USAGE_LIMIT = 100;
+/** A failed pass emails the operator (`OPS_ALERT_EMAIL`, at most hourly) and still fails the run. */
+const scheduled: ExportedHandlerScheduledHandler<Env> = async (_controller, env) => {
+	try {
+		await runScheduledPass(env);
+	} catch (error) {
+		await alertCronFailure(opsAlertDeps(env), error);
+		throw error;
+	}
+};
+
+const RETRY_USAGE_PAGE_SIZE = 100;
+/** Each row costs a Stripe call and a D1 write; 4 pages stays well inside one invocation's D1 query limit. */
+const RETRY_USAGE_MAX_PAGES = 4;
 
 // biome-ignore lint/style/noDefaultExport: Workers entrypoint
 export default { fetch: app.fetch, scheduled };

@@ -5,6 +5,8 @@ import {
 	type ArtifactUrlConfig,
 	createArtifactStore,
 	imageExtension,
+	isInlineArtifactType,
+	rehostableImageType,
 	signArtifactUrl,
 	verifyArtifactToken,
 } from "./store";
@@ -67,11 +69,32 @@ describe("artifact URL signing", () => {
 	});
 });
 
-describe("image extensions", () => {
-	it("maps known image types and falls back", () => {
+describe("image types", () => {
+	it("maps known raster types and falls back", () => {
 		expect(imageExtension("image/jpeg")).toBe("jpg");
-		expect(imageExtension("image/svg+xml; charset=utf-8")).toBe("svg");
+		expect(imageExtension("image/jpg")).toBe("jpg");
+		expect(imageExtension("image/svg+xml; charset=utf-8")).toBe("bin");
 		expect(imageExtension("application/octet-stream")).toBe("bin");
+	});
+
+	it("allowlists raster formats and refuses SVG and everything else", () => {
+		expect(rehostableImageType("image/PNG; charset=binary")).toBe("image/png");
+		expect(rehostableImageType("image/jpg")).toBe("image/jpeg");
+		expect(rehostableImageType("image/webp")).toBe("image/webp");
+		expect(rehostableImageType("image/avif")).toBe("image/avif");
+		for (const refused of ["image/svg+xml", "image/svg", "text/html", "application/xml", "image/x-unknown", ""]) {
+			expect(rehostableImageType(refused)).toBeUndefined();
+		}
+	});
+
+	it("renders only raster images and JSON inline", () => {
+		expect(isInlineArtifactType("image/png")).toBe(true);
+		expect(isInlineArtifactType("application/json")).toBe(true);
+		expect(isInlineArtifactType("image/svg+xml")).toBe(false);
+		expect(isInlineArtifactType("text/html; charset=utf-8")).toBe(false);
+		// A legacy object stored under an alias is downloaded rather than trusted.
+		expect(isInlineArtifactType("image/jpg")).toBe(false);
+		expect(isInlineArtifactType("application/octet-stream")).toBe(false);
 	});
 });
 
@@ -118,6 +141,22 @@ describe("artifact store", () => {
 			const key = parsed.pathname.replace("/artifacts/", "");
 			expect(await verifyArtifactToken({ key, token: parsed.searchParams.get("token") ?? "", config })).toBe(true);
 		}
+	});
+
+	it("refuses to store SVG or other non-raster images", async () => {
+		const { env, objects } = fakeEnv();
+		const store = createArtifactStore(env, config);
+		await expect(store.putImage(new Uint8Array([60]), "image/svg+xml", "https://example.com/x.svg")).rejects.toThrow(
+			/not a rehostable image type/,
+		);
+		expect(objects.size).toBe(0);
+	});
+
+	it("stores aliased types under their canonical content type", async () => {
+		const { env, objects } = fakeEnv();
+		await createArtifactStore(env, config).putImage(new Uint8Array([1]), "image/jpg", "https://example.com/a.jpg");
+		const [stored] = [...objects.values()];
+		expect(stored?.options.httpMetadata).toEqual({ contentType: "image/jpeg" });
 	});
 
 	it("refuses result keys that could escape the results prefix", async () => {

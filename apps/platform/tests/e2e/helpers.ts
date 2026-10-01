@@ -29,6 +29,10 @@ export const api = async <T = unknown>(
 ): Promise<JsonResponse<T>> => {
 	const { json, headers, ...rest } = init;
 	const finalHeaders = new Headers(headers);
+	// What a browser on the dashboard sends; state-changing /api/dashboard calls require it.
+	if (!finalHeaders.has("origin")) {
+		finalHeaders.set("origin", BASE_URL);
+	}
 	let body = rest.body;
 	if (json !== undefined) {
 		finalHeaders.set("content-type", "application/json");

@@ -87,9 +87,15 @@ export interface RefreshDeps {
 	api: ProxyAccountApi;
 	now(): Date;
 	log: Pick<Console, "info" | "warn" | "error">;
+	/**
+	 * Called with the highest threshold (`WARN_RATIO` / `STOP_RATIO`) usage has reached — on
+	 * every run while it stays there; the ops alert dedupes per threshold per period. Must not
+	 * throw (`alertProxyBandwidth` never does).
+	 */
+	onThreshold?(threshold: number, snapshot: BandwidthSnapshot, ratio: number): Promise<unknown>;
 }
 
-/** The cron step: fetch, store for the engines, and log against the thresholds. */
+/** The cron step: fetch, store for the engines, and log/alert against the thresholds. */
 export const refreshProxyBandwidth = async (deps: RefreshDeps): Promise<BandwidthSnapshot> => {
 	const snapshot = await readProxyBandwidth(deps.api, deps.now());
 	await deps.kv.put(PROXY_BANDWIDTH_KEY, JSON.stringify(snapshot), { expirationTtl: SNAPSHOT_TTL_SECONDS });
@@ -97,8 +103,10 @@ export const refreshProxyBandwidth = async (deps: RefreshDeps): Promise<Bandwidt
 	const detail = { ...snapshot, ratio: Number(ratio.toFixed(4)) };
 	if (ratio >= STOP_RATIO) {
 		deps.log.error("proxy_bandwidth_exhausted", detail);
+		await deps.onThreshold?.(STOP_RATIO, snapshot, ratio);
 	} else if (ratio >= WARN_RATIO) {
 		deps.log.warn("proxy_bandwidth_high", detail);
+		await deps.onThreshold?.(WARN_RATIO, snapshot, ratio);
 	} else {
 		deps.log.info("proxy_bandwidth", detail);
 	}

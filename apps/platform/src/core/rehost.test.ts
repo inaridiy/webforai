@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ArtifactStore } from "../artifacts/store";
-import { MAX_REHOSTED_IMAGES, type RehostDeps, rehostImages } from "./rehost";
+import { MAX_REHOSTED_IMAGES, REHOST_CONCURRENCY, type RehostDeps, rehostImages } from "./rehost";
 
 /** Records what was stored and hands back a deterministic URL per call. */
 const fakeStore = () => {
@@ -87,6 +87,80 @@ describe("image rehosting", () => {
 		expect(result.markdown).toContain("https://example.com/x.png");
 		expect(result.images).toEqual([]);
 		expect(result.failures[0]?.reason).toMatch(/not an image/);
+	});
+
+	it.each(["image/svg+xml", "image/svg+xml; charset=utf-8", "image/x-unknown"])(
+		"refuses %s images, keeping the origin URL",
+		async (contentType) => {
+			const { deps: d, stored } = deps(() =>
+				Promise.resolve(
+					new Response("<svg onload=alert(1)>", { status: 200, headers: { "content-type": contentType } }),
+				),
+			);
+
+			const result = await rehostImages(d, "![a](https://example.com/x.svg)", "https://example.com/");
+
+			expect(stored).toEqual([]);
+			expect(result.markdown).toContain("https://example.com/x.svg");
+			expect(result.failures[0]?.reason).toMatch(/raster formats only/);
+		},
+	);
+
+	it("stores aliased raster types under their canonical type", async () => {
+		const { deps: d, stored } = deps(() => Promise.resolve(imageResponse("image/jpg")));
+		await rehostImages(d, "![a](https://example.com/x.jpg)", "https://example.com/");
+		expect(stored[0]?.contentType).toBe("image/jpeg");
+	});
+
+	it("checks every redirect hop and never requests a private one", async () => {
+		const requested: { url: string; redirect?: string }[] = [];
+		const { deps: d, stored } = deps((url, init) => {
+			requested.push({ url, redirect: init?.redirect });
+			if (url === "https://example.com/meta.png") {
+				return Promise.resolve(
+					new Response(null, { status: 302, headers: { location: "http://169.254.169.254/latest/meta-data" } }),
+				);
+			}
+			if (url === "https://example.com/moved.png") {
+				return Promise.resolve(new Response(null, { status: 301, headers: { location: "/final.png" } }));
+			}
+			return Promise.resolve(imageResponse());
+		});
+
+		const result = await rehostImages(
+			d,
+			"![a](https://example.com/meta.png)\n![b](https://example.com/moved.png)",
+			"https://example.com/",
+		);
+
+		expect(requested.map((entry) => entry.url).sort()).toEqual([
+			"https://example.com/final.png",
+			"https://example.com/meta.png",
+			"https://example.com/moved.png",
+		]);
+		expect(requested.every((entry) => entry.redirect === "manual")).toBe(true);
+		expect(stored).toHaveLength(1);
+		expect(result.failures).toEqual([
+			{ url: "https://example.com/meta.png", reason: "private or local addresses are not allowed" },
+		]);
+	});
+
+	it(`downloads at most ${REHOST_CONCURRENCY} images at once`, async () => {
+		let inFlight = 0;
+		let peak = 0;
+		const { deps: d } = deps(async () => {
+			inFlight += 1;
+			peak = Math.max(peak, inFlight);
+			await new Promise((resolve) => setTimeout(resolve, 1));
+			inFlight -= 1;
+			return imageResponse();
+		});
+
+		const markdown = Array.from({ length: 12 }, (_, index) => `![i](/c-${index}.png)`).join("\n");
+		const result = await rehostImages(d, markdown, "https://example.com/");
+
+		expect(result.images).toHaveLength(12);
+		expect(peak).toBe(REHOST_CONCURRENCY);
 	});
 
 	it("never fetches data URLs or private hosts", async () => {

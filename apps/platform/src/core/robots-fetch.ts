@@ -1,7 +1,7 @@
 import { PLATFORM_USER_AGENT } from "../engines/workers-fetch";
+import { fetchFollowingRedirects } from "./redirects";
 import type { FetchLike } from "./rehost";
 import { ALLOW_ALL, MAX_ROBOTS_TXT_BYTES, type RobotsTxt, parseRobotsTxt, robotsTxtUrl } from "./robots";
-import { assertPublicHttpUrl } from "./ssrf";
 
 /**
  * Loads `<origin>/robots.txt` for the opt-in `respectRobotsTxt` check.
@@ -61,17 +61,20 @@ export const createRobotsTxtLoader =
 	(fetchImpl: FetchLike = (input, init) => fetch(input, init)): RobotsTxtLoader =>
 	async (target) => {
 		try {
-			const response = await fetchImpl(robotsTxtUrl(target), {
-				method: "GET",
-				redirect: "follow",
-				headers: { "user-agent": PLATFORM_USER_AGENT, accept: "text/plain,*/*;q=0.5" },
-				signal: AbortSignal.timeout(ROBOTS_TIMEOUT_MS),
-				// Workers-only request options; ignored by other runtimes.
-				cf: { cacheTtl: ROBOTS_CACHE_TTL_SECONDS, cacheEverything: true },
-			});
-			if (response.url) {
-				assertPublicHttpUrl(response.url);
-			}
+			const signal = AbortSignal.timeout(ROBOTS_TIMEOUT_MS);
+			// Redirects are walked by hand so every hop passes the SSRF guard before it is requested.
+			const { response } = await fetchFollowingRedirects(
+				(url) =>
+					fetchImpl(url, {
+						method: "GET",
+						redirect: "manual",
+						headers: { "user-agent": PLATFORM_USER_AGENT, accept: "text/plain,*/*;q=0.5" },
+						signal,
+						// Workers-only request options; ignored by other runtimes.
+						cf: { cacheTtl: ROBOTS_CACHE_TTL_SECONDS, cacheEverything: true },
+					}),
+				robotsTxtUrl(target),
+			);
 			if (!(response.ok && isTextual(response.headers.get("content-type")))) {
 				await response.body?.cancel().catch(() => undefined);
 				return ALLOW_ALL;

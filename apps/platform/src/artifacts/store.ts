@@ -102,22 +102,47 @@ export const verifyArtifactToken = async ({
 	return equals(token.slice(separator + 1), expected);
 };
 
-const IMAGE_EXTENSIONS: Record<string, string> = {
+/**
+ * Raster image types we rehost, with their file extensions. Deliberately an allowlist: anything
+ * else — notably `image/svg+xml`, an active document that can run script — is refused at rehost
+ * time, and `GET /artifacts/*` serves only these (plus JSON results) inline.
+ */
+const RASTER_IMAGE_EXTENSIONS: Record<string, string> = {
 	"image/png": "png",
 	"image/jpeg": "jpg",
-	"image/jpg": "jpg",
 	"image/gif": "gif",
 	"image/webp": "webp",
 	"image/avif": "avif",
-	"image/svg+xml": "svg",
 	"image/bmp": "bmp",
 	"image/x-icon": "ico",
+	"image/vnd.microsoft.icon": "ico",
 	"image/tiff": "tiff",
 };
 
+/** Non-standard spellings origins send for allowlisted types. */
+const IMAGE_TYPE_ALIASES: Record<string, string> = {
+	"image/jpg": "image/jpeg",
+	"image/pjpeg": "image/jpeg",
+	"image/x-png": "image/png",
+	"image/x-ms-bmp": "image/bmp",
+};
+
+const essenceOf = (contentType: string): string => contentType.split(";")[0]?.trim().toLowerCase() ?? "";
+
+/** The canonical raster type for a `Content-Type` header, or `undefined` when it is not rehostable. */
+export const rehostableImageType = (contentType: string): string | undefined => {
+	const essence = essenceOf(contentType);
+	const canonical = IMAGE_TYPE_ALIASES[essence] ?? essence;
+	return canonical in RASTER_IMAGE_EXTENSIONS ? canonical : undefined;
+};
+
+/** Stored types `GET /artifacts/*` may render inline; everything else is sent as an attachment. */
+export const isInlineArtifactType = (contentType: string): boolean =>
+	essenceOf(contentType) === "application/json" || rehostableImageType(contentType) === essenceOf(contentType);
+
 export const imageExtension = (contentType: string): string => {
-	const essence = contentType.split(";")[0]?.trim().toLowerCase() ?? "";
-	return IMAGE_EXTENSIONS[essence] ?? "bin";
+	const canonical = rehostableImageType(contentType);
+	return canonical ? RASTER_IMAGE_EXTENSIONS[canonical] ?? "bin" : "bin";
 };
 
 /** `YYYY-MM-DD`, so R2 lifecycle rules can expire whole days by prefix. */
@@ -154,8 +179,19 @@ export const createArtifactStore = (env: Env, config: ArtifactUrlConfig): Artifa
 		putScreenshot: (bytes, keyHint) =>
 			store(`screenshots/${datePart(Date.now())}/${ulid()}.png`, bytes, "image/png", keyHint),
 
-		putImage: (bytes, contentType, keyHint) =>
-			store(`images/${datePart(Date.now())}/${ulid()}.${imageExtension(contentType)}`, bytes, contentType, keyHint),
+		// `async` so a refused type surfaces as a rejected promise rather than a synchronous throw.
+		putImage: async (bytes, contentType, keyHint) => {
+			const imageType = rehostableImageType(contentType);
+			if (!imageType) {
+				throw new PlatformError("unsupported_content_type", `not a rehostable image type: ${contentType}`, 415);
+			}
+			return await store(
+				`images/${datePart(Date.now())}/${ulid()}.${imageExtension(imageType)}`,
+				bytes,
+				imageType,
+				keyHint,
+			);
+		},
 
 		// `async` so a rejected key surfaces as a rejected promise rather than a synchronous throw.
 		putResult: async (json, key, ttlSeconds) =>

@@ -1,5 +1,17 @@
 import type { Context, MiddlewareHandler } from "hono";
 import { createMiddleware } from "hono/factory";
+import { getBillingState } from "../billing/state";
+import { createDb } from "../db/client";
+import { loadConfig } from "../env";
+import {
+	RATE_LIMIT_RETRY_AFTER_SECONDS,
+	type RateLimiter,
+	type Tier,
+	checkRateLimit,
+	rateLimitedMessage,
+	tierOf,
+	tierRateLimitBinding,
+} from "../ops/limits";
 import type { Auth } from "./auth";
 
 type SessionResult = Awaited<ReturnType<Auth["api"]["getSession"]>>;
@@ -12,6 +24,8 @@ export interface AuthVariables {
 	session: SessionRecord | null;
 	apiKeyUserId: string;
 	apiKeyId: string;
+	/** Subscription tier of the key's owner, resolved once per `/v1` request. */
+	apiKeyTier: Tier;
 }
 
 type AuthEnv = { Bindings: Env; Variables: AuthVariables };
@@ -51,14 +65,46 @@ const readApiKey = (c: Context): string | undefined => {
 /** Verification failures Better Auth reports when a key is throttled rather than invalid. */
 const THROTTLED_CODES = new Set(["RATE_LIMITED", "RATE_LIMIT_EXCEEDED", "USAGE_EXCEEDED"]);
 
+/** What the `/v1` key check needs beyond Better Auth — injected so tests use fakes. */
+export interface ApiKeyGateDeps {
+	/** `paid` with an active subscription (the spend guard's predicate), else `free`. */
+	tierOf(userId: string): Promise<Tier>;
+	/** The tier's Rate Limiting binding; `undefined` where the deployment has none. */
+	limiter(tier: Tier): RateLimiter | undefined;
+	/** Where a caller without a working key gets one (spec: errors name the dashboard). */
+	dashboardUrl: string;
+}
+
+export type ApiKeyGateDepsFactory = (env: Env) => ApiKeyGateDeps;
+
+export const dashboardUrlOf = (baseUrl: string): string => `${baseUrl.replace(/\/+$/u, "")}/dashboard`;
+
+const defaultApiKeyGateDeps: ApiKeyGateDepsFactory = (env) => ({
+	tierOf: async (userId) => tierOf(await getBillingState(createDb(env), userId)),
+	// Typed as always present by `wrangler types`; a deployment without `ratelimits` has none.
+	limiter: (tier) => env[tierRateLimitBinding(tier)] as RateLimiter | undefined,
+	dashboardUrl: dashboardUrlOf(loadConfig(env).BASE_URL),
+});
+
 /**
  * Authenticates `/v1/*` requests. The owning user is taken from the verified key's
  * `referenceId` — a client-supplied user id is never trusted anywhere in the platform.
+ *
+ * Then applies the per-account request limit (Workers Rate Limiting binding of the owner's
+ * tier, keyed by user id — not key id, since keys are free to create). Better Auth's per-key
+ * D1 limiter is disabled (`src/auth/auth.ts`); `THROTTLED_CODES` still maps a key-level
+ * refusal (e.g. a key created with a usage quota) to 429.
  */
-export const requireApiKey = (auth: Auth): MiddlewareHandler<AuthEnv> =>
+export const requireApiKey = (
+	auth: Auth,
+	createDeps: ApiKeyGateDepsFactory = defaultApiKeyGateDeps,
+): MiddlewareHandler<AuthEnv> =>
 	createMiddleware<AuthEnv>(async (c, next) => {
+		const deps = createDeps(c.env);
 		const key = readApiKey(c);
-		if (!key) return errorJson(c, 401, "invalid_api_key", "Missing API key.");
+		if (!key) {
+			return errorJson(c, 401, "invalid_api_key", `Missing API key. Create a key at ${deps.dashboardUrl}`);
+		}
 
 		const result = await auth.api.verifyApiKey({ body: { key } });
 		if (!result.valid || !result.key) {
@@ -66,10 +112,19 @@ export const requireApiKey = (auth: Auth): MiddlewareHandler<AuthEnv> =>
 			if (code && THROTTLED_CODES.has(code)) {
 				return errorJson(c, 429, "rate_limited", "API key rate limit exceeded.");
 			}
-			return errorJson(c, 401, "invalid_api_key", "Invalid API key.");
+			return errorJson(c, 401, "invalid_api_key", `Invalid API key. Create a key at ${deps.dashboardUrl}`);
 		}
 
-		c.set("apiKeyUserId", result.key.referenceId);
+		const userId = result.key.referenceId;
+		const tier = await deps.tierOf(userId);
+		const allowed = await checkRateLimit(deps.limiter(tier), { binding: tierRateLimitBinding(tier), key: userId });
+		if (!allowed) {
+			c.header("Retry-After", String(RATE_LIMIT_RETRY_AFTER_SECONDS));
+			return errorJson(c, 429, "rate_limited", rateLimitedMessage(tier));
+		}
+
+		c.set("apiKeyUserId", userId);
 		c.set("apiKeyId", result.key.id);
+		c.set("apiKeyTier", tier);
 		await next();
 	});

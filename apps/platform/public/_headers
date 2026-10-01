@@ -1,0 +1,18 @@
+# Security headers for the static SPA (Workers Assets applies this file; it is not served).
+# Worker routes (/api, /v1, /artifacts, /health) set their own in src/routes/security.ts.
+#
+# script-src: Vite bundles are external ('self'); the one inline script is the route-clearing
+# snippet scripts/prerender.ts injects — its sha256 is pinned here and checked by
+# src/routes/spa-headers.test.ts, so changing that script means updating the hash below.
+# Turnstile loads its script and iframe from challenges.cloudflare.com. JSON-LD blocks are
+# data, not script, and need no allowance. style-src keeps 'unsafe-inline' for prerendered
+# style attributes. img-src allows any https image: the Markdown preview (streamdown) shows the
+# scraped page's own images. worker-src/manifest-src cover /sw.js and /manifest.webmanifest.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-kAnaoG/+Is8BwIxX9APm+LGEv3U5crlSJvPcbSxh47Q=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), midi=(), display-capture=()
+  Cross-Origin-Opener-Policy: same-origin

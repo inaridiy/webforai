@@ -47,3 +47,42 @@ describe("workersFetchEngine self-serving", () => {
 		expect(assets.fetch).not.toHaveBeenCalled();
 	});
 });
+
+describe("workersFetchEngine redirects", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it("follows public redirects itself and reports the landing URL", async () => {
+		const fetchMock = vi.fn((input: string, _init?: RequestInit) =>
+			Promise.resolve(
+				input === "https://example.com/old"
+					? new Response(null, { status: 301, headers: { location: "/new" } })
+					: htmlResponse("<html><body>moved here</body></html>"),
+			),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const page = await workersFetchEngine({ url: "https://example.com/old", screenshot: false });
+
+		expect(page.url).toBe("https://example.com/new");
+		expect(page.html).toContain("moved here");
+		expect(fetchMock.mock.calls.map(([, init]) => init?.redirect)).toEqual(["manual", "manual"]);
+	});
+
+	it.each(["http://127.0.0.1/", "http://169.254.169.254/latest/meta-data/", "http://[::ffff:a9fe:a9fe]/"])(
+		"refuses a redirect to %s without requesting it",
+		async (location) => {
+			const fetchMock = vi.fn((_input: string) =>
+				Promise.resolve(new Response(null, { status: 302, headers: { location } })),
+			);
+			vi.stubGlobal("fetch", fetchMock);
+
+			await expect(workersFetchEngine({ url: "https://example.com/", screenshot: false })).rejects.toMatchObject({
+				code: "invalid_url",
+				status: 400,
+			});
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		},
+	);
+});

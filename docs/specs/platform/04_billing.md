@@ -1,5 +1,24 @@
 # Billing
 
+Revision note (2026-10-01, billing): Launch hardening, owner decisions of 2026-10-01.
+Proxy-tier requests (`proxy-fetch`, `proxy-browser`, or `auto` pinned to them by a non-`auto`
+region) need an active subscription (`402 payment_required` naming the dashboard); the free
+allowance covers `fetch`/`browser`/`auto` only, and the keyless demo refuses non-`auto` regions.
+The "optional user-set monthly hard cap" is now a spend cap: default $50, user-set $1–$5,000 in
+whole dollars (no unlimited), stored in `billing_state.spend_cap_usd` (`null` = default),
+enforced by the same pre-check (`402 spend_cap_reached` once one more credit would put this UTC
+month's `PRICE_TIERS` estimate over the cap; jobs re-check before every page). Checkout refuses
+a second live subscription (`409 already_subscribed`) and sets
+`billing_cycle_anchor_config: { day_of_month: 1, hour: 0 }` with `proration_behavior: none`, so
+Stripe periods run 1st→1st and its graduated tiers reset with our UTC calendar month (the first
+period is a short stub; the anchor is evaluated by Stripe in UTC). Meter events carry
+`timestamp` = the row's `createdAt`. The reconciliation cron (not `waitUntil`) drains up to 10
+pages of 100 rows per run, only for users with a Stripe customer; rows that can never be billed
+are marked in `usage_events.report_skipped_reason` (`no_customer`, or `expired` past Stripe's
+35-day window — logged) instead of blocking the queue. The webhook route is
+`/api/auth/stripe/webhook` (Better Auth plugin), and each subscription event re-fetches the
+subscription from Stripe rather than trusting payload order. No automatic tax: the operator is a
+免税事業者 and not an invoice issuer.
 Revision note (2026-09-24, correction): `proxy-browser` is 3 credits, not 10. The earlier
 note assumed a per-GB residential proxy (~$4/GB); the deployed egress proxy is a flat
 datacenter plan ($3.75/month, 100 IPs, 250 GB/month cap — about $0.015/GB), so proxy-browser
@@ -74,15 +93,17 @@ simplest OSS-reproducible primitive — we use Billing Meters deliberately.
 1. Resolve user from API key → stripe customer + subscription state (D1).
 2. No active subscription → allow only within the free allowance, tracked against the local
    D1 `usage_events` ledger for the current calendar month; beyond it → `402 payment_required`.
-3. Active subscription → proceed; optional user-set monthly hard cap later.
+3. Active subscription → proceed until the month's estimate reaches the spend cap (see the
+   2026-10-01 note); proxy-tier requests require this state.
 4. Execute operation. On success only: insert `usage_events` row (ULID for sync requests; deterministic page id for jobs) and send a Stripe
-   meter event with `identifier = usage_events.id` (idempotent retry-safe). Meter event
-   failures are retried via `ctx.waitUntil`/workflow step; the D1 row is the reconciliation
-   source.
+   meter event with `identifier = usage_events.id` (idempotent retry-safe) and `timestamp` =
+   the row's `createdAt`. The first send runs in `ctx.waitUntil`/the page's workflow step;
+   failures are retried by the 15-minute cron (`retryUnreportedUsage`); the D1 row is the
+   reconciliation source.
 
 ## Webhooks
 
-Handled by the Better Auth Stripe plugin where possible; otherwise a `/api/stripe/webhook`
-route verifying `STRIPE_WEBHOOK_SECRET`: `checkout.session.completed`,
-`customer.subscription.updated|deleted`, `invoice.payment_failed` (mark subscription state in
-D1; API reads local state only — no Stripe call on the hot path).
+Handled by the Better Auth Stripe plugin at `/api/auth/stripe/webhook` (it verifies
+`STRIPE_WEBHOOK_SECRET`); `onEvent` mirrors `customer.subscription.created|updated|deleted` and
+`invoice.payment_failed` into `billing_state` by re-fetching the subscription (API reads local
+state only — no Stripe call on the hot path).

@@ -4,9 +4,17 @@ import { z } from "zod";
 import { deleteAccount } from "../account/delete-account";
 import type { AuthVariables } from "../auth/middleware";
 import { requireSession } from "../auth/middleware";
-import { FREE_MONTHLY_CREDITS } from "../billing/credits";
-import { monthStart } from "../billing/guard";
+import { FREE_MONTHLY_CREDITS, monthlyCostUsd } from "../billing/credits";
+import {
+	DEFAULT_SPEND_CAP_USD,
+	MAX_SPEND_CAP_USD,
+	MIN_SPEND_CAP_USD,
+	effectiveSpendCapUsd,
+	monthStart,
+	spendCapBodySchema,
+} from "../billing/guard";
 import { createBillingRepo } from "../billing/repo";
+import { hasLiveSubscription } from "../billing/state";
 import { createStripe } from "../billing/stripe";
 import { reportToStripe } from "../billing/usage";
 import { createDb } from "../db/client";
@@ -26,6 +34,16 @@ const customerIdOf = async (env: Env, userId: string): Promise<string | undefine
 	return rows[0]?.stripeCustomerId ?? undefined;
 };
 
+const spendCapResponse = (stored: number | null, monthCredits: number) => ({
+	spendCapUsd: effectiveSpendCapUsd(stored),
+	isDefault: stored === null,
+	defaultUsd: DEFAULT_SPEND_CAP_USD,
+	minUsd: MIN_SPEND_CAP_USD,
+	maxUsd: MAX_SPEND_CAP_USD,
+	monthCredits,
+	estimatedUsd: monthlyCostUsd(monthCredits),
+});
+
 /**
  * Session-authenticated dashboard API (mounted under `/api/dashboard`).
  *
@@ -33,6 +51,8 @@ const customerIdOf = async (env: Env, userId: string): Promise<string | undefine
  * applied here so a mounting mistake cannot expose the routes anonymously.
  */
 const deleteAccountBody = z.object({ confirmEmail: z.string().min(1).max(320) });
+
+const R2_LIST_LIMIT = 1000;
 
 export const dashboardRoutes = () => {
 	const app = new Hono<DashboardEnv>();
@@ -82,16 +102,75 @@ export const dashboardRoutes = () => {
 			return c.json({ error: { code: "no_customer", message: "No Stripe customer for this account." } }, 409);
 		}
 
+		// The local mirror first (cheap), then Stripe itself: the mirror lags its webhooks, and a
+		// second subscription would bill the same metered usage twice.
+		const state = await createBillingRepo(createDb(c.env)).getBillingState(sessionUser.id);
+		const live =
+			hasLiveSubscription(state) ||
+			hasLiveSubscription((await stripe.subscriptions.list({ customer, status: "all", limit: 10 })).data);
+		if (live) {
+			return c.json(
+				{
+					error: {
+						code: "already_subscribed",
+						message: "This account already has a subscription. Manage it from the billing portal.",
+					},
+				},
+				409,
+			);
+		}
+
 		const checkout = await stripe.checkout.sessions.create({
 			mode: "subscription",
 			customer,
 			// Metered line items must not carry a quantity.
 			line_items: [{ price: priceId }],
+			subscription_data: {
+				// Periods run 1st→1st (00:00 UTC), matching the UTC calendar month the spend guard,
+				// free allowance and dashboard estimate count — so Stripe's graduated tiers reset
+				// when ours do. The first period is the short stub up to the next 1st; a metered
+				// price has no fixed fee to prorate.
+				billing_cycle_anchor_config: { day_of_month: 1, hour: 0, minute: 0, second: 0 },
+				proration_behavior: "none",
+			},
 			success_url: `${config.BASE_URL}/dashboard?checkout=success`,
 			cancel_url: `${config.BASE_URL}/dashboard?checkout=cancelled`,
 		});
 
 		return c.json({ url: checkout.url });
+	});
+
+	/** The monthly spend cap and what this UTC month is estimated to cost so far. */
+	app.get("/billing/spend-cap", async (c) => {
+		// biome-ignore lint/style/noNonNullAssertion: requireSession guarantees a user
+		const sessionUser = c.get("user")!;
+		const repo = createBillingRepo(createDb(c.env));
+		const [state, monthCredits] = await Promise.all([
+			repo.getBillingState(sessionUser.id),
+			repo.sumMonthCredits(sessionUser.id, monthStart()),
+		]);
+		return c.json(spendCapResponse(state?.spendCapUsd ?? null, monthCredits));
+	});
+
+	app.put("/billing/spend-cap", async (c) => {
+		// biome-ignore lint/style/noNonNullAssertion: requireSession guarantees a user
+		const sessionUser = c.get("user")!;
+		const body = spendCapBodySchema.safeParse(await c.req.json().catch(() => null));
+		if (!body.success) {
+			return c.json(
+				{
+					error: {
+						code: "invalid_request",
+						message: `Send { spendCapUsd }: a whole number of dollars from ${MIN_SPEND_CAP_USD} to ${MAX_SPEND_CAP_USD}.`,
+					},
+				},
+				400,
+			);
+		}
+		const repo = createBillingRepo(createDb(c.env));
+		await repo.setSpendCap(sessionUser.id, body.data.spendCapUsd, new Date());
+		const monthCredits = await repo.sumMonthCredits(sessionUser.id, monthStart());
+		return c.json(spendCapResponse(body.data.spendCapUsd, monthCredits));
 	});
 
 	app.post("/billing/portal", async (c) => {
@@ -145,10 +224,17 @@ export const dashboardRoutes = () => {
 							}
 						: undefined,
 				deletePrefix: async (prefix) => {
-					const listed = await c.env.ARTIFACTS.list({ prefix, limit: 1000 });
-					if (listed.objects.length > 0) {
-						await c.env.ARTIFACTS.delete(listed.objects.map((object) => object.key));
-					}
+					let cursor: string | undefined;
+					do {
+						const listed = await c.env.ARTIFACTS.list({ prefix, limit: R2_LIST_LIMIT, ...(cursor ? { cursor } : {}) });
+						if (listed.objects.length > 0) {
+							await c.env.ARTIFACTS.delete(listed.objects.map((object) => object.key));
+						}
+						cursor = listed.truncated ? listed.cursor : undefined;
+					} while (cursor);
+				},
+				terminateWorkflow: async (instanceId) => {
+					await (await c.env.CRAWL_WORKFLOW.get(instanceId)).terminate();
 				},
 				waitUntil: (promise) => c.executionCtx.waitUntil(promise),
 			},

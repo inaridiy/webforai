@@ -3,7 +3,7 @@
  * generated from the Better Auth config (`npx auth generate`) and live in ./auth-schema.ts;
  * this file adds the platform's own tables and re-exports everything for drizzle-kit.
  */
-import { isNull } from "drizzle-orm";
+import { and, isNull } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export * from "./auth-schema";
@@ -26,7 +26,11 @@ export const jobs = sqliteTable(
 		createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 		updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 	},
-	(table) => [index("jobs_user_idx").on(table.userId, table.createdAt)],
+	(table) => [
+		index("jobs_user_idx").on(table.userId, table.createdAt),
+		// Per-user concurrency limit: counts a user's queued/running jobs on every job submission.
+		index("jobs_user_status_idx").on(table.userId, table.status),
+	],
 );
 
 /** Immutable page commits. Full results and crawl links live in the referenced R2 object. */
@@ -63,6 +67,12 @@ export const billingState = sqliteTable("billing_state", {
 		.default("none"),
 	stripeSubscriptionId: text("stripe_subscription_id"),
 	currentPeriodEnd: integer("current_period_end", { mode: "timestamp" }),
+	/**
+	 * User-set monthly spend cap in whole US dollars; `null` means the default
+	 * (`DEFAULT_SPEND_CAP_USD` in `src/billing/guard.ts`). Written only by the dashboard, never by
+	 * the webhook mirror, so a subscription event cannot reset it.
+	 */
+	spendCapUsd: integer("spend_cap_usd"),
 	updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
@@ -77,14 +87,23 @@ export const usageEvents = sqliteTable(
 		credits: integer("credits").notNull(),
 		/** Set once the Stripe meter event is acknowledged; unsent rows are retried. */
 		reportedAt: integer("reported_at", { mode: "timestamp" }),
+		/**
+		 * Why an unsent row will never be sent: its user has no Stripe customer (free usage on a
+		 * customerless account), or it is older than the meter accepts (35 days). Such rows leave
+		 * the retry queue instead of blocking it; `reportedAt` stays null so they are never
+		 * mistaken for billed usage.
+		 */
+		reportSkippedReason: text("report_skipped_reason", { enum: ["no_customer", "expired"] }),
 		createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 	},
 	(table) => [
 		index("usage_user_idx").on(table.userId, table.createdAt),
-		// The 15-minute Stripe report cron reads unsent rows oldest-first; without this partial
-		// index every run scans the whole ledger. Only unsent rows are in it, so it stays small.
-		index("usage_unreported_idx")
-			.on(table.createdAt)
-			.where(isNull(table.reportedAt)),
+		// The 15-minute Stripe report cron reads pending rows oldest-first (keyset on created_at,
+		// id); without this partial index every run scans the whole ledger. Only rows still owed
+		// to Stripe are in it, so it stays small.
+		index("usage_pending_report_idx")
+			.on(table.createdAt, table.id)
+			// biome-ignore lint/style/noNonNullAssertion: `and` of two conditions is never undefined
+			.where(and(isNull(table.reportedAt), isNull(table.reportSkippedReason))!),
 	],
 );

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 
 import { type AuthVariables, requireSession } from "../auth/middleware";
-import { ensureSpendable } from "../billing/guard";
+import { ensureSpendable, usesProxyTier } from "../billing/guard";
 import type { ScrapeRequest } from "../core/types";
 import { loadConfig } from "../env";
 import { onPlatformError } from "./errors";
@@ -32,7 +32,7 @@ export const playgroundRoutes = () => {
 		const config = loadConfig(c.env);
 
 		// Guard first — a failed or unaffordable scrape must never be billed.
-		await ensureSpendable(billingDeps(c.env, config), sessionUser.id);
+		await ensureSpendable(billingDeps(c.env, config), sessionUser.id, { proxy: usesProxyTier(body) });
 
 		const request: ScrapeRequest = {
 			url: body.url,

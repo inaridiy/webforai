@@ -5,6 +5,7 @@ import { DeleteAccountCard } from "../components/dashboard/delete-account";
 import { InstallAppCard } from "../components/dashboard/install-app";
 import { JobsTable } from "../components/dashboard/jobs-table";
 import { SetupChecklist } from "../components/dashboard/setup-checklist";
+import { SpendCapCard } from "../components/dashboard/spend-cap";
 import { UsagePanel } from "../components/dashboard/usage-overview";
 import { UsageTable } from "../components/dashboard/usage-table";
 import { fetchUsage } from "../lib/api";
@@ -126,6 +127,12 @@ const DashboardBody = ({ user, onDeleted }: { user: AccountUser; onDeleted: () =
 				<h2 id="settings" className="mt-6 font-semibold text-xl tracking-tight md:col-span-12">
 					Settings
 				</h2>
+				{ready?.billingEnabled ? (
+					<SpendCapCard
+						subscribed={ready.subscriptionStatus === "active" || ready.subscriptionStatus === "past_due"}
+						className="md:col-span-12"
+					/>
+				) : null}
 				<InstallAppCard className="md:col-span-12" />
 				<DeleteAccountCard email={user.email} onDeleted={onDeleted} className="md:col-span-12" />
 			</div>

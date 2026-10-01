@@ -1,3 +1,4 @@
+import { fetchFollowingRedirects } from "../core/redirects";
 import { assertPublicHttpUrl } from "../core/ssrf";
 import { type EngineFetchParams, type FetchedPage, PlatformError } from "../core/types";
 
@@ -118,18 +119,27 @@ export interface WorkersFetchOptions {
 	self?: SelfServing;
 }
 
-const request = async (url: string, self: SelfServing | undefined): Promise<Response> => {
+/**
+ * One request, no automatic redirects: `fetchFollowingRedirects` walks the chain so every hop
+ * passes the SSRF guard before it is requested. A hop that lands on our own host is served
+ * from the assets binding like a direct request would be.
+ */
+const requestOnce = async (url: string, self: SelfServing | undefined, signal: AbortSignal): Promise<Response> => {
+	if (self && new URL(url).host === self.host) {
+		return await self.assets.fetch(url);
+	}
+	return await fetch(url, { method: "GET", redirect: "manual", headers: HTML_REQUEST_HEADERS, signal });
+};
+
+const request = async (url: string, self: SelfServing | undefined): Promise<{ response: Response; url: string }> => {
+	// One budget for the whole chain, not per hop.
+	const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
 	try {
-		if (self && new URL(url).host === self.host) {
-			return await self.assets.fetch(url);
-		}
-		return await fetch(url, {
-			method: "GET",
-			redirect: "follow",
-			headers: HTML_REQUEST_HEADERS,
-			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-		});
+		return await fetchFollowingRedirects((hop) => requestOnce(hop, self, signal), url);
 	} catch (error) {
+		if (error instanceof PlatformError) {
+			throw error;
+		}
 		if (error instanceof Error && error.name === "TimeoutError") {
 			throw new PlatformError("fetch_failed", `timed out after ${FETCH_TIMEOUT_MS}ms: ${url}`, 504);
 		}
@@ -146,11 +156,8 @@ export const workersFetchEngine = async (
 	options: WorkersFetchOptions = {},
 ): Promise<FetchedPage> => {
 	const target = assertPublicHttpUrl(url);
-	const response = await request(target.href, options.self);
-
-	// Redirects are followed by the runtime, so the only place a private target can appear is
-	// the final URL — re-check it before the body is trusted.
-	const finalUrl = assertPublicHttpUrl(response.url || target.href);
+	const { response, url: landed } = await request(target.href, options.self);
+	const finalUrl = new URL(landed);
 
 	if (!response.ok) {
 		throw new PlatformError("fetch_failed", `upstream responded ${response.status} for ${finalUrl.href}`, 502);

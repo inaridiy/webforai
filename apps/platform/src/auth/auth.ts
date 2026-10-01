@@ -2,12 +2,14 @@ import { apiKey } from "@better-auth/api-key";
 import { stripe as stripePlugin } from "@better-auth/stripe";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { captcha, emailOTP } from "better-auth/plugins";
 import { mirrorStripeEvent } from "../billing/state";
 import { createStripe } from "../billing/stripe";
 import { createDb } from "../db/client";
 import * as schema from "../db/schema";
 import type { AppConfig } from "../env";
+import { guardAuthRequest } from "./guards";
 import { SIGN_IN_CODE_TTL_MINUTES, sendSignInCode } from "./sign-in-email";
 
 const DAY_SECONDS = 24 * 60 * 60;
@@ -15,8 +17,13 @@ const DAY_SECONDS = 24 * 60 * 60;
 /** Turnstile action the sign-in widget sends and the server requires. */
 export const TURNSTILE_ACTION = "sign-in";
 
-/** Per-key rate limit: generous enough for scripted use, low enough to bound abuse. */
-const API_KEY_RATE_LIMIT = { enabled: true, timeWindow: 60 * 1000, maxRequests: 120 };
+/**
+ * The plugin's per-key limiter is off: `/v1` is limited per account by the Workers Rate
+ * Limiting bindings in `requireApiKey` (keys are free to create, so a per-key limit bounded
+ * nothing). The global `enabled: false` also overrides `rateLimitEnabled` stored on keys
+ * created before 2026-10-01. Verification still writes `lastRequest`/`updatedAt` per call.
+ */
+const API_KEY_RATE_LIMIT = { enabled: false };
 
 /**
  * Better Auth's limiter, persisted in D1: in-memory counters would be per isolate on Workers.
@@ -57,7 +64,7 @@ export const createAuth = (env: Env, config: AppConfig) => {
 						stripeWebhookSecret: webhookSecret,
 						createCustomerOnSignUp: true,
 						onEvent: async (event) => {
-							await mirrorStripeEvent(db, event);
+							await mirrorStripeEvent(db, event, stripeClient);
 						},
 					}),
 				]
@@ -65,6 +72,8 @@ export const createAuth = (env: Env, config: AppConfig) => {
 
 	// Bot check on sending sign-in codes, only when both Turnstile keys are configured. The
 	// hostname allowlist comes from BASE_URL, so production never accepts localhost tokens.
+	// A production deployment with the site key but no secret is refused by `guardAuthRequest`
+	// rather than served without the check.
 	const turnstile =
 		config.TURNSTILE_SECRET_KEY && config.TURNSTILE_SITE_KEY
 			? [
@@ -90,6 +99,17 @@ export const createAuth = (env: Env, config: AppConfig) => {
 		// OAuth failures (e.g. account_not_linked) land on our sign-in page as ?error=<code>
 		// instead of Better Auth's generic error page.
 		onAPIError: { errorURL: "/login" },
+		hooks: {
+			before: createAuthMiddleware(async (ctx) => {
+				await guardAuthRequest(ctx.path, {
+					config,
+					sessionUserId: async () => (await getSessionFromCtx(ctx))?.user.id,
+					countApiKeys: (userId) =>
+						ctx.context.adapter.count({ model: "apikey", where: [{ field: "referenceId", value: userId }] }),
+					log: console,
+				});
+			}),
+		},
 		...(config.githubLoginEnabled && github ? { socialProviders: { github } } : {}),
 		plugins: [
 			emailOTP({

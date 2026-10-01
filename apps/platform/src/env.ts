@@ -30,6 +30,9 @@ const envSchema = z.object({
 
 	GITHUB_CLIENT_ID: z.string().optional(),
 	GITHUB_CLIENT_SECRET: z.string().optional(),
+
+	/** Operator inbox for ops alerts (bandwidth thresholds, cron failures); unset = log only. */
+	OPS_ALERT_EMAIL: z.string().email().optional(),
 });
 
 export type AppConfig = z.infer<typeof envSchema> & {

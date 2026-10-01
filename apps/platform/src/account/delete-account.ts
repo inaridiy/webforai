@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { isReportableAge } from "../billing/usage";
 import { PlatformError } from "../core/types";
 import type { PlatformDb } from "../db/client";
 import { account, apikey, billingState, jobPages, jobs, session, usageEvents, user, verification } from "../db/schema";
@@ -9,7 +10,8 @@ import { account, apikey, billingState, jobPages, jobs, session, usageEvents, us
  * Billing is settled first and any billing failure aborts before a single row is deleted:
  *   1. usage rows not yet on the Stripe meter are reported, so nothing owed is lost;
  *   2. an active subscription is cancelled with an immediate final invoice.
- * Then the user's rows go in one D1 batch (keys, jobs + pages, usage, billing state, pending
+ * Then the user's queued/running job Workflows are terminated (best-effort, so a job cannot
+ * keep scraping for a deleted account), and the user's rows go in one D1 batch (keys, jobs + pages, usage, billing state, pending
  * sign-in codes, sessions, linked accounts, the user). Stripe keeps its invoices and customer
  * record — the billing records the privacy policy says are retained. Job result archives in
  * R2 are removed best-effort afterwards; anything missed expires under the 7-day lifecycle.
@@ -17,7 +19,7 @@ import { account, apikey, billingState, jobPages, jobs, session, usageEvents, us
 
 export interface DeleteAccountBilling {
 	/** Reports one unreported usage row to the meter (and marks it reported). */
-	report(row: { id: string; stripeCustomerId: string; credits: number }): Promise<void>;
+	report(row: { id: string; stripeCustomerId: string; credits: number; createdAt: Date }): Promise<void>;
 	/** Cancels a subscription now, invoicing outstanding metered usage. */
 	cancelSubscription(subscriptionId: string): Promise<void>;
 }
@@ -28,7 +30,10 @@ export interface DeleteAccountDeps {
 	billing?: DeleteAccountBilling | undefined;
 	/** Best-effort removal of stored objects under a key prefix. */
 	deletePrefix?: ((prefix: string) => Promise<void>) | undefined;
+	/** Best-effort termination of a job's Workflow instance. */
+	terminateWorkflow?: ((instanceId: string) => Promise<void>) | undefined;
 	waitUntil?: ((promise: Promise<unknown>) => void) | undefined;
+	now?: (() => Date) | undefined;
 }
 
 const SUBSCRIBED = new Set(["active", "past_due"]);
@@ -42,12 +47,16 @@ const settleBilling = async (deps: DeleteAccountDeps, userId: string, customerId
 	const stripeCustomerId = state?.stripeCustomerId ?? customerId;
 	if (stripeCustomerId) {
 		const unreported = await deps.db
-			.select({ id: usageEvents.id, credits: usageEvents.credits })
+			.select({ id: usageEvents.id, credits: usageEvents.credits, createdAt: usageEvents.createdAt })
 			.from(usageEvents)
-			.where(and(eq(usageEvents.userId, userId), isNull(usageEvents.reportedAt)));
+			.where(
+				and(eq(usageEvents.userId, userId), isNull(usageEvents.reportedAt), isNull(usageEvents.reportSkippedReason)),
+			);
+		const now = deps.now?.() ?? new Date();
 		try {
-			for (const row of unreported) {
-				await billing.report({ id: row.id, stripeCustomerId, credits: row.credits });
+			// Rows past the meter's 35-day window would be rejected forever and block deletion.
+			for (const row of unreported.filter((usage) => isReportableAge(usage.createdAt, now))) {
+				await billing.report({ id: row.id, stripeCustomerId, credits: row.credits, createdAt: row.createdAt });
 			}
 		} catch {
 			throw new PlatformError(
@@ -85,9 +94,24 @@ export const deleteAccount = async (
 
 	await settleBilling(deps, target.id, row.stripeCustomerId ?? null);
 
-	const jobIds = (await deps.db.select({ id: jobs.id }).from(jobs).where(eq(jobs.userId, target.id))).map(
-		(job) => job.id,
-	);
+	const userJobs = await deps.db
+		.select({ id: jobs.id, status: jobs.status, workflowInstanceId: jobs.workflowInstanceId })
+		.from(jobs)
+		.where(eq(jobs.userId, target.id));
+	const jobIds = userJobs.map((job) => job.id);
+
+	if (deps.terminateWorkflow) {
+		const { terminateWorkflow } = deps;
+		const live = userJobs.filter(
+			(job) => job.workflowInstanceId && (job.status === "queued" || job.status === "running"),
+		);
+		const results = await Promise.allSettled(live.map((job) => terminateWorkflow(job.workflowInstanceId as string)));
+		const failed = results.filter((result) => result.status === "rejected").length;
+		if (failed > 0) {
+			// Instances that finished meanwhile reject too; anything left expires with its job row gone.
+			console.warn("account_delete_terminate_failed", { userId: target.id, failed });
+		}
+	}
 	const email = row.email.toLowerCase();
 	await deps.db.batch([
 		deps.db.delete(apikey).where(eq(apikey.referenceId, target.id)),

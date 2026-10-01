@@ -2,7 +2,10 @@ import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 
 import type { ScrapeRequest, ScrapeSuccess } from "../core/types";
+import type { RateLimiter } from "../ops/limits";
 import {
+	DEMO_BURST_LIMIT,
+	DEMO_BURST_WINDOW_SECONDS,
 	DEMO_GLOBAL_LIMIT,
 	DEMO_GLOBAL_WINDOW_SECONDS,
 	DEMO_IP_LIMIT,
@@ -63,7 +66,6 @@ const harness = (overrides: Partial<DemoDeps> = {}) => {
 	const requests: ScrapeRequest[] = [];
 	const deps: DemoDeps = {
 		kv,
-		proxyEnabled: true,
 		now: () => NOW,
 		runScrape: (request) => {
 			requests.push(request);
@@ -106,10 +108,10 @@ it("rejects a private demo target before consuming rate-limit allowance", async 
 });
 
 describe("demo scrape", () => {
-	it("runs an auto-engine scrape with the requested region and no billing", async () => {
+	it("runs an auto-engine scrape with no billing", async () => {
 		const { app, requests } = harness();
 
-		const response = await post(app, { url: "https://example.com/a", region: "jp" });
+		const response = await post(app, { url: "https://example.com/a", region: "auto" });
 		const body = (await response.json()) as Record<string, unknown>;
 
 		expect(response.status).toBe(200);
@@ -119,13 +121,13 @@ describe("demo scrape", () => {
 				engine: "auto",
 				screenshot: false,
 				rehostImages: false,
-				region: "jp",
+				region: "auto",
 				convert: {},
 			},
 		]);
 		expect(body).toEqual({
 			url: "https://example.com/a",
-			region: "jp",
+			region: "auto",
 			engine: "fetch",
 			markdown: "# Demo\n\nbody",
 			truncated: false,
@@ -155,7 +157,7 @@ describe("demo scrape", () => {
 		expect(JSON.parse(kv.store.get(demoIpKey("203.0.113.7"))?.value ?? "{}")).toMatchObject({ count: 1 });
 		expect(kv.store.size).toBe(writesAfterFirst);
 
-		await post(app, { url: "https://example.com/a", region: "jp" });
+		await post(app, { url: "https://example.com/b", region: "auto" });
 		expect(requests).toHaveLength(2);
 	});
 
@@ -220,19 +222,20 @@ describe("demo scrape", () => {
 		expect((await post(app, { url: "https://example.com/a", engine: "browser" })).status).toBe(400);
 	});
 
-	it("is 503 for a geo-targeted request when the proxy is not configured, and costs no allowance", async () => {
-		const { app, kv } = harness({ proxyEnabled: false });
+	it("refuses a geo-targeted request — the proxy tier is paid — without spending allowance", async () => {
+		const { app, kv, requests } = harness();
 		const response = await post(app, { url: "https://example.com/a", region: "jp" });
 
-		expect(response.status).toBe(503);
-		expect((await response.json()) as { error: { code: string } }).toMatchObject({
-			error: { code: "engine_unavailable" },
-		});
+		expect(response.status).toBe(402);
+		const body = (await response.json()) as { error: { code: string; message: string } };
+		expect(body.error.code).toBe("payment_required");
+		expect(body.error.message).toContain("/dashboard");
 		expect(kv.store.size).toBe(0);
+		expect(requests).toEqual([]);
 	});
 
-	it("serves auto-region requests without a proxy — the plain engines need none", async () => {
-		const { app, requests } = harness({ proxyEnabled: false });
+	it("serves auto-region requests on the plain engines", async () => {
+		const { app, requests } = harness();
 		const response = await post(app, { url: "https://example.com/a" });
 
 		expect(response.status).toBe(200);
@@ -368,6 +371,60 @@ describe("demo rate limits", () => {
 		expect(demoClientIp(new Headers({ "x-forwarded-for": "203.0.113.9, 10.0.0.1" }))).toBe("203.0.113.9");
 		expect(demoClientIp(new Headers())).toBe("unknown");
 		expect(demoIpKey("203.0.113.7")).toBe("demo:ip:203.0.113.7");
+	});
+
+	it("shares one KV window across an IPv6 /64", async () => {
+		const { app, kv } = harness();
+		await post(app, { url: "https://example.com/a" }, { "cf-connecting-ip": "2001:db8:aa:bb::1" });
+		await post(app, { url: "https://example.com/a" }, { "cf-connecting-ip": "2001:db8:aa:bb:9:9:9:9" });
+
+		expect(demoIpKey("2001:db8:aa:bb::1")).toBe("demo:ip:2001:db8:aa:bb::/64");
+		expect(JSON.parse(kv.store.get("demo:ip:2001:db8:aa:bb::/64")?.value ?? "{}")).toMatchObject({ count: 2 });
+	});
+});
+
+describe("demo burst limit (DEMO_RATE_LIMIT binding)", () => {
+	const burstLimiter = (failing = false) => {
+		const keys: string[] = [];
+		const limiter: RateLimiter = {
+			limit: ({ key }) => {
+				if (failing) return Promise.reject(new Error("binding down"));
+				keys.push(key);
+				return Promise.resolve({ success: keys.filter((seen) => seen === key).length <= DEMO_BURST_LIMIT });
+			},
+		};
+		return { limiter, keys };
+	};
+
+	it("429s past the burst cap before KV is touched, keyed by the IPv6 /64", async () => {
+		const { limiter, keys } = burstLimiter();
+		const { app, kv, requests } = harness({ burstLimiter: limiter });
+		for (let attempt = 0; attempt < DEMO_BURST_LIMIT; attempt += 1) {
+			const ip = `2001:db8:aa:bb::${attempt + 1}`;
+			expect((await post(app, { url: "https://example.com/a" }, { "cf-connecting-ip": ip })).status).toBe(200);
+		}
+		const kvBefore = JSON.stringify([...kv.store.entries()]);
+
+		const blocked = await post(app, { url: "https://example.com/a" }, { "cf-connecting-ip": "2001:db8:aa:bb::ff" });
+		expect(blocked.status).toBe(429);
+		expect(blocked.headers.get("Retry-After")).toBe(String(DEMO_BURST_WINDOW_SECONDS));
+		expect((await blocked.json()) as unknown).toEqual({
+			error: {
+				code: "rate_limited",
+				message: expect.stringContaining(`${DEMO_BURST_LIMIT} requests per minute`),
+				retryAfter: DEMO_BURST_WINDOW_SECONDS,
+			},
+		});
+		expect(new Set(keys)).toEqual(new Set(["2001:db8:aa:bb::/64"]));
+		expect(requests).toHaveLength(DEMO_BURST_LIMIT);
+		expect(JSON.stringify([...kv.store.entries()])).toBe(kvBefore);
+	});
+
+	it("denies when the binding fails (the demo is fail-closed)", async () => {
+		const { app, requests } = harness({ burstLimiter: burstLimiter(true).limiter });
+		const response = await post(app, { url: "https://example.com/a" });
+		expect(response.status).toBe(429);
+		expect(requests).toHaveLength(0);
 	});
 });
 

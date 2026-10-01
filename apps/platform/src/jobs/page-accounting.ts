@@ -85,6 +85,8 @@ export const createPageAccountingRepo = (db: PlatformDb): PageAccountingRepo => 
 								operation: sql<string>`${page.engine}`.as("operation"),
 								credits: sql<number>`${page.credits}`.as("credits"),
 								reportedAt: sql`null`.as("reportedAt"),
+								// Insert-select must list every column, in schema order.
+								reportSkippedReason: sql`null`.as("reportSkippedReason"),
 								createdAt: sql`${Math.floor(page.createdAt.getTime() / 1000)}`.as("createdAt"),
 							})
 							.from(jobs)

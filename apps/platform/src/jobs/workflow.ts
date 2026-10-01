@@ -3,7 +3,7 @@ import { NonRetryableError } from "cloudflare:workflows";
 
 import { eq } from "drizzle-orm";
 import { createArtifactStore } from "../artifacts/store";
-import { type BillingDeps, ensureSpendable } from "../billing/guard";
+import { type BillingDeps, ensureSpendable, usesProxyTier } from "../billing/guard";
 import { createBillingRepo } from "../billing/repo";
 import { createStripe } from "../billing/stripe";
 import { reportToStripe } from "../billing/usage";
@@ -55,9 +55,14 @@ const PAGE_STEP_CONFIG = {
 	timeout: "2 minutes",
 } as const;
 
-/** The one failure that must abort the whole job, carried on both the error's name and message. */
+/**
+ * The failures that must abort the whole job (any 402: no allowance, proxy tier without a
+ * subscription, spend cap reached), carried on both the error's name and message. The message
+ * starts with the PlatformError code, which becomes the job's `error`.
+ */
 const PAYMENT_REQUIRED = "payment_required";
 const PAYMENT_REQUIRED_NAME = "PaymentRequired";
+const ABORT_CODES = [PAYMENT_REQUIRED, "spend_cap_reached"] as const;
 
 interface JobDeps extends PageDeps {
 	jobsRepo: JobsRepo;
@@ -73,7 +78,7 @@ const buildDeps = (env: Env, params: JobParams): JobDeps => {
 		scrape: { engines: createEngines(env, config), artifacts: createArtifactStore(env, config) },
 		results: createJobResultsDeps(env, config),
 		jobsRepo: createJobsRepo(db),
-		guard: (userId) => spendGuard({ repo: billingRepo, config }, userId),
+		guard: (userId) => spendGuard({ repo: billingRepo, config }, userId, { proxy: usesProxyTier(params.request) }),
 		accounting: createPageAccountingRepo(db),
 		archives: createPageArchiveStore(env.ARTIFACTS),
 		now: () => new Date(),
@@ -87,20 +92,26 @@ const buildDeps = (env: Env, params: JobParams): JobDeps => {
 					id: page.id,
 					stripeCustomerId: params.stripeCustomerId,
 					credits: usage.credits,
+					createdAt: usage.createdAt,
 				},
 			);
 		},
 	};
 };
 
-/** Re-checked before every page: an allowance can run out mid-job. */
-export const spendGuard = async (deps: BillingDeps, userId: string): Promise<void> => {
+/** Re-checked before every page: an allowance, a subscription or the spend cap can run out mid-job. */
+export const spendGuard = async (
+	deps: BillingDeps,
+	userId: string,
+	options: { proxy?: boolean } = {},
+): Promise<void> => {
 	try {
-		await ensureSpendable(deps, userId);
+		await ensureSpendable(deps, userId, options);
 	} catch (error) {
 		if (error instanceof PlatformError && error.status === 402) {
 			// Retrying cannot make the user solvent; the whole job stops here.
-			throw new NonRetryableError(`${PAYMENT_REQUIRED}: ${error.message}`, PAYMENT_REQUIRED_NAME);
+			const code = error.code === "spend_cap_reached" ? error.code : PAYMENT_REQUIRED;
+			throw new NonRetryableError(`${code}: ${error.message}`, PAYMENT_REQUIRED_NAME);
 		}
 		throw error;
 	}
@@ -112,8 +123,12 @@ const messageOf = (error: unknown): string => (error instanceof Error ? error.me
  * The abort signal has to survive the step boundary, where the runtime rebuilds the error from
  * its name and message — so both are checked rather than the error's class.
  */
-const isPaymentRequired = (error: unknown): boolean =>
-	(error instanceof Error && error.name === PAYMENT_REQUIRED_NAME) || messageOf(error).startsWith(PAYMENT_REQUIRED);
+export const abortCodeOf = (error: unknown): string | undefined => {
+	const message = messageOf(error);
+	const code = ABORT_CODES.find((candidate) => message.startsWith(candidate));
+	if (code) return code;
+	return error instanceof Error && error.name === PAYMENT_REQUIRED_NAME ? PAYMENT_REQUIRED : undefined;
+};
 
 /** The per-page `ScrapeRequest` a job's stored request expands to for one URL. */
 const scrapeRequestFor = (params: JobParams, url: string): ScrapeRequest => ({
@@ -177,8 +192,8 @@ const runBatch = async (
 			request: scrapeRequestFor(params, url),
 			countsTowardsTotal: false,
 		});
-		if (outcome === undefined) {
-			return { ...summary, error: PAYMENT_REQUIRED };
+		if ("abort" in outcome) {
+			return { ...summary, error: outcome.abort };
 		}
 		applyOutcome(summary, outcome);
 	}
@@ -193,6 +208,7 @@ const runCrawl = async (
 ): Promise<JobSummary> => {
 	const { request } = params;
 	const summary: JobSummary = { succeeded: 0, failed: 0, credits: 0 };
+	let abort: string = PAYMENT_REQUIRED;
 	const scope: CrawlScope = {
 		origin: new URL(request.url).origin,
 		...(request.includePaths ? { includePaths: request.includePaths } : {}),
@@ -210,7 +226,8 @@ const runCrawl = async (
 				scope,
 				countsTowardsTotal: true,
 			});
-			if (outcome === undefined) {
+			if ("abort" in outcome) {
+				abort = outcome.abort;
 				return undefined;
 			}
 			applyOutcome(summary, outcome);
@@ -218,7 +235,7 @@ const runCrawl = async (
 		},
 	);
 
-	return traversal.aborted ? { ...summary, error: PAYMENT_REQUIRED } : summary;
+	return traversal.aborted ? { ...summary, error: abort } : summary;
 };
 
 const applyOutcome = (summary: JobSummary, outcome: PageOutcome): void => {
@@ -233,7 +250,7 @@ const applyOutcome = (summary: JobSummary, outcome: PageOutcome): void => {
 /**
  * Runs one page as a Workflow step.
  *
- * Returns `undefined` when the job must abort (payment required). A step that exhausted its
+ * Returns `{ abort: code }` when the job must abort (a 402 from the spend guard). A step that exhausted its
  * retries is recorded as a failed page by a second, tiny step — recording it outside a step
  * would be a side effect that replay could not reproduce.
  */
@@ -241,13 +258,14 @@ const runPageStep = async (
 	deps: JobDeps,
 	step: WorkflowStep,
 	pageParams: RunPageParams,
-): Promise<PageOutcome | undefined> => {
+): Promise<PageOutcome | { abort: string }> => {
 	const name = `page ${pageParams.index}: ${pageParams.request.url}`;
 	try {
 		return await step.do(name, PAGE_STEP_CONFIG, () => runPage(deps, pageParams));
 	} catch (error) {
-		if (isPaymentRequired(error)) {
-			return undefined;
+		const abort = abortCodeOf(error);
+		if (abort) {
+			return { abort };
 		}
 		return step.do(`${name} (failed)`, () => recordPageFailure(deps, pageParams, error));
 	}

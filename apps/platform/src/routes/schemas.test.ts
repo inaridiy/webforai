@@ -5,6 +5,7 @@ import {
 	MAX_BATCH_URLS,
 	MAX_CRAWL_DEPTH,
 	MAX_CRAWL_PAGES,
+	MAX_URL_LENGTH,
 	batchBodySchema,
 	crawlBodySchema,
 	playgroundBodySchema,
@@ -148,6 +149,22 @@ describe("batch body", () => {
 	});
 });
 
+describe("URL length", () => {
+	const longUrl = (length: number) => `https://example.com/${"a".repeat(length - "https://example.com/".length)}`;
+
+	it(`accepts URLs up to ${MAX_URL_LENGTH} characters everywhere a URL is taken`, () => {
+		expect(scrapeBodySchema.safeParse({ url: longUrl(MAX_URL_LENGTH) }).success).toBe(true);
+		expect(scrapeBodySchema.safeParse({ url: longUrl(MAX_URL_LENGTH + 1) }).success).toBe(false);
+		expect(batchBodySchema.safeParse({ urls: [longUrl(MAX_URL_LENGTH + 1)] }).success).toBe(false);
+		expect(crawlBodySchema.safeParse({ url: longUrl(MAX_URL_LENGTH + 1) }).success).toBe(false);
+		expect(playgroundBodySchema.safeParse({ url: longUrl(MAX_URL_LENGTH + 1) }).success).toBe(false);
+		expect(
+			scrapeBodySchema.safeParse({ url: "https://example.com/", convert: { baseUrl: longUrl(MAX_URL_LENGTH + 1) } })
+				.success,
+		).toBe(false);
+	});
+});
+
 describe("crawl body", () => {
 	it("applies the documented depth and page defaults", () => {
 		const parsed = crawlBodySchema.parse({ url: "https://docs.example.com/" });
@@ -170,6 +187,17 @@ describe("crawl body", () => {
 			false,
 		);
 		expect(crawlBodySchema.safeParse({ url: "https://a.example.com/", limit: 0 }).success).toBe(false);
+	});
+
+	it("caps path patterns in count, length and backtracking shape", () => {
+		const crawl = (extra: Record<string, unknown>) =>
+			crawlBodySchema.safeParse({ url: "https://a.example.com/", ...extra }).success;
+		expect(crawl({ includePaths: ["^/docs"], excludePaths: ["\\.pdf$"] })).toBe(true);
+		expect(crawl({ includePaths: Array.from({ length: 20 }, (_, index) => `^/s${index}`) })).toBe(true);
+		expect(crawl({ includePaths: Array.from({ length: 21 }, (_, index) => `^/s${index}`) })).toBe(false);
+		expect(crawl({ excludePaths: [`^/${"a".repeat(200)}`] })).toBe(false);
+		expect(crawl({ includePaths: ["^/(a+)+$"] })).toBe(false);
+		expect(crawl({ excludePaths: ["("] })).toBe(false);
 	});
 
 	it("refuses to pretend a cross-origin crawl was accepted", () => {

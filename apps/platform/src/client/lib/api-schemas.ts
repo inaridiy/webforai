@@ -71,3 +71,24 @@ export const authMethodsSchema: z.ZodType<AuthMethods> = z.object({
 });
 
 export const deletedSchema: z.ZodType<{ deleted: true }> = z.object({ deleted: z.literal(true) });
+
+/** `GET`/`PUT /api/dashboard/billing/spend-cap`. */
+export type SpendCap = {
+	spendCapUsd: number;
+	isDefault: boolean;
+	defaultUsd: number;
+	minUsd: number;
+	maxUsd: number;
+	monthCredits: number;
+	estimatedUsd: number;
+};
+
+export const spendCapSchema: z.ZodType<SpendCap> = z.object({
+	spendCapUsd: count,
+	isDefault: z.boolean(),
+	defaultUsd: count,
+	minUsd: count,
+	maxUsd: count,
+	monthCredits: count,
+	estimatedUsd: z.number().nonnegative(),
+});

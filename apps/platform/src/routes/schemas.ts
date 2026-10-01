@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_PATH_PATTERNS, pathPatternProblem } from "../core/links";
 import { REGIONS } from "../core/regions";
 import { REQUESTED_ENGINES, SCREENSHOT_ENGINES } from "../core/types";
 
@@ -19,16 +20,24 @@ export const DEFAULT_CRAWL_DEPTH = 2;
 export const MAX_CRAWL_PAGES = 500;
 export const DEFAULT_CRAWL_PAGES = 50;
 
-const urlSchema = z.string().url();
+/** Longer URLs are refused outright; real pages fit comfortably and every hop re-parses them. */
+export const MAX_URL_LENGTH = 2048;
 
-const pathPatternSchema = z.string().refine((pattern) => {
-	try {
-		new RegExp(pattern);
-		return true;
-	} catch {
-		return false;
+const urlSchema = z.string().max(MAX_URL_LENGTH).url();
+
+/**
+ * Path patterns stay regular expressions (the documented contract) but must pass the
+ * backtracking screen in `core/links.ts`: at most 200 characters, no repeated group around a
+ * quantifier or alternation, no backreferences, at most three unbounded quantifiers.
+ */
+const pathPatternSchema = z.string().superRefine((pattern, ctx) => {
+	const problem = pathPatternProblem(pattern);
+	if (problem !== undefined) {
+		ctx.addIssue({ code: "custom", message: problem });
 	}
-}, "must be a valid regular expression");
+});
+
+const pathPatternsSchema = z.array(pathPatternSchema).max(MAX_PATH_PATTERNS);
 
 const convertSchema = z
 	.object({
@@ -109,8 +118,8 @@ export const crawlBodySchema = z
 		url: urlSchema,
 		maxDepth: z.number().int().min(0).max(MAX_CRAWL_DEPTH).default(DEFAULT_CRAWL_DEPTH),
 		limit: z.number().int().min(1).max(MAX_CRAWL_PAGES).default(DEFAULT_CRAWL_PAGES),
-		includePaths: z.array(pathPatternSchema).optional(),
-		excludePaths: z.array(pathPatternSchema).optional(),
+		includePaths: pathPatternsSchema.optional(),
+		excludePaths: pathPatternsSchema.optional(),
 		// Cross-origin crawling is a non-goal for now; accepting only `true` keeps a client that
 		// asks for it from believing it was honoured.
 		sameOrigin: z.literal(true).default(true),
