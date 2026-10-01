@@ -31,8 +31,9 @@ jobs:
       - run: pnpm lint:repo
       - run: pnpm build
       - run: pnpm typecheck
-      - run: pnpm --filter platform typecheck
+      # The build generates src/__generated__ (container RPC types, gitignored); typecheck needs it.
       - run: pnpm --filter platform build
+      - run: pnpm --filter platform typecheck
   test:
     name: 'Test'
     runs-on: ubuntu-22.04
