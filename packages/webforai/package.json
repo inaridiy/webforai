@@ -1,6 +1,6 @@
 {
 	"name": "webforai",
-	"version": "4.0.0",
+	"version": "4.1.0",
 	"description": "Convert web pages and local HTML to clean, LLM-ready Markdown: library, CLI (npx webforai) and hosted-API client.",
 	"author": "inaridiy",
 	"license": "Apache-2.0",
