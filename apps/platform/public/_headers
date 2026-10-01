@@ -8,8 +8,10 @@
 # data, not script, and need no allowance. style-src keeps 'unsafe-inline' for prerendered
 # style attributes. img-src allows any https image: the Markdown preview (streamdown) shows the
 # scraped page's own images. worker-src/manifest-src cover /sw.js and /manifest.webmanifest.
+# Cloudflare Web Analytics injects its beacon from static.cloudflareinsights.com and reports to
+# cloudflareinsights.com (found blocked in the 2026-10-01 production smoke test).
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-kAnaoG/+Is8BwIxX9APm+LGEv3U5crlSJvPcbSxh47Q=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-kAnaoG/+Is8BwIxX9APm+LGEv3U5crlSJvPcbSxh47Q=' https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com https://cloudflareinsights.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
