@@ -54,6 +54,7 @@ sites the direct route is both faster and more reliable.
 | `compare` | Run the working tree and the published v2 baseline over the same input |
 | `bench` | End-to-end throughput, interleaved and median-of-N |
 | `bench:extract` | Extraction stage in isolation, with parsing outside the timed region |
+| `bench:compare` | webforai against Readability + Turndown, full-page Turndown and node-html-markdown. `--rounds=`, `--no-summary` |
 
 The accuracy suite runs under the repository's vitest:
 
@@ -62,6 +63,14 @@ npx vitest run evals/src/corpus.test.ts
 ```
 
 It skips any site that is not cached, so it is meaningful locally and harmless in CI.
+
+## Cross-tool comparison
+
+`bench:compare` scores every pipeline in `src/competitors.ts` with the existing assertions (minus
+the webforai-specific ones it lists) and the signals defined in `src/compare-metrics.ts`. It
+writes per-capture results, a report and every output to `.reports/<date>-compare/`, and rewrites
+the committed aggregate `benchmarks/compare-summary.json`, which the site's Benchmarks page
+quotes. jsdom 30, used for the Readability pipeline, needs Node 22.22.2+ or 24.15.0+.
 
 ## Reading the numbers
 

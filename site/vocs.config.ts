@@ -79,6 +79,10 @@ export default defineConfig({
 			link: "/how-it-works",
 		},
 		{
+			text: "Benchmarks",
+			link: "/benchmarks",
+		},
+		{
 			text: "CLI",
 			link: "/cli",
 		},

@@ -11,6 +11,7 @@
 		"report": "tsx src/cli/report.ts",
 		"compare": "tsx src/cli/compare.ts",
 		"bench:extract": "tsx src/cli/bench-extract.ts",
+		"bench:compare": "tsx src/cli/bench-compare.ts",
 		"judge:prepare": "tsx src/cli/prepare-judge.ts",
 		"judge:report": "tsx src/cli/judge-report.ts"
 	},
@@ -20,11 +21,18 @@
 		"webforai": "workspace:^"
 	},
 	"devDependencies": {
+		"@mozilla/readability": "0.6.0",
 		"@tsconfig/recommended": "^1.0.3",
+		"@types/jsdom": "30.0.0",
 		"@types/node": "^20.14.10",
+		"@types/turndown": "5.0.6",
 		"hast-util-from-html": "^2.0.3",
 		"hast-util-to-mdast": "^10.1.0",
+		"jsdom": "30.0.1",
+		"node-html-markdown": "2.0.0",
 		"tsx": "^4.19.1",
+		"turndown": "7.2.4",
+		"turndown-plugin-gfm": "1.0.2",
 		"typescript": "^5.4.5",
 		"webforai-v2": "npm:webforai@2.1.1"
 	}
