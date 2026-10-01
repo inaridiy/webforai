@@ -1,10 +1,16 @@
 import { Hono } from "hono";
 
-import { type AuthVariables, requireSession } from "../auth/middleware";
+import { type AuthVariables, defaultApiKeyGateDeps, requireSession } from "../auth/middleware";
 import { ensureSpendable, usesProxyTier } from "../billing/guard";
 import type { ScrapeRequest } from "../core/types";
 import { loadConfig } from "../env";
-import { onPlatformError } from "./errors";
+import {
+	RATE_LIMIT_RETRY_AFTER_SECONDS,
+	checkRateLimit,
+	rateLimitedMessage,
+	tierRateLimitBinding,
+} from "../ops/limits";
+import { errorBody, onPlatformError } from "./errors";
 import { type PlaygroundBody, playgroundBodySchema } from "./schemas";
 import { parseScrapeBody } from "./scrape-body";
 import { billingDeps, runSyncScrape } from "./scrape-run";
@@ -30,6 +36,15 @@ export const playgroundRoutes = () => {
 		// biome-ignore lint/style/noNonNullAssertion: requireSession guarantees a user
 		const sessionUser = c.get("user")!;
 		const config = loadConfig(c.env);
+
+		// The playground spends the same per-account budget as `/v1`, so it cannot be used to
+		// sidestep the tier's request limit (or race the spend guard with unbounded concurrency).
+		const gate = defaultApiKeyGateDeps(c.env);
+		const tier = await gate.tierOf(sessionUser.id);
+		if (!(await checkRateLimit(gate.limiter(tier), { binding: tierRateLimitBinding(tier), key: sessionUser.id }))) {
+			c.header("Retry-After", String(RATE_LIMIT_RETRY_AFTER_SECONDS));
+			return c.json(errorBody("rate_limited", rateLimitedMessage(tier)), 429);
+		}
 
 		// Guard first — a failed or unaffordable scrape must never be billed.
 		await ensureSpendable(billingDeps(c.env, config), sessionUser.id, { proxy: usesProxyTier(body) });

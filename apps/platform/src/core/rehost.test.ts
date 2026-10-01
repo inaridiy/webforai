@@ -26,6 +26,21 @@ const deps = (fetchImpl: RehostDeps["fetch"]) => {
 };
 
 describe("image rehosting", () => {
+	it("stays linear on hostile markdown", async () => {
+		const { deps: d } = deps(() => Promise.resolve(imageResponse()));
+		const big = 1024 * 1024;
+		for (const hostile of [
+			"![".repeat(big / 2),
+			"![a](<".repeat(big / 6),
+			"<img ".repeat(big / 5),
+			'<img src="'.repeat(big / 10),
+		]) {
+			const started = performance.now();
+			await rehostImages(d, hostile, "https://example.com/");
+			expect(performance.now() - started).toBeLessThan(1000);
+		}
+	});
+
 	it("rewrites markdown and html image sources, resolving relative URLs", async () => {
 		const requested: string[] = [];
 		const { deps: d, stored } = deps((url) => {

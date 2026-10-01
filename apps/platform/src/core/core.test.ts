@@ -163,6 +163,15 @@ describe("link discovery", () => {
 		]);
 	});
 
+	it("stays linear on hostile HTML", () => {
+		const big = 2 * 1024 * 1024;
+		for (const hostile of ["<a ".repeat(big / 3), '<a href="'.repeat(big / 9), `<a ${"x".repeat(big)}`]) {
+			const started = performance.now();
+			discoverLinks(hostile, "https://docs.example.com/", scope);
+			expect(performance.now() - started).toBeLessThan(1000);
+		}
+	});
+
 	it("filters absolute sitemap URLs by origin and path scope, dropping fragments and duplicates", () => {
 		expect(
 			filterCrawlUrls(

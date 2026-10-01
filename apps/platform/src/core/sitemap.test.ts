@@ -36,4 +36,13 @@ describe("parseSitemap", () => {
 		const entries = Array.from({ length: MAX_SITEMAP_URLS + 10 }, (_, i) => `<url><loc>https://e.com/${i}</loc></url>`);
 		expect(parseSitemap(`<urlset>${entries.join("")}</urlset>`).urls).toHaveLength(MAX_SITEMAP_URLS);
 	});
+
+	it("stays linear on hostile documents", () => {
+		const big = 2 * 1024 * 1024;
+		for (const hostile of ["<loc>".repeat(big / 5), `<loc>${"a".repeat(big)}`, "<loc><![CDATA[".repeat(big / 14)]) {
+			const started = performance.now();
+			expect(parseSitemap(hostile).urls).toEqual([]);
+			expect(performance.now() - started).toBeLessThan(1000);
+		}
+	});
 });

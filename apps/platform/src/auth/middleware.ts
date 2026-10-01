@@ -79,12 +79,20 @@ export type ApiKeyGateDepsFactory = (env: Env) => ApiKeyGateDeps;
 
 export const dashboardUrlOf = (baseUrl: string): string => `${baseUrl.replace(/\/+$/u, "")}/dashboard`;
 
-const defaultApiKeyGateDeps: ApiKeyGateDepsFactory = (env) => ({
+export const defaultApiKeyGateDeps: ApiKeyGateDepsFactory = (env) => ({
 	tierOf: async (userId) => tierOf(await getBillingState(createDb(env), userId)),
 	// Typed as always present by `wrangler types`; a deployment without `ratelimits` has none.
 	limiter: (tier) => env[tierRateLimitBinding(tier)] as RateLimiter | undefined,
 	dashboardUrl: dashboardUrlOf(loadConfig(env).BASE_URL),
 });
+
+/**
+ * Job status/result reads do not count against the tier's per-minute budget — waiting on a few
+ * jobs at the SDK's poll interval would otherwise exhaust a free account's budget — but they
+ * have their own: 600/min per account on every tier.
+ */
+export const isJobRead = (method: string, path: string): boolean =>
+	method === "GET" && /^\/v1\/jobs(?:\/|$)/.test(path);
 
 /**
  * Authenticates `/v1/*` requests. The owning user is taken from the verified key's
@@ -95,14 +103,6 @@ const defaultApiKeyGateDeps: ApiKeyGateDepsFactory = (env) => ({
  * D1 limiter is disabled (`src/auth/auth.ts`); `THROTTLED_CODES` still maps a key-level
  * refusal (e.g. a key created with a usage quota) to 429.
  */
-/**
- * Job status/result reads are exempt from the per-minute limit: they are cheap, bounded by the
- * job cap, and waiting on a few jobs at the SDK's poll interval would otherwise exhaust a free
- * account's budget and fail the very requests that created them.
- */
-export const isJobRead = (method: string, path: string): boolean =>
-	method === "GET" && /^\/v1\/jobs(?:\/|$)/.test(path);
-
 export const requireApiKey = (
 	auth: Auth,
 	createDeps: ApiKeyGateDepsFactory = defaultApiKeyGateDeps,
@@ -125,9 +125,14 @@ export const requireApiKey = (
 
 		const userId = result.key.referenceId;
 		const tier = await deps.tierOf(userId);
-		const allowed =
-			isJobRead(c.req.method, c.req.path) ||
-			(await checkRateLimit(deps.limiter(tier), { binding: tierRateLimitBinding(tier), key: userId }));
+		// Job reads draw from their own, larger budget (the paid binding under a separate key), so
+		// polling cannot starve a free account's requests yet stays bounded.
+		const allowed = isJobRead(c.req.method, c.req.path)
+			? await checkRateLimit(deps.limiter("paid"), {
+					binding: tierRateLimitBinding("paid"),
+					key: `job-reads:${userId}`,
+				})
+			: await checkRateLimit(deps.limiter(tier), { binding: tierRateLimitBinding(tier), key: userId });
 		if (!allowed) {
 			c.header("Retry-After", String(RATE_LIMIT_RETRY_AFTER_SECONDS));
 			return errorJson(c, 429, "rate_limited", rateLimitedMessage(tier));

@@ -38,8 +38,10 @@ export interface RehostResult {
 	failures: { url: string; reason: string }[];
 }
 
-const MARKDOWN_IMAGE = /!\[[^\]]*\]\(\s*(<[^>]+>|[^\s)]+)/g;
-const HTML_IMAGE = /<img\b[^>]*?\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
+// Linear on hostile input: alt text cannot run past a `[`, an angle destination past a `<`, and
+// tag attributes past a `<`, so `![![![…`, `![a](<<<…` and `<img <img…` cost O(n), not O(n²).
+const MARKDOWN_IMAGE = /!\[[^[\]]*\]\(\s*(<[^<>\n]+>|[^\s)]+)/g;
+const HTML_IMAGE = /<img\b[^<>]*?\bsrc\s*=\s*(?:"([^"<>]*)"|'([^'<>]*)'|([^\s<>]+))/gi;
 
 /** Markdown allows `<...>` around a destination; the angle brackets are not part of the URL. */
 const stripAngles = (raw: string): string => (raw.startsWith("<") && raw.endsWith(">") ? raw.slice(1, -1) : raw);

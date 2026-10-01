@@ -83,7 +83,17 @@ export const createSitemapLoader =
 	(robotsTxt: RobotsTxtLoader, fetchImpl: FetchLike = (input, init) => fetch(input, init)): SitemapLoader =>
 	async (seed, maxUrls) => {
 		const robots = await robotsTxt(seed).catch(() => undefined);
-		const pending = robots?.sitemaps.length ? [...robots.sitemaps] : [`${seed.origin}/sitemap.xml`];
+		// Only the seed's own origin: a robots.txt or index naming another host would otherwise
+		// make every crawl pull megabytes from a third party through this Worker.
+		const sameOrigin = (url: string): boolean => {
+			try {
+				return new URL(url).origin === seed.origin;
+			} catch {
+				return false;
+			}
+		};
+		const declared = (robots?.sitemaps ?? []).filter(sameOrigin);
+		const pending = declared.length ? declared : [`${seed.origin}/sitemap.xml`];
 		const visited = new Set<string>();
 		const urls = new Set<string>();
 
@@ -99,7 +109,7 @@ export const createSitemapLoader =
 			}
 			const sitemap = parseSitemap(text);
 			if (sitemap.kind === "index") {
-				pending.push(...sitemap.urls);
+				pending.push(...sitemap.urls.filter(sameOrigin));
 			} else {
 				addUpTo(urls, sitemap.urls, maxUrls);
 			}

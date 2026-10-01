@@ -123,12 +123,13 @@ describe("requireApiKey", () => {
 		expect(((await response.json()) as { error: { code: string } }).error.code).toBe("rate_limited");
 	});
 
-	it("exempts job status and result reads from the per-minute limit", async () => {
+	it("counts job status and result reads on their own budget, not the tier's", async () => {
 		const free = limiter(0);
+		const reads = limiter(1);
 		const auth = fakeAuth({ wfa_alice: { id: "key_a", referenceId: "user_alice" } });
 		const deps: ApiKeyGateDeps = {
 			tierOf: () => Promise.resolve("free"),
-			limiter: () => free.value,
+			limiter: (tier) => (tier === "paid" ? reads.value : free.value),
 			dashboardUrl: DASHBOARD,
 		};
 		const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -141,6 +142,8 @@ describe("requireApiKey", () => {
 		const headers = { authorization: "Bearer wfa_alice" };
 
 		expect((await app.request("/v1/jobs/job_1", { headers }, {} as Env)).status).toBe(200);
+		expect((await app.request("/v1/jobs/job_1", { headers }, {} as Env)).status).toBe(429);
+		expect(reads.keys).toEqual(["job-reads:user_alice", "job-reads:user_alice"]);
 		expect((await app.request("/v1/batch", { method: "POST", headers }, {} as Env)).status).toBe(429);
 		expect(isJobRead("GET", "/v1/jobs/job_1/results")).toBe(true);
 		expect(isJobRead("POST", "/v1/jobs/job_1")).toBe(false);

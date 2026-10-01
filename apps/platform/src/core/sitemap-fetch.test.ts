@@ -97,4 +97,28 @@ describe("createSitemapLoader", () => {
 		);
 		expect(await loader(SEED, 100)).toEqual(["https://example.com/g", "https://example.com/plain"]);
 	});
+
+	it("reads sitemaps on the seed's origin only", async () => {
+		const { fetchImpl, requested } = fakeFetch({
+			"https://example.com/own.xml": () => new Response(index("https://other.example/child.xml")),
+			"https://example.com/sitemap.xml": () => new Response(urlset("https://example.com/a")),
+		});
+		const loader = createSitemapLoader(
+			robotsWith({ sitemaps: ["https://cdn.other.example/big.xml.gz", "https://example.com/own.xml"] }),
+			fetchImpl,
+		);
+		expect(await loader(SEED, 100)).toEqual([]);
+		expect(requested).toEqual(["https://example.com/own.xml"]);
+
+		// Only foreign sitemaps declared: fall back to the origin's own /sitemap.xml.
+		const fallback = fakeFetch({
+			"https://example.com/sitemap.xml": () => new Response(urlset("https://example.com/a")),
+		});
+		const onlyForeign = createSitemapLoader(
+			robotsWith({ sitemaps: ["https://cdn.other.example/s.xml"] }),
+			fallback.fetchImpl,
+		);
+		expect(await onlyForeign(SEED, 100)).toEqual(["https://example.com/a"]);
+		expect(fallback.requested).toEqual(["https://example.com/sitemap.xml"]);
+	});
 });

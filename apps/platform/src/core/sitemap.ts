@@ -23,14 +23,14 @@ const XML_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot:
 const decodeEntities = (value: string): string =>
 	value.replace(/&(amp|lt|gt|quot|apos);/g, (_, name: string) => XML_ENTITIES[name] ?? "");
 
-const stripCdata = (value: string): string => {
-	const match = /^<!\[CDATA\[([\s\S]*)\]\]>$/.exec(value);
-	return match ? match[1] ?? "" : value;
-};
-
-/** `<loc>` contents, optionally namespace-prefixed (`<sm:loc>`), never nested. */
+/**
+ * `<loc>` contents, optionally namespace-prefixed (`<sm:loc>`), plain or CDATA (surrounding
+ * whitespace is trimmed afterwards, never matched, so no two quantifiers compete). Both branches are
+ * bounded and cannot run past a `<` (or a `]` inside CDATA), so a hostile document such as
+ * `<loc>aaaa…` or an unclosed CDATA repeated through the size cap stays linear.
+ */
 const LOC_PATTERN =
-	/<(?:[A-Za-z_][\w.-]*:)?loc\s*>([^<]*(?:<!\[CDATA\[[\s\S]*?\]\]>)?[^<]*)<\/(?:[A-Za-z_][\w.-]*:)?loc\s*>/g;
+	/<(?:[A-Za-z_][\w.-]*:)?loc>(?:<!\[CDATA\[([^\]<]{0,4096})\]\]>|([^<]{0,4096}))<\/(?:[A-Za-z_][\w.-]*:)?loc>/g;
 
 const toHttpUrl = (raw: string): string | undefined => {
 	try {
@@ -46,7 +46,7 @@ export const parseSitemap = (text: string): Sitemap => {
 	const kind = /<(?:[A-Za-z_][\w.-]*:)?sitemapindex[\s>]/.test(body) ? "index" : "urlset";
 	const seen = new Set<string>();
 	for (const match of body.matchAll(LOC_PATTERN)) {
-		const url = toHttpUrl(decodeEntities(stripCdata((match[1] ?? "").trim())));
+		const url = toHttpUrl(match[1] ?? decodeEntities((match[2] ?? "").trim()));
 		if (url) {
 			seen.add(url);
 			if (seen.size >= MAX_SITEMAP_URLS) {

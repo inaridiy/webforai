@@ -105,19 +105,33 @@ interface StoredObject {
 
 const fakeEnv = () => {
 	const objects = new Map<string, StoredObject>();
+	const puts: string[] = [];
 	const env = {
 		// biome-ignore lint/style/useNamingConvention: Cloudflare binding name
 		ARTIFACTS: {
 			put: (key: string, body: Uint8Array | string, options: R2PutOptions) => {
+				puts.push(key);
 				objects.set(key, { body, options });
 				return Promise.resolve();
 			},
+			head: (key: string) => Promise.resolve(objects.has(key) ? { key } : null),
 		},
 	} as unknown as Env;
-	return { env, objects };
+	return { env, objects, puts };
 };
 
 describe("artifact store", () => {
+	it("re-signs an existing result instead of uploading it again", async () => {
+		const { env, puts } = fakeEnv();
+		const store = createArtifactStore(env, config);
+
+		const first = await store.putResult('{"ok":true}', "job-1/00003");
+		const second = await store.putResult('{"ok":true}', "job-1/00003");
+
+		expect(puts).toEqual(["results/job-1/00003.json"]);
+		expect(new URL(second).pathname).toBe(new URL(first).pathname);
+	});
+
 	it("writes namespaced keys with content types and returns verifiable URLs", async () => {
 		const { env, objects } = fakeEnv();
 		const store = createArtifactStore(env, config);

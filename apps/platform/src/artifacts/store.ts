@@ -58,6 +58,14 @@ const equals = (a: string, b: string): boolean => {
 };
 
 /**
+ * The artifact signing key, derived from `BETTER_AUTH_SECRET` with a fixed label so the auth
+ * secret is never used directly to sign URLs (key separation; a leaked artifact token tells
+ * nothing about the session-signing key).
+ */
+const artifactKeyOf = (config: ArtifactUrlConfig): Promise<string> =>
+	signature(config.BETTER_AUTH_SECRET, "webforai-artifact-url-signing-v1");
+
+/**
  * Builds the absolute, expiring URL for an object key.
  *
  * The token is `<expiry seconds>.<HMAC-SHA256(key + "\n" + expiry)>`; the expiry travels in
@@ -70,7 +78,7 @@ export const signArtifactUrl = async (
 	now: number = Date.now(),
 ): Promise<string> => {
 	const expiresAt = Math.floor(now / 1000) + ttlSeconds;
-	const token = `${expiresAt}.${await signature(config.BETTER_AUTH_SECRET, `${key}\n${expiresAt}`)}`;
+	const token = `${expiresAt}.${await signature(await artifactKeyOf(config), `${key}\n${expiresAt}`)}`;
 	const url = new URL(`${ARTIFACT_ROUTE_PREFIX}${key}`, config.BASE_URL);
 	url.searchParams.set("token", token);
 	return url.href;
@@ -98,7 +106,7 @@ export const verifyArtifactToken = async ({
 	if (!Number.isSafeInteger(expiresAt) || expiresAt * 1000 <= now) {
 		return false;
 	}
-	const expected = await signature(config.BETTER_AUTH_SECRET, `${key}\n${expiresAt}`);
+	const expected = await signature(await artifactKeyOf(config), `${key}\n${expiresAt}`);
 	return equals(token.slice(separator + 1), expected);
 };
 
@@ -194,7 +202,14 @@ export const createArtifactStore = (env: Env, config: ArtifactUrlConfig): Artifa
 		},
 
 		// `async` so a rejected key surfaces as a rejected promise rather than a synchronous throw.
-		putResult: async (json, key, ttlSeconds) =>
-			store(`results/${normalizeResultKey(key)}`, json, "application/json", key, ttlSeconds),
+		// Result keys are deterministic (job + page) and their content is the immutable page
+		// archive, so an existing object is only re-signed: reading results never re-uploads.
+		putResult: async (json, key, ttlSeconds) => {
+			const objectKey = `results/${normalizeResultKey(key)}`;
+			if (await env.ARTIFACTS.head(objectKey)) {
+				return signArtifactUrl(objectKey, config, ttlSeconds);
+			}
+			return store(objectKey, json, "application/json", key, ttlSeconds);
+		},
 	};
 };

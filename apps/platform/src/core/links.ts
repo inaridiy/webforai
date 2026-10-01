@@ -5,7 +5,12 @@
  * traverse a site through its chrome while conversion still strips it.
  */
 
-const HREF_PATTERN = /<a\s[^>]*?href\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gi;
+/**
+ * Linear on hostile input: no class here can run past a `<`, so each attempt is confined to the
+ * text up to the next tag and the total work stays proportional to the page (`<a <a <a…` or an
+ * unclosed `href="` repeated through 5 MiB would otherwise be quadratic).
+ */
+const HREF_PATTERN = /<a\s[^<>]*?href\s*=\s*("([^"<>]*)"|'([^'<>]*)'|([^\s<>]+))/gi;
 
 export interface CrawlScope {
 	/** Origin pages must share; from the seed URL. */
