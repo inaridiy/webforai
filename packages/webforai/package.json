@@ -1,23 +1,34 @@
 {
 	"name": "webforai",
 	"version": "3.0.0",
-	"description": "A library that provides a web interface for AI",
+	"description": "Convert web pages and local HTML to clean, LLM-ready Markdown: library, CLI (npx webforai) and hosted-API client.",
 	"author": "inaridiy",
 	"license": "Apache-2.0",
 	"keywords": [
-		"web",
+		"html-to-markdown",
+		"markdown",
+		"llm",
 		"ai",
+		"scraper",
+		"crawler",
+		"readability",
+		"web-scraping",
+		"cli",
+		"rag",
 		"html",
 		"html2md",
-		"markdown",
 		"mdast",
 		"hast"
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/inaridiy/webforai.git"
+		"url": "https://github.com/inaridiy/webforai.git",
+		"directory": "packages/webforai"
 	},
 	"homepage": "https://webforai.dev/",
+	"bugs": {
+		"url": "https://github.com/inaridiy/webforai/issues"
+	},
 	"scripts": {
 		"copy:package.cjs.json": "pnpm ncp ./package.cjs.json ./dist/cjs/package.json && pnpm ncp ./package.cjs.json ./dist/types/package.json ",
 		"clean": "rimraf dist",
@@ -45,6 +56,11 @@
 			"types": "./dist/types/index.d.ts",
 			"import": "./dist/index.js",
 			"require": "./dist/cjs/index.js"
+		},
+		"./platform": {
+			"types": "./dist/types/platform/index.d.ts",
+			"import": "./dist/platform/index.js",
+			"require": "./dist/cjs/platform/index.js"
 		},
 		"./loaders/playwright": {
 			"types": "./dist/types/loaders/playwright.d.ts",
@@ -83,6 +99,9 @@
 			],
 			"loaders/puppeteer": [
 				"./dist/types/loaders/puppeteer.d.ts"
+			],
+			"platform": [
+				"./dist/types/platform/index.d.ts"
 			]
 		}
 	},
@@ -118,8 +137,7 @@
 		"mdast-util-to-markdown": "^2.1.0",
 		"picocolors": "^1.0.1",
 		"trim-trailing-lines": "^2.1.0",
-		"unist-util-filter": "^5.0.1",
-		"zx": "^8.1.5"
+		"unist-util-filter": "^5.0.1"
 	},
 	"devDependencies": {
 		"@cloudflare/puppeteer": "^0.0.6",

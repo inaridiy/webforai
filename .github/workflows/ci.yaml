@@ -17,6 +17,9 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - uses: pnpm/action-setup@v2
         name: Install pnpm
         id: pnpm-install
@@ -27,11 +30,18 @@ jobs:
       - run: pnpm lint
       - run: pnpm lint:repo
       - run: pnpm build
+      - run: pnpm typecheck
+      # The build generates src/__generated__ (container RPC types, gitignored); typecheck needs it.
+      - run: pnpm --filter platform build
+      - run: pnpm --filter platform typecheck
   test:
     name: 'Test'
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - uses: pnpm/action-setup@v2
         name: Install pnpm
         id: pnpm-install
@@ -40,8 +50,11 @@ jobs:
           run_install: true
       - name: Install Playwright Browsers
         run: |
-          pnpm install -w playwright
-          pnpm exec playwright install chromium
-          pnpm exec playwright install-deps
+          pnpm --filter ./packages/webforai exec playwright-core install --with-deps chromium
+          pnpm --filter platform exec playwright install --with-deps chromium
       - name: Run tests
-        run: pnpm test
+        run: pnpm run test --run
+      - name: Check D1 accounting transactions
+        run: pnpm --filter platform test:integration
+      - name: Check dashboard interactions
+        run: pnpm --filter platform test:browser

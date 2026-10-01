@@ -1,0 +1,401 @@
+# ExecPlan: docs unification, vendor-word removal, @webforai/platform client, CLI overhaul
+
+Living document (contract: `.agents/PLANS.md`). Branch: `feat/platform`.
+Prior initiative: `.agents/execplans/2026-08-10-platform.md` (platform bring-up + test deploy).
+
+## Purpose / Big Picture
+
+Four user-visible outcomes:
+
+1. **One documentation source.** webforai.dev (the vocs site in `site/`) is the only place the
+   platform API is documented. platform.webforai.dev keeps its marketing landing page but its
+   in-SPA `/docs` page (which had already drifted from the site docs) is gone; every "docs"
+   link on the platform points at webforai.dev. The site docs gain a real "how to use the
+   platform" guide (key creation → curl → client → CLI) and their factual drift against the
+   deployed code is fixed.
+2. **No vendor / internal-operations words in the repo.** The egress-proxy vendor's name is
+   removed everywhere — copy, comments, env var names, specs, evals, reference notes, plan
+   history — replaced by provider-neutral wording and provider-neutral configuration
+   (`PROXY_URL` / `PROXY_USERNAME` / `PROXY_PASSWORD` secrets). The engine id `cf-browser` is
+   renamed to `browser`.
+3. **`@webforai/platform`** (new `packages/platform`): a dependency-free typed TypeScript
+   client for the platform HTTP API (scrape/batch/crawl/jobs, polling and paging helpers),
+   published to npm alongside `webforai`.
+4. **A CLI built for automation.** `npx webforai <url>` converts and prints Markdown to stdout
+   with no prompts; `--json` emits a machine-readable envelope; `-i/--interactive` opts into
+   the old guided wizard; the platform is available as a loader (`-l platform`, or implied by
+   `--engine/--region`) using `@webforai/platform`; `webforai skill` prints/installs an Agent
+   Skill so coding agents can teach themselves the tool; `-h` is self-sufficient (flags,
+   examples, env vars, exit codes, JSON schema).
+
+To see it working at the end: `pnpm build && node packages/webforai/dist/bin.js https://example.com`
+prints Markdown; `node packages/webforai/dist/bin.js https://example.com --json | jq .markdown`
+works; `webforai skill` prints a SKILL.md; a case-insensitive grep for the proxy vendor's name
+over tracked files returns nothing;
+`pnpm --filter platform test` and the site build stay green.
+
+## Progress
+
+- [x] (2026-08-22) Survey: docs site map, platform API surface map, CLI/current library API,
+      all vendor-name / `cf-browser` occurrences enumerated. Plan authored.
+- [x] (2026-08-22) M1 platform: engine rename `cf-browser`→`browser`, proxy env
+      genericization (`PROXY_URL`/`PROXY_USERNAME`/`PROXY_PASSWORD`), SPA `/docs` removal +
+      external doc links, landing/playground copy, README. Platform vitest 124/124,
+      tsc clean, build OK (regenerated container DO env forwarding). Commit fcc96a2.
+- [x] (2026-08-22) M2 prose sweep: specs revision notes, `docs/references`, evals, plan
+      history, site-docs line edits. Vendor-name grep clean on tracked files; `cf-browser`
+      survives only inside dated revision notes recording the rename. Commit 01c3c53.
+- [x] (2026-08-22) M3+M4 (one commit, e0a6428, so pnpm-lock lands atomically with both
+      package.json edits): @webforai/platform client (11 stub-fetch unit tests) + CLI
+      overhaul (args-first, --json, platform loader, `webforai skill` via the skills CLI,
+      spawn smoke tests). Preceded by test-noise commit f5c5520 (root vitest no longer
+      sweeps the platform e2e suite; live-site distance test replaced by evals pointer;
+      puppeteer custom-context launches --no-sandbox). Root suite 305/305 green.
+- [x] (2026-08-22) M5 site docs: new `/cli` and `/platform/client` pages, platform overview
+      quickstart + clients section, API-reference drift fixes, getting-started/installation
+      rewrites, sidebar/nav, footer license fix. vocs build green. Commit b448ce8.
+- [x] (2026-08-22) Post-close-out follow-up (user request): `@webforai/platform`'s fetch
+      injection made robust for special runtimes (Cloudflare Workers etc.) — `options.fetch`
+      is now the structural `FetchLike` (own `src/fetch.ts`; `FetchRequestInit` /
+      `FetchResponseLike` exported) instead of `typeof fetch`, so the published d.ts no
+      longer depends on lib.dom / @types/node / workers-types agreeing; missing global fetch
+      fails at client creation with a clear message; service-binding-style plain-object test
+      added (12 client tests) and CJS runtime verified with a structural stub. Docs
+      (client.mdx + package README) and the pending changeset updated.
+- [x] (2026-08-22) M6 close-out: format/lint/lint:repo/typecheck/build green; root vitest
+      305/305; platform unit 124/124; platform **e2e 16/16 against a live dev server**
+      (Docker available — real D1/KV/workerd, new `PROXY_*` names and the `browser` engine id
+      exercised live); site build green; README drift pass done; retrospective below.
+
+- [x] (2026-08-22) **Production deploy** (user-approved): site → webforai.dev (new /cli,
+      /platform/client pages live); platform → platform.webforai.dev (new container image,
+      version d1d436b0 + secret-change versions). `PROXY_URL`/`PROXY_USERNAME`/
+      `PROXY_PASSWORD` set (values piped from the local `.dev.vars`, never echoed), old
+      vendor-named secrets **deleted**, `.dev.vars` migrated to the new key names. Live
+      smoke: /health ok; demo 200 through the proxy (region us); fresh signup → `wfa_` key →
+      `fetch` scrape 1 credit → **`browser` engine + screenshot 200, 6 credits, screenshot
+      URL returned — the Browser Run live check from the 2026-08-10 plan's remaining list is
+      done**; old id `cf-browser` → 400 invalid_request.
+
+- [x] (2026-08-22) **npm release**: `webforai@3.0.0` published to npm (`latest`), 2FA'd by
+      the operator. Verified from the registry in a clean project: CJS + ESM resolution of
+      the `webforai/platform` subpath, `npx webforai --version` = 3.0.0, `--json` envelope.
+      Tagged `webforai@3.0.0` and pushed. (The `@webforai` scope could not be created; see
+      the same-day pivot decision — the client shipped as a subpath instead, so there is no
+      second package to publish.)
+
+- [x] (2026-08-22) **Stripe live-mode cutover** (new Stripe account): `pnpm stripe:setup`
+      with the live key created meter/product/price (price_1U7Crd...); webhook endpoint
+      created via API (checkout/subscription/invoice events) with its whsec captured from
+      the creation response; live `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/
+      `STRIPE_METERED_PRICE_ID` put on the Worker. Prod D1 cleaned: 4 smoke accounts (and
+      related rows) deleted, the owner account re-linked to a freshly created live customer.
+      Live verification: signup auto-created a live customer (Worker ↔ live Stripe proven),
+      scrape billed 1 credit; checkout blocked only by the account's pending activation
+      ("cannot currently make live charges") — after Stripe approves, no further changes
+      are needed. Gotcha: new Stripe accounts default to Managed Payments, which requires a
+      product `tax_code` — set `txcd_10103000` (SaaS, business use) on the live product and
+      baked it into `stripe-setup.ts`. The live secret key transited the chat; owner should
+      roll it and re-put the Worker secret.
+- [x] (2026-08-23) Stripe account activation approved; verified live: checkout returns a
+      real `cs_live_` URL on checkout.stripe.com and the billing portal opens on
+      billing.stripe.com. Billing is fully live. Verification account removed from D1; its
+      auto-created Stripe customer (cus_V7qHr5p1lNV1Fc, no payment method) can be deleted
+      from the Stripe dashboard if desired.
+
+## Surprises & Discoveries
+
+- The platform SPA's `/docs` page and `site/docs/pages/platform/api-reference.mdx` had both
+  drifted from the deployed code before this initiative (results envelope is
+  `{ jobId, status, results, cursor? }`, not `{ items, cursor }`; no `region` field in any
+  success response; demo 200 carries a top-level `title`; usage `operation` is the bare
+  engine id, not `scrape:fetch`). Evidence: `apps/platform/src/routes/v1.ts:184-189`,
+  `core/types.ts:50-61`, `routes/demo.ts:274-276`, `routes/scrape-run.ts:77`, e2e assertion
+  `tests/e2e/api.e2e.test.ts:98-107`. Fixed in M5 docs; the duplicate in-SPA reference is
+  deleted in M1 rather than fixed twice.
+- `site/docs/footer.tsx` said "MIT License" while the repo license and landing badge are
+  Apache-2.0. Fixed in M5 (fix-noise-once).
+- `site/docs/components/platform.ts` claimed the demo endpoint is "overridden at deploy time"
+  — no such indirection exists; comment corrected in M5.
+- `@better-auth/api-key` returns `RATE_LIMITED`-family codes that the middleware flattens to
+  `429 rate_limited` without `Retry-After`; only the demo route sends `Retry-After`
+  (`routes/demo.ts:260`). The client therefore treats `retryAfter` as optional everywhere.
+- The generated `src/__generated__/create-nodejs-fn.do.ts` really is regenerated from
+  `workerEnvVars` during `pnpm --filter platform build` — the hand edit and the build output
+  came out identical, so env renames are vite.config + d.ts edits plus one build.
+- `site/docs/pages/platform/index.mdx` already used a capability-style "how it fetches"
+  column header; only the row values leaked vendor/runtime detail.
+- Root `pnpm test` swept `apps/platform/tests/e2e/**` (needs a live dev server) — every
+  repo-root vitest run since the e2e suite landed was doomed red. Excluded in root
+  vitest.config.ts; the suite still runs via `pnpm --filter platform test:e2e`. The two
+  "known pre-existing" failures from the 2026-08-10 plan were also still red and are now
+  fixed (live-site distance test removed in favour of evals; puppeteer --no-sandbox).
+- `typescript: ^5.4.5` resolved to 5.9.3 for the new package while webforai keeps 5.5.3 via
+  the lockfile; @types/node 20.14 cannot typecheck against TS 5.9's lib (Uint8Array
+  generics), hence `skipLibCheck: true` in packages/platform (sherif forbids pinning a
+  divergent range instead).
+- Repo-root `README.md` is a **symlink** to `packages/webforai/README.md` (commit fc63669
+  "chore: fix symlink") — editing either edits both; a sweep that "updates both READMEs"
+  touches one file.
+
+- (deploy) `wrangler secret put` via the chat's `!` command runs **without a TTY**: wrangler
+  silently reads stdin-to-EOF and uploads an **empty string** with a "Success!" message.
+  Diagnosed via `wrangler versions view` (bindings present) + zod semantics (empty
+  `PROXY_URL` would have failed `.url()`, so the empties had to be username/password). Fix:
+  pipe values from the local gitignored `.dev.vars`. Also: bare `pnpm deploy` is shadowed by
+  pnpm's own deploy command — README now says `pnpm run deploy`; and the production zone's
+  browser integrity check 403s Python-urllib's default User-Agent (error 1010), so API smoke
+  scripts need a browser-like UA.
+
+## Decision log
+
+- 2026-08-22: **Docs integration direction**: webforai.dev is the single documentation
+  source; the platform SPA keeps landing/dashboard/playground only, and `/docs` inside the
+  SPA is deleted with links pointing at `https://webforai.dev/platform/...`. Rationale: the
+  two references had already diverged (see Surprises); self-hosters read the same routes.
+- 2026-08-22: **Engine id `cf-browser` → `browser`** (set: `fetch | browser | proxy-fetch |
+  proxy-browser`). Clean break, no accepted alias: the platform is pre-launch (Stripe test
+  mode, no external users). Old `usage_events.operation` rows keep the old string; the
+  dashboard renders it as-is, which is acceptable audit history.
+- 2026-08-22: **Proxy configuration is provider-neutral**: secrets `PROXY_URL` (e.g.
+  `http://host:port`), `PROXY_USERNAME`, `PROXY_PASSWORD` replace the former vendor-named
+  username/password secret pair and the hardcoded gateway hostname. `proxyEnabled` now
+  requires all three. The username suffix convention (`-{CC}`, `-rotate`) stays implemented
+  but is described generically ("gateway encodes per-request options as username suffixes").
+  **Operator migration (before next deploy): `wrangler secret put PROXY_URL` /
+  `PROXY_USERNAME` / `PROXY_PASSWORD`, then delete the two old vendor-named secrets.**
+- 2026-08-22: Vendor words are scrubbed from *history* files too (`.agents/execplans/`,
+  `docs/references/`) because the repo is public and the words are the secret, not the
+  decisions. Reference facts that were vendor-specific are rewritten with placeholders.
+- 2026-08-22: **Client is a separate package** `packages/platform` → npm `@webforai/platform`
+  (user's suggestion "@webforai/platform として切ってもいい"). Zero runtime deps, `fetch`-based,
+  works on Node ≥18 / browsers / Workers. `webforai` (the CLI) depends on it via
+  `workspace:^`. NOTE for release: the npm scope `@webforai` must exist before `changeset
+  publish` (operator action).
+- 2026-08-22: **CLI defaults flip to non-interactive**: positional URL/file + flags; wizard
+  only behind `-i/--interactive`; output to **stdout** unless `-o` (old behavior wrote a file
+  after prompting). Folded into the already-pending `webforai` major release.
+- 2026-08-22: `--engine`/`--region` imply `-l platform`; API key from `--api-key` or
+  `WEBFORAI_API_KEY`; base URL from `--platform-url` or `WEBFORAI_PLATFORM_URL` (default
+  `https://platform.webforai.dev`).
+- 2026-08-22: Agent Skills: `webforai skill` prints a SKILL.md (YAML frontmatter
+  `name`/`description` + usage body). **Revised same day on user request**: `--install` no
+  longer hand-writes `.claude/skills` — it stages the SKILL.md in a temp dir and delegates to
+  Vercel's `skills` CLI (`npx -y skills add <stage>`), which owns agent-directory placement,
+  symlink/copy strategy and `skills-lock.json` (verified empirically against skills@1.5.23:
+  local-dir sources work; installs land in `.claude/skills/...` + `.agents/skills/...`).
+  Pass-through flags: `--global`, `--agent`, `--yes`, `--copy`, `--all`; `--dir <path>`
+  stays as an offline direct-write fallback. A version-less copy of the skill is committed at
+  `skills/webforai/SKILL.md` so `npx skills add inaridiy/webforai` works as a second,
+  update-trackable channel; a drift test pins it to `content.ts`.
+- 2026-08-22: Marketing/docs engine tables drop runtime internals ("Node container, undici",
+  vendor column) in favour of capability wording (proxy yes/no, browser rendering yes/no,
+  screenshot, credits). Architecture-level Cloudflare facts stay in README/specs — the
+  deployment target is public knowledge, the egress vendor is not.
+- 2026-08-22: M1 addendum — `landing.tsx` hero sub-copy and `index.html` meta description
+  reworded ("proxied fetch, proxied browser, browser rendering"); playground engine hint for
+  `browser` says "Browser rendering · 5 credits" (no "Cloudflare"): capability wording only.
+- 2026-08-22 (follow-up): fetch injection is typed structurally (`FetchLike`), not as
+  `typeof fetch` — `typeof fetch` in a published d.ts resolves against the *consumer's*
+  globals and the DOM/Node/workers-types declarations disagree; a structural
+  (url, {method, headers?, body?}) → {ok, status, headers.get, json} contract accepts the
+  global fetch, bound service bindings, undici/node-fetch and plain-object stubs everywhere.
+- 2026-08-22: M3 API shape — factory `createPlatformClient(options)` returning a plain object
+  (matches repo's function-record style): `scrape`, `scrapeAsync`, `batch`, `crawl`, `getJob`,
+  `getJobResults`, `waitForJob`, `jobResults` (async generator, auto-fetches R2-spilled
+  `resultUrl` stubs by default), `demoScrape`. Errors throw `PlatformApiError` with `code`,
+  `status`, `retryAfter?`. `crawl`'s `sameOrigin` typed `true | undefined` (server rejects
+  `false`). `waitForJob` polls with default interval 2s, timeout 10min.
+- 2026-08-22: M4 — CLI splits into `run.ts` (non-interactive core), `interactive.ts` (wizard),
+  `skill.ts` (Agent Skill). `--json` envelope: `{ source, loader, url?, engine?, region?,
+  markdown, metadata, credits?, screenshotUrl?, output? }` (markdown/metadata always present;
+  platform-only fields when the platform loader ran; `output` when `-o` wrote a file). All
+  logs to stderr, only markdown/JSON on stdout. Exit codes: 0 ok, 1 runtime failure, 2 usage
+  error (commander's `exitOverride` mapped). No `--mode`+`--extractor` conflict handling —
+  both pass through (`mode` maps to link/table/image toggles, `extractor` to the pipeline).
+
+- 2026-08-22 (publish): **`@webforai/platform` abandoned as a separate npm package** — the
+  `@webforai` npm scope could not be created (org name unavailable), publish returned E404.
+  Reversal of the earlier "client is a separate package" decision: the client now lives at
+  `packages/webforai/src/platform/` and is published as the **`webforai/platform` subpath
+  export** of the `webforai` package (exports + typesVersions entries; CLI imports it
+  relatively and bundles it into `dist/bin.js`). One published package instead of two; the
+  workspace package `packages/platform` is deleted and its 0.1.0 changelog entry folded into
+  webforai 3.0.0. `pnpm pack` had verified the workspace:^ → ^0.1.0 translation, which is
+  now moot.
+
+## Context and Orientation
+
+Monorepo (pnpm 9, biome, vitest at root, changesets). Key paths:
+
+- `packages/webforai` — the published library + CLI (`src/cli/bin.ts`, commander; wizard
+  helpers under `src/cli/helpers` using @clack/prompts). Built by `build.ts` (esbuild: ESM,
+  CJS, and a bundled `dist/bin.js` with `packages: "external"`). A **major** changeset
+  (`.changeset/major-extraction-overhaul.md`) is already pending → v3.
+- `packages/platform` (NEW) — `@webforai/platform` client.
+- `apps/platform` — Cloudflare Worker SaaS (Hono `/v1` API + Better Auth + Stripe + React
+  SPA). Engine enum `ENGINES` in `src/core/types.ts`; zod schemas `src/routes/schemas.ts`
+  (strict bodies); engines composition `src/engines/index.ts`; container code
+  `src/engines/node.container.ts` (undici/Playwright through the proxy); typed env
+  `src/env.ts`; secrets forwarded to the container via `workerEnvVars` in `vite.config.ts`
+  (regenerates `src/__generated__/create-nodejs-fn.do.ts` at build). SPA pages
+  `src/client/pages/{landing,docs,playground,dashboard,...}.tsx`, shell nav
+  `src/client/components/site-shell.tsx`.
+- `site` — vocs docs site (webforai.dev). Config `site/vocs.config.ts` (sidebar/topNav);
+  pages `site/docs/pages/**`; platform section `platform/{index,api-reference,billing}.mdx`;
+  demo widget `site/docs/components/DemoScrape.tsx` + endpoint const
+  `site/docs/components/platform.ts`.
+- `docs/specs/platform/01..04` — design ledger (update with dated revision notes, never
+  rewrite); `docs/references/platform-research-2026-08.md` — research facts; evals proxy code
+  `evals/src/{config,proxy}.ts`, `evals/README.md`.
+
+API facts the client/docs must match (verified against code, see Surprises):
+`POST /v1/scrape` → `ScrapeSuccess { url, engine, markdown, metadata, credits,
+screenshotUrl?, images? }` (no `region`); `async: true` → `202 { jobId }`; `POST /v1/batch`
+(≤100 urls) and `POST /v1/crawl` (maxDepth ≤5 default 2, limit ≤500 default 50,
+`sameOrigin: true` literal) → `202 { jobId }`; `GET /v1/jobs/:id` →
+`{ jobId, type, status, total, completed, failed, credits, expiresAt, error? }`;
+`GET /v1/jobs/:id/results?cursor` → `{ jobId, status, results: PageResult[], cursor? }`,
+page size 20, items >100KiB replaced by `{ status:"ok", url, engine, credits, resultUrl }`;
+errors `{ error: { code, message } }` (+`retryAfter` on demo 429); auth
+`Authorization: Bearer wfa_...` or `x-api-key`; artifact URLs expire in 24h; results TTL 7d.
+Request bodies are `.strict()` — unknown keys are 400s, so the client must not add fields.
+
+## Plan of Work
+
+**M1 — platform code (apps/platform).** Rename engine id in `core/types.ts`
+(`ENGINES = ["fetch", "browser", "proxy-fetch", "proxy-browser"]`), rename
+`engines/cf-browser.ts` → `engines/browser.ts` (`browserEngine`), fix all imports/labels;
+sweep string literal `cf-browser` in src + tests. Env: `env.ts` schema keys `PROXY_URL`,
+`PROXY_USERNAME`, `PROXY_PASSWORD` (proxyEnabled = all three); `vite.config.ts`
+`workerEnvVars`; `engines/container-env.d.ts`; `node.container.ts` reads the server URL from
+env instead of the hardcoded const; error/comment wording provider-neutral;
+`tests/e2e/config.ts` fake env names + `PROXY_URL=http://127.0.0.1:9`; regenerate
+`__generated__` via build. Delete `client/pages/docs.tsx`; `client/app.tsx` route removed;
+`site-shell.tsx` nav/footer "API reference" → `https://webforai.dev/platform/api-reference`;
+landing CTAs likewise; landing engines table + playground hints reworded (no vendor, new
+ids). Update `apps/platform/README.md` (same commit: env vars, engine table, links, secret
+migration note). Gates: `pnpm --filter platform test|typecheck|build`.
+
+**M2 — prose sweep.** `docs/specs/platform/01..04` engine/vendor wording + revision notes;
+`docs/references/platform-research-2026-08.md` proxy-vendor section → provider-neutral with
+placeholder hosts; `evals/src/config.ts`, `evals/src/proxy.ts`, `evals/README.md`;
+`.agents/execplans/2026-08-10-platform.md` vendor words; root `README.md` +
+`packages/webforai/README.md` platform blurbs. Acceptance: vendor-name grep → empty.
+
+**M3 — packages/platform.** Scaffold package (package.json name `@webforai/platform`,
+version 0.0.0, exports ESM+CJS+types, build via esbuild script mirroring webforai's
+`build.ts`, tsconfigs, README). `src/types.ts` (Engine/Region/requests/responses),
+`src/error.ts`, `src/client.ts` (`createPlatformClient`), `src/index.ts`. Unit tests with a
+stubbed `fetch` (vitest root picks them up): happy paths, error envelope → `PlatformApiError`
+(code/status/retryAfter), paging iterator incl. `resultUrl` stub resolution, `waitForJob`
+terminal/timeout. Changeset (minor). Root `pnpm build` covers it via `packages/**` filter.
+
+**M4 — CLI.** `webforai` deps + `@webforai/platform` workspace:^. Rework
+`src/cli`: `bin.ts` (commander, `exitOverride`, rich `-h`, `skill` subcommand),
+`commands/webforai/run.ts` (non-interactive pipeline: resolve loader — local file / fetch /
+playwright / platform; convert via library or platform; emit stdout or `-o`; `--json`
+envelope), `commands/webforai/interactive.ts` (wizard reusing clack helpers; extended with
+platform loader prompts), `commands/skill/` (SKILL.md content + `--install`). Keep
+`loadHtml.ts` for fetch/playwright/local. Unit tests: json envelope builder, extractor/mode
+mapping, skill content contains every flag, spawn smoke test (`tsx src/cli/bin.ts <fixture>`
+→ stdout markdown; `--json` parses). Changeset (major already pending covers the break; add
+a dedicated changeset describing the CLI + client so the release notes mention it).
+
+**M5 — site docs.** New `docs/pages/cli.mdx` (reference + agent section). Platform section:
+`platform/index.mdx` (overview + quickstart: signup → key → curl → client → CLI; engine
+table reworded), NEW `platform/client.mdx` (@webforai/platform usage), `platform/
+api-reference.mdx` (fix results envelope/`region` claims/demo `title`/`sameOrigin`; rename
+engine; vendor removal), `platform/billing.mdx` (schedule with `browser`, neutral wording).
+`getting-started.mdx` CLI quickstart rewrite; `installation.mdx` tab fix; `index.mdx`
+landing (engine bullets, add client mention, CLI feature); `vocs.config.ts` sidebar/topNav
+(+CLI, +Client); `DemoScrape.tsx` footer copy; `docs/footer.tsx` Apache-2.0;
+`components/platform.ts` comment. Build site to verify.
+
+**M6 — close-out.** `pnpm format:fix && pnpm lint && pnpm lint:repo && pnpm typecheck &&
+pnpm build && pnpm test`; `pnpm --filter platform test && typecheck && build`; site build;
+README drift pass; retrospective; final commit.
+
+## Validation and Acceptance
+
+- case-insensitive vendor-name grep on tracked files → no hits; `git grep -w cf-browser` →
+  hits only in dated revision notes that record the rename itself.
+- `pnpm --filter platform test` green; `pnpm test` (root) green; `pnpm typecheck`,
+  `pnpm build`, `pnpm --filter platform build`, `pnpm --filter site build` green;
+  `pnpm format` + `pnpm lint` + `pnpm lint:repo` clean.
+- `node packages/webforai/dist/bin.js <local html fixture>` prints Markdown to stdout,
+  writes nothing; `--json` output parses and carries `markdown` + `metadata`; `-o out.md`
+  writes the file; `webforai skill` prints SKILL.md with frontmatter; `--install` writes
+  `.claude/skills/webforai/SKILL.md`; `-h` lists every flag with examples.
+- Platform e2e suite (`pnpm --filter platform test:e2e`) run if Docker is available on this
+  machine; otherwise noted here as not-run (deploy-time live check remains on the operator's
+  list along with the secret migration).
+- Live platform verification (deploy + `PROXY_*` secrets) is an **operator step**, recorded
+  in the 2026-08-10 plan's remaining-work list; nothing in this initiative changes routes or
+  billing semantics — only the engine id string and env names.
+
+## Idempotence and Recovery
+
+All edits are plain-text and committed per milestone with conventional commits; a failed
+milestone can be reverted by dropping its commits. The generated
+`create-nodejs-fn.do.ts` is regenerated by `pnpm --filter platform build` — never hand-edit
+except to keep the tree type-checking between config change and first build. Engine rename
+is atomic within M1; the tree never ships with both ids live.
+
+## Interfaces and Dependencies (target)
+
+`@webforai/platform` public surface:
+
+    createPlatformClient(options: { apiKey: string; baseUrl?: string; fetch?: typeof fetch })
+      → { scrape(req): Promise<ScrapeResult>;
+          scrapeAsync(req): Promise<{ jobId: string }>;
+          batch(req): Promise<{ jobId: string }>;
+          crawl(req): Promise<{ jobId: string }>;
+          getJob(id): Promise<JobStatus>;
+          getJobResults(id, opts?: { cursor?: string }): Promise<JobResultsPage>;
+          waitForJob(id, opts?): Promise<JobStatus>;              // terminal status or throw on timeout
+          jobResults(id, opts?): AsyncGenerator<PageResult>;      // pages + resolves resultUrl stubs
+          demoScrape(req): Promise<DemoResult> }                  // no key required
+    class PlatformApiError extends Error { code: string; status: number; retryAfter?: number }
+    type Engine = "fetch" | "browser" | "proxy-fetch" | "proxy-browser"
+    type Region = "auto" | "us" | "eu" | "uk" | "jp" | "asia"
+
+CLI: `webforai [source] [-o path] [-l fetch|playwright|platform] [-m default|ai]
+[--extractor auto|takumi|minimal|none] [--frontmatter] [--json] [--engine E] [--region R]
+[--api-key K] [--platform-url U] [-i] [-d]` and `webforai skill [--install] [--dir D]`.
+
+## Outcomes & Retrospective
+
+Shipped on `feat/platform` as seven commits (plan 2a51376, platform fcc96a2, sweep 01c3c53,
+test-noise f5c5520, client+CLI e0a6428, site docs b448ce8, close-out follows). Against the
+four purposes:
+
+1. **One documentation source** — the SPA `/docs` page is deleted, every platform link points
+   at webforai.dev, and the site's platform section was corrected against the deployed code
+   (results envelope, phantom `region` response field, demo `title`, `sameOrigin`) and grew a
+   quickstart, a client page and a CLI page.
+2. **Vendor words** — `git grep -i <vendor>` over tracked files: zero hits. `cf-browser`
+   survives only inside dated revision notes recording the rename. Proxy configuration is
+   provider-neutral (`PROXY_URL`/`PROXY_USERNAME`/`PROXY_PASSWORD`), the gateway host is no
+   longer hardcoded, and the e2e suite proved the renamed plumbing live.
+3. **`@webforai/platform`** exists (`packages/platform`), dependency-free, with 11 stub-fetch
+   unit tests and a changeset; the CLI consumes it via `workspace:^`.
+4. **CLI** — args-first, stdout-first, `--json`, platform loader, `webforai skill` delegating
+   to Vercel's skills CLI (verified end-to-end: `skill --install --agent claude-code --copy
+   -y` produced `.claude/skills/webforai/SKILL.md` via `npx skills add`), exit codes 0/1/2,
+   21 CLI-related unit/spawn tests.
+
+Worth remembering for future sessions: the repo-root README is a symlink into
+packages/webforai; root vitest sweeps everything so new suites needing infrastructure must
+opt out in root vitest.config.ts; `^5.4.5` TypeScript resolves years apart across packages
+in the same workspace (lockfile pinning is per-importer), so new packages should
+`skipLibCheck`; and the `skills` CLI accepts a local directory as an `add` source, which is
+what makes delegating installation possible without publishing first.
+
+**Operator checklist to go live with this tree** (nothing here is agent-executable):
+- npm: create the `@webforai` scope before `changeset publish`.
+- Cloudflare: `wrangler secret put PROXY_URL` / `PROXY_USERNAME` / `PROXY_PASSWORD`, delete
+  the two old vendor-named secrets, then redeploy the platform (engine id changed:
+  `cf-browser` → `browser`) and the docs site.
+- Remaining from the 2026-08-10 plan: `browser` engine live check on production Browser Run,
+  R2 lifecycle rules, Stripe live-mode swap.

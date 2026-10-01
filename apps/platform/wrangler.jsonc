@@ -1,0 +1,136 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "webforai-platform",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS",
+    // The SPA fallback answers anything that is not a static asset, which would swallow the
+    // API. These prefixes are routed to the Worker first so /v1, /api and signed artifact URLs
+    // keep working while deep links still resolve to index.html.
+    "run_worker_first": [
+      "/v1/*",
+      "/api/*",
+      "/artifacts/*",
+      "/health",
+      // Markdown permalinks: GET /https://example.com → text/markdown (routes/permalink.ts).
+      "/http:*",
+      "/https:*"
+    ]
+  },
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "platform",
+      "database_id": "143d303e-6b8d-49b8-a95e-29c4652c36f4",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "JOBS_KV",
+      "id": "229e52e7e9024fdb8afd88cce383a0cb"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ARTIFACTS",
+      "bucket_name": "webforai-platform-artifacts"
+    }
+  ],
+  "browser": {
+    "binding": "BROWSER"
+  },
+  // Sign-in codes (Better Auth email OTP). Cloudflare Email Sending on webforai.dev; the
+  // binding can only send as the one sender address.
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": ["login@webforai.dev"]
+    }
+  ],
+  // Per-account request limits on /v1 (keyed by user id, chosen by subscription tier) and the
+  // public demo's per-IP burst cap (keyed by IPv4 address or IPv6 /64). Counters are per
+  // Cloudflare location and eventually consistent — a cost bound, not an accounting system.
+  // namespace_id must be unique within the account (shared ids share counters).
+  "ratelimits": [
+    {
+      "name": "RATE_LIMIT_FREE",
+      "namespace_id": "20261001",
+      "simple": { "limit": 60, "period": 60 }
+    },
+    {
+      "name": "RATE_LIMIT_PAID",
+      "namespace_id": "20261002",
+      "simple": { "limit": 600, "period": 60 }
+    },
+    {
+      "name": "DEMO_RATE_LIMIT",
+      "namespace_id": "20261003",
+      "simple": { "limit": 3, "period": 60 }
+    },
+    // PlatformRpc (internal Service Binding callers), per tenant: a safety bound on shared
+    // Browser Run / egress, not a product limit.
+    {
+      "name": "RATE_LIMIT_INTERNAL",
+      "namespace_id": "20261004",
+      "simple": { "limit": 300, "period": 60 }
+    }
+  ],
+  "workflows": [
+    {
+      "name": "crawl-workflow",
+      "binding": "CRAWL_WORKFLOW",
+      "class_name": "CrawlWorkflow"
+    }
+  ],
+  "containers": [
+    {
+      "class_name": "NodejsFnContainer",
+      "image": "./.create-nodejs-fn/Dockerfile",
+      "max_instances": 10,
+      "instance_type": "basic"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "NodejsFnContainer",
+        "name": "NODEJS_FN"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "NodejsFnContainer"
+      ]
+    }
+  ],
+  // Reconciliation pass for Stripe meter events that were never acknowledged.
+  "triggers": {
+    "crons": [
+      "*/15 * * * *"
+    ]
+  },
+  "routes": [
+    {
+      "pattern": "platform.webforai.dev",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "BASE_URL": "https://platform.webforai.dev",
+    "STRIPE_METER_EVENT_NAME": "webforai_credits",
+    // Public Turnstile site key for the sign-in widget; the secret is TURNSTILE_SECRET_KEY.
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFCd0-SQiq76YgB7"
+  }
+}

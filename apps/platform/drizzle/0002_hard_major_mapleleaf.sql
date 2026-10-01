@@ -1,0 +1,1 @@
+CREATE INDEX `usage_unreported_idx` ON `usage_events` (`created_at`) WHERE "usage_events"."reported_at" is null;

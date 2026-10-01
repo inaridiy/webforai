@@ -1,0 +1,40 @@
+// biome-ignore lint/performance/noBarrelFile: module index
+export {
+	DEFAULT_BASE_URL,
+	createPlatformClient,
+	type PlatformClient,
+	type PlatformClientOptions,
+	type WaitForJobOptions,
+} from "./client";
+export { PlatformApiError } from "./error";
+export type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch";
+export {
+	CRAWL_SITEMAP_MODES,
+	ENGINES,
+	REGIONS,
+	REQUESTED_ENGINES,
+	isStoredPageStub,
+	type BatchOptions,
+	type ConvertOptions,
+	type CrawlOptions,
+	type CrawlSitemapMode,
+	type DemoResult,
+	type DemoScrapeOptions,
+	type Engine,
+	type ExtractorPreset,
+	type JobRef,
+	type JobResultItem,
+	type JobResultsPage,
+	type JobState,
+	type JobStatus,
+	type JobType,
+	type PageError,
+	type PageFailure,
+	type PageResult,
+	type PageSuccess,
+	type Region,
+	type RequestedEngine,
+	type ScrapeOptions,
+	type ScrapeResult,
+	type StoredPageStub,
+} from "./types";

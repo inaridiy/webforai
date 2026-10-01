@@ -1,7 +1,8 @@
 import { distance } from "fastest-levenshtein";
+import { fromHtml } from "hast-util-from-html";
 import { describe, expect, it } from "vitest";
+import type { ExtractParams } from "./extractors/types";
 import { htmlToMarkdown } from "./html-to-markdown";
-import { loadHtml } from "./loaders/fetch";
 
 const html = `
 <h1>Hello, world!</h1>
@@ -83,6 +84,54 @@ const expectedTableText = `Header 1  Header 2
 Cell 1    Cell 2`;
 
 describe("htmlToMarkdown", () => {
+	it("preserves code indentation and reads its explicit language", () => {
+		const markdown = htmlToMarkdown('<pre><code class="language-c++">    first\n      second\n</code></pre>', {
+			extractors: false,
+		});
+		expect(markdown).toBe("```c++\n    first\n      second\n```\n");
+	});
+
+	it("preserves indentation and language in a decorated code block", () => {
+		const markdown = htmlToMarkdown(
+			'<div class="code-block"><span>Copy</span><pre><code class="language-c++">    first\n      second\n</code></pre></div>',
+			{ extractors: false },
+		);
+		expect(markdown).toBe("```c++\n    first\n      second\n```\n");
+	});
+
+	it("reads the language from data-language (Shiki / rehype-pretty-code)", () => {
+		const markdown = htmlToMarkdown(
+			'<figure data-rehype-pretty-code-figure=""><pre tabindex="0" data-language="tsx" data-theme="github-dark"><code data-language="tsx" style="display: grid;"><span data-line=""><span style="color:#F97583">import</span> x</span></code></pre></figure>',
+			{ extractors: false },
+		);
+		expect(markdown).toBe("```tsx\nimport x\n```\n");
+		expect(htmlToMarkdown('<pre data-lang="go"><code>x := 1</code></pre>', { extractors: false })).toBe(
+			"```go\nx := 1\n```\n",
+		);
+	});
+
+	it("keeps every example in a code tab group", () => {
+		const markdown = htmlToMarkdown(
+			'<div class="codegroup"><pre><code>first example</code></pre><pre><code>second example</code></pre></div>',
+			{ extractors: false },
+		);
+		expect(markdown).toContain("first example");
+		expect(markdown).toContain("second example");
+	});
+
+	it.each([false, ({ hast }: ExtractParams) => hast] as const)(
+		"does not mutate caller HAST during normalization with extractor %s",
+		(extractors) => {
+			const tree = fromHtml('<div role="heading" aria-level="3">Title</div><img data-src="/real.png" alt="Photo">', {
+				fragment: true,
+			});
+			const original = structuredClone(tree);
+			const markdown = htmlToMarkdown(tree, { extractors });
+			expect(markdown).toContain("### Title");
+			expect(markdown).toContain("![Photo](/real.png)");
+			expect(tree).toEqual(original);
+		},
+	);
 	it("should convert HTML to Markdown", () => {
 		const markdown = htmlToMarkdown(html, { extractors: false });
 		const d = distance(markdown, expected);
@@ -120,17 +169,6 @@ describe("htmlToMarkdown", () => {
 	});
 });
 
-describe("htmlToMarkdown E2E", () => {
-	it("Converting for good", async () => {
-		const html1 = await loadHtml("https://www.npmjs.com/package/webforai");
-		const markdown1 = htmlToMarkdown(html1, { linkAsText: true, hideImage: true });
-
-		const html2 = await loadHtml("https://github.com/inaridiy/webforai");
-		const markdown2 = htmlToMarkdown(html2, { linkAsText: true, hideImage: true });
-
-		// @ts-ignore
-
-		const d = distance(markdown1, markdown2);
-		expect(d).lte(2500); // I'd like to optimise more!
-	});
-});
+// Conversion quality on real pages is measured by the recorded-corpus suite in `evals/`
+// (see evals/src/corpus.test.ts). The old "Converting for good" test here compared two live
+// sites by edit distance, which drifted red whenever either site shipped a redesign.

@@ -1,0 +1,98 @@
+---
+title: Platform Billing
+description: How the webforai platform meters credits — the per-engine schedule, 1,000 free credits a month, graduated prices, paid-only proxy engines and the monthly spend cap.
+---
+
+# Billing
+
+The [webforai platform](/platform) is metered in **credits**. Every operation reports a credit
+amount; nothing else is counted — no per-seat pricing, no request tiers, no minimum commitment.
+
+## Credit schedule
+
+| operation | credits |
+| --- | --- |
+| scrape via `fetch` | 1 |
+| scrape via `browser` | 2 |
+| scrape via `proxy-fetch` (subscription only) | 2 |
+| scrape via `proxy-browser` (subscription only) | 3 |
+| `screenshot` option | +1 |
+| `rehostImages` option | +1 per started 5 images |
+
+The default [`auto` engine](/platform/api-reference#the-auto-engine) has no price of its own: the
+operation bills the engine that actually produced the result (so 1 credit when a plain fetch
+sufficed, 2 when the page needed browser rendering), and only that engine.
+
+Batch and crawl jobs bill **per successfully converted page** using the same schedule. A page that
+fails is not billed, and neither is a request that errors before the conversion runs.
+
+The schedule is a single source of truth in the codebase
+([`src/billing/credits.ts`](https://github.com/inaridiy/webforai/blob/main/apps/platform/src/billing/credits.ts)).
+
+## Price
+
+- **1,000 credits per month free** — no subscription, no card.
+- Beyond that, a metered monthly subscription with graduated tiers per calendar month:
+
+| credits in the month | price per credit | per 1,000 `fetch` pages | per 1,000 `browser` pages |
+| --- | --- | --- | --- |
+| first 1,000 | free | free | free |
+| 1,001 – 100,000 | **$0.001** | $1.00 | $2.00 |
+| 100,001 – 1,000,000 | $0.0007 | $0.70 | $1.40 |
+| above 1,000,000 | $0.0005 | $0.50 | $1.00 |
+
+Months are calendar months in UTC: the free allowance, the tiers and the spend cap all reset on the 1st at 00:00 UTC. Each tier applies only to the credits inside it. 1,000 free credits is 1,000 `fetch` scrapes, or
+500 browser-rendered or `proxy-fetch` pages, every month. For example, 50,000 `auto` pages a
+month where 20% need a browser is 60,000 credits: 1,000 free + 59,000 × $0.001 = **$59**.
+
+:::note
+**Price change (2026-09-24).** Prices went down: `browser` from 5 to 2 credits,
+`proxy-browser` from 5 to 3, the per-credit price from $0.002 to graduated tiers starting at
+$0.001, and the free allowance from 500 to 1,000 credits a month. Routing through the proxy
+adds one credit to either tier.
+:::
+
+## Proxy engines need a subscription
+
+`proxy-fetch` and `proxy-browser` — and `auto` with a non-`auto` `region` such as `"jp"`, which
+runs on them — are available with an active subscription only. On the free allowance they are
+refused with `402 payment_required` before anything runs, and nothing is billed. The free
+allowance covers `fetch`, `browser` and `auto`. The public demo never uses the proxy.
+
+## Spend cap
+
+Every subscription has a monthly **spend cap**: **$50 by default**, adjustable on the
+[dashboard](https://platform.webforai.dev/dashboard) from $1 to $5,000 (there is no
+"unlimited"). When this calendar month's estimated bill reaches the cap, further requests
+return `402 spend_cap_reached` until you raise the cap or the month ends, and a running batch
+or crawl job stops instead of converting further pages. The cap is checked before each operation against
+usage already recorded, so requests that are in flight at the same moment can each finish and
+overshoot it by their own credits (a few cents at most in practice).
+
+## How usage is counted
+
+1. The API key resolves to a user, their Stripe customer and their subscription state.
+2. **No active subscription** → the request is allowed only within the free monthly allowance,
+   tracked against the local usage ledger for the current calendar month, and never on a proxy
+   engine. Past the allowance, the API returns `402 payment_required`.
+3. **Active subscription** → the request proceeds, until the month's estimated bill reaches the
+   [spend cap](#spend-cap) (`402 spend_cap_reached`).
+4. The operation runs. **Only on success** a usage row is written to the ledger and mirrored to a
+   Stripe meter event, using the row id as the idempotency key.
+
+The local ledger is the audit source and the dashboard's `Usage` view reads from it; the Stripe
+meter is what the invoice is computed from. Unreported rows are retried automatically, so a
+transient Stripe outage never loses or double-counts usage.
+
+## Managing the subscription
+
+Checkout and the billing portal are both reachable from the [dashboard](https://platform.webforai.dev/dashboard). Cancelling drops you back to
+the free allowance rather than disabling the account.
+
+## Self-hosting
+
+Billing is optional. Running your own instance without `STRIPE_SECRET_KEY` starts the platform in
+free-allowance-only mode — everything works, nothing is metered externally, and you pay Cloudflare
+and your proxy provider directly instead. If you do want metering, `pnpm stripe:setup` creates the meter and
+the metered price for you. See the
+[`apps/platform` README](https://github.com/inaridiy/webforai/tree/main/apps/platform#deploying-your-own-instance).

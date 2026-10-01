@@ -611,7 +611,16 @@ const countAnchors = (element: Element): number => {
  * The container is already known to be content at this point, so these rules can be stricter
  * than the ones applied before candidate selection.
  */
+/**
+ * Elements whose text is quoted literally — a docs page writing `<code>--copy</code>` or
+ * `<kbd>Close</kbd>` documents a flag or a key, it is not the control itself.
+ */
+const LITERAL_TEXT_TAGS = new Set(["code", "kbd", "samp", "var", "pre"]);
+
 const isMidArticleWidget = (element: Element): boolean => {
+	if (LITERAL_TEXT_TAGS.has(element.tagName)) {
+		return false;
+	}
 	if (element.tagName === "form" || element.tagName === "fieldset") {
 		return true;
 	}

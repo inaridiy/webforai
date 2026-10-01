@@ -55,11 +55,6 @@ export const DEFAULT_MDAST_TO_MARKDOWN_OPTIONS: MdastToMarkdownOptions = {
 export const mdastToMarkdown = (mdast: Mdast | RootContent[], options?: MdastToMarkdownOptions): string => {
 	const { baseUrl, ...toMarkdownOptions } = { ...DEFAULT_MDAST_TO_MARKDOWN_OPTIONS, ...options };
 
-	let markdown = toMarkdown(warpRoot(mdast), toMarkdownOptions).replace(/\*\*\*\*/g, "");
-
-	if (baseUrl) {
-		markdown = linkReplacer(markdown, baseUrl);
-	}
-
-	return markdown;
+	const tree = warpRoot(mdast);
+	return toMarkdown(baseUrl ? linkReplacer(tree, baseUrl) : tree, toMarkdownOptions);
 };

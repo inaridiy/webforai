@@ -1,0 +1,116 @@
+@import "tailwindcss";
+@import "./typography.css";
+
+/* Streamdown (the landing demo's Markdown preview) styles itself with Tailwind utilities. */
+@source "../../node_modules/streamdown/dist/*.js";
+
+/*
+ * Light-only app: rebind the `dark:` variant (used inside Streamdown's markup) to a class
+ * that never exists, so no dark styles can activate via the OS preference.
+ */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design tokens. Only semantic names are consumed by components — never raw colors.
+ * The app is deliberately light-only: the scraped-Markdown preview is unreadable on the
+ * dark palette, so the dark token set was removed (git history has it if dark returns).
+ */
+:root {
+	--background: oklch(0.985 0 0);
+	--foreground: oklch(0.141 0.005 285.823);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.141 0.005 285.823);
+	--muted: oklch(0.967 0.001 286.375);
+	--muted-foreground: oklch(0.552 0.016 285.938);
+	--border: oklch(0.92 0.004 286.32);
+	--input: oklch(1 0 0);
+	--primary: oklch(0.21 0.006 285.885);
+	--primary-foreground: oklch(0.985 0 0);
+	/* The docs site's brand blue (#1f8fff) — ties platform.webforai.dev to webforai.dev. */
+	--accent: oklch(0.65 0.191 253.6);
+	--accent-foreground: oklch(0.985 0 0);
+	--accent-subtle: oklch(0.94 0.035 253);
+	--destructive: oklch(0.54 0.2 27);
+	--destructive-foreground: oklch(0.99 0 0);
+	--destructive-subtle: oklch(0.96 0.03 27);
+	--success: oklch(0.53 0.13 152);
+	--success-subtle: oklch(0.95 0.04 152);
+	--warning: oklch(0.6 0.13 76);
+	--warning-subtle: oklch(0.96 0.05 76);
+	--ring: oklch(0.21 0.006 285.885);
+	--radius: 0.5rem;
+	color-scheme: light;
+}
+
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-accent-subtle: var(--accent-subtle);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-destructive-subtle: var(--destructive-subtle);
+	--color-success: var(--success);
+	--color-success-subtle: var(--success-subtle);
+	--color-warning: var(--warning);
+	--color-warning-subtle: var(--warning-subtle);
+	--color-ring: var(--ring);
+	/* Streamdown's components reference shadcn sidebar tokens; alias them to the card surface. */
+	--color-sidebar: var(--card);
+	--color-sidebar-foreground: var(--card-foreground);
+
+	--radius-sm: calc(var(--radius) - 3px);
+	--radius-md: calc(var(--radius) - 1px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+
+	--font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	--font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+}
+
+@layer base {
+	* {
+		border-color: var(--border);
+	}
+
+	html {
+		-webkit-text-size-adjust: 100%;
+	}
+
+	body {
+		background-color: var(--background);
+		color: var(--foreground);
+		font-family: var(--font-sans);
+		font-feature-settings: "cv02", "cv03", "cv04";
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
+	}
+
+	::selection {
+		background-color: var(--accent-subtle);
+	}
+}
+
+@utility dot-grid {
+	background-image: radial-gradient(var(--border) 1px, transparent 1px);
+	background-size: 22px 22px;
+	background-position: -1px -1px;
+}
+
+@utility tabular {
+	font-variant-numeric: tabular-nums;
+}

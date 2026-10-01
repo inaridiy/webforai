@@ -1,0 +1,119 @@
+import { regionToCountry } from "../core/regions";
+import {
+	type Engine,
+	type EngineFetchParams,
+	type EngineSet,
+	EngineUnavailableError,
+	type FetchedPage,
+	PlatformError,
+} from "../core/types";
+import type { AppConfig } from "../env";
+import { proxyBandwidthRefusal } from "../proxy/bandwidth";
+import { browserEngine } from "./browser";
+import { proxyBrowser, proxyFetch } from "./node.container";
+import { workersFetchEngine } from "./workers-fetch";
+
+/**
+ * Composition root for HTML acquisition.
+ *
+ * Every engine either produces a page or throws; there is no fallback between engines. A
+ * caller that asked for `proxy-browser` and got a `fetch` result would be silently billed for
+ * a different product than it received.
+ */
+
+/** Codes the container functions encode into their error messages, and the status they map to. */
+const CONTAINER_ERROR_STATUS = new Map<string, number>([
+	["invalid_url", 400],
+	["unsupported_content_type", 415],
+	["response_too_large", 413],
+	["fetch_failed", 502],
+]);
+
+const CODED_MESSAGE = /^([a-z_]+): ([\s\S]*)$/;
+
+/** Rebuilds a typed `PlatformError` from the flattened message that survives container RPC. */
+const fromContainerError = (engine: Engine, error: unknown): PlatformError => {
+	if (error instanceof PlatformError) {
+		return error;
+	}
+	const message = error instanceof Error ? error.message : String(error);
+	const match = CODED_MESSAGE.exec(message);
+	const code = match?.[1];
+	const detail = match?.[2] ?? message;
+
+	if (code === "engine_unavailable") {
+		return new EngineUnavailableError(engine, detail);
+	}
+	const status = code === undefined ? undefined : CONTAINER_ERROR_STATUS.get(code);
+	if (code !== undefined && status !== undefined) {
+		return new PlatformError(code, detail, status);
+	}
+	return new PlatformError("engine_failed", `engine "${engine}" failed: ${message}`, 502);
+};
+
+const callContainer = async <T>(engine: Engine, run: () => Promise<T>): Promise<T> => {
+	try {
+		return await run();
+	} catch (error) {
+		throw fromContainerError(engine, error);
+	}
+};
+
+/**
+ * The proxy engines run only when the gateway is configured and, where the bandwidth guard is
+ * on, while the plan's monthly bandwidth is not about to run out (`proxy/bandwidth.ts`).
+ */
+const requireProxy = async (env: Env, config: AppConfig, engine: Engine): Promise<void> => {
+	if (!config.proxyEnabled) {
+		throw new EngineUnavailableError(engine, "PROXY_URL/PROXY_USERNAME/PROXY_PASSWORD are not configured");
+	}
+	if (config.proxyBandwidthGuard) {
+		const refusal = await proxyBandwidthRefusal(env.JOBS_KV, new Date());
+		if (refusal !== undefined) {
+			throw new EngineUnavailableError(engine, refusal);
+		}
+	}
+};
+
+const decodeBase64 = (value: string): Uint8Array => {
+	const binary = atob(value);
+	const bytes = new Uint8Array(binary.length);
+	for (let index = 0; index < binary.length; index += 1) {
+		bytes[index] = binary.charCodeAt(index);
+	}
+	return bytes;
+};
+
+/**
+ * The API's coarse region resolved to the ISO code the proxy gateway wants. Done Worker-side so
+ * the container never imports `core/`, and so `auto` (the default) crosses the RPC as `undefined`.
+ */
+const countryFor = (region: EngineFetchParams["region"]): string | undefined => regionToCountry(region ?? "auto");
+
+export const createEngines = (env: Env, config: AppConfig): EngineSet => ({
+	// `fetch` and `browser` egress from Cloudflare and cannot be geo-targeted, so they ignore
+	// `region` rather than silently pretending to honour it. Requests for this deployment's
+	// own pages are served from the assets binding — a Worker cannot fetch its own zone.
+	fetch: (params) => workersFetchEngine(params, { self: { host: new URL(config.BASE_URL).host, assets: env.ASSETS } }),
+
+	browser: (params) => browserEngine(env.BROWSER, params),
+
+	"proxy-fetch": async ({ url, region }): Promise<FetchedPage> => {
+		await requireProxy(env, config, "proxy-fetch");
+		const page = await callContainer("proxy-fetch", () => proxyFetch(url, countryFor(region)));
+		return { html: page.html, url: page.finalUrl, status: page.status };
+	},
+
+	// `screenshot` is honoured here; `scrape-core` rejects it for the two engines that cannot
+	// produce one, so the flag never reaches them.
+	"proxy-browser": async ({ url, screenshot, region }): Promise<FetchedPage> => {
+		await requireProxy(env, config, "proxy-browser");
+		const page = await callContainer("proxy-browser", () => proxyBrowser(url, screenshot, countryFor(region)));
+		return {
+			html: page.html,
+			url: page.finalUrl,
+			status: page.status,
+			screenshot: page.screenshotBase64 ? decodeBase64(page.screenshotBase64) : undefined,
+		};
+	},
+});

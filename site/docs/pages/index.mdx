@@ -1,22 +1,25 @@
 ---
+description: webforai converts web pages and local HTML to clean, LLM-ready Markdown — a TypeScript library, the npx webforai CLI and a hosted API. Try it live.
 layout: landing
 content:
   width: 100%
 ---
 
 import { HomePage } from "vocs/components";
+import { DemoScrape } from "../components/DemoScrape";
+import { WaysToUse } from "../components/WaysToUse";
 
 <div className="max-w-screen-lg mx-auto vp-doc relative px-6 mb-24 mt-8 md:px-0 md:mb-16">
   <div className="pt-[48px] max-sm:pt-0">
     <div className="max-sm:px-0 flex justify-between z-0 max-md:justify-center">
       <div className="space-y-8 max-w-sm flex flex-col items-start max-md:items-center">
-          <img className="h-[72px] dark:invert-[1] max-sm:h-[60px] pr-6" src="/images/logo-full-light.svg" alt="viem logo" />
+          <img className="h-[72px] dark:invert-[1] max-sm:h-[60px] pr-6" src="/images/logo-full-light.svg" alt="webforai" />
         <div className="font-regular text-lg max-sm:text-base max-md:text-center">
-          A esm-native library that converts HTML to Markdown & Useful Utilities with simple, lightweight and epic quality.
+          Convert web pages and local HTML to clean, LLM-ready Markdown — with a TypeScript library, the <code>npx webforai</code> CLI, or a hosted API.
         </div>
         <div className="flex justify-center space-x-2">
           <HomePage.Button href="/getting-started" variant="accent">Get started</HomePage.Button>
-          <HomePage.Button href="/cookbook">Cookbook</HomePage.Button>
+          <HomePage.Button href="https://platform.webforai.dev">Hosted API</HomePage.Button>
           <HomePage.Button href="https://github.com/inaridiy/webforai">GitHub</HomePage.Button>
         </div>
       </div>
@@ -84,6 +87,29 @@ npx webforai@latest
 
 
 
+<section className="max-w-screen-lg mx-auto" id="demo">
+
+#
+# Try it
+
+Paste any URL and see the Markdown webforai produces — converted live by the hosted
+[webforai platform](https://platform.webforai.dev), the same pipeline behind the API and `--engine auto`.
+
+<DemoScrape />
+
+</section>
+
+<section className="max-w-screen-lg mx-auto" id="ways-to-use">
+
+#
+# Three ways to use it
+
+The same extraction engine, wherever you want to run it.
+
+<WaysToUse button={HomePage.Button} />
+
+</section>
+
 <section className="max-w-screen-md mx-auto">
 
 #
@@ -110,7 +136,28 @@ const markdown = htmlToMarkdown(html, { baseUrl: url }); // [!code hl]
 - Flexibility because it's built on [Syntax Tree](https://github.com/syntax-tree) ecosystem.
 - MathML to LaTeX with [mathml-to-latext](https://www.npmjs.com/package/mathml-to-latex) package.
 - Out-of-the-box loaders such as fetch, [playwright](https://www.npmjs.com/package/playwright), [puppeteer](https://www.npmjs.com/package/puppeteer).
-- CLI tool `npx webforai` for quick HTML to Markdown conversion
+- CLI tool [`npx webforai <url>`](/cli) — Markdown on stdout, `--json` for scripts and AI agents
+
+</section>
+
+<section className="max-w-screen-md mx-auto">
+
+#
+# Hosted platform
+
+Don't want to run the browsers, proxies and queues yourself? **webforai platform** is an OSS, self-hostable
+crawl→Markdown API built on this library — scrape, batch and crawl over four engines
+(`fetch` / `browser` / `proxy-fetch` / `proxy-browser`, 1 / 2 / 2 / 3 credits per page) with an
+`auto` default that escalates to browser rendering only when a page needs JavaScript, and
+**1,000 credits per month free**, then from $0.001 per credit. Use it over HTTP, through the typed
+[`webforai/platform`](/platform/client) client, or straight from the [CLI](/cli).
+
+<div className="flex flex-wrap gap-2 mt-6">
+  <HomePage.Button href="https://platform.webforai.dev" variant="accent">Open the platform</HomePage.Button>
+  <HomePage.Button href="https://platform.webforai.dev/signup">Create a free account</HomePage.Button>
+  <HomePage.Button href="/platform">Platform docs</HomePage.Button>
+  <HomePage.Button href="/platform/api-reference">API reference</HomePage.Button>
+</div>
 
 </section>
 

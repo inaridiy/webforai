@@ -13,3 +13,6 @@ dist
 .cache
 evals/.cache
 evals/.reports
+
+# Agent worktrees (Claude Code)
+.claude/worktrees/

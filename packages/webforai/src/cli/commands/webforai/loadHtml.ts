@@ -1,11 +1,16 @@
 import fs from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { log } from "@clack/prompts";
 import boxen from "boxen";
 import pc from "picocolors";
 import { chromium } from "playwright-core";
 import { loadHtml as loadHtmlByFetch } from "../../../loaders/fetch";
 import { loadHtml as loadHtmlByPlaywright } from "../../../loaders/playwright";
+
+const debugLog = (enabled: boolean | undefined, message: string): void => {
+	if (enabled) {
+		console.error(`[webforai] ${message}`);
+	}
+};
 
 const checkPlaywrightAvailable = async () => {
 	const path = chromium.executablePath();
@@ -28,23 +33,23 @@ const getPlaywrightVersion = async () => {
 
 export const loadHtml = async (sourcePath: string, loader: string, options: { debug?: boolean }) => {
 	if (loader === "local") {
-		options.debug && log.info(`Loading HTML from local file: ${sourcePath}`);
+		debugLog(options.debug, `Loading HTML from local file: ${sourcePath}`);
 		const content = await fs.readFile(sourcePath, "utf-8");
-		options.debug && log.info(`HTML loaded: ${content.slice(0, 100)}`);
+		debugLog(options.debug, `HTML loaded: ${content.slice(0, 100)}`);
 		return content;
 	}
 
 	if (loader === "fetch") {
-		options.debug && log.info(`Loading HTML from URL: ${sourcePath}`);
+		debugLog(options.debug, `Loading HTML from URL: ${sourcePath}`);
 		const content = await loadHtmlByFetch(sourcePath);
-		options.debug && log.info(`HTML loaded: ${content.slice(0, 100)}`);
+		debugLog(options.debug, `HTML loaded: ${content.slice(0, 100)}`);
 		return content;
 	}
 
 	if (loader === "playwright") {
-		options.debug && log.info(`Loading HTML from playwright: ${sourcePath}`);
+		debugLog(options.debug, `Loading HTML with playwright: ${sourcePath}`);
 		const isPlaywrightAvailable = await checkPlaywrightAvailable();
-		options.debug && log.info(`Playwright available: ${isPlaywrightAvailable}`);
+		debugLog(options.debug, `Playwright available: ${isPlaywrightAvailable}`);
 
 		const pwVersion = await getPlaywrightVersion();
 
@@ -67,11 +72,11 @@ export const loadHtml = async (sourcePath: string, loader: string, options: { de
 				`  sudo npx playwright@${pwVersion} install-deps`,
 			];
 
-			log.error(boxen(message.join("\n"), { padding: 1, borderStyle: "round" }));
+			console.error(boxen(message.join("\n"), { padding: 1, borderStyle: "round" }));
 			throw new Error("Playwright is not available");
 		}
 		const content = await loadHtmlByPlaywright(sourcePath);
-		options.debug && log.info(`HTML loaded: ${content.slice(0, 100)}`);
+		debugLog(options.debug, `HTML loaded: ${content.slice(0, 100)}`);
 		return content;
 	}
 

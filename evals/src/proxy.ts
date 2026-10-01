@@ -15,7 +15,7 @@ export interface Proxy {
 const PROXY_LIST_PATH = path.join(CACHE_DIR, "proxies.txt");
 
 /**
- * Parses Webshare's `ip:port:username:password` download format.
+ * Parses the common `ip:port:username:password` proxy-list download format.
  *
  * The download is served with CRLF line endings; failing to strip the carriage return silently
  * corrupts the password and every request comes back as a proxy auth failure.

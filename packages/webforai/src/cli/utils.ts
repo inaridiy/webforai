@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { DEFAULT_BASE_URL } from "../platform";
 
 export const isUrl = (maybeUrl: string) => {
 	try {
@@ -78,7 +79,15 @@ export const sourcePathToOutputPath = (sourcePath: string) => {
 	return isUrl(sourcePath) ? `${urlToFilename(sourcePath)}.md` : changeFileExtension(sourcePath, "md");
 };
 
-export function getNextAvailableFilePath(filePath: string): string {
+/**
+ * `article.md` → `article_1.md` → `article_2.md` ... until `exists` says the name is free.
+ * `exists` defaults to the filesystem; multi-page writers pass an in-memory set so reruns
+ * into the same directory overwrite deterministically instead of drifting to new suffixes.
+ */
+export function getNextAvailableFilePath(
+	filePath: string,
+	exists: (candidate: string) => boolean = fs.existsSync,
+): string {
 	const parsedPath = path.parse(filePath);
 	const directory = parsedPath.dir;
 	const fullName = parsedPath.base;
@@ -88,14 +97,11 @@ export function getNextAvailableFilePath(filePath: string): string {
 
 	const baseName = firstPart.replace(/_\d+$/, "");
 
-	let counter = 1;
+	const match = firstPart.match(/_(\d+)$/);
+	let counter = match ? Number.parseInt(match[1], 10) + 1 : 1;
 	let nextFilePath = filePath;
 
-	while (fs.existsSync(nextFilePath)) {
-		const match = firstPart.match(/_(\d+)$/);
-		if (match) {
-			counter = Number.parseInt(match[1], 10) + 1;
-		}
+	while (exists(nextFilePath)) {
 		const newName = `${baseName}_${counter}${restName}`;
 		nextFilePath = path.join(directory, newName);
 		counter++;
@@ -103,3 +109,7 @@ export function getNextAvailableFilePath(filePath: string): string {
 
 	return nextFilePath;
 }
+
+/** The dashboard of the configured platform (flag/env override, else the hosted instance). */
+export const platformDashboardUrl = (platformUrl?: string): string =>
+	`${(platformUrl || DEFAULT_BASE_URL).replace(/\/+$/u, "")}/dashboard`;

@@ -1,0 +1,141 @@
+---
+title: Platform Client (TypeScript)
+description: webforai/platform — a typed, dependency-free TypeScript client for the webforai platform API with job polling, result paging and structured errors.
+---
+
+# TypeScript client — `webforai/platform`
+
+The official typed client for the platform API ships **inside the `webforai` package** as
+the `webforai/platform` subpath — nothing extra to install. The module pulls in no runtime
+dependencies of its own and runs anywhere `fetch` exists: Node ≥18, browsers, Cloudflare
+Workers and other edge runtimes.
+
+```bash
+npm i webforai
+```
+
+## Scrape
+
+```ts
+import { createPlatformClient } from "webforai/platform";
+
+const platform = createPlatformClient({ apiKey: process.env.WEBFORAI_API_KEY });
+
+const page = await platform.scrape({
+  url: "https://example.com/article",
+  engine: "browser",              // auto (default) | fetch | browser | proxy-fetch | proxy-browser
+  convert: { frontmatter: true },
+});
+
+page.markdown;  // "# …"
+page.metadata;  // { title, author, … }
+page.credits;   // 2
+```
+
+Self-hosting? Point the client at your own deployment:
+
+```ts
+const platform = createPlatformClient({ apiKey, baseUrl: "https://platform.your.domain" });
+```
+
+## Batch and crawl jobs
+
+Async jobs return a `jobId`; `waitForJob` polls until the job reaches a terminal state, and
+`jobResults` iterates every page result — following pagination and downloading oversized
+results (which the API stores out-of-band) transparently.
+
+```ts
+const { jobId } = await platform.crawl({
+  url: "https://docs.example.com/",
+  maxDepth: 2,
+  limit: 50,
+});
+
+await platform.waitForJob(jobId, {
+  onStatus: (s) => console.log(`${s.status} ${s.completed}/${s.total}`),
+});
+
+for await (const result of platform.jobResults(jobId)) {
+  if (result.status === "ok") {
+    console.log(result.url, result.markdown.length);
+  } else {
+    console.warn(result.url, result.error.code);
+  }
+}
+```
+
+`waitForJob` defaults to a 10-minute overall deadline and a 2-second poll interval.
+The deadline covers in-flight HTTP requests and response-body reads. Set `timeoutMs`
+(positive, at most 2,147,483,647 ms) and `pollIntervalMs` (zero or positive, same maximum)
+to override them. Pass an `AbortSignal` as `signal` to cancel the active request and polling;
+the promise rejects with that signal's abort reason. A deadline rejects with `poll_timeout`.
+Custom fetch implementations receive the signal too; if they ignore it, the polling promise
+still stops at its deadline, although the custom transport may continue its own work.
+
+Lower-level pieces are also exposed: `scrapeAsync` (a single URL as an async job),
+`getJob(jobId)` and `getJobResults(jobId, { cursor })` for manual polling and paging.
+
+## Error handling
+
+Every non-2xx response throws a `PlatformApiError` carrying the API's error `code`, the HTTP
+`status`, and `retryAfter` (seconds) when the server provided one. The client never retries
+on its own.
+
+```ts
+import { PlatformApiError } from "webforai/platform";
+
+try {
+  await platform.scrape({ url });
+} catch (error) {
+  if (error instanceof PlatformApiError) {
+    switch (error.code) {
+      case "payment_required":  // free allowance used up, or a proxy engine without a subscription
+      case "spend_cap_reached": // monthly spend cap hit; raise it on the dashboard
+      case "rate_limited":      // 60/min free, 600/min paid; wait error.retryAfter seconds
+      case "too_many_jobs":     // 3 (free) / 20 (paid) batch+crawl jobs already active
+      case "engine_unavailable": // deployment lacks that engine's config
+    }
+  }
+}
+```
+
+401 and 402 messages end with a pointer to the deployment's dashboard (`<baseUrl>/dashboard`).
+The full list of codes, with what to do about each, lives in the
+[API reference](/platform/api-reference#errors).
+
+## Custom fetch (Cloudflare Workers and other special runtimes)
+
+All I/O goes through a single injectable `fetch`. By default the client binds the global
+fetch, but you can supply your own — the expected type (`FetchLike`) is **structural**, so it
+does not depend on lib.dom, `@types/node` or `@cloudflare/workers-types` agreeing about what
+`fetch` is:
+
+```ts
+import { createPlatformClient, type FetchLike } from "webforai/platform";
+
+// Cloudflare Workers: route the client through a service binding
+const platform = createPlatformClient({
+  apiKey: env.WEBFORAI_API_KEY,
+  fetch: (url, init) => env.PLATFORM.fetch(url, init),
+});
+
+// Or wrap for instrumentation / retries / a corporate proxy (undici, node-fetch, …)
+const logged: FetchLike = async (url, init) => {
+  console.log(init.method, url);
+  return fetch(url, init);
+};
+```
+
+Anything that accepts `(url: string, init: { method, headers?, body?, signal? })` and resolves to an
+object with `ok`, `status`, `headers.get()` and `json()` qualifies — a plain object is fine,
+no `Response` class required. The same injection point is what the client's own test suite
+uses. On runtimes without a global fetch, constructing a client without `fetch` throws a
+clear error instead of failing inside the first request.
+
+## Demo endpoint
+
+The public, keyless demo endpoint is available too (rate-limited, truncated output):
+
+```ts
+const demo = await createPlatformClient().demoScrape({ url: "https://example.com" });
+```

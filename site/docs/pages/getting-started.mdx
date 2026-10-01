@@ -1,5 +1,6 @@
 ---
 title: Getting Started
+description: "Get started with webforai: convert HTML or a URL to clean, LLM-ready Markdown in a few lines of TypeScript, from the CLI, or through the hosted API."
 ---
 
 # Getting Started
@@ -8,6 +9,13 @@ title: Getting Started
 
 Welcome to webforai, an library designed to convert **HTML to Markdown** with simple utilities.
 Whether you're working in a browser, Node.js, or even on Cloudflare Workers, webforai is your go-to tool for bridging between web and LLMs.
+
+:::tip
+webforai comes in three forms: this library, the [CLI](/cli) (`npx webforai <url>`), and a
+[hosted API](/platform) that runs the browsers and proxies for you. This page covers the
+library and the CLI; for the hosted API, [create an account](https://platform.webforai.dev/signup)
+and follow the [platform quickstart](/platform#quickstart).
+:::
 
 ## Installation
 
@@ -29,27 +37,21 @@ yarn add webforai
 
 ## Quick Start (CLI)
 
-You can convert HTML to Markdown with the following command.
+Convert any URL (or local HTML file) to Markdown in one command — the Markdown is printed to
+stdout, so it can be piped, redirected, or captured:
 
 ```bash
 $ npx webforai@latest https://www.npmjs.com/package/webforai
 
-┌  webforai CLI version 1.6.3
-│
-◇  Select loader: # [!code hl]
-│  fetch # fetch(default) or playwright
-│
-◇  Enter the output file path: # [!code hl]
-│  npmjs-package-webforai.md # default is `{escaped-url}.md`
-│
-◇  Select processing mode: # [!code hl]
-│  default # default or ai mode. ai mode is remove imapges, links, and so on.
-│
-◇  Content loaded!
-│
-└  Done! Markdown saved to npmjs-package-webforai.md
-
+# write to a file / emit machine-readable JSON instead
+$ npx webforai@latest https://www.npmjs.com/package/webforai -o webforai.md
+$ npx webforai@latest https://example.com --json | jq -r .markdown
 ```
+
+Prefer prompts? `npx webforai@latest -i` starts a guided interactive flow. The full flag
+reference — including JavaScript rendering via Playwright or the
+[hosted platform](/platform), and the Agent Skill for AI agents — lives on the
+[CLI page](/cli).
 
 ## Quick Start (Library)
 

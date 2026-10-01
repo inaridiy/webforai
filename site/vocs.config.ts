@@ -4,7 +4,7 @@ import { version } from "../packages/webforai/package.json";
 // biome-ignore lint/style/noDefaultExport: This is a config file
 export default defineConfig({
 	title: "Webforai",
-	description: "A esm-native library that converts HTML to Markdown.",
+	description: "Convert web pages and local HTML to clean, LLM-ready Markdown — library, CLI and hosted API.",
 	baseUrl: "https://webforai.dev",
 	logoUrl: {
 		light: "/images/logo-light.png",
@@ -19,10 +19,9 @@ export default defineConfig({
 		text: "Suggest changes to this page",
 	},
 	theme: {
-		accentColor: {
-			light: "#1f8fff",
-			dark: "#4db8ff",
-		},
+		// Light-only: the demo's rendered-Markdown preview is built for the light palette.
+		colorScheme: "light",
+		accentColor: "#1f8fff",
 	},
 	ogImageUrl: {
 		"/": "https://webforai.dev/api/ogp?logo=%logo&title=%title&description=%description",
@@ -39,7 +38,19 @@ export default defineConfig({
 	],
 	topNav: [
 		{ text: "Getting Started", link: "/getting-started" },
+		{ text: "CLI", link: "/cli" },
 		{ text: "Cookbook", link: "/cookbook" },
+		// "Platform" is both a product and a docs section: the dropdown names which one each
+		// entry opens. External entries get vocs' arrow icon.
+		{
+			text: "Platform",
+			items: [
+				{ text: "Open platform", link: "https://platform.webforai.dev" },
+				{ text: "Dashboard & API keys", link: "https://platform.webforai.dev/dashboard" },
+				{ text: "Platform docs", link: "/platform" },
+				{ text: "API reference", link: "/platform/api-reference" },
+			],
+		},
 		{
 			text: version, // <= should update automatically
 			items: [
@@ -66,6 +77,14 @@ export default defineConfig({
 		{
 			text: "How it works",
 			link: "/how-it-works",
+		},
+		{
+			text: "Benchmarks",
+			link: "/benchmarks",
+		},
+		{
+			text: "CLI",
+			link: "/cli",
 		},
 		{
 			text: "API Reference",
@@ -112,6 +131,28 @@ export default defineConfig({
 				{
 					text: "With Cloudflare Workers",
 					link: "/cookbook/cf-workers",
+				},
+			],
+		},
+		{
+			text: "Platform (hosted API)",
+			link: "/platform",
+			items: [
+				{
+					text: "Overview",
+					link: "/platform",
+				},
+				{
+					text: "API Reference",
+					link: "/platform/api-reference",
+				},
+				{
+					text: "TypeScript Client",
+					link: "/platform/client",
+				},
+				{
+					text: "Billing",
+					link: "/platform/billing",
 				},
 			],
 		},

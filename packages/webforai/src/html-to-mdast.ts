@@ -14,6 +14,7 @@ import { definitionListHandler } from "./mdast-handlers/definition-list-handler"
 import { mathHandler } from "./mdast-handlers/math-handler";
 import { supSubHandler } from "./mdast-handlers/sup-sub-handler";
 import { type NormalizeOptions, normalizeHast } from "./normalize";
+import { cloneHast } from "./utils/hast-fast";
 import { getLangFromHast, getLangFromStr, getUrlFromHast } from "./utils/hast-utils";
 
 export type HtmlToMdastOptions = {
@@ -75,7 +76,9 @@ export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOpti
 
 	const url = defaultUrl || getUrlFromHast(hast);
 
-	const extractedHast = pipeExtractors({ hast, lang, url, owned: isOwned }, extractors);
+	// Own the tree before extraction: disabled or custom extractors may return their input,
+	// and normalization plus conversion handlers mutate it regardless of extractor choice.
+	const extractedHast = pipeExtractors({ hast: isOwned ? hast : cloneHast(hast), lang, url, owned: true }, extractors);
 
 	// Repairs markup the Markdown conversion cannot interpret (lazy image URLs, doubly-rendered
 	// maths, ARIA-only headings). Runs after extraction so it only visits surviving nodes.

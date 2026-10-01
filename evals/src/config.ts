@@ -64,9 +64,8 @@ export interface ProxyConfig {
  * WEBFORAI_PROXY_URL=http://username:password@198.51.100.7:6540
  * ```
  *
- * Note that Webshare's "Proxy List" plans require one of the concrete `IP:port` entries shown
- * in the dashboard; the rotating `p.webshare.io` / `proxy.webshare.io` hostnames are only valid
- * on their rotating-residential plans.
+ * Note that some providers' list plans require one of the concrete `IP:port` entries shown
+ * in their dashboard; rotating gateway hostnames are often only valid on rotating plans.
  */
 export const getProxyConfig = (): ProxyConfig | undefined => {
 	const raw = process.env.WEBFORAI_PROXY_URL;

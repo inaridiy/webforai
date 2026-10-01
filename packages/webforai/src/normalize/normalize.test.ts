@@ -59,6 +59,20 @@ describe("rendered maths", () => {
 			"<mjx-container><mjx-math>E</mjx-math><mjx-assistive-mml><math><mi>E</mi></math></mjx-assistive-mml></mjx-container>";
 		expect(convert(mathjax).trim()).toBe("$E$");
 	});
+
+	it.each([
+		"<mjx-container><mjx-math>E</mjx-math></mjx-container>",
+		"<mjx-container><mjx-math>E</mjx-math><mjx-assistive-mml></mjx-assistive-mml></mjx-container>",
+		'<span class="katex"><span class="katex-mathml"></span><span class="katex-html">E</span></span>',
+	])("preserves a sole rendered formula when MathML is absent: %s", (html) => {
+		expect(convert(html).trim()).toBe("E");
+	});
+
+	it("preserves a MediaWiki formula image when there is no MathML alternative", () => {
+		const html =
+			'<span class="mwe-math-element"><img class="mwe-math-fallback-image-inline" src="/formula.png" alt="E"></span>';
+		expect(convert(html)).toContain("![E](/formula.png)");
+	});
 });
 
 describe("ARIA headings", () => {
@@ -114,5 +128,34 @@ describe("definition lists", () => {
 		const markdown = convert("<dl><dt>T</dt><dd>One</dd><dd>Two</dd></dl>");
 		expect(markdown).toContain("One");
 		expect(markdown).toContain("Two");
+	});
+
+	it("looks through the <div> wrappers HTML allows around each group", () => {
+		// Regression: a legal page built this way (one div per row) converted to nothing.
+		const markdown = convert(
+			'<dl><div class="row"><dt>販売事業者</dt><dd>山田太郎</dd></div><div><dt>Email</dt><dd><a href="mailto:a@example.com">a@example.com</a></dd></div></dl>',
+		);
+		expect(markdown).toContain("**販売事業者**");
+		expect(markdown).toContain("山田太郎");
+		expect(markdown).toContain("**Email**");
+		expect(markdown.indexOf("山田太郎")).toBeLessThan(markdown.indexOf("**Email**"));
+	});
+
+	it("keeps the content of a <dl> that has no terms or definitions", () => {
+		expect(convert("<dl><p>Loose paragraph</p></dl>")).toContain("Loose paragraph");
+	});
+
+	it("survives main-content extraction on a page that is mostly a <div>-grouped <dl>", () => {
+		const rows = ["販売事業者", "所在地", "電話番号", "支払方法", "返品・キャンセル"]
+			.map(
+				(term) =>
+					`<div><dt>${term}</dt><dd>${term}についての説明文です。請求があった場合、遅滞なく開示いたします。</dd></div>`,
+			)
+			.join("");
+		const markdown = htmlToMarkdown(
+			`<html><body><nav><a href="/">Home</a></nav><main><article><h1>特定商取引法に基づく表記</h1><dl>${rows}</dl></article></main></body></html>`,
+		);
+		expect(markdown).toContain("**返品・キャンセル**");
+		expect(markdown).toContain("支払方法についての説明文です");
 	});
 });

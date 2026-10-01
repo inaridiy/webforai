@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /playground
+Disallow: /share
+Disallow: /api/
+
+Sitemap: https://platform.webforai.dev/sitemap.xml

@@ -1,0 +1,13 @@
+# create-nodejs-fn
+.create-nodejs-fn/*
+!.create-nodejs-fn/Dockerfile
+src/__generated__
+
+# local secrets & build output
+.dev.vars
+.dev.vars.e2e-backup
+dist
+.wrangler
+
+# e2e runtime artifacts
+tests/e2e/.server.log

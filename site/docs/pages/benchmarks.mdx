@@ -1,0 +1,135 @@
+---
+title: Benchmarks
+description: A reproducible comparison of webforai with Readability + Turndown, plain Turndown and node-html-markdown on a cached corpus of real pages — method, results and limitations.
+---
+
+# Benchmarks
+
+This page compares webforai with common open-source HTML→Markdown pipelines on the same cached
+pages. Everything runs locally from the repository's evaluation harness, with no network access
+and no API keys at measure time. The numbers below are from the run on 2026-10-01 (commit
+`5e7ccce`); the raw summary is
+[`evals/benchmarks/compare-summary.json`](https://github.com/inaridiy/webforai/blob/main/evals/benchmarks/compare-summary.json).
+
+**Read the limitations first.** The corpus is small (60 captures of 46 sites) and was assembled
+while developing webforai. Its quality assertions were written against webforai's output and its
+failures. The results are therefore likely to favour webforai, and they are not a general measure
+of extraction quality.
+
+## Pipelines
+
+| Pipeline | What runs | Extracts main content |
+| --- | --- | --- |
+| webforai 3.0.0 | `htmlToMarkdown(html, { baseUrl: url, url })` with the default extractors (site adapters, then the generic extractor) | yes |
+| Readability + Turndown | jsdom 30.0.1 → `@mozilla/readability` 0.6.0 `parse()` → Turndown 7.2.4 with `turndown-plugin-gfm` 1.0.2 on `article.content`; the article title is prepended as an h1 | yes |
+| Turndown (full page) | Turndown 7.2.4 + GFM plugin on the whole document; `head`, `script`, `style`, `noscript` and `template` removed | no |
+| node-html-markdown (full page) | `NodeHtmlMarkdown.translate(html)` 2.0.0 on the whole document, default options | no |
+
+Turndown is configured with ATX headings, fenced code blocks and `-` bullets, the usual setup for
+GFM output. The two full-page pipelines are baselines: they show what conversion without content
+extraction produces.
+
+## Metrics
+
+The metrics were fixed before the recorded run. A one-round dry run of the harness found one
+measurement bug (code lines rendered as `<div>` elements inside `<pre>` were joined into one
+line); it was fixed for all pipelines before the recorded run.
+
+- **Checks passed** — the existing corpus assertions in
+  [`evals/src/assertions.ts`](https://github.com/inaridiy/webforai/blob/main/evals/src/assertions.ts),
+  unchanged, applied to every pipeline's output: minimum headings, fenced code blocks and length;
+  maximum share of link-only lines; and short presence/absence anchors such as Wikipedia's
+  `[edit]` links. 74 checks over 22 captures. 14 further checks are webforai-specific and are
+  excluded: 10 check which webforai site adapter claims a page, and 4 match the Markdown format
+  that webforai's YouTube and Hacker News adapters emit (`- Channel:` lines, a `## Comments`
+  heading, nested blockquotes for replies). webforai passes 88/88 when they are included.
+- **Crashes / empty** — a thrown error, or trimmed output shorter than 200 characters.
+- **Nav leak** — captures where more than 20% of non-blank output lines are nothing but a link.
+  This is the harness's main signal that navigation survived.
+- **Boilerplate** — captures whose output contains any of 14 fixed page-chrome phrases ("skip to
+  content", "privacy policy", "cookie preferences", "all rights reserved", …; the full list is in
+  the summary JSON). These phrases can occur in real content, so this is a signal, not proof.
+- **Code fenced** — for each `<pre>` in the source, its longest line of 12–200 characters must
+  appear as a line inside a fenced code block of the output. Pooled over all 748 such blocks. It
+  measures recall only: keeping code from page chrome is not penalized.
+- **Tables** — source tables with a `<th>` and no nested table, against GFM tables in the output
+  (capped per capture). Pooled over 64 tables. Recall only.
+- **Time** — one warm-up round, then five measured rounds. Each conversion is timed on its own,
+  pipelines are interleaved per capture and the starting pipeline rotates each round. The figure
+  is the sum over all captures of each capture's median, including HTML parsing. Node 24.15.0 on
+  an AMD Ryzen 9 8945HX, not CPU-pinned.
+
+## Results
+
+| Pipeline | Checks passed | Crashes | Empty | Nav leak | Boilerplate | Code fenced | Tables | Median output (chars) | Total time |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| webforai | 74/74 | 0 | 1 | 7 | 3 | 93.8% (702/748) | 42.2% (27/64) | 8,722 | 3.19 s |
+| Readability + Turndown | 62/74 | 0 | 2 | 8 | 3 | 45.2% (338/748) | 57.8% (37/64) | 9,139 | 10.88 s |
+| Turndown (full page) | 50/74 | 1 | 1 | 30 | 31 | 52.1% (390/748) | 68.8% (44/64) | 16,956 | 1.45 s |
+| node-html-markdown (full page) | 50/74 | 0 | 1 | 37 | 32 | 50.8% (380/748) | 57.8% (37/64) | 18,140 | 14.98 s |
+
+60 captures, 24.17 MiB of HTML. Nav leak, boilerplate and empty count captures out of 60.
+
+### What the numbers show
+
+- **Where webforai is behind.** Full-page Turndown is about 2.2× faster, because it does no
+  extraction. webforai has the lowest table recall. Of the 37 tables it drops, 33 are Wikipedia
+  navboxes and sidebars (navigation tables built from `<th>` cells; 30 of them on the Japanese
+  Wikipedia capture), and the other two are a PostgreSQL navigation header and GitHub's
+  repository file list. It keeps the infoboxes and article tables on those pages. This breakdown
+  was checked after the run; the metric counts every such table, so dropping navigation tables
+  lowers the score. webforai also leaks
+  navigation on 7 captures, mostly news and commerce pages (BBC, The Verge, NHK, ICS MEDIA,
+  Reddit, Amazon), where Readability + Turndown leaks on 8.
+- **Checks.** Readability + Turndown misses on Wikipedia (heading count, `[edit]` links), on
+  YouTube's watch page (no output), on heading counts for the Python docs, Substack and Hacker
+  News pages, and on link-only-line ratios for two documentation pages (shadcn/ui, TypeScript
+  handbook). The full-page pipelines fail mainly on the
+  link-only-line ratio, as expected without extraction.
+- **Code.** Turndown only fences a `<pre>` that contains a `<code>` element. Python, Go and
+  PostgreSQL documentation use bare `<pre>`, so every Turndown-based pipeline scores 0 on those
+  pages. Readability also drops some code blocks before conversion (Next.js, Prisma). On the React docs
+  every Turndown-based pipeline keeps only 2 of 23 blocks.
+  webforai's misses are concentrated on Drizzle, viem, PostgreSQL and the TypeScript handbook.
+- **Robustness.** Turndown threw on one capture (Amazon, rendered). Every pipeline produced empty
+  output for the Reddit capture, which is a client-rendered shell; Readability also returned
+  nothing for the YouTube watch page.
+- **Speed.** Readability's time includes building a jsdom document. node-html-markdown is slow
+  on the largest pages (about 5 s for Japanese Wikipedia alone).
+
+## Limitations
+
+- **Selection bias.** The corpus URLs were chosen while developing webforai, and many assertions
+  pin regressions webforai once had. A corpus chosen by someone else would likely give different
+  results.
+- **Small sample.** 46 sites; static and rendered captures of the same site are correlated, not
+  independent. Pooled code and table figures are dominated by a few large pages (Effective Go
+  alone has 151 of the 748 code blocks).
+- **Proxies, not ground truth.** None of the metrics compares against a reference document, and
+  there is no human or model judgement. Recall metrics reward keeping everything; leak metrics
+  reward removing things. Output length is reported, not scored: shorter is not automatically
+  better.
+- **Configuration.** Each competitor runs with a typical, untuned configuration. Different
+  Turndown rules (for example a rule for bare `<pre>`), a different DOM implementation or a
+  Readability fallback would change their numbers.
+- **Stale captures.** Captures are cached snapshots and may differ from the live sites. Page
+  HTML is not committed (third-party content), so reproducing the exact numbers requires the same
+  captures; the corpus fingerprint in the summary identifies them.
+- **Timing scope.** Warmed, single-process, local conversion only. No network, browser rendering,
+  cold start or memory measurement. The host was not isolated.
+
+## Reproduce
+
+```bash
+pnpm install
+pnpm --filter @webforai/evals corpus:fetch   # populate evals/.cache (not committed)
+pnpm --filter @webforai/evals bench:compare  # add -- --rounds=7 or -- --no-summary as needed
+```
+
+The run writes the full per-capture results, a Markdown report and every pipeline's output to
+`evals/.reports/<date>-compare/` (gitignored), and rewrites the committed aggregate
+`evals/benchmarks/compare-summary.json`. The metric definitions live in
+[`evals/src/compare-metrics.ts`](https://github.com/inaridiy/webforai/blob/main/evals/src/compare-metrics.ts)
+and the pipelines in
+[`evals/src/competitors.ts`](https://github.com/inaridiy/webforai/blob/main/evals/src/competitors.ts).
+jsdom 30 requires Node 22.22.2+ or 24.15.0+.

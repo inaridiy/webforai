@@ -303,6 +303,20 @@ describe("trailing boilerplate truncation", () => {
 	});
 });
 
+describe("literal UI words", () => {
+	it("keeps inline code whose text happens to be a UI label", () => {
+		const markdown = htmlToMarkdown(
+			article(
+				"<p>The command forwards <code>--global</code>, <code>-y</code>, <code>--copy</code> and <code>--all</code>; press <kbd>Close</kbd> or run <code>search</code>, with commas.</p>",
+			),
+		);
+
+		expect(markdown).toContain("`--copy`");
+		expect(markdown).toContain("`search`");
+		expect(markdown).toContain("Close");
+	});
+});
+
 describe("buttons", () => {
 	it("drops button labels from article content", () => {
 		const markdown = htmlToMarkdown(
