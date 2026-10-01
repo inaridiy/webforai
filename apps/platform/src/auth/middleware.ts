@@ -80,7 +80,8 @@ export type ApiKeyGateDepsFactory = (env: Env) => ApiKeyGateDeps;
 export const dashboardUrlOf = (baseUrl: string): string => `${baseUrl.replace(/\/+$/u, "")}/dashboard`;
 
 export const defaultApiKeyGateDeps: ApiKeyGateDepsFactory = (env) => ({
-	tierOf: async (userId) => tierOf(await getBillingState(createDb(env), userId)),
+	tierOf: async (userId) =>
+		loadConfig(env).billingEnabled ? tierOf(await getBillingState(createDb(env), userId)) : "free",
 	// Typed as always present by `wrangler types`; a deployment without `ratelimits` has none.
 	limiter: (tier) => env[tierRateLimitBinding(tier)] as RateLimiter | undefined,
 	dashboardUrl: dashboardUrlOf(loadConfig(env).BASE_URL),

@@ -10,6 +10,7 @@ import { createDb } from "../db/client";
 import * as schema from "../db/schema";
 import type { AppConfig } from "../env";
 import { OTP_SEND_PATHS, guardAuthRequest, isMailedOtpType, lockServerOnlyUserFields } from "./guards";
+import { type RecipientKv, takeRecipientBudget } from "./recipient-limit";
 import { SIGN_IN_CODE_TTL_MINUTES, sendSignInCode } from "./sign-in-email";
 
 const DAY_SECONDS = 24 * 60 * 60;
@@ -131,6 +132,11 @@ export const createAuth = (env: Env, config: AppConfig) => {
 				sendVerificationOTP: async ({ email, otp, type }) => {
 					if (!isMailedOtpType(type)) {
 						console.warn("otp_email_suppressed", { type });
+						return;
+					}
+					if (!(await takeRecipientBudget(env.JOBS_KV as RecipientKv | undefined, email))) {
+						// Answer as if sent: the caller must not learn about the cap or the account.
+						console.warn("otp_email_recipient_capped");
 						return;
 					}
 					await sendSignInCode(env.EMAIL, { email, otp, baseUrl: config.BASE_URL });

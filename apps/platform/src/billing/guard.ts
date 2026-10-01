@@ -55,8 +55,10 @@ export interface SpendOptions {
  * - Proxy-tier requests need an active subscription when billing is configured: the free
  *   allowance covers `fetch`/`browser`/`auto` only (owner decision 2026-10-01).
  * - An active subscription spends until this UTC calendar month's estimated bill would pass the
- *   user's spend cap (default $50) — refused once one more credit would cross it, so the cap
- *   can be overshot by at most the single operation already admitted.
+ *   user's spend cap (default $50) — refused once one more credit would cross it. The check
+ *   reads committed usage, so the cap (and the free allowance) can be overshot by the
+ *   operations admitted concurrently — bounded by the per-minute limit and a few credits each,
+ *   cents in practice; an atomic reservation would remove it (deferred, 2026-10-01 review).
  * - Everyone else — including every user of a self-hosted deployment without Stripe — is capped
  *   at the free monthly allowance.
  *
@@ -65,7 +67,9 @@ export interface SpendOptions {
 export const ensureSpendable = async (deps: BillingDeps, userId: string, options: SpendOptions = {}): Promise<void> => {
 	const now = options.now ?? new Date();
 	const state = await deps.repo.getBillingState(userId);
-	const subscribed = isSpendable(state);
+	// A subscription only counts while billing is configured: with Stripe gone, usage can no
+	// longer be reported, so a stale `active` mirror must not unlock paid spending.
+	const subscribed = deps.config.billingEnabled && isSpendable(state);
 
 	if (options.proxy && deps.config.billingEnabled && !subscribed) {
 		throw new PlatformError(

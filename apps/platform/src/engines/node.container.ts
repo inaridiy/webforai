@@ -6,7 +6,7 @@ import { fetchFollowingRedirects } from "../core/redirects";
 import { assertPublicHttpUrl } from "../core/ssrf";
 import { PlatformError } from "../core/types";
 import { navigate } from "./navigate";
-import { captureScreenshot, guardPageRequests, readPageHtml } from "./page-guard";
+import { captureScreenshot, guardPageRequests, readPageHtml, withRenderDeadline } from "./page-guard";
 import { buildProxyUsername } from "./proxy-username";
 import { FETCH_TIMEOUT_MS, HTML_REQUEST_HEADERS, MAX_HTML_BYTES, PLATFORM_USER_AGENT } from "./workers-fetch";
 
@@ -183,17 +183,19 @@ export const proxyBrowser = nodejsFn(
 		});
 
 		try {
-			// Service workers would fetch outside request interception. Loopback is not a bypass:
-			// Playwright forces it through the configured proxy, like every other request.
-			const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT, serviceWorkers: "block" });
-			const guard = await guardPageRequests(page, screenshot ? {} : { blockResourceTypes: UNUSED_RESOURCE_TYPES });
-			const response = await navigate(page, target, FETCH_TIMEOUT_MS);
-			guard.assertClean();
-			const finalUrl = assertAllowedUrl(page.url() || target);
-			const html = await readPageHtml(page);
-			const screenshotBase64 = screenshot ? (await captureScreenshot(page)).toString("base64") : undefined;
+			return await withRenderDeadline(async () => {
+				// Service workers would fetch outside request interception. Loopback is not a bypass:
+				// Playwright forces it through the configured proxy, like every other request.
+				const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT, serviceWorkers: "block" });
+				const guard = await guardPageRequests(page, screenshot ? {} : { blockResourceTypes: UNUSED_RESOURCE_TYPES });
+				const response = await navigate(page, target, FETCH_TIMEOUT_MS);
+				guard.assertClean();
+				const finalUrl = assertAllowedUrl(page.url() || target);
+				const html = await readPageHtml(page);
+				const screenshotBase64 = screenshot ? (await captureScreenshot(page)).toString("base64") : undefined;
 
-			return { html, finalUrl, status: response?.status() ?? 200, screenshotBase64 };
+				return { html, finalUrl, status: response?.status() ?? 200, screenshotBase64 };
+			});
 		} catch (error) {
 			throw normalizeFailure(error, target);
 		} finally {

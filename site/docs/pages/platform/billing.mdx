@@ -65,8 +65,9 @@ Every subscription has a monthly **spend cap**: **$50 by default**, adjustable o
 [dashboard](https://platform.webforai.dev/dashboard) from $1 to $5,000 (there is no
 "unlimited"). When this calendar month's estimated bill reaches the cap, further requests
 return `402 spend_cap_reached` until you raise the cap or the month ends, and a running batch
-or crawl job stops instead of converting further pages. The cap is checked before each operation, so a single
-in-flight operation can overshoot it by at most its own credits.
+or crawl job stops instead of converting further pages. The cap is checked before each operation against
+usage already recorded, so requests that are in flight at the same moment can each finish and
+overshoot it by their own credits (a few cents at most in practice).
 
 ## How usage is counted
 

@@ -3,7 +3,7 @@ import { launch } from "@cloudflare/playwright";
 import { assertPublicHttpUrl } from "../core/ssrf";
 import { type EngineFetchParams, type FetchedPage, PlatformError } from "../core/types";
 import { navigate } from "./navigate";
-import { captureScreenshot, guardPageRequests, readPageHtml } from "./page-guard";
+import { captureScreenshot, guardPageRequests, readPageHtml, withRenderDeadline } from "./page-guard";
 import { FETCH_TIMEOUT_MS, PLATFORM_USER_AGENT } from "./workers-fetch";
 
 /**
@@ -25,17 +25,19 @@ export const browserEngine = async (binding: Env["BROWSER"], params: EngineFetch
 	const browser = await launch(binding);
 
 	try {
-		// Service workers would fetch outside request interception.
-		const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT, serviceWorkers: "block" });
-		const guard = await guardPageRequests(page);
-		const response = await navigate(page, target.href, FETCH_TIMEOUT_MS);
+		return await withRenderDeadline(async () => {
+			// Service workers would fetch outside request interception.
+			const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT, serviceWorkers: "block" });
+			const guard = await guardPageRequests(page);
+			const response = await navigate(page, target.href, FETCH_TIMEOUT_MS);
 
-		guard.assertClean();
-		const finalUrl = assertPublicHttpUrl(page.url() || target.href);
-		const html = await readPageHtml(page);
-		const screenshot = params.screenshot ? new Uint8Array(await captureScreenshot(page)) : undefined;
+			guard.assertClean();
+			const finalUrl = assertPublicHttpUrl(page.url() || target.href);
+			const html = await readPageHtml(page);
+			const screenshot = params.screenshot ? new Uint8Array(await captureScreenshot(page)) : undefined;
 
-		return { html, url: finalUrl.href, status: response?.status() ?? 200, screenshot };
+			return { html, url: finalUrl.href, status: response?.status() ?? 200, screenshot };
+		});
 	} catch (error) {
 		if (error instanceof PlatformError) {
 			throw error;

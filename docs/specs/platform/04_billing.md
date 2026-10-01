@@ -1,5 +1,13 @@
 # Billing
 
+Revision note (2026-10-01, security review): A subscription counts as paid only while billing is
+configured (`billingEnabled && isSpendable`), for the spend guard and the rate-limit tier alike.
+Checkout uses one Stripe idempotency key per user and UTC hour, so racing clicks get the same
+session (`409 checkout_in_progress` while Stripe is still creating it). The Stripe plugin's
+`user.stripeCustomerId` is server-only (`input: false`; it was client-writable through
+Better Auth's update-user and OTP sign-up). The spend pre-check reads committed usage, so
+concurrently admitted operations can overshoot the cap or allowance by their own credits —
+accepted for launch; an atomic reservation is the fix if it ever matters.
 Revision note (2026-10-01, billing): Launch hardening, owner decisions of 2026-10-01.
 Proxy-tier requests (`proxy-fetch`, `proxy-browser`, or `auto` pinned to them by a non-`auto`
 region) need an active subscription (`402 payment_required` naming the dashboard); the free

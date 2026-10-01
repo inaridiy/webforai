@@ -132,7 +132,8 @@ Sign-in is by emailed 6-digit code (Better Auth email OTP, sent through the `EMA
 `send_email` binding as `login@webforai.dev`). Locally the email is not delivered: the dev
 server logs it and saves it under the Miniflare temp directory, so read the code there (or set
 `"remote": true` on the binding to send real mail). Code sends are rate limited per IP in D1
-(`rate_limit` table, 3 per minute). Asking again within the 10-minute validity re-sends the
+(`rate_limit` table, 3 per minute), and each address receives at most 5 code emails per hour
+(`JOBS_KV`, keyed by a SHA-256 of the address; further requests answer 200 without mailing). Asking again within the 10-minute validity re-sends the
 same code (stored encrypted), so every email the user received works. With
 `TURNSTILE_SITE_KEY` (var) and `TURNSTILE_SECRET_KEY` (secret) set, sending a code also
 requires a Cloudflare Turnstile token (Better Auth captcha plugin; action `sign-in`, hostname

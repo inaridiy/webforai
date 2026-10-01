@@ -75,6 +75,35 @@ Start revision: `bd68274` (PWA work committed first).
   the terms is not enforced yet (`wrangler r2 bucket lifecycle list`, read-only). Fix needs
   owner approval (remote change): add expire-after-7-days rules for the three prefixes.
 
+## Pre-deploy security reviews (2026-10-01)
+
+Owner asked for a Codex (gpt-6.1-sol) and a fresh Fable review, then deploy. Brief:
+read-only, whole platform + `bd68274..HEAD`. Codex's first run was stopped by OpenAI's
+cyber-risk filter; a rephrased "defensive review of own code" brief completed.
+
+Fixed (21e7c69, 14e90df, and the commit after it):
+- Codex: `user.stripeCustomerId` was client-writable via Better Auth update-user / OTP sign-up
+  (Stripe plugin field lacked `input: false`) → locked on the plugin; prod had 1 user, no
+  shared customer ids. Stale `active` state when billing is unconfigured → treated as free.
+  Racing Checkout → idempotency key per user+hour. Renderer `content()`/screenshot unbounded →
+  60 s whole-render deadline. OTP mail to one recipient unbounded → 5/hour per address.
+- Fable: quadratic link/image/sitemap scanners → linear patterns + timing tests; result reads
+  re-uploaded to R2 and were unlimited → re-sign existing object, own 600/min budget; playground
+  outside the tier limiter → same budget; cross-origin sitemaps → seed origin only; artifact
+  HMAC used the auth secret directly → derived key.
+
+Deferred, with reasons (reopen if the condition changes):
+- Spend/allowance check-then-act overshoot (Codex "high"): bounded by in-flight requests ×
+  a few credits (cents); needs an atomic reservation (Durable Object) — reopen if paid volume
+  or abuse makes it material.
+- Browser redirect hops / popups / WebSockets reaching private addresses before the guard
+  rejects (Codex high-conditional, Fable low): Browser Run egresses from Cloudflare and the
+  container through the proxy, so our private network is not reachable; documented residual.
+- Path-pattern regex still admits some polynomial patterns: affects only the submitter's own
+  crawl step CPU.
+- Deletion races (work admitted during deletion) and delete-then-resign-up renewing the free
+  allowance: low value vs. a deletion tombstone with retention policy implications.
+
 ## Outcomes & retrospective
 
 Code complete on `feat/platform` (bd68274..204ecb3), not deployed.

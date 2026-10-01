@@ -17,6 +17,7 @@ import { createBillingRepo } from "../billing/repo";
 import { hasLiveSubscription } from "../billing/state";
 import { createStripe } from "../billing/stripe";
 import { reportToStripe } from "../billing/usage";
+import { PlatformError } from "../core/types";
 import { createDb } from "../db/client";
 import { user } from "../db/schema";
 import { loadConfig } from "../env";
@@ -53,6 +54,10 @@ const spendCapResponse = (stored: number | null, monthCredits: number) => ({
 const deleteAccountBody = z.object({ confirmEmail: z.string().min(1).max(320) });
 
 const R2_LIST_LIMIT = 1000;
+
+/** One Checkout idempotency key per user and UTC hour (Stripe keeps keys for 24 hours). */
+export const checkoutIdempotencyKey = (userId: string, now: Date = new Date()): string =>
+	`checkout:${userId}:${now.toISOString().slice(0, 13)}`;
 
 export const dashboardRoutes = () => {
 	const app = new Hono<DashboardEnv>();
@@ -120,22 +125,35 @@ export const dashboardRoutes = () => {
 			);
 		}
 
-		const checkout = await stripe.checkout.sessions.create({
-			mode: "subscription",
-			customer,
-			// Metered line items must not carry a quantity.
-			line_items: [{ price: priceId }],
-			subscription_data: {
-				// Periods run 1st→1st (00:00 UTC), matching the UTC calendar month the spend guard,
-				// free allowance and dashboard estimate count — so Stripe's graduated tiers reset
-				// when ours do. The first period is the short stub up to the next 1st; a metered
-				// price has no fixed fee to prorate.
-				billing_cycle_anchor_config: { day_of_month: 1, hour: 0, minute: 0, second: 0 },
-				proration_behavior: "none",
-			},
-			success_url: `${config.BASE_URL}/dashboard?checkout=success`,
-			cancel_url: `${config.BASE_URL}/dashboard?checkout=cancelled`,
-		});
+		const checkout = await stripe.checkout.sessions
+			.create(
+				{
+					mode: "subscription",
+					customer,
+					// Metered line items must not carry a quantity.
+					line_items: [{ price: priceId }],
+					subscription_data: {
+						// Periods run 1st→1st (00:00 UTC), matching the UTC calendar month the spend guard,
+						// free allowance and dashboard estimate count — so Stripe's graduated tiers reset
+						// when ours do. The first period is the short stub up to the next 1st; a metered
+						// price has no fixed fee to prorate.
+						billing_cycle_anchor_config: { day_of_month: 1, hour: 0, minute: 0, second: 0 },
+						proration_behavior: "none",
+					},
+					success_url: `${config.BASE_URL}/dashboard?checkout=success`,
+					cancel_url: `${config.BASE_URL}/dashboard?checkout=cancelled`,
+				},
+				// The live-subscription check above is check-then-act: two clicks racing past it would
+				// get two completable sessions (two metered subscriptions). One idempotency key per
+				// user and hour makes Stripe hand both the same session.
+				{ idempotencyKey: checkoutIdempotencyKey(sessionUser.id) },
+			)
+			.catch((error: unknown) => {
+				if ((error as { code?: unknown } | null)?.code === "idempotency_key_in_use") {
+					throw new PlatformError("checkout_in_progress", "A checkout is already being created. Try again.", 409);
+				}
+				throw error;
+			});
 
 		return c.json({ url: checkout.url });
 	});

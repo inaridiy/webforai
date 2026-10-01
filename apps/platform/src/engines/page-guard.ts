@@ -1,6 +1,6 @@
 import { isPublicHttpUrl } from "../core/ssrf";
 import { PlatformError } from "../core/types";
-import { MAX_HTML_BYTES } from "./workers-fetch";
+import { FETCH_TIMEOUT_MS, MAX_HTML_BYTES } from "./workers-fetch";
 
 /**
  * Guards shared by both browser engines (`@cloudflare/playwright` in the Worker, Playwright in
@@ -131,4 +131,34 @@ export const captureScreenshot = async <B extends { byteLength: number }>(page: 
 		return viewport;
 	}
 	throw new PlatformError("response_too_large", `screenshot exceeds ${MAX_SCREENSHOT_BYTES} bytes`, 413);
+};
+
+/**
+ * Whole-render budget: navigation has its own timeout, but `content()` and screenshots do not,
+ * so a stalled renderer could otherwise hold a browser (and a container slot) indefinitely.
+ */
+export const RENDER_DEADLINE_MS = FETCH_TIMEOUT_MS + 30_000;
+
+/**
+ * Runs `work` under a deadline. On expiry it rejects with `fetch_failed`; the caller's
+ * `finally { browser.close() }` then tears down whatever `work` was still waiting on.
+ */
+export const withRenderDeadline = async <T>(work: () => Promise<T>, ms: number = RENDER_DEADLINE_MS): Promise<T> => {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const running = work();
+	// The losing promise settles after the browser closes; nobody awaits it any more.
+	running.catch(() => undefined);
+	try {
+		return await Promise.race([
+			running,
+			new Promise<never>((_resolve, reject) => {
+				timer = setTimeout(
+					() => reject(new PlatformError("fetch_failed", `rendering did not finish within ${ms} ms`, 504)),
+					ms,
+				);
+			}),
+		]);
+	} finally {
+		clearTimeout(timer);
+	}
 };

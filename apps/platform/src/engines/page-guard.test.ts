@@ -12,6 +12,7 @@ import {
 	guardPageRequests,
 	isAllowedPageRequest,
 	readPageHtml,
+	withRenderDeadline,
 } from "./page-guard";
 import { MAX_HTML_BYTES } from "./workers-fetch";
 
@@ -152,5 +153,16 @@ describe("captureScreenshot", () => {
 		await expect(
 			captureScreenshot({ screenshot: () => Promise.resolve({ byteLength: MAX_SCREENSHOT_BYTES + 1 }) }),
 		).rejects.toMatchObject({ code: "response_too_large" });
+	});
+});
+
+describe("withRenderDeadline", () => {
+	it("returns the work's result inside the deadline", async () => {
+		await expect(withRenderDeadline(() => Promise.resolve("html"), 50)).resolves.toBe("html");
+	});
+
+	it("rejects with fetch_failed when the work stalls", async () => {
+		const stalled = new Promise<string>(() => undefined);
+		await expect(withRenderDeadline(() => stalled, 10)).rejects.toMatchObject({ code: "fetch_failed", status: 504 });
 	});
 });

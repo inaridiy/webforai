@@ -142,6 +142,12 @@ describe("ensureSpendable", () => {
 		await expect(ensureSpendable({ repo, config: baseConfig }, "u1")).rejects.toBeInstanceOf(PlatformError);
 	});
 
+	it("treats a stale active subscription as free once billing is no longer configured", async () => {
+		const { repo } = fakeRepo({ state: activeState, monthCredits: FREE_MONTHLY_CREDITS });
+		const config = { ...baseConfig, billingEnabled: false };
+		await expect(ensureSpendable({ repo, config }, "u1")).rejects.toMatchObject({ code: "payment_required" });
+	});
+
 	it("mentions the missing billing configuration when Stripe is off", async () => {
 		const { repo } = fakeRepo({ monthCredits: FREE_MONTHLY_CREDITS });
 		const config = { ...baseConfig, billingEnabled: false };
