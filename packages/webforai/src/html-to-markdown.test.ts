@@ -286,3 +286,13 @@ describe("lazy-loading placeholder images", () => {
 		);
 	});
 });
+
+describe("twoslash code blocks", () => {
+	it("moves the language to the fence and writes errors as compiler comments", () => {
+		const html = `<pre class="shiki light-plus twoslash lsp"><div class="language-id">ts</div><div class="code-container"><code><div class="line">greet(<data-err>42</data-err>);</div><span class="error"><span>Argument of type 'number' is not assignable.</span><span class="code">2345</span></span><span class="error-behind">Argument of type 'number' is not assignable.</span></code><a class="playground-link" href="https://www.typescriptlang.org/play">Try</a></div></pre>`;
+
+		expect(htmlToMarkdown(html, { extractors: false })).toBe(
+			"```ts\ngreet(42);\n// error TS2345: Argument of type 'number' is not assignable.\n```\n",
+		);
+	});
+});

@@ -5,6 +5,7 @@ import { trimTrailingLines } from "trim-trailing-lines";
 import { detectLanguage } from "../utils/detect-code-lang";
 import { classList, isElement } from "../utils/hast-fast";
 import { preText } from "../utils/pre-text";
+import { cleanTwoslash } from "./twoslash";
 
 const LANGUAGE_MATCH_REGEX = [/^language-(\S+)$/, /^highlight-source-(\S+)$/, /^CodeBlock--language-(\S+)$/];
 
@@ -43,9 +44,10 @@ export const codeMeta = (pre: Element): string | null => {
 };
 
 export const customCodeHandler: Handle = (state, node) => {
+	const twoslashLang = cleanTwoslash(node);
 	const code = node.children.find((child) => isElement(child) && child.tagName === "code");
 	const codeValue = trimTrailingLines(preText(node));
-	const classLang = codeLanguage(...(isElement(code) ? [code, node] : [node]));
+	const classLang = twoslashLang || codeLanguage(...(isElement(code) ? [code, node] : [node]));
 
 	const lang = classLang || detectLanguage(codeValue) || null;
 
