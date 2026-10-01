@@ -1,5 +1,76 @@
 # webforai
 
+## 4.0.0
+
+### Major Changes
+
+- [#62](https://github.com/inaridiy/webforai/pull/62) [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda) Thanks [@inaridiy](https://github.com/inaridiy)! - Rebuild the CLI for automation-first use.
+
+  - **Non-interactive by default**: `npx webforai <url>` converts and prints Markdown to
+    stdout (logs go to stderr); `-o <path>` writes a file. The guided wizard now lives behind
+    `-i`/`--interactive`.
+  - **`--json`** emits a machine-readable envelope (`source`, `loader`, `url`, `markdown`,
+    `metadata`, plus platform fields).
+  - **Platform loader**: `-l platform` (or just `--engine`/`--region`) converts via the hosted
+    webforai platform using the new `webforai/platform` client; API key from `--api-key` or
+    `WEBFORAI_API_KEY`, self-hosted deployments via `--platform-url`/`WEBFORAI_PLATFORM_URL`.
+  - **Agent Skills**: `webforai skill` prints an Agent Skill for this CLI; `webforai skill
+--install` installs it through Vercel's `skills` CLI (`npx skills add`), and
+    `npx skills add inaridiy/webforai` works straight from the repository.
+  - New conversion flags: `--extractor auto|takumi|minimal|none`, `--frontmatter`,
+    `--screenshot` (platform browser engines).
+  - `-h` documents every flag with examples, env vars and exit codes (0 ok / 1 runtime /
+    2 usage).
+  - Dropped the unused `zx` dependency.
+
+### Minor Changes
+
+- [#62](https://github.com/inaridiy/webforai/pull/62) [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda) Thanks [@inaridiy](https://github.com/inaridiy)! - CLI: `webforai crawl <url> -o <dir>` and `webforai batch [urls…|-f file] -o <dir>` run platform
+  jobs and write one Markdown file per page (`--llms-txt` also writes `llms.txt` and
+  `llms-full.txt`; `--sitemap skip|include|only` seeds a crawl from the site's sitemaps).
+  `webforai/platform` exposes the crawl `sitemap` option, and 401/402 errors name the dashboard
+  where a key or a plan is managed.
+
+- [#62](https://github.com/inaridiy/webforai/pull/62) [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda) Thanks [@inaridiy](https://github.com/inaridiy)! - New `webforai/platform` subpath: a typed, dependency-free client for the hosted
+  webforai platform API. Covers `scrape` (sync and async), `batch`, `crawl`, job
+  status/results with cursor paging, `waitForJob` polling, a `jobResults` async iterator
+  that transparently downloads spilled results, and the keyless `demoScrape`. Errors
+  surface as `PlatformApiError` with the API's `code`/`status`/`retryAfter`. All I/O goes
+  through an injectable, structurally-typed `fetch` (`FetchLike`) so the client runs
+  unchanged behind Cloudflare Workers service bindings, undici/node-fetch, or test stubs.
+
+- [#62](https://github.com/inaridiy/webforai/pull/62) [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda) Thanks [@inaridiy](https://github.com/inaridiy)! - `webforai/platform` and the CLI: new opt-in `respectRobotsTxt` request option (scrape, batch,
+  crawl) and `--respect-robots` CLI flag (platform loader only). When set, the platform honors the
+  target site's robots.txt rules for the `webforai-platform` user-agent token; a disallowed URL
+  fails with `robots_disallowed` and is not billed. Off by default, so existing requests behave
+  as before.
+
+- [#62](https://github.com/inaridiy/webforai/pull/62) [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda) Thanks [@inaridiy](https://github.com/inaridiy)! - `webforai/platform` and the CLI: `region` is now `auto` | `jp` — the hosted platform only has
+  dedicated Japanese egress IPs. `us`, `eu`, `uk` and `asia` were never honoured reliably and are
+  rejected by the API (`400 invalid_request`) and by `--region` (usage error `2`).
+
+### Patch Changes
+
+- [#62](https://github.com/inaridiy/webforai/pull/62) [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda) Thanks [@inaridiy](https://github.com/inaridiy)! - CLI: the interactive engine picker and the Agent Skill quote the platform's 2026-09-24 credit
+  schedule (browser 2, proxy-browser 3).
+
+- [#62](https://github.com/inaridiy/webforai/pull/62) [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda) Thanks [@inaridiy](https://github.com/inaridiy)! - CLI: `--help` lists the CLI docs, the platform docs and the platform dashboard, and
+  `invalid_api_key` / `payment_required` errors print a `hint:` line with the dashboard URL
+  of the configured platform.
+
+- [#62](https://github.com/inaridiy/webforai/pull/62) [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda) Thanks [@inaridiy](https://github.com/inaridiy)! - Code blocks take their language from `data-language` / `data-lang` (Shiki via
+  rehype-pretty-code, as on shadcn-style docs) instead of falling back to detection or `plain`.
+
+- [#62](https://github.com/inaridiy/webforai/pull/62) [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda) Thanks [@inaridiy](https://github.com/inaridiy)! - `webforai/platform`: document that the platform's crawl now honors robots.txt by default
+  (`respectRobotsTxt` defaults to `true` for `crawl`, `false` for `scrape` and `batch`).
+
+- [#62](https://github.com/inaridiy/webforai/pull/62) [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda) Thanks [@inaridiy](https://github.com/inaridiy)! - `webforai/platform`: `DemoResult` gains an optional `engine` — the concrete engine the
+  demo's `auto` resolved to (absent from platform deployments older than 2026-09-24).
+
+- [#62](https://github.com/inaridiy/webforai/pull/62) [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda) Thanks [@inaridiy](https://github.com/inaridiy)! - Extraction no longer drops inline `code`/`kbd`/`samp`/`var` text that looks like a UI label
+  (e.g. `<code>--copy</code>`), and a `<dl>` whose rows are wrapped in `<div>`s converts to a
+  definition list instead of nothing.
+
 ## 3.0.0
 
 ### Major Changes

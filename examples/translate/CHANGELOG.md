@@ -1,5 +1,12 @@
 # translate
 
+## 1.0.22
+
+### Patch Changes
+
+- Updated dependencies [[`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda), [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda), [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda), [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda), [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda), [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda), [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda), [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda), [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda), [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda), [`f8c3e54`](https://github.com/inaridiy/webforai/commit/f8c3e5434041e1a65e613501f9f21049e7257cda)]:
+  - webforai@4.0.0
+
 ## 1.0.21
 
 ### Patch Changes
