@@ -91,6 +91,35 @@ const collectMatching = (tree: Hast, matches: (element: Element) => boolean, int
 	}
 };
 
+const containsTag = (element: Element, tagName: string): boolean =>
+	element.children.some((child) => isElement(child) && (child.tagName === tagName || containsTag(child, tagName)));
+
+/** True when the document has an `<h1>` and every one of them lies inside a doomed element. */
+const removesEveryTitle = (root: Hast, doomed: Element[]): boolean => {
+	if (!doomed.some((element) => containsTag(element, "h1"))) {
+		return false;
+	}
+	const doomedSet = new Set(doomed);
+	let survivor = false;
+	const visit = (node: Hast): void => {
+		if (survivor || !("children" in node)) {
+			return;
+		}
+		for (const child of node.children) {
+			if (!isElement(child) || doomedSet.has(child)) {
+				continue;
+			}
+			if (child.tagName === "h1") {
+				survivor = true;
+				return;
+			}
+			visit(child);
+		}
+	};
+	visit(root);
+	return !survivor;
+};
+
 const asRootOf = (nodes: Element[]): Hast => ({ type: "root", children: nodes });
 
 /**
@@ -160,7 +189,10 @@ export const takumiExtractor = (params: ExtractParams): Hast => {
 		// retry sparing the weak matches that read as prose. Link-dense weak matches are rails,
 		// carousels and sitemaps whatever their size, so only the absolute floor guards them.
 		doomed = findUnlikelyElements(searchRoot, (element) => collector.linkDensity(element) < FURNITURE_LINK_DENSITY);
-		acceptable = doomed.length > 0 && searchText - textOf(doomed) >= minLength;
+		// A retry that would take every `<h1>` with it has condemned the page itself — a reading
+		// list, changelog or index is link-dense too — so it is abandoned like the full pass.
+		acceptable =
+			doomed.length > 0 && searchText - textOf(doomed) >= minLength && !removesEveryTitle(searchRoot, doomed);
 	}
 
 	if (acceptable) {

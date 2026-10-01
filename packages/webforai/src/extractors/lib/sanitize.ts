@@ -58,7 +58,7 @@ const hasHiddenClass = (element: Element): boolean => {
  * matches. Their text is an accessibility label ("Site search", "(opens in a new tab)") that a
  * sighted reader never sees. Responsive variants (`md:not-sr-only`) fail the leading-letter test.
  */
-const SCREEN_READER_ONLY = /^(sronly|visuallyhidden|screenreader(only|text))/;
+const SCREEN_READER_ONLY = /^(sronly|visuallyhidden|screenreader(only|text))(focusable|styles\w*)?$/;
 
 const isScreenReaderOnlyClass = (name: string): boolean => {
 	const first = name.charCodeAt(0) | 0x20;
@@ -89,7 +89,7 @@ const isNonContent = (node: Hast): boolean => {
  * content, and on a few frameworks to the entire pre-hydration tree. It only counts here when
  * the element also carries no visible geometry or is explicitly hidden by style.
  */
-const isHidden = (element: Element): boolean => {
+const isHidden = (element: Element, parent: Parent, siblingCode: SiblingCodeCache): boolean => {
 	if (!looksHidden(element)) {
 		return false;
 	}
@@ -105,7 +105,7 @@ const isHidden = (element: Element): boolean => {
 		return false;
 	}
 
-	return !isHiddenCodePanel(element);
+	return !isHiddenCodePanel(element, parent, siblingCode);
 };
 
 const looksHidden = (element: Element): boolean => {
@@ -132,28 +132,19 @@ const looksHidden = (element: Element): boolean => {
 /** Most text, outside its code, that a hidden code panel may carry (a filename, a caption). */
 const MAX_CODE_PANEL_PROSE = 200;
 
-/**
- * True for an inactive tab of a code-sample switcher.
- *
- * Documentation shows the same step for npm, yarn and pnpm, or for several languages, as tabs;
- * every tab but the selected one is `hidden` until clicked. Those panels are the page's content
- * in another variant — a reader can open each one — and dropping them loses most of the code on
- * the page. A hidden panel qualifies when it is a `tabpanel` holding code, or when code is
- * nearly all it holds, so a hidden duplicate of the article (a mobile layout) is still removed.
- */
-const isHiddenCodePanel = (element: Element): boolean => {
-	const isTabPanel = stringProperty(element, "role") === "tabpanel";
-	let codeText = 0;
-	let proseText = 0;
+/** Code text of a hidden panel candidate, or `undefined` when it is not code-shaped. */
+const panelCode = (element: Element): string | undefined => {
+	let code = "";
+	let prose = 0;
 
 	const visit = (node: Element, insideCode: boolean): boolean => {
 		for (const child of node.children) {
 			if (child.type === "text") {
 				if (insideCode) {
-					codeText += child.value.length;
+					code += child.value;
 				} else {
-					proseText += child.value.trim().length;
-					if (!isTabPanel && proseText > MAX_CODE_PANEL_PROSE) {
+					prose += child.value.trim().length;
+					if (prose > MAX_CODE_PANEL_PROSE) {
 						return false;
 					}
 				}
@@ -164,7 +155,52 @@ const isHiddenCodePanel = (element: Element): boolean => {
 		return true;
 	};
 
-	return visit(element, element.tagName === "pre") && codeText > 0;
+	return visit(element, element.tagName === "pre") && code.trim().length > 0 ? code : undefined;
+};
+
+/** Per parent: the code of its visible children, computed once however many panels it has. */
+type SiblingCodeCache = WeakMap<Parent, Set<string>>;
+
+const visibleSiblingCode = (parent: Parent, cache: SiblingCodeCache): Set<string> => {
+	let codes = cache.get(parent);
+	if (!codes) {
+		codes = new Set();
+		for (const child of parent.children) {
+			if (isElement(child) && !looksHidden(child)) {
+				const code = panelCode(child);
+				if (code !== undefined) {
+					codes.add(code);
+				}
+			}
+		}
+		cache.set(parent, codes);
+	}
+	return codes;
+};
+
+/**
+ * True for an inactive tab of a code-sample switcher.
+ *
+ * Documentation shows the same step for npm, yarn and pnpm, or for several languages, as tabs;
+ * every tab but the selected one is `hidden` until clicked. Those panels are the page's content
+ * in another variant — a reader can open each one — and dropping them loses most of the code on
+ * the page.
+ *
+ * A hidden element qualifies only when code is nearly all it holds, and when it is evidently one
+ * variant among several: a `tabpanel`, or a sibling of a visible code block. Even then it is
+ * dropped when its code repeats a visible sibling's, which is the "copy raw source" pattern. A
+ * hidden data dump, or a hidden duplicate of the article, is still removed.
+ */
+const isHiddenCodePanel = (element: Element, parent: Parent, cache: SiblingCodeCache): boolean => {
+	const code = panelCode(element);
+	if (code === undefined) {
+		return false;
+	}
+	const siblings = visibleSiblingCode(parent, cache);
+	if (siblings.has(code)) {
+		return false;
+	}
+	return stringProperty(element, "role") === "tabpanel" || siblings.size > 0;
 };
 
 /** `src` values that stand in for an image until a script swaps in the real one. */
@@ -207,8 +243,8 @@ const isPlaceholderImage = (element: Element): boolean => {
  * The whole noscript body is hoisted, not just its images: fallbacks routinely include a caption
  * or a paragraph alongside the image, and keeping only the image silently loses that text.
  */
-export const hoistNoscriptImages = (tree: Hast, onElement?: (element: Element) => void): void => {
-	const visit = (parent: Parent): void => {
+export const hoistNoscriptImages = (tree: Hast, onElement?: (element: Element, depth: number) => void): void => {
+	const visit = (parent: Parent, depth: number): void => {
 		for (let index = 0; index < parent.children.length; index++) {
 			const child = parent.children[index];
 			if (!isElement(child)) {
@@ -216,8 +252,8 @@ export const hoistNoscriptImages = (tree: Hast, onElement?: (element: Element) =
 			}
 
 			if (child.tagName !== "noscript") {
-				onElement?.(child);
-				visit(child);
+				onElement?.(child, depth);
+				visit(child, depth + 1);
 				continue;
 			}
 
@@ -245,7 +281,7 @@ export const hoistNoscriptImages = (tree: Hast, onElement?: (element: Element) =
 	};
 
 	if ("children" in tree) {
-		visit(tree as Parent);
+		visit(tree as Parent, 0);
 	}
 };
 
@@ -266,15 +302,16 @@ const containsMath = (element: Element): boolean => {
 export const stripNonContent = (tree: Hast): Hast => {
 	// Tab strips are chrome and disappear in later passes, so their labels are read now, in the
 	// traversal the noscript pass makes anyway.
-	const tabs = new CodeTabCollector();
-	hoistNoscriptImages(tree, (element) => tabs.visit(element));
+	const tabs = new CodeTabCollector((element) => looksHidden(element) || NON_CONTENT_TAGS.has(element.tagName));
+	hoistNoscriptImages(tree, (element, depth) => tabs.visit(element, depth));
 	tabs.apply();
 
-	return pruneInPlace(tree, (node) => {
+	const siblingCode: SiblingCodeCache = new WeakMap();
+	return pruneInPlace(tree, (node, parent) => {
 		if (isNonContent(node)) {
 			return false;
 		}
-		if (isElement(node) && isHidden(node)) {
+		if (isElement(node) && isHidden(node, parent, siblingCode)) {
 			return false;
 		}
 		return true;
@@ -755,8 +792,39 @@ const isMidArticleWidget = (element: Element, collector: MetricsCollector): bool
 		return false;
 	}
 	const text = elementText(element);
-	return isUiChromeText(text) || isConsentPlaceholderText(text);
+	return isUiChromeText(text) || (isConsentPlaceholderText(text) && !hasBlockDescendant(element));
 };
+
+/** Elements that make their parent a container of separate blocks rather than one block. */
+const BLOCK_TAGS = new Set([
+	"p",
+	"div",
+	"section",
+	"article",
+	"figure",
+	"figcaption",
+	"blockquote",
+	"ul",
+	"ol",
+	"table",
+	"pre",
+	"h1",
+	"h2",
+	"h3",
+	"h4",
+	"h5",
+	"h6",
+]);
+
+/**
+ * True when an element holds other blocks.
+ *
+ * The consent rule matches on the text an element *starts* with, so it must only take a single
+ * block: a wrapper that opens with the placeholder may continue with the caption or the
+ * paragraphs it belongs to, and those are visited (and kept) on their own.
+ */
+const hasBlockDescendant = (element: Element): boolean =>
+	element.children.some((child) => isElement(child) && (BLOCK_TAGS.has(child.tagName) || hasBlockDescendant(child)));
 
 /**
  * Final clean-up inside the selected article container.

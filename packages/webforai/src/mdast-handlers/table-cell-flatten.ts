@@ -50,7 +50,8 @@ class CellBuilder {
 
 	/** Starts a new visual line when the previous block left content on the current one. */
 	block(): void {
-		if (this.#pendingBlock && this.out.length > 0) {
+		const last = this.out.at(-1);
+		if (this.#pendingBlock && last && !(last.type === "html" && last.value === "<br>")) {
 			this.out.push(lineBreak());
 		}
 		this.#pendingBlock = true;
@@ -165,8 +166,10 @@ export const tableHasCodeSamples = (table: Table): boolean =>
  */
 export const unfoldTable = (table: Table, hasHeader: boolean): RootContent[] => {
 	const [first, ...rest] = table.children;
-	const labels = hasHeader && first ? first.children.map((cell) => cell.children) : [];
-	const rows = hasHeader ? rest : table.children;
+	// A header with no rows under it is the only content there is, so it is laid out as data.
+	const labelled = hasHeader && rest.length > 0;
+	const labels = labelled && first ? first.children.map((cell) => cell.children) : [];
+	const rows = labelled ? rest : table.children;
 	const out: RootContent[] = [];
 
 	rows.forEach((row, rowIndex) => {

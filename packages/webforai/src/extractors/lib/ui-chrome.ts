@@ -145,7 +145,7 @@ export const isUiChromeText = (text: string): boolean => {
  * at the start of the element's text so prose that merely discusses cookies is untouched.
  */
 const CONSENT_PLACEHOLDER =
-	/^(this content (isn['’]?t|is not) (visible|available) (due to|because of) your (cookie|privacy) (preferences|settings)|we need your (consent|permission) to load|to (view|see|load) this (content|embed|video|post)[, ]+(please )?(enable|accept|allow|update)|(please )?(accept|allow|enable) (all |marketing |functional )?cookies to (view|see|load|watch)|このコンテンツを表示するには)/i;
+	/^(this content (isn['’]?t|is not) (visible|available) (due to|because of) your (cookie|privacy) (preferences|settings)|we need your (consent|permission) to load|to (view|see|load) this (content|embed|video|post)[, ]+(please )?(enable|accept|allow|update)|(please )?(accept|allow|enable) (all |marketing |functional )?cookies to (view|see|load|watch)|このコンテンツを表示するには.{0,30}(cookie|クッキー|同意|許可))/i;
 
 /** Longest text a consent placeholder may have; an article paragraph is never tested. */
 export const MAX_CONSENT_PLACEHOLDER_LENGTH = 400;

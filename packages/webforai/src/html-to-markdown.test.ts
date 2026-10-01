@@ -296,3 +296,28 @@ describe("twoslash code blocks", () => {
 		);
 	});
 });
+
+describe("review regressions (conversion)", () => {
+	const convert = (html: string) => htmlToMarkdown(html, { extractors: false });
+
+	it("keeps the code of a header-only code table", () => {
+		expect(convert("<table><tr><th><pre><code>a\nb</code></pre></th></tr></table>")).toContain("a\nb");
+	});
+
+	it("keeps nested pre blocks on separate lines", () => {
+		expect(convert("<pre><pre>inner</pre>outer</pre>")).toContain("inner\nouter");
+	});
+
+	it("does not strip a topic that merely starts with the host name", () => {
+		expect(headingTitle("Guide - Docker Compose", undefined, "https://docs.docker.com/compose/")).toBe(
+			"Guide - Docker Compose",
+		);
+		expect(headingTitle("Overview • Svelte Docs", undefined, "https://svelte.dev/docs")).toBe("Overview");
+	});
+
+	it("does not double line breaks for nested blocks in a cell", () => {
+		expect(
+			convert("<table><tr><th>A</th></tr><tr><td><p>Head</p><blockquote><p>q</p></blockquote></td></tr></table>"),
+		).toContain("Head<br>q");
+	});
+});

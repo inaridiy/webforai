@@ -27,15 +27,35 @@ interface TabGroup {
 /** Accumulates tabs and panels during a document-order traversal the caller already performs. */
 export class CodeTabCollector {
 	readonly #groups: TabGroup[] = [];
+	/** Groups whose tab list's parent is still being traversed, innermost last. */
+	readonly #open: Array<{ group: TabGroup; depth: number }> = [];
+	readonly #isHidden: (element: Element) => boolean;
 
-	/** Call for every element, in document order. */
-	visit(element: Element): void {
+	/** @param isHidden - Elements whose text a reader never sees, excluded from labels. */
+	constructor(isHidden: (element: Element) => boolean) {
+		this.#isHidden = isHidden;
+	}
+
+	/**
+	 * Call for every element, in document order, with its depth.
+	 *
+	 * A group only collects panels inside the tab list's parent: a page-level tab strip must not
+	 * lend its labels to an unrelated code switcher further down, and an inner group closes before
+	 * the outer group's next panel.
+	 */
+	visit(element: Element, depth: number): void {
+		while (this.#open.length > 0 && depth < (this.#open.at(-1)?.depth ?? 0)) {
+			this.#open.pop();
+		}
+
 		const role = stringProperty(element, "role");
 		if (role === "tablist") {
-			this.#groups.push({ tabs: [], panels: [] });
+			const group: TabGroup = { tabs: [], panels: [] };
+			this.#groups.push(group);
+			this.#open.push({ group, depth });
 			return;
 		}
-		const group = this.#groups.at(-1);
+		const group = this.#open.at(-1)?.group;
 		if (!group) {
 			return;
 		}
@@ -53,7 +73,7 @@ export class CodeTabCollector {
 				continue;
 			}
 			for (const [panel, tab] of matchTabs(group)) {
-				labelCode(panel, tabLabel(tab));
+				labelCode(panel, tabLabel(tab, this.#isHidden));
 			}
 		}
 	}
@@ -95,8 +115,8 @@ const matchTabs = ({ tabs, panels }: TabGroup): Map<Element, Element> => {
 	return tabOf;
 };
 
-const tabLabel = (tab: Element): string | undefined => {
-	const label = (textOf(tab) || stringProperty(tab, "dataTitle") || "").replace(/\s+/g, " ").trim();
+const tabLabel = (tab: Element, isHidden: (element: Element) => boolean): string | undefined => {
+	const label = (textOf(tab, isHidden) || stringProperty(tab, "dataTitle") || "").replace(/\s+/g, " ").trim();
 	return label.length > 0 && label.length <= MAX_LABEL_LENGTH ? label : undefined;
 };
 
@@ -125,13 +145,13 @@ const collectPre = (element: Element, into: Element[]): void => {
 	}
 };
 
-const textOf = (element: Element): string => {
+const textOf = (element: Element, isHidden: (element: Element) => boolean): string => {
 	let text = "";
 	for (const child of element.children) {
 		if (child.type === "text") {
 			text += child.value;
-		} else if (isElement(child)) {
-			text += textOf(child);
+		} else if (isElement(child) && !isHidden(child)) {
+			text += textOf(child, isHidden);
 		}
 	}
 	return text;

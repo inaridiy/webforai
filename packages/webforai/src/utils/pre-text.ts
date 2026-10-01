@@ -32,6 +32,7 @@ const LINE_BLOCK_TAGS = new Set([
 	"nav",
 	"ol",
 	"p",
+	"pre",
 	"section",
 	"table",
 	"tr",

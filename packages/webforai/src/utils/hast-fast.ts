@@ -157,7 +157,7 @@ export class MetricsCollector {
  * `keep` is called top-down; returning `false` for a node skips its subtree entirely, which is
  * what makes a single pass sufficient.
  */
-export const pruneInPlace = (tree: Hast, keep: (node: Hast) => boolean): Hast => {
+export const pruneInPlace = (tree: Hast, keep: (node: Hast, parent: Parent) => boolean): Hast => {
 	if (!isParent(tree)) {
 		return tree;
 	}
@@ -175,7 +175,7 @@ export const pruneInPlace = (tree: Hast, keep: (node: Hast) => boolean): Hast =>
 		// biome-ignore lint/style/useForOf: two independent cursors, see above
 		for (let read = 0; read < children.length; read++) {
 			const child = children[read] as Hast;
-			if (!keep(child)) {
+			if (!keep(child, parent)) {
 				continue;
 			}
 			children[write++] = child as RootContent;

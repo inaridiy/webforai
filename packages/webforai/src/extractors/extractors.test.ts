@@ -493,3 +493,60 @@ describe("code line structure", () => {
 		expect(htmlToMarkdown(article(code))).toContain("const app = new Hono()");
 	});
 });
+
+describe("review regressions", () => {
+	it("removes only the consent placeholder, not the caption or paragraphs beside it", () => {
+		const markdown = htmlToMarkdown(
+			article(
+				"<figure><p>We need your consent to load the YouTube embed.</p><button>Accept</button><figcaption>Figure 1: the launch, as seen from the pad.</figcaption></figure><div><p>This content isn't visible due to your cookie preferences.</p><p>The minister resigned on Tuesday, aides said.</p></div>",
+			),
+		);
+
+		expect(markdown).not.toContain("We need your consent");
+		expect(markdown).not.toContain("cookie preferences");
+		expect(markdown).toContain("Figure 1: the launch");
+		expect(markdown).toContain("The minister resigned on Tuesday");
+	});
+
+	// The furniture pass is first rejected here (it would keep under a quarter of the text), and the
+	// link-density retry must not then condemn the list just because its wrapper says "sidebar".
+	it("keeps a link-dense reading list that holds the page title", () => {
+		const items = Array.from(
+			{ length: 25 },
+			(_, i) =>
+				`<p><a href="/r/${i}">An excellent, long article about topic number ${i} by someone</a>, recommended.</p>`,
+		).join("");
+		const html = `<html lang="en"><body><div class="sidebar-page"><h1>Reading list</h1>${items}</div><div class="legal"><p>${"This website is operated by Example Corp. ".repeat(
+			12,
+		)}</p></div></body></html>`;
+
+		expect(htmlToMarkdown(html)).toContain("topic number 24");
+	});
+
+	it("does not resurrect a hidden copy of visible code", () => {
+		const markdown = htmlToMarkdown(
+			article('<pre><code>const a = 1;</code></pre><div style="display:none"><pre>const a = 1;</pre></div>'),
+		);
+		expect(markdown.match(/const a = 1;/g)?.length).toBe(1);
+	});
+
+	it("does not resurrect a hidden data dump", () => {
+		const markdown = htmlToMarkdown(article('<div style="display:none"><pre>{"items":[1,2,3]}</pre></div>'));
+		expect(markdown).not.toContain('"items"');
+	});
+
+	it("does not label code with a page-level tab strip", () => {
+		const html = article(`<div><div role="tablist"><button role="tab">Overview</button><button role="tab">Reference</button></div></div>
+			<p>Unrelated prose follows the page tabs here.</p>
+			<div><div role="tabpanel"><pre><code class="language-sh">npm i a</code></pre></div><div role="tabpanel" hidden><pre><code class="language-sh">pnpm add a</code></pre></div></div>`);
+
+		expect(htmlToMarkdown(html)).not.toContain('title="Overview"');
+	});
+
+	it("leaves screen-reader text out of tab labels", () => {
+		const html = article(`<div><div role="tablist"><button role="tab">npm<span class="sr-only"> (selected)</span></button><button role="tab">yarn</button></div>
+			<div role="tabpanel"><pre><code class="language-sh">npm i a</code></pre></div><div role="tabpanel" hidden><pre><code class="language-sh">yarn add a</code></pre></div></div>`);
+
+		expect(htmlToMarkdown(html)).toContain('```sh title="npm"\n');
+	});
+});

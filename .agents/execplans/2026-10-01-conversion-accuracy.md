@@ -30,6 +30,15 @@ correct short outputs, not extraction losses.
 - [x] (2026-10-01) Titles: the prepended heading drops the site-name segment (`Markdown -
       Wikipedia` → `Markdown`), the presence check no longer matches a short title inside prose,
       and `<title>` up to 300 chars is accepted (Amazon fell back to an a11y `<h1>`).
+- [x] (2026-10-01) Images and Twoslash: undescribed placeholder images (`grey-placeholder.png`)
+      dropped; `pre.twoslash` gets its language from `.language-id`, loses the Try link and the
+      invisible error copy, and shows each error as `// error TS2345: …`.
+- [x] (2026-10-01) Adversarial review (independent agent, repro HTML for each finding) fixed:
+      consent rule only takes a single block; furniture retry abandoned when it would remove every
+      `<h1>`; hidden code rescued only as a tab variant (tabpanel or visible code sibling) and never
+      when it repeats visible code; trailing title segment must equal the site name (+ docs/blog/…);
+      tab groups scoped to the tab list's parent, labels exclude hidden text; nested `<pre>`;
+      header-only code table; exact sr-only tokens; no doubled `<br>`. Corpus output unchanged.
 - [ ] Validation: biome, typecheck, tests, build, `bench:compare`, changeset.
 
 ## Decision log
@@ -60,3 +69,7 @@ correct short outputs, not extraction losses.
   (optionally plus ≤2 words); a leading one only when it equals the declared site name, because
   titles often open with the product ("Hono - Web framework…"). Metadata `title` is unchanged —
   only the prepended heading is cleaned.
+- Review follow-up, measured and rejected: sparing weak matches that contain the `<h1>` in either
+  furniture pass (regressed amazon/drizzle/reddit: nav-leak 5→6, code 729→721), and requiring the
+  same tag for a hidden code panel's visible sibling (drizzle wraps the visible variant in a `div`).
+  Kept instead: abandon the retry when it would remove every `<h1>`.

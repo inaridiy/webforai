@@ -87,6 +87,9 @@ export const htmlToMarkdownWithMetadata = (
 /** Separators publishers put between a page's title and the site's name. */
 const TITLE_SEPARATOR = /\s+[-|–—·•:]\s+|\s*[｜|]\s*/;
 
+/** Words a site appends to its own name for a section of itself ("Svelte Docs", "WordPress News"). */
+const SITE_SECTION = /^(docs|documentation|blog|news|wiki|developers?|devblog|help|support|reference)$/;
+
 /** Lower-case letters and digits only, so "ICS MEDIA" and `ics.media` compare equal. */
 const compact = (value: string): string => value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 
@@ -95,9 +98,9 @@ const siteNames = (siteName: string | undefined, url: string | undefined): strin
 	const names = siteName ? siteName.split(TITLE_SEPARATOR).map(compact) : [];
 	try {
 		const labels = url ? new URL(url).hostname.split(".") : [];
-		// Drop the TLD and `www`; keep each label and the registrable name joined ("icsmedia").
+		// Each label but the TLD and `www`, those joined, and the whole host joined ("icsmedia").
 		const meaningful = labels.slice(0, -1).filter((label) => label !== "www");
-		names.push(...meaningful.map(compact), compact(meaningful.join("")));
+		names.push(...meaningful.map(compact), compact(meaningful.join("")), compact(labels.join("").replace(/^www/, "")));
 	} catch {
 		// An unparsable URL contributes nothing.
 	}
@@ -109,8 +112,8 @@ const siteNames = (siteName: string | undefined, url: string | undefined): strin
  *
  * "Euler's identity - Wikipedia" reads as a heading of the article only once " - Wikipedia" is
  * gone. A trailing segment is removed only when it is the site's name — the declared one or the
- * host's, possibly with a word or two added ("Svelte Docs" on svelte.dev) — so "Rick Astley -
- * Never Gonna Give You Up" on YouTube is left alone.
+ * host's, optionally with a section word ("Svelte Docs" on svelte.dev) — so "Rick Astley - Never
+ * Gonna Give You Up" on YouTube and "Guide - Docker Compose" on docs.docker.com are left alone.
  */
 export const headingTitle = (title: string | undefined, siteName?: string, url?: string): string | undefined => {
 	if (!title) {
@@ -127,11 +130,10 @@ export const headingTitle = (title: string | undefined, siteName?: string, url?:
 
 	const isSite = (segment: string): boolean => {
 		const value = compact(segment);
-		if (value.length === 0) {
-			return false;
-		}
-		const short = segment.trim().split(/\s+/).length <= 3;
-		return names.some((name) => value === name || (short && (value.startsWith(name) || name.startsWith(value))));
+		return (
+			value.length > 0 &&
+			names.some((name) => value === name || (value.startsWith(name) && SITE_SECTION.test(value.slice(name.length))))
+		);
 	};
 
 	const last = segments[segments.length - 1];
