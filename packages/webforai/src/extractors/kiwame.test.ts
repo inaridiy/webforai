@@ -13,7 +13,7 @@ import {
 import { type BlockModel, isUsableModel, scoreBlocks } from "./lib/block-model";
 import { BLOCK_MODEL, BLOCK_STACK_MODEL } from "./lib/block-model.generated";
 import { segmentBlocks } from "./lib/blocks";
-import { createLearnedExtractor } from "./presets/learned";
+import { createKiwameExtractor } from "./presets/kiwame";
 
 const page = `<html><body>
 	<nav><a href="/">Home</a><a href="/a">About</a></nav>
@@ -63,8 +63,8 @@ describe("block model", () => {
 	});
 });
 
-describe("learned extractor", () => {
-	const extractors = createLearnedExtractor({ model: keepLongModel, stackModel: null });
+describe("kiwame extractor", () => {
+	const extractors = createKiwameExtractor({ model: keepLongModel, stackModel: null });
 
 	it("prunes to kept blocks and keeps a form that holds content", () => {
 		const markdown = htmlToMarkdown(page, { extractors });
@@ -79,7 +79,7 @@ describe("learned extractor", () => {
 	});
 
 	it("falls back to the heuristic extractor for an unusable model", () => {
-		const fallback = createLearnedExtractor({ model: { kind: "linear", weights: [1] }, stackModel: null });
+		const fallback = createKiwameExtractor({ model: { kind: "linear", weights: [1] }, stackModel: null });
 		expect(htmlToMarkdown(page, { extractors: fallback })).toContain("First paragraph of the story");
 	});
 });
@@ -101,7 +101,7 @@ describe("code inside the content", () => {
 			leaves: [5, -1],
 		};
 		const markdown = htmlToMarkdown(html, {
-			extractors: createLearnedExtractor({ model: keepProse, stackModel: null }),
+			extractors: createKiwameExtractor({ model: keepProse, stackModel: null }),
 		});
 		expect(markdown).toContain('import * as React from "react"');
 	});

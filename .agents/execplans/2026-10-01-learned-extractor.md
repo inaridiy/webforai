@@ -18,12 +18,12 @@ covers only the runtime that evaluates them.
 - [x] (2026-10-01) Runtime: text-block segmentation (`blocks.ts`, shared frame list), per-block
       features (`block-features.ts`, ancestor features memoised per element, iterative), flat
       tree-ensemble evaluator (`block-model.ts`), `takumi_kept` signal (`takumi-signal.ts`, takumi on
-      an element-only copy sharing text nodes), `learnedExtractor` (`presets/learned.ts`).
+      an element-only copy sharing text nodes), `kiwameExtractor` (`presets/kiwame.ts`).
 - [x] (2026-10-01) Parsing: `parseHtml` (parse5 without positions, nesting capped at 256 by
       iterative unwrapping with line breaks kept and text coalesced; script/style bodies emptied
       above 2 M chars, JSON-LD kept). Worker stress test `evals stress`.
-- [x] (2026-10-01) Default switched: `autoExtractor` falls back to `learnedExtractor`; CLI
-      `--extractor learned` (local only), platform presets unchanged.
+- [x] (2026-10-01) Default switched: `autoExtractor` falls back to `kiwameExtractor`; CLI
+      `--extractor kiwame` (local only), platform presets unchanged.
 - [x] (2026-10-01) Validation: WCEB token F1 0.874 → 0.892 (mean over the 8 datasets 0.892 →
       0.903; Readability + Turndown 0.880 / 0.901). 60-page corpus 74/74, code fences 733/748
       (takumi 729), tables 24/64 (takumi 26), nav-leak 5, 2.97 s. Repo tests pass except KI-3;
@@ -51,3 +51,11 @@ covers only the runtime that evaluates them.
   (YouTube's player response, MediaWiki configuration).
 - `gold:eval`'s "macro over groups" splits tiny CJK subsets into groups of their own; public
   numbers use the mean over WCEB's eight datasets.
+- Naming (owner, 2026-10-01): the learned extractor is **kiwame** (極め, an appraiser's verdict) —
+  `kiwameExtractor`, `createKiwameExtractor`, `KiwameExtractorOptions`, CLI `--extractor kiwame` —
+  paired with the heuristic `takumi` (匠, the craftsman) whose choice it takes into account.
+  `auto` keeps kiwame as its default behind the site adapters.
+- Naming (owner, 2026-10-01): the learned extractor is **kiwame** (極め, an appraiser's verdict) —
+  `kiwameExtractor`, `createKiwameExtractor`, `KiwameExtractorOptions`, CLI `--extractor kiwame` —
+  paired with the heuristic `takumi` (匠, the craftsman) whose choice it takes into account.
+  `auto` keeps kiwame as its default behind the site adapters.

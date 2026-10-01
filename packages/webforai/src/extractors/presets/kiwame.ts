@@ -1,5 +1,8 @@
 /**
- * Main-content extraction by a learned block classifier.
+ * kiwame — main-content extraction by a learned block classifier.
+ *
+ * "kiwame" is written 極め in Japanese: the appraiser's verdict on a piece of work. It judges every
+ * block, taking the craftsman `takumi`'s own choice into account.
  *
  * The page is segmented into text blocks, every block gets a probability of being main content
  * from a logistic model over cheap local features (see `block-features.ts`), and the tree is
@@ -26,7 +29,7 @@ import { takumiExtractor } from "./takumi";
  */
 export const DEFAULT_THRESHOLD = 0.47;
 
-export interface LearnedExtractorOptions {
+export interface KiwameExtractorOptions {
 	/** Probability above which a block is kept. Default {@link DEFAULT_THRESHOLD}. */
 	threshold?: number;
 	/** The block classifier; defaults to the shipped model. */
@@ -232,7 +235,7 @@ const pruneToBlocks = (element: Element | Root, kept: Set<Element>, ownerKept: b
 	return selfKept || keepChildren;
 };
 
-export const createLearnedExtractor = (options: LearnedExtractorOptions = {}): Extractor => {
+export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Extractor => {
 	const { threshold = DEFAULT_THRESHOLD, model = BLOCK_MODEL, cleanup = true } = options;
 	const stackModel = options.stackModel === undefined ? BLOCK_STACK_MODEL : options.stackModel;
 	const usable = isUsableModel(model);
@@ -292,4 +295,4 @@ export const createLearnedExtractor = (options: LearnedExtractorOptions = {}): E
 };
 
 /** The learned extractor with the shipped model. */
-export const learnedExtractor: Extractor = createLearnedExtractor();
+export const kiwameExtractor: Extractor = createKiwameExtractor();

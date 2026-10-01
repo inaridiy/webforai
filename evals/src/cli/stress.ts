@@ -51,7 +51,7 @@ const child = async (): Promise<void> => {
 				: CASES[file]();
 	const src = "../../../packages/webforai/src";
 	const { htmlToMarkdown } = await import(`${src}/index.js`);
-	// The default pipeline uses the learned extractor; the heuristic is pinned for comparison.
+	// The default pipeline uses kiwame; the heuristic is pinned for comparison.
 	let extractors: unknown;
 	if (extractor === "takumi") {
 		const { createAutoExtractor } = await import(`${src}/extractors/presets/auto.js`);
@@ -91,7 +91,7 @@ const parent = async (): Promise<void> => {
 		}
 		const label = kind === "synthetic" ? name : `${path.basename(name)}${kind === "truncated" ? " (5 MiB)" : ""}`;
 		const row: string[] = [label];
-		for (const extractor of ["takumi", "learned"]) {
+		for (const extractor of ["takumi", "kiwame"]) {
 			const run = spawnSync(
 				process.execPath,
 				["--max-old-space-size=128", "--import", "tsx", self, "--child", kind, name, extractor],

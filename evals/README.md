@@ -73,7 +73,7 @@ main-content text instead: token precision, recall and F1 per page, averaged per
 | Command | What it does |
 | --- | --- |
 | `gold:fetch-wceb` | Download WCEB (Bevendorff et al., SIGIR 2023; Apache-2.0, ≈50 MB) into the cache |
-| `gold:eval` | Token precision/recall/F1 against WCEB's reference text. `--pipelines=webforai,webforai-learned,readability-turndown`, `--impl=<path>` to measure another checkout, `--threshold=`, `--limit=` |
+| `gold:eval` | Token precision/recall/F1 against WCEB's reference text. `--pipelines=webforai,webforai-kiwame,readability-turndown`, `--impl=<path>` to measure another checkout, `--threshold=`, `--limit=` |
 
 The learned block classifier's weights (`packages/webforai/src/extractors/lib/block-model.generated.ts`)
 are generated outside this repository; WCEB is used to measure them, never to tune them.

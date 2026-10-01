@@ -34,13 +34,13 @@ const thresholdArg = arg("threshold");
 const threshold = thresholdArg === undefined ? undefined : Number(thresholdArg);
 
 const resolvePipeline = async (id: string): Promise<Convert> => {
-	if (id === "webforai-learned") {
+	if (id === "webforai-kiwame") {
 		const src = "../../../packages/webforai/src";
 		const { htmlToMarkdown } = await import(`${src}/index.js`);
 		const { createAutoExtractor } = await import(`${src}/extractors/presets/auto.js`);
-		const { createLearnedExtractor } = await import(`${src}/extractors/presets/learned.js`);
+		const { createKiwameExtractor } = await import(`${src}/extractors/presets/kiwame.js`);
 		const stackModel = process.argv.includes("--no-stack") ? null : undefined;
-		const extractors = createAutoExtractor({ fallback: createLearnedExtractor({ threshold, stackModel }) });
+		const extractors = createAutoExtractor({ fallback: createKiwameExtractor({ threshold, stackModel }) });
 		return (html, url) => htmlToMarkdown(html, { baseUrl: url, url, extractors });
 	}
 	if (id === "webforai" && impl) {

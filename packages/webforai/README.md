@@ -77,9 +77,10 @@ one Markdown file per page. `--engine` and `--region` select the platform loader
 them with an explicit local loader exits with usage error `2`. The interactive wizard applies
 the same validation and honors `WEBFORAI_PLATFORM_URL`.
 
-## Learned main-content extraction
+## kiwame: learned main-content extraction
 
-Pages without a site adapter go through a small **learned block classifier**: the page is split
+Pages without a site adapter go through **kiwame** (極め, an appraiser's verdict), a small learned
+block classifier: the page is split
 into text blocks, each scored by gradient-boosted trees over cheap features (text statistics,
 structure, neighbours, and what the Readability-style heuristic would keep), and the tree is
 pruned to the kept blocks. The model is ~100 KB of plain TypeScript arrays — no WASM, no extra
@@ -95,7 +96,7 @@ import { htmlToMarkdown, createAutoExtractor, takumiExtractor } from "webforai";
 const markdown = htmlToMarkdown(html, { url, extractors: [createAutoExtractor({ fallback: takumiExtractor })] });
 ```
 
-On the CLI, `--extractor learned` runs the classifier without site adapters and
+On the CLI, `--extractor kiwame` runs the classifier without site adapters and
 `--extractor takumi` the heuristic alone.
 
 ## What v3 changes

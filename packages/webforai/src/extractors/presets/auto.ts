@@ -12,7 +12,7 @@ import type { Nodes as Hast } from "hast";
 import { runAdapters } from "../../adapters";
 import type { SiteAdapter } from "../../adapters/types";
 import type { ExtractParams, Extractor } from "../types";
-import { learnedExtractor } from "./learned";
+import { kiwameExtractor } from "./kiwame";
 
 export interface AutoExtractorOptions {
 	/**
@@ -21,7 +21,7 @@ export interface AutoExtractorOptions {
 	 */
 	adapters?: SiteAdapter[] | false;
 	/**
-	 * Extractor for pages no adapter claims. Defaults to `learnedExtractor`, which itself falls
+	 * Extractor for pages no adapter claims. Defaults to `kiwameExtractor`, which itself falls
 	 * back to the heuristic `takumiExtractor` when its model keeps nothing.
 	 */
 	fallback?: Extractor;
@@ -33,7 +33,7 @@ export interface AutoExtractorOptions {
  * @param options - {@link AutoExtractorOptions}
  */
 export const createAutoExtractor = (options: AutoExtractorOptions = {}): Extractor => {
-	const { adapters, fallback = learnedExtractor } = options;
+	const { adapters, fallback = kiwameExtractor } = options;
 
 	return (params: ExtractParams): Hast => {
 		if (adapters !== false) {

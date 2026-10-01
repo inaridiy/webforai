@@ -3,7 +3,7 @@ import path from "node:path";
 import {
 	detectClientShell,
 	htmlToMarkdownWithMetadata,
-	learnedExtractor,
+	kiwameExtractor,
 	minimalFilter,
 	takumiExtractor,
 } from "../../../index";
@@ -25,8 +25,8 @@ const extractorOptions = (name: ResolvedRun["extractor"]): HtmlToMarkdownOptions
 	switch (name) {
 		case "takumi":
 			return takumiExtractor;
-		case "learned":
-			return learnedExtractor;
+		case "kiwame":
+			return kiwameExtractor;
 		case "minimal":
 			return minimalFilter;
 		case "none":
@@ -49,7 +49,7 @@ const convertViaPlatform = async (run: ResolvedRun): Promise<RunEnvelope> => {
 		region: run.region,
 		screenshot: run.screenshot ? true : undefined,
 		respectRobotsTxt: run.respectRobotsTxt ? true : undefined,
-		// `learned` is rejected for the platform loader during option resolution.
+		// `kiwame` is rejected for the platform loader during option resolution.
 		convert: { extractor: run.extractor as ExtractorPreset, frontmatter: run.frontmatter },
 	});
 
