@@ -13,7 +13,10 @@
 		"bench:extract": "tsx src/cli/bench-extract.ts",
 		"bench:compare": "tsx src/cli/bench-compare.ts",
 		"judge:prepare": "tsx src/cli/prepare-judge.ts",
-		"judge:report": "tsx src/cli/judge-report.ts"
+		"judge:report": "tsx src/cli/judge-report.ts",
+		"gold:eval": "tsx src/cli/gold-eval.ts",
+		"gold:fetch-wceb": "tsx src/cli/gold-fetch-wceb.ts",
+		"stress": "tsx src/cli/stress.ts"
 	},
 	"dependencies": {
 		"playwright-core": "^1.40.1",

@@ -55,6 +55,7 @@ sites the direct route is both faster and more reliable.
 | `bench` | End-to-end throughput, interleaved and median-of-N |
 | `bench:extract` | Extraction stage in isolation, with parsing outside the timed region |
 | `bench:compare` | webforai against Readability + Turndown, full-page Turndown and node-html-markdown. `--rounds=`, `--no-summary` |
+| `stress` | Adversarial and very large pages, each in a child process with a 128 MB heap (a Worker's budget). `--case=` |
 
 The accuracy suite runs under the repository's vitest:
 
@@ -63,6 +64,19 @@ npx vitest run evals/src/corpus.test.ts
 ```
 
 It skips any site that is not cached, so it is meaningful locally and harmless in CI.
+
+## Ground truth
+
+The corpus above has assertions, not answers. `gold:eval` scores extraction against reference
+main-content text instead: token precision, recall and F1 per page, averaged per dataset.
+
+| Command | What it does |
+| --- | --- |
+| `gold:fetch-wceb` | Download WCEB (Bevendorff et al., SIGIR 2023; Apache-2.0, ≈50 MB) into the cache |
+| `gold:eval` | Token precision/recall/F1 against WCEB's reference text. `--pipelines=webforai,webforai-learned,readability-turndown`, `--impl=<path>` to measure another checkout, `--threshold=`, `--limit=` |
+
+The learned block classifier's weights (`packages/webforai/src/extractors/lib/block-model.generated.ts`)
+are generated outside this repository; WCEB is used to measure them, never to tune them.
 
 ## Cross-tool comparison
 

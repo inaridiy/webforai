@@ -8,7 +8,7 @@ description: A reproducible comparison of webforai with Readability + Turndown, 
 This page compares webforai with common open-source HTML→Markdown pipelines on the same cached
 pages. Everything runs locally from the repository's evaluation harness, with no network access
 and no API keys at measure time. The numbers below are from the run on 2026-10-01 (commit
-`cb68dd1`); the raw summary is
+`4090c6d`); the raw summary is
 [`evals/benchmarks/compare-summary.json`](https://github.com/inaridiy/webforai/blob/main/evals/benchmarks/compare-summary.json).
 
 **Read the limitations first.** The corpus is small (60 captures of 46 sites) and was assembled
@@ -20,7 +20,7 @@ of extraction quality.
 
 | Pipeline | What runs | Extracts main content |
 | --- | --- | --- |
-| webforai (at that commit) | `htmlToMarkdown(html, { baseUrl: url, url })` with the default extractors (site adapters, then the generic extractor) | yes |
+| webforai (at that commit) | `htmlToMarkdown(html, { baseUrl: url, url })` with the default extractors (site adapters, then the learned block classifier) | yes |
 | Readability + Turndown | jsdom 30.0.1 → `@mozilla/readability` 0.6.0 `parse()` → Turndown 7.2.4 with `turndown-plugin-gfm` 1.0.2 on `article.content`; the article title is prepended as an h1 | yes |
 | Turndown (full page) | Turndown 7.2.4 + GFM plugin on the whole document; `head`, `script`, `style`, `noscript` and `template` removed | no |
 | node-html-markdown (full page) | `NodeHtmlMarkdown.translate(html)` 2.0.0 on the whole document, default options | no |
@@ -63,10 +63,10 @@ line); it was fixed for all pipelines before the recorded run.
 
 | Pipeline | Checks passed | Crashes | Empty | Nav leak | Boilerplate | Code fenced | Tables | Median output (chars) | Total time |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| webforai | 74/74 | 0 | 1 | 5 | 1 | 97.5% (729/748) | 40.6% (26/64) | 8,726 | 3.08 s |
-| Readability + Turndown | 62/74 | 0 | 2 | 8 | 3 | 45.2% (338/748) | 57.8% (37/64) | 9,139 | 10.63 s |
+| webforai | 74/74 | 0 | 1 | 5 | 1 | 98.0% (733/748) | 37.5% (24/64) | 8,698 | 2.97 s |
+| Readability + Turndown | 62/74 | 0 | 2 | 8 | 3 | 45.2% (338/748) | 57.8% (37/64) | 9,139 | 10.79 s |
 | Turndown (full page) | 50/74 | 1 | 1 | 30 | 31 | 52.1% (390/748) | 68.8% (44/64) | 16,956 | 1.44 s |
-| node-html-markdown (full page) | 50/74 | 0 | 1 | 37 | 32 | 50.8% (380/748) | 57.8% (37/64) | 18,140 | 14.33 s |
+| node-html-markdown (full page) | 50/74 | 0 | 1 | 37 | 32 | 50.8% (380/748) | 57.8% (37/64) | 18,140 | 14.38 s |
 
 60 captures, 24.17 MiB of HTML. Nav leak, boilerplate and empty count captures out of 60.
 
@@ -75,7 +75,8 @@ line); it was fixed for all pipelines before the recorded run.
 - **Where webforai is behind.** Full-page Turndown is about 2.1× faster, because it does no
   extraction. webforai has the lowest table recall. Most of the tables it drops are Wikipedia
   navboxes and sidebars (navigation tables built from `<th>` cells; 30 of them on the Japanese
-  Wikipedia capture), plus a PostgreSQL navigation header and GitHub's repository file list. It
+  Wikipedia capture), plus a PostgreSQL navigation header, GitHub's repository file list and two of the four tables on
+  the Amazon product page. It
   keeps the infoboxes and article tables on those pages. One table is laid out as blocks on
   purpose: Wikipedia's Markdown-versus-HTML comparison, whose cells are multi-line code samples,
   becomes labelled code blocks, which this metric counts as a lost table. The metric counts every
@@ -91,8 +92,7 @@ line); it was fixed for all pipelines before the recorded run.
   PostgreSQL documentation use bare `<pre>`, so every Turndown-based pipeline scores 0 on those
   pages. Readability also drops some code blocks before conversion (Next.js, Prisma). On the React docs
   every Turndown-based pipeline keeps only 2 of 23 blocks.
-  webforai's remaining misses are on PostgreSQL (one section dropped by extraction) and the
-  TypeScript handbook. Several of the handbook's probe lines exist only when a compiler error
+  webforai's remaining misses are mostly on the TypeScript handbook. Several of the handbook's probe lines exist only when a compiler error
   box, its hidden duplicate and the "Try" link are run together into one line; webforai writes
   the error as a `// error TS2345: …` line instead, which the probe does not match. The probe
   also treats every `<div>` inside `<pre>` as a line break, so on Vite and Hono it picks a
@@ -102,6 +102,22 @@ line); it was fixed for all pipelines before the recorded run.
   nothing for the YouTube watch page.
 - **Speed.** Readability's time includes building a jsdom document. node-html-markdown is slow
   on the largest pages (about 5 s for Japanese Wikipedia alone).
+
+## Against reference text
+
+The checks above are proxies. The evaluation harness also scores extraction against reference
+main-content text — token precision, recall and F1 per page, averaged — on **WCEB** (Bevendorff
+et al., SIGIR 2023): 3,985 pages from eight published datasets, mostly news from 2007–2017. WCEB is
+used only for measurement, never for tuning.
+
+| Pipeline | WCEB F1 (mean over pages / over the 8 datasets) | WCEB time |
+| --- | ---: | ---: |
+| webforai | 0.892 / 0.903 | 46 s |
+| webforai with the heuristic extractor (`takumiExtractor`) | 0.874 / 0.892 | 39 s |
+| Readability + Turndown | 0.880 / 0.901 | 218 s |
+
+Readability + Turndown is ahead on three of the eight WCEB datasets — its own test set (F1 0.98
+against webforai's 0.93), Scrapinghub and L3S-GN1 — and webforai on the other five.
 
 ## Limitations
 
