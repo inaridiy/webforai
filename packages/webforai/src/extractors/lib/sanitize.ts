@@ -243,7 +243,10 @@ const isPlaceholderImage = (element: Element): boolean => {
  * The whole noscript body is hoisted, not just its images: fallbacks routinely include a caption
  * or a paragraph alongside the image, and keeping only the image silently loses that text.
  */
-export const hoistNoscriptImages = (tree: Hast, onElement?: (element: Element, depth: number) => void): void => {
+export const hoistNoscriptImages = (
+	tree: Hast,
+	onElement?: (element: Element, depth: number, parent: Parent) => void,
+): void => {
 	const visit = (parent: Parent, depth: number): void => {
 		for (let index = 0; index < parent.children.length; index++) {
 			const child = parent.children[index];
@@ -252,7 +255,7 @@ export const hoistNoscriptImages = (tree: Hast, onElement?: (element: Element, d
 			}
 
 			if (child.tagName !== "noscript") {
-				onElement?.(child, depth);
+				onElement?.(child, depth, parent);
 				visit(child, depth + 1);
 				continue;
 			}
@@ -303,7 +306,7 @@ export const stripNonContent = (tree: Hast): Hast => {
 	// Tab strips are chrome and disappear in later passes, so their labels are read now, in the
 	// traversal the noscript pass makes anyway.
 	const tabs = new CodeTabCollector((element) => looksHidden(element) || NON_CONTENT_TAGS.has(element.tagName));
-	hoistNoscriptImages(tree, (element, depth) => tabs.visit(element, depth));
+	hoistNoscriptImages(tree, (element, depth, parent) => tabs.visit(element, depth, parent));
 	tabs.apply();
 
 	const siblingCode: SiblingCodeCache = new WeakMap();

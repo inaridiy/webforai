@@ -550,3 +550,15 @@ describe("review regressions", () => {
 		expect(htmlToMarkdown(html)).toContain('```sh title="npm"\n');
 	});
 });
+
+describe("CSS-only code tabs", () => {
+	const group = `<div class="vp-code-group"><div class="tabs"><input type="radio" name="g" id="t1" checked><label data-title="npm" for="t1">npm</label><input type="radio" name="g" id="t2"><label data-title="yarn" for="t2">yarn</label></div><div class="blocks"><div class="language-sh active"><pre><code>npm i hono</code></pre></div><div class="language-sh"><pre><code>yarn add hono</code></pre></div></div></div>`;
+
+	it("labels each block and drops the radio strip", () => {
+		const markdown = htmlToMarkdown(article(group));
+
+		expect(markdown).toContain('title="npm"');
+		expect(markdown).toContain('title="yarn"');
+		expect(markdown).not.toContain("[x]");
+	});
+});

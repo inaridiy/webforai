@@ -12,7 +12,7 @@
  * it, and otherwise by order within one tab group, only when the counts agree.
  */
 
-import type { Element } from "hast";
+import type { Element, Parent } from "hast";
 
 import { isElement, stringProperty } from "../../utils/hast-fast";
 
@@ -30,10 +30,21 @@ export class CodeTabCollector {
 	/** Groups whose tab list's parent is still being traversed, innermost last. */
 	readonly #open: Array<{ group: TabGroup; depth: number }> = [];
 	readonly #isHidden: (element: Element) => boolean;
+	readonly #radioStrips: Array<{ strip: Element; parent: Parent }> = [];
 
 	/** @param isHidden - Elements whose text a reader never sees, excluded from labels. */
 	constructor(isHidden: (element: Element) => boolean) {
 		this.#isHidden = isHidden;
+	}
+
+	#applyRadioStrip(strip: Element, parent: Parent): void {
+		const labels = strip.children.filter((child): child is Element => isElement(child) && child.tagName === "label");
+		const panels = radioStripPanels(strip, parent);
+		if (!panels || panels.length !== labels.length) {
+			return;
+		}
+		panels.forEach((panel, index) => labelCode(panel, tabLabel(labels[index], this.#isHidden)));
+		parent.children.splice(parent.children.indexOf(strip), 1);
 	}
 
 	/**
@@ -43,7 +54,12 @@ export class CodeTabCollector {
 	 * lend its labels to an unrelated code switcher further down, and an inner group closes before
 	 * the outer group's next panel.
 	 */
-	visit(element: Element, depth: number): void {
+	visit(element: Element, depth: number, parent: Parent): void {
+		if (isRadioTabStrip(element)) {
+			this.#radioStrips.push({ strip: element, parent });
+			return;
+		}
+
 		while (this.#open.length > 0 && depth < (this.#open.at(-1)?.depth ?? 0)) {
 			this.#open.pop();
 		}
@@ -68,6 +84,10 @@ export class CodeTabCollector {
 
 	/** Labels the code block of every panel whose tab could be identified. */
 	apply(): void {
+		for (const { strip, parent } of this.#radioStrips) {
+			this.#applyRadioStrip(strip, parent);
+		}
+
 		for (const group of this.#groups) {
 			if (group.tabs.length < 2 || group.panels.length === 0) {
 				continue;
@@ -78,6 +98,41 @@ export class CodeTabCollector {
 		}
 	}
 }
+
+/**
+ * CSS-only tabs: radio inputs with their labels, followed by a block whose children are the
+ * panels in the same order. VitePress renders every code group this way. Once the panels are
+ * labelled the strip itself is removed — converted, it is a row of `[x] npm [ ] yarn` checkboxes.
+ */
+const radioStripPanels = (strip: Element, parent: Parent): Element[] | undefined => {
+	const index = parent.children.indexOf(strip);
+	for (let cursor = index + 1; cursor < parent.children.length; cursor++) {
+		const sibling = parent.children[cursor];
+		if (isElement(sibling)) {
+			return sibling.children.filter(isElement);
+		}
+	}
+	return undefined;
+};
+
+const isRadioTabStrip = (element: Element): boolean => {
+	const first = element.children.find(isElement);
+	if (!(first?.tagName === "input" && stringProperty(first, "type") === "radio")) {
+		return false;
+	}
+	let labels = 0;
+	for (const child of element.children) {
+		if (!isElement(child)) {
+			continue;
+		}
+		if (child.tagName === "label") {
+			labels += 1;
+		} else if (!(child.tagName === "input" && stringProperty(child, "type") === "radio")) {
+			return false;
+		}
+	}
+	return labels >= 2;
+};
 
 const indexById = (elements: Element[]): Map<string, Element> => {
 	const byId = new Map<string, Element>();
