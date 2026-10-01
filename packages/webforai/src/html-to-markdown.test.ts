@@ -172,3 +172,48 @@ describe("htmlToMarkdown", () => {
 // Conversion quality on real pages is measured by the recorded-corpus suite in `evals/`
 // (see evals/src/corpus.test.ts). The old "Converting for good" test here compared two live
 // sites by edit distance, which drifted red whenever either site shipped a redesign.
+
+describe("tables with block content", () => {
+	const convert = (html: string) => htmlToMarkdown(html, { extractors: false });
+
+	it("keeps each row on one line when cells hold lists and paragraphs", () => {
+		const markdown = convert(
+			"<table><tr><th>Name</th><th>Family</th></tr><tr><td><p>Takuya</p></td><td><ul><li>Kōki</li><li>Shunsaku</li></ul></td></tr></table>",
+		);
+
+		expect(markdown).toContain("| Takuya | - Kōki<br>- Shunsaku |");
+	});
+
+	it("separates line breaks inside a cell instead of escaping them", () => {
+		const markdown = convert("<table><tr><th>Release</th></tr><tr><td>1.0.1<br>December 17, 2004</td></tr></table>");
+
+		expect(markdown).toContain("1.0.1<br>December 17, 2004");
+		expect(markdown).not.toContain("&#xA;");
+	});
+
+	it("lays out a table of code samples as labelled blocks", () => {
+		const markdown = convert(
+			'<table><tr><th>Interface</th><th>Type</th></tr><tr><td><pre><code class="language-ts">interface A {\n  x: 1\n}</code></pre></td><td><pre><code class="language-ts">type A = {\n  x: 1\n}</code></pre></td></tr></table>',
+		);
+
+		expect(markdown).toContain("**Interface**\n\n```ts\ninterface A {\n  x: 1\n}\n```");
+		expect(markdown).toContain("**Type**\n\n```ts\ntype A = {");
+		expect(markdown).not.toContain("| ");
+	});
+
+	it("leaves ordinary tables untouched", () => {
+		const markdown = convert("<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td><code>x</code></td></tr></table>");
+		expect(markdown).toContain("| 1 | `x` |");
+	});
+});
+
+describe("display math written inside a sentence", () => {
+	it("puts the formula on its own block between the sentence halves", () => {
+		const markdown = htmlToMarkdown(
+			'<p>is the equality <math display="block" alttext="{\\displaystyle e^{i\\pi }+1=0}"><mi>e</mi></math> where</p>',
+			{ extractors: false },
+		);
+
+		expect(markdown).toBe("is the equality\n\n$$\ne^{i\\pi }+1=0\n$$\n\nwhere\n");
+	});
+});

@@ -22,7 +22,11 @@ correct short outputs, not extraction losses.
       (`title="client.ts"`), own `preText` (no blank line per CodeMirror line, Twoslash hover
       cards no longer split tokens onto lines), hidden-math scan made lazy.
       Result: code fence recall 702→735 (frozen metric; see decision log), checks 74/74.
-- [ ] Conversion fidelity: tables with block content, display math in paragraphs.
+- [x] (2026-10-01) Tables and math: cells holding blocks are flattened to phrasing joined by
+      `<br>` (no broken rows, no `&#xA;`); tables of multi-line code samples are laid out as
+      labelled blocks with real fences; display math inside a paragraph becomes its own block.
+      Result: code fence recall 736/748, table recall 26/64 (the TS handbook comparison table is
+      now blocks, not a GFM table), checks 74/74.
 - [ ] Validation: biome, typecheck, tests, build, `bench:compare`, changeset.
 
 ## Decision log
@@ -45,3 +49,7 @@ correct short outputs, not extraction losses.
   break lines. The frozen `codeFenceRecall` probe splits on every `div`, so on vite-config and
   hono-docs it now picks fragments of the old broken split; that is why recall shows 735, not 737.
   The metric is left unchanged.
+- Table cells: a cell is rewritten only when it holds non-phrasing content, a `break`, or a
+  newline, so ordinary tables are byte-identical. A table is unfolded into blocks only when a cell
+  holds a multi-line code block; a flattened code sample is unreadable and loses its fence.
+  Header labels come from the first row only when every cell of it is a `<th>`.
