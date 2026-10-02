@@ -82,6 +82,75 @@ const liftDisplayMathIn = (node: Mdast): void => {
 	}
 };
 
+const isBlank = (node: PhrasingContent): boolean =>
+	node.type === "break" || (node.type === "text" && node.value.trim() === "");
+
+const trimEdges = (children: PhrasingContent[]): PhrasingContent[] => {
+	let start = 0;
+	let end = children.length;
+	while (start < end && isBlank(children[start])) {
+		start += 1;
+	}
+	while (end > start && isBlank(children[end - 1])) {
+		end -= 1;
+	}
+	return children.slice(start, end);
+};
+
+/**
+ * Splits phrasing content at runs of two or more breaks (a `<br><br>` the page uses as a
+ * paragraph gap) and trims breaks at the edges of each part, which would render as stray
+ * backslashes. Single breaks inside a part stay.
+ */
+const splitAtBreakRuns = (children: PhrasingContent[]): PhrasingContent[][] => {
+	const parts: PhrasingContent[][] = [];
+	let current: PhrasingContent[] = [];
+	let breaks = 0;
+	let pending: PhrasingContent[] = [];
+	for (const phrasing of children) {
+		if (isBlank(phrasing)) {
+			breaks += phrasing.type === "break" ? 1 : 0;
+			pending.push(phrasing);
+			continue;
+		}
+		if (breaks >= 2) {
+			parts.push(current);
+			current = [];
+		} else {
+			current.push(...pending);
+		}
+		pending = [];
+		breaks = 0;
+		current.push(phrasing);
+	}
+	parts.push(current);
+	return parts.map(trimEdges).filter((part) => part.length > 0);
+};
+
+/**
+ * Tidies hard breaks, which Markdown writes as a trailing backslash: a paragraph is split where
+ * the page leaves a blank line with `<br><br>`, and breaks at the start or end of a paragraph or
+ * heading are dropped. A paragraph left with nothing is removed.
+ */
+const tidyBreaks = (node: Mdast): void => {
+	if (!("children" in node)) {
+		return;
+	}
+	const parent = node as Parent;
+	for (let index = 0; index < parent.children.length; index++) {
+		const child = parent.children[index] as Mdast;
+		if (child.type === "heading" && child.children.some((c) => c.type === "break")) {
+			child.children = trimEdges(child.children);
+		} else if (child.type === "paragraph" && child.children.some((c) => c.type === "break")) {
+			const parts = splitAtBreakRuns(child.children).map((children) => ({ ...child, children }));
+			parent.children.splice(index, 1, ...(parts as Parent["children"]));
+			index += parts.length - 1;
+			continue;
+		}
+		tidyBreaks(child);
+	}
+};
+
 export const extractMdast = (node: Mdast) => {
 	const extracted = filter(node, (node) => {
 		if (!emptyDeclarationFilter(node as Mdast)) {
@@ -91,6 +160,7 @@ export const extractMdast = (node: Mdast) => {
 	});
 	if (extracted) {
 		liftDisplayMathIn(extracted as Mdast);
+		tidyBreaks(extracted as Mdast);
 	}
 	return extracted as Mdast;
 };

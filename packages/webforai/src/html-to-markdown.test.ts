@@ -167,6 +167,38 @@ describe("htmlToMarkdown", () => {
 		const d = distance(markdown, expectedTableText);
 		expect(d).lte(10); // Allow a higher distance due to the difference in formatting
 	});
+
+	it("uses a bold first row as the header of a table without <th>", () => {
+		const markdown = htmlToMarkdown(
+			"<table><tr><td><b>Name</b></td><td><b>Age</b></td></tr><tr><td>Ann</td><td>31</td></tr><tr><td>Bo</td><td>27</td></tr></table>",
+			{ extractors: false },
+		);
+		expect(markdown.split("\n")[0]).toMatch(/^\| \*\*Name\*\* +\| \*\*Age\*\* +\|$/);
+		expect(markdown).not.toMatch(/^\|\s+\|\s+\|$/m);
+	});
+
+	it("keeps the empty header when the first row of a table without <th> is data", () => {
+		const markdown = htmlToMarkdown("<table><tr><td>Ann</td><td>31</td></tr><tr><td>Bo</td><td>27</td></tr></table>", {
+			extractors: false,
+		});
+		expect(markdown).toMatch(/\| Ann +\| 31 +\|/);
+		expect(markdown.split("\n")[0]).toMatch(/^\|\s+\|\s+\|$/);
+	});
+
+	it("drops table columns that are empty in every row", () => {
+		const markdown = htmlToMarkdown(
+			"<table><tr><th>A</th><th></th><th>B</th></tr><tr><td>1</td><td> </td><td>2</td></tr><tr><td>3</td><td></td><td>4</td></tr></table>",
+			{ extractors: false },
+		);
+		expect(markdown.split("\n")[0]).toMatch(/^\| A +\| B +\|$/);
+	});
+
+	it("splits paragraphs at <br><br> and drops breaks at paragraph edges", () => {
+		const markdown = htmlToMarkdown("<p><br>First line<br>second line<br><br>Next part<br></p>", {
+			extractors: false,
+		});
+		expect(markdown.trimEnd()).toBe("First line\\\nsecond line\n\nNext part");
+	});
 });
 
 // Conversion quality on real pages is measured by the recorded-corpus suite in `evals/`
