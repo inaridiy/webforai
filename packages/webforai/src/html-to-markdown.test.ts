@@ -83,6 +83,25 @@ const expectedTableMarkdown = `
 const expectedTableText = `Header 1  Header 2
 Cell 1    Cell 2`;
 
+describe("htmlToMarkdownWithMetadata extraction report", () => {
+	it("reports the learned extractor and a confidence between 0 and 1", () => {
+		const paragraphs = Array.from(
+			{ length: 6 },
+			(_, index) =>
+				`<p>Paragraph ${index} of a long article body that explains one idea in several plain sentences, so that it reads like real prose.</p>`,
+		).join("");
+		const html = `<html><body><nav><a href="/">Home</a><a href="/a">About</a></nav><article><h1>Title</h1>${paragraphs}</article><footer>© Site</footer></body></html>`;
+		const { extraction } = htmlToMarkdownWithMetadata(html, { url: "https://example.com/post" });
+		expect(extraction?.extractor).toBe("kiwame");
+		expect(extraction?.confidence).toBeGreaterThanOrEqual(0);
+		expect(extraction?.confidence).toBeLessThanOrEqual(1);
+	});
+
+	it("reports nothing when extraction is disabled", () => {
+		expect(htmlToMarkdownWithMetadata("<p>Hi</p>", { extractors: false }).extraction).toBeUndefined();
+	});
+});
+
 describe("htmlToMarkdown", () => {
 	it("preserves code indentation and reads its explicit language", () => {
 		const markdown = htmlToMarkdown('<pre><code class="language-c++">    first\n      second\n</code></pre>', {
