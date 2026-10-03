@@ -259,6 +259,11 @@ const SPACED_INLINE = new Set(["span", "time", "label"]);
  * Script of a boundary character. A space goes in only where the script changes (a date running
  * into a CJK label, katakana into kanji): spans that split one word or one run of a script are
  * styling, and punctuation never takes a space before or after.
+ *
+ * In Chinese and Japanese the same boundaries also occur inside words (`9,300円`, `1件の`), where
+ * the space is wrong; script alone cannot tell them apart. Pairwise judgements preferred spacing
+ * them anyway (fields run together far more often than spans split a word), and excluding CJK
+ * boundaries, or digit–CJK ones, was judged worse.
  */
 const SCRIPTS: [string, RegExp][] = [
 	["latin", /\p{Script=Latin}/u],
