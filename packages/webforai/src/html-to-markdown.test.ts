@@ -210,6 +210,15 @@ describe("htmlToMarkdown", () => {
 		expect(markdown).toContain("### Overview");
 	});
 
+	it("separates side-by-side inline elements where the script changes, not inside a word", () => {
+		const markdown = htmlToMarkdown(
+			"<p><span>时间：2026-04-10</span><span>点击次数：262</span></p><p><span>Sp</span><span>arks</span></p>",
+			{ extractors: false },
+		);
+		expect(markdown).toContain("时间：2026-04-10 点击次数：262");
+		expect(markdown).toContain("Sparks");
+	});
+
 	it("splits paragraphs at <br><br> and drops breaks at paragraph edges", () => {
 		const markdown = htmlToMarkdown("<p><br>First line<br>second line<br><br>Next part<br></p>", {
 			extractors: false,
