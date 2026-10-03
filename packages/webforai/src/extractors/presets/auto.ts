@@ -39,6 +39,7 @@ export const createAutoExtractor = (options: AutoExtractorOptions = {}): Extract
 		if (adapters !== false) {
 			const extracted = runAdapters({ hast: params.hast, url: params.url, lang: params.lang }, adapters ?? undefined);
 			if (extracted) {
+				params.report?.({ extractor: "adapter" });
 				return extracted;
 			}
 		}

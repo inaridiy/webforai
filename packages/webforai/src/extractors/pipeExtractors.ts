@@ -11,7 +11,7 @@ export type ExtractorSelectors = ExtractorSelector | ExtractorSelector[];
  * `false` entries are skipped, so callers can toggle a stage without rebuilding the array.
  */
 export const pipeExtractors = (params: ExtractParams, extractors: ExtractorSelectors = DEFAULT_EXTRACTORS): Hast => {
-	const { hast, lang, url, owned } = params;
+	const { hast, lang, url, owned, report } = params;
 	const list = Array.isArray(extractors) ? extractors : [extractors];
 
 	let current = hast;
@@ -27,7 +27,7 @@ export const pipeExtractors = (params: ExtractParams, extractors: ExtractorSelec
 			throw new Error(`Invalid extractor: ${String(extractor)}`);
 		}
 
-		current = extractor({ hast: current, lang, url, owned: currentOwned });
+		current = extractor({ hast: current, lang, url, owned: currentOwned, report });
 		currentOwned = true;
 	}
 

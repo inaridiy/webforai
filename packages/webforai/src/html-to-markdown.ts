@@ -1,6 +1,7 @@
 import type { Nodes as Hast } from "hast";
 import { parseHtml } from "./utils/parse-html";
 
+import type { ExtractionReport } from "./extractors";
 import { type HtmlToMdastOptions, htmlToMdast } from "./html-to-mdast";
 import { type MdastToMarkdownOptions, mdastToMarkdown } from "./mdast-to-markdown";
 import { type PageMetadata, extractMetadata, toFrontmatter } from "./metadata";
@@ -31,6 +32,13 @@ export interface HtmlToMarkdownOptions extends HtmlToMdastOptions {
 export interface HtmlToMarkdownResult {
 	markdown: string;
 	metadata: PageMetadata;
+	/**
+	 * What the extractor reported: which one ran (`kiwame`, `takumi`, `adapter`) and, for the
+	 * learned extractor, `confidence` — the expected token F1 of the content against the page's
+	 * main content, 0–1. Low values flag pages worth a second look. Absent with custom
+	 * extractors that report nothing.
+	 */
+	extraction?: ExtractionReport;
 }
 
 /**
@@ -69,8 +77,13 @@ export const htmlToMarkdownWithMetadata = (
 		metadata.lang = declaredLang;
 	}
 
+	let extraction: ExtractionReport | undefined;
 	const mdast = htmlToMdast(hast, {
 		...toMdastOptions,
+		onExtraction: (report) => {
+			extraction = report;
+			toMdastOptions.onExtraction?.(report);
+		},
 		owned: isOwned,
 		lang: toMdastOptions.lang ?? metadata.lang,
 		url: toMdastOptions.url ?? metadata.canonicalUrl,
@@ -81,7 +94,7 @@ export const htmlToMarkdownWithMetadata = (
 	const titled = title === false ? body : withTitle(body, headingTitle(metadata.title, metadata.siteName, pageUrl));
 	const markdown = frontmatter ? `${toFrontmatter(metadata)}${titled}` : titled;
 
-	return { markdown, metadata };
+	return extraction ? { markdown, metadata, extraction } : { markdown, metadata };
 };
 
 /** Separators publishers put between a page's title and the site's name. */
