@@ -261,9 +261,9 @@ const SPACED_INLINE = new Set(["span", "time", "label"]);
  * styling, and punctuation never takes a space before or after.
  *
  * In Chinese and Japanese the same boundaries also occur inside words (`9,300円`, `1件の`), where
- * the space is wrong; script alone cannot tell them apart. Pairwise judgements preferred spacing
- * them anyway (fields run together far more often than spans split a word), and excluding CJK
- * boundaries, or digit–CJK ones, was judged worse.
+ * the space is wrong; script alone cannot tell them apart. They are spaced anyway: on real pages
+ * separate fields run together far more often than a span splits a word, and leaving CJK (or
+ * digit–CJK) boundaries alone made more output worse than better.
  */
 const SCRIPTS: [string, RegExp][] = [
 	["latin", /\p{Script=Latin}/u],
