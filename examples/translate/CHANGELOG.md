@@ -1,5 +1,12 @@
 # translate
 
+## 1.0.25
+
+### Patch Changes
+
+- Updated dependencies [[`a1da0c5`](https://github.com/inaridiy/webforai/commit/a1da0c57c1cb1b649c9789dbae0f22df41c49db0), [`1e537bb`](https://github.com/inaridiy/webforai/commit/1e537bb83fe4147eaf7627cfeed3007ac4ed98cb), [`a1da0c5`](https://github.com/inaridiy/webforai/commit/a1da0c57c1cb1b649c9789dbae0f22df41c49db0)]:
+  - webforai@4.2.0
+
 ## 1.0.24
 
 ### Patch Changes
