@@ -110,8 +110,9 @@ see [Loaders](https://webforai.dev/docs/loaders).
   ```ts
   import { htmlToMarkdown, htmlToMarkdownWithMetadata } from "webforai";
 
-  const { markdown, metadata } = htmlToMarkdownWithMetadata(html, { url });
+  const { markdown, metadata, extraction } = htmlToMarkdownWithMetadata(html, { url });
   // metadata: { title, author, published, siteName, canonicalUrl, lang, ... }
+  // extraction: { extractor: "kiwame" | "takumi" | "adapter", confidence?: 0..1 }
 
   const withFrontmatter = htmlToMarkdown(html, { url, frontmatter: true });
   ```

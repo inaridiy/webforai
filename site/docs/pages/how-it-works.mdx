@@ -59,6 +59,27 @@ the library does. See [Benchmarks](/benchmarks) for how the output compares with
 as `takumiExtractor` (CLI: `--extractor takumi`), and it is what `kiwameExtractor` falls back to
 if the model keeps nothing.
 
+### Extraction Report and Confidence
+
+`htmlToMarkdownWithMetadata` also returns what the extractor did:
+
+```ts
+import { htmlToMarkdownWithMetadata } from "webforai";
+
+const { markdown, extraction } = htmlToMarkdownWithMetadata(html, { url });
+// extraction: { extractor: "kiwame" | "takumi" | "adapter", confidence?: number }
+```
+
+`extractor` names the path that produced the content: a site adapter, kiwame, or the heuristic
+fallback. For kiwame's results, `confidence` (0–1) estimates how well the selection matches the
+page's main content — roughly the expected token F1. Most pages come out well; a minority fail
+badly (a listing whose items were dropped, an article whose navigation was kept), and those show in
+how the block scores spread over the page and in whether the heuristic extractor agrees. A small
+model over a dozen such page statistics produces the estimate, at no measurable cost. Use it to
+flag pages for review, retry with other options, or weigh results; it is absent for site adapters
+and custom extractors. Lower-level callers can receive the same report through
+`htmlToMdast(html, { onExtraction })`.
+
 ### Customizing the Extraction
 
 **webforai** allows you to define **multiple extractors** and chain them together.
