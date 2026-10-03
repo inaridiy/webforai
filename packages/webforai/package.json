@@ -81,6 +81,11 @@
 			"types": "./dist/types/loaders/puppeteer.d.ts",
 			"import": "./dist/loaders/puppeteer.js",
 			"require": "./dist/cjs/loaders/puppeteer.js"
+		},
+		"./loaders/geometry": {
+			"types": "./dist/types/loaders/geometry.d.ts",
+			"import": "./dist/loaders/geometry.js",
+			"require": "./dist/cjs/loaders/geometry.js"
 		}
 	},
 	"typesVersions": {
@@ -99,6 +104,9 @@
 			],
 			"loaders/puppeteer": [
 				"./dist/types/loaders/puppeteer.d.ts"
+			],
+			"loaders/geometry": [
+				"./dist/types/loaders/geometry.d.ts"
 			],
 			"platform": [
 				"./dist/types/platform/index.d.ts"

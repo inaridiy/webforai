@@ -1,6 +1,8 @@
 import puppeteer, { TimeoutError } from "puppeteer";
 import type { PuppeteerLaunchOptions } from "puppeteer";
 
+import { annotateGeometry } from "./geometry";
+
 export const loadHtml = async (url: string, ctx?: PuppeteerLaunchOptions) => {
 	const browser = await puppeteer.launch(
 		ctx || {
@@ -19,6 +21,7 @@ export const loadHtml = async (url: string, ctx?: PuppeteerLaunchOptions) => {
 				throw error;
 			}
 		}
+		await page.evaluate(annotateGeometry);
 		return await page.content();
 	} finally {
 		await browser.close();
