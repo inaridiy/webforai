@@ -227,6 +227,31 @@ export const promoteAriaHeadings = (tree: Hast): void => {
 	});
 };
 
+/**
+ * Classes of icon fonts that draw a glyph from a ligature: the element's text is the icon's name
+ * (`<i class="material-icons">query_builder</i>`), which would otherwise appear in the output.
+ */
+const LIGATURE_ICON = /^(?:material-icons(?:-[a-z]+)?|material-symbols-[a-z]+)$/;
+
+/** An icon name as written for a ligature font: `query_builder`, `arrow_forward`, `home`. */
+const ICON_NAME = /^\s*[a-z][a-z0-9_]*\s*$/;
+
+/**
+ * Removes ligature icon-font glyphs, whose text is an icon name rather than content. Only
+ * leaf elements holding just such a name qualify: sites also put the icon class on containers
+ * (a `<label class="material-icons">` around a heading) to draw an icon with CSS.
+ */
+export const removeIconFonts = (tree: Hast): void => {
+	const isIcon = (node: Hast) =>
+		isElement(node) &&
+		classList(node).some((name) => LIGATURE_ICON.test(name)) &&
+		node.children.every((child) => child.type === "text") &&
+		ICON_NAME.test(node.children.map((child) => (child.type === "text" ? child.value : "")).join(""));
+	if (findElement(tree, isIcon)) {
+		pruneInPlace(tree, (node) => !isIcon(node));
+	}
+};
+
 export interface NormalizeOptions {
 	/** Resolve lazily-loaded image URLs. Default `true`. */
 	images?: boolean;
@@ -234,6 +259,8 @@ export interface NormalizeOptions {
 	math?: boolean;
 	/** Promote `role="heading"` elements to real headings. Default `true`. */
 	ariaHeadings?: boolean;
+	/** Remove ligature icon-font glyphs (Material Icons/Symbols). Default `true`. */
+	iconFonts?: boolean;
 }
 
 /**
@@ -243,7 +270,7 @@ export interface NormalizeOptions {
  * @param options - {@link NormalizeOptions}
  */
 export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast => {
-	const { images = true, math = true, ariaHeadings = true } = options;
+	const { images = true, math = true, ariaHeadings = true, iconFonts = true } = options;
 
 	if (images) {
 		resolveImageSources(tree);
@@ -253,6 +280,9 @@ export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast 
 	}
 	if (ariaHeadings) {
 		promoteAriaHeadings(tree);
+	}
+	if (iconFonts) {
+		removeIconFonts(tree);
 	}
 
 	return tree;

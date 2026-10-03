@@ -193,6 +193,23 @@ describe("htmlToMarkdown", () => {
 		expect(markdown.split("\n")[0]).toMatch(/^\| A +\| B +\|$/);
 	});
 
+	it("moves whitespace out of bold and italic so the delimiters still apply", () => {
+		const markdown = htmlToMarkdown("<p><b>WIN55 </b>builds<em> fast</em> things<b> </b>here</p>", {
+			extractors: false,
+		});
+		expect(markdown.trimEnd()).toBe("**WIN55** builds *fast* things here");
+	});
+
+	it("drops ligature icon-font names but keeps icon-classed containers", () => {
+		const markdown = htmlToMarkdown(
+			'<div><p><i class="material-icons">query_builder</i> 2026/09/04</p><label class="material-icons"><h3>Overview</h3></label></div>',
+			{ extractors: false },
+		);
+		expect(markdown).not.toContain("query_builder");
+		expect(markdown).toContain("2026/09/04");
+		expect(markdown).toContain("### Overview");
+	});
+
 	it("splits paragraphs at <br><br> and drops breaks at paragraph edges", () => {
 		const markdown = htmlToMarkdown("<p><br>First line<br>second line<br><br>Next part<br></p>", {
 			extractors: false,

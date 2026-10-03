@@ -151,6 +151,79 @@ const tidyBreaks = (node: Mdast): void => {
 	}
 };
 
+const ATTENTION = new Set(["strong", "emphasis", "delete"]);
+
+/** Strips whitespace from the edges of an attention node's text; reports what was removed. */
+const stripEdgeWhitespace = (inner: PhrasingContent[]): { lead: boolean; trail: boolean } => {
+	const first = inner[0];
+	const last = inner[inner.length - 1];
+	const lead = first?.type === "text" && /^\s/.test(first.value);
+	const trail = last?.type === "text" && /\s$/.test(last.value);
+	if (lead && first.type === "text") {
+		first.value = first.value.trimStart();
+	}
+	if (trail && last.type === "text") {
+		last.value = last.value.trimEnd();
+	}
+	return { lead, trail };
+};
+
+/** Adds a space to the text on one side of `index`, or a new text node if there is none. */
+const spaceBeside = (children: Parent["children"], index: number, side: "before" | "after"): number => {
+	const neighbour = children[side === "before" ? index - 1 : index + 1] as Mdast | undefined;
+	if (neighbour?.type === "text") {
+		if (side === "before" && !/\s$/.test(neighbour.value)) {
+			neighbour.value += " ";
+		} else if (side === "after" && !/^\s/.test(neighbour.value)) {
+			neighbour.value = ` ${neighbour.value}`;
+		}
+		return 0;
+	}
+	// At the edge of the parent a space would only be encoded (`&#x20;`); between two nodes
+	// that are not text it separates them.
+	if (!neighbour) {
+		return 0;
+	}
+	children.splice(side === "before" ? index : index + 1, 0, { type: "text", value: " " } as Parent["children"][number]);
+	return 1;
+};
+
+/**
+ * Moves whitespace at the edges of strong/emphasis/delete outside them. `<b>WIN55 </b>next`
+ * would otherwise become `**WIN55 **next`, which Markdown does not read as bold: a closing
+ * delimiter may not follow whitespace. A node left with no text is replaced by the space.
+ */
+const hoistAttentionWhitespace = (node: Mdast): void => {
+	if (!("children" in node)) {
+		return;
+	}
+	const parent = node as Parent;
+	for (let index = 0; index < parent.children.length; index++) {
+		const child = parent.children[index] as Mdast;
+		hoistAttentionWhitespace(child);
+		if (!(ATTENTION.has(child.type) && "children" in child)) {
+			continue;
+		}
+		const inner = child.children as PhrasingContent[];
+		const { lead, trail } = stripEdgeWhitespace(inner);
+		if (inner.every((phrasing) => phrasing.type === "text" && phrasing.value === "")) {
+			// `<b> </b>`: keep only the separation, and only between two neighbours.
+			parent.children.splice(index, 1);
+			if ((lead || trail) && index > 0 && index < parent.children.length) {
+				spaceBeside(parent.children, index - 1, "after");
+			}
+			index -= 1;
+			continue;
+		}
+		if (lead) {
+			index += spaceBeside(parent.children, index, "before");
+		}
+		if (trail) {
+			spaceBeside(parent.children, index, "after");
+		}
+	}
+};
+
 export const extractMdast = (node: Mdast) => {
 	const extracted = filter(node, (node) => {
 		if (!emptyDeclarationFilter(node as Mdast)) {
@@ -161,6 +234,7 @@ export const extractMdast = (node: Mdast) => {
 	if (extracted) {
 		liftDisplayMathIn(extracted as Mdast);
 		tidyBreaks(extracted as Mdast);
+		hoistAttentionWhitespace(extracted as Mdast);
 	}
 	return extracted as Mdast;
 };
