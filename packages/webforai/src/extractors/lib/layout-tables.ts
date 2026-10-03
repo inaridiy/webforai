@@ -4,7 +4,8 @@
  * Pages from the table-layout era nest the whole article inside layout tables. Converted as
  * tables, their cells become GFM table cells and the article is flattened into one row or lost.
  * The classification follows Readability's `_isDataTable` with one addition: a cell holding a
- * heading, a form or another table is page layout.
+ * heading, a form or another table is page layout — except a heading alone in its row, which is how
+ * pages caption the sections of a data table (a room type above its price rows).
  */
 
 import type { Element, ElementContent, Nodes as Hast, Parent } from "hast";
@@ -28,9 +29,24 @@ interface TableShape {
 	blockInCell: boolean;
 }
 
+/** Cells of a row (`td`/`th` children). */
+const cellsOf = (row: Element): Element[] =>
+	row.children.filter((cell): cell is Element => isElement(cell) && (cell.tagName === "td" || cell.tagName === "th"));
+
+const HEADING = /^h[1-6]$/;
+
 const shapeOf = (table: Element): TableShape => {
 	const shape: TableShape = { rows: 0, columns: 0, dataMarker: false, blockInCell: false };
-	const visit = (node: Element, inCell: boolean): void => {
+	let captionHeadings = 0;
+	/** Block content in a cell is layout evidence, unless it is a heading alone in its row. */
+	const noteBlockInCell = (tag: string, aloneInRow: boolean): void => {
+		if (HEADING.test(tag) && aloneInRow) {
+			captionHeadings += 1;
+		} else {
+			shape.blockInCell = true;
+		}
+	};
+	const visit = (node: Element, inCell: boolean, aloneInRow: boolean): void => {
 		for (const child of node.children) {
 			if (!isElement(child)) {
 				continue;
@@ -44,20 +60,25 @@ const shapeOf = (table: Element): TableShape => {
 			if (DATA_MARKERS.has(tag)) {
 				shape.dataMarker = true;
 			}
+			let alone = aloneInRow;
 			if (tag === "tr") {
 				shape.rows += 1;
-				const cells = child.children.filter(
-					(cell) => isElement(cell) && (cell.tagName === "td" || cell.tagName === "th"),
-				).length;
+				const cells = cellsOf(child).length;
 				shape.columns = Math.max(shape.columns, cells);
+				alone = cells === 1;
 			}
 			if (inCell && BLOCK_IN_CELL.has(tag)) {
-				shape.blockInCell = true;
+				noteBlockInCell(tag, aloneInRow);
 			}
-			visit(child, inCell || tag === "td" || tag === "th");
+			visit(child, inCell || tag === "td" || tag === "th", alone);
 		}
 	};
-	visit(table, false);
+	visit(table, false, false);
+	// Captions only make sense above rows of data: a table of nothing but captioned single cells is
+	// still layout.
+	if (captionHeadings > 0 && (shape.columns < 2 || shape.rows - captionHeadings < 2)) {
+		shape.blockInCell = true;
+	}
 	return shape;
 };
 
