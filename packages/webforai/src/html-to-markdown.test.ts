@@ -219,6 +219,15 @@ describe("htmlToMarkdown", () => {
 		expect(markdown).toContain("Sparks");
 	});
 
+	it("keeps elements whose type attribute hastscript would read as a node", () => {
+		const markdown = htmlToMarkdown(
+			'<div><p>Intro</p><button type="text">Menu</button><ol><li type="a" value="3">Third</li></ol><select type="currency" value="x"><option>USD</option></select></div>',
+			{ extractors: false },
+		);
+		expect(markdown).toContain("Intro");
+		expect(markdown).toContain("Third");
+	});
+
 	it("splits paragraphs at <br><br> and drops breaks at paragraph edges", () => {
 		const markdown = htmlToMarkdown("<p><br>First line<br>second line<br><br>Next part<br></p>", {
 			extractors: false,
