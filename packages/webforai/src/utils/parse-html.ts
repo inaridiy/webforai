@@ -40,7 +40,6 @@ const LINE_ELEMENTS = new Set([
 ]);
 
 type Parse5Text = DefaultTreeAdapterMap["textNode"];
-type Parse5Element = DefaultTreeAdapterMap["element"];
 
 const textNode = (value: string, parentNode: Parse5Parent): Parse5Text =>
 	({ nodeName: "#text", value, parentNode }) as Parse5Text;
@@ -66,49 +65,6 @@ const coalesceText = (parent: Parse5Parent): void => {
 };
 
 /** Unwraps every element nested deeper than `maxDepth`, iteratively, in place. */
-const BUTTON_TYPES = new Set(["submit", "reset", "button", "menu"]);
-
-/**
- * Repairs attributes that make `hast-util-from-parse5` lose the element.
- *
- * It builds elements with `hastscript`, which reads a properties object that has a string `type`
- * as a child *node* in two cases: a `<button>` whose `type` is not a button type
- * (`<button type="text">`), and any element but `<input>` that also has a `value`. The element's
- * attributes then become a "text" node without a value, and conversion throws on it. An invalid
- * button type means `submit` in HTML anyway; elsewhere `type` is dropped when `value` is present.
- */
-const repairNodeLikeAttributes = (element: Parse5Element): void => {
-	const type = element.attrs.find((attribute) => attribute.name === "type");
-	if (!type || element.tagName === "input") {
-		return;
-	}
-	if (element.tagName === "button") {
-		if (!BUTTON_TYPES.has(type.value.toLowerCase())) {
-			type.value = "submit";
-		}
-		return;
-	}
-	if (element.attrs.some((attribute) => attribute.name === "value")) {
-		element.attrs = element.attrs.filter((attribute) => attribute !== type);
-	}
-};
-
-/** Applies {@link repairNodeLikeAttributes} to every element, iteratively. */
-const repairAttributes = (root: Parse5Parent): void => {
-	const stack: Parse5Parent[] = [root];
-	while (stack.length > 0) {
-		const parent = stack.pop() as Parse5Parent;
-		for (const child of parent.childNodes) {
-			if ("attrs" in child) {
-				repairNodeLikeAttributes(child);
-			}
-			if (isParent(child)) {
-				stack.push(child);
-			}
-		}
-	}
-};
-
 const flattenDeep = (root: Parse5Parent, maxDepth: number): void => {
 	const stack: Array<[Parse5Parent, number]> = [[root, 0]];
 	while (stack.length > 0) {
@@ -176,7 +132,6 @@ export const parseHtml = (html: string, options: { fragment?: boolean } = {}): R
 	const document = options.fragment
 		? parseFragment(source, { scriptingEnabled: false })
 		: parse(source, { scriptingEnabled: false });
-	repairAttributes(document);
 	flattenDeep(document, MAX_ELEMENT_DEPTH);
 	return fromParse5(document) as Root;
 };
