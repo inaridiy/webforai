@@ -227,6 +227,96 @@ export const promoteAriaHeadings = (tree: Hast): void => {
 	});
 };
 
+/**
+ * Classes of icon fonts that draw a glyph from a ligature: the element's text is the icon's name
+ * (`<i class="material-icons">query_builder</i>`), which would otherwise appear in the output.
+ */
+const LIGATURE_ICON = /^(?:material-icons(?:-[a-z]+)?|material-symbols-[a-z]+)$/;
+
+/** An icon name as written for a ligature font: `query_builder`, `arrow_forward`, `home`. */
+const ICON_NAME = /^\s*[a-z][a-z0-9_]*\s*$/;
+
+/**
+ * Removes ligature icon-font glyphs, whose text is an icon name rather than content. Only
+ * leaf elements holding just such a name qualify: sites also put the icon class on containers
+ * (a `<label class="material-icons">` around a heading) to draw an icon with CSS.
+ */
+export const removeIconFonts = (tree: Hast): void => {
+	const isIcon = (node: Hast) =>
+		isElement(node) &&
+		classList(node).some((name) => LIGATURE_ICON.test(name)) &&
+		node.children.every((child) => child.type === "text") &&
+		ICON_NAME.test(node.children.map((child) => (child.type === "text" ? child.value : "")).join(""));
+	if (findElement(tree, isIcon)) {
+		pruneInPlace(tree, (node) => !isIcon(node));
+	}
+};
+
+/** Inline elements that pages lay out side by side with CSS (margins, flex) instead of spaces. */
+const SPACED_INLINE = new Set(["span", "time", "label"]);
+
+/**
+ * Script of a boundary character. A space goes in only where the script changes (a date running
+ * into a CJK label, katakana into kanji): spans that split one word or one run of a script are
+ * styling, and punctuation never takes a space before or after.
+ *
+ * In Chinese and Japanese the same boundaries also occur inside words (`9,300円`, `1件の`), where
+ * the space is wrong; script alone cannot tell them apart. They are spaced anyway: on real pages
+ * separate fields run together far more often than a span splits a word, and leaving CJK (or
+ * digit–CJK) boundaries alone made more output worse than better.
+ */
+const SCRIPTS: [string, RegExp][] = [
+	["latin", /\p{Script=Latin}/u],
+	["digit", /\d/],
+	...["Han", "Hiragana", "Katakana", "Hangul", "Cyrillic", "Greek", "Arabic", "Thai"].map((name): [string, RegExp] => [
+		name,
+		new RegExp(`\\p{Script=${name}}`, "u"),
+	]),
+];
+
+const scriptOf = (char: string): string | undefined => SCRIPTS.find(([, pattern]) => pattern.test(char))?.[0];
+
+const needsSpace = (left: string, right: string): boolean => {
+	const a = scriptOf(left.slice(-1));
+	const b = scriptOf(right.charAt(0));
+	return a !== undefined && b !== undefined && a !== b;
+};
+const NO_SPACING = new Set(["pre", "code", "kbd", "samp", "ruby", "math", "svg"]);
+
+const textOfNode = (node: Hast): string =>
+	node.type === "text" ? node.value : "children" in node ? node.children.map(textOfNode).join("") : "";
+
+/**
+ * Puts a space between adjacent inline elements that the page separates only visually:
+ * `<span>时间：2026-04-10</span><span>点击次数：262</span>` would otherwise read as one run. Only
+ * where the script changes across the boundary (see {@link scriptOf}).
+ */
+export const separateAdjacentInlines = (tree: Hast): void => {
+	const visit = (node: Hast): void => {
+		if (!("children" in node) || (isElement(node) && NO_SPACING.has(node.tagName))) {
+			return;
+		}
+		const children = node.children as Hast[];
+		for (let index = children.length - 1; index > 0; index--) {
+			const left = children[index - 1];
+			const right = children[index];
+			if (
+				isElement(left) &&
+				isElement(right) &&
+				SPACED_INLINE.has(left.tagName) &&
+				SPACED_INLINE.has(right.tagName) &&
+				needsSpace(textOfNode(left), textOfNode(right))
+			) {
+				children.splice(index, 0, { type: "text", value: " " } as Hast);
+			}
+		}
+		for (const child of children) {
+			visit(child);
+		}
+	};
+	visit(tree);
+};
+
 export interface NormalizeOptions {
 	/** Resolve lazily-loaded image URLs. Default `true`. */
 	images?: boolean;
@@ -234,6 +324,10 @@ export interface NormalizeOptions {
 	math?: boolean;
 	/** Promote `role="heading"` elements to real headings. Default `true`. */
 	ariaHeadings?: boolean;
+	/** Remove ligature icon-font glyphs (Material Icons/Symbols). Default `true`. */
+	iconFonts?: boolean;
+	/** Separate adjacent inline elements laid out side by side. Default `true`. */
+	inlineSpacing?: boolean;
 }
 
 /**
@@ -243,7 +337,7 @@ export interface NormalizeOptions {
  * @param options - {@link NormalizeOptions}
  */
 export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast => {
-	const { images = true, math = true, ariaHeadings = true } = options;
+	const { images = true, math = true, ariaHeadings = true, iconFonts = true, inlineSpacing = true } = options;
 
 	if (images) {
 		resolveImageSources(tree);
@@ -253,6 +347,12 @@ export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast 
 	}
 	if (ariaHeadings) {
 		promoteAriaHeadings(tree);
+	}
+	if (iconFonts) {
+		removeIconFonts(tree);
+	}
+	if (inlineSpacing) {
+		separateAdjacentInlines(tree);
 	}
 
 	return tree;

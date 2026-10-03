@@ -83,6 +83,25 @@ const expectedTableMarkdown = `
 const expectedTableText = `Header 1  Header 2
 Cell 1    Cell 2`;
 
+describe("htmlToMarkdownWithMetadata extraction report", () => {
+	it("reports the learned extractor and a confidence between 0 and 1", () => {
+		const paragraphs = Array.from(
+			{ length: 6 },
+			(_, index) =>
+				`<p>Paragraph ${index} of a long article body that explains one idea in several plain sentences, so that it reads like real prose.</p>`,
+		).join("");
+		const html = `<html><body><nav><a href="/">Home</a><a href="/a">About</a></nav><article><h1>Title</h1>${paragraphs}</article><footer>© Site</footer></body></html>`;
+		const { extraction } = htmlToMarkdownWithMetadata(html, { url: "https://example.com/post" });
+		expect(extraction?.extractor).toBe("kiwame");
+		expect(extraction?.confidence).toBeGreaterThanOrEqual(0);
+		expect(extraction?.confidence).toBeLessThanOrEqual(1);
+	});
+
+	it("reports nothing when extraction is disabled", () => {
+		expect(htmlToMarkdownWithMetadata("<p>Hi</p>", { extractors: false }).extraction).toBeUndefined();
+	});
+});
+
 describe("htmlToMarkdown", () => {
 	it("preserves code indentation and reads its explicit language", () => {
 		const markdown = htmlToMarkdown('<pre><code class="language-c++">    first\n      second\n</code></pre>', {
@@ -166,6 +185,73 @@ describe("htmlToMarkdown", () => {
 		const markdown = htmlToMarkdown(htmlTable, { tableAsText: true, extractors: false });
 		const d = distance(markdown, expectedTableText);
 		expect(d).lte(10); // Allow a higher distance due to the difference in formatting
+	});
+
+	it("uses a bold first row as the header of a table without <th>", () => {
+		const markdown = htmlToMarkdown(
+			"<table><tr><td><b>Name</b></td><td><b>Age</b></td></tr><tr><td>Ann</td><td>31</td></tr><tr><td>Bo</td><td>27</td></tr></table>",
+			{ extractors: false },
+		);
+		expect(markdown.split("\n")[0]).toMatch(/^\| \*\*Name\*\* +\| \*\*Age\*\* +\|$/);
+		expect(markdown).not.toMatch(/^\|\s+\|\s+\|$/m);
+	});
+
+	it("keeps the empty header when the first row of a table without <th> is data", () => {
+		const markdown = htmlToMarkdown("<table><tr><td>Ann</td><td>31</td></tr><tr><td>Bo</td><td>27</td></tr></table>", {
+			extractors: false,
+		});
+		expect(markdown).toMatch(/\| Ann +\| 31 +\|/);
+		expect(markdown.split("\n")[0]).toMatch(/^\|\s+\|\s+\|$/);
+	});
+
+	it("drops table columns that are empty in every row", () => {
+		const markdown = htmlToMarkdown(
+			"<table><tr><th>A</th><th></th><th>B</th></tr><tr><td>1</td><td> </td><td>2</td></tr><tr><td>3</td><td></td><td>4</td></tr></table>",
+			{ extractors: false },
+		);
+		expect(markdown.split("\n")[0]).toMatch(/^\| A +\| B +\|$/);
+	});
+
+	it("moves whitespace out of bold and italic so the delimiters still apply", () => {
+		const markdown = htmlToMarkdown("<p><b>WIN55 </b>builds<em> fast</em> things<b> </b>here</p>", {
+			extractors: false,
+		});
+		expect(markdown.trimEnd()).toBe("**WIN55** builds *fast* things here");
+	});
+
+	it("drops ligature icon-font names but keeps icon-classed containers", () => {
+		const markdown = htmlToMarkdown(
+			'<div><p><i class="material-icons">query_builder</i> 2026/09/04</p><label class="material-icons"><h3>Overview</h3></label></div>',
+			{ extractors: false },
+		);
+		expect(markdown).not.toContain("query_builder");
+		expect(markdown).toContain("2026/09/04");
+		expect(markdown).toContain("### Overview");
+	});
+
+	it("separates side-by-side inline elements where the script changes, not inside a word", () => {
+		const markdown = htmlToMarkdown(
+			"<p><span>时间：2026-04-10</span><span>点击次数：262</span></p><p><span>Sp</span><span>arks</span></p>",
+			{ extractors: false },
+		);
+		expect(markdown).toContain("时间：2026-04-10 点击次数：262");
+		expect(markdown).toContain("Sparks");
+	});
+
+	it("keeps elements whose type attribute hastscript would read as a node", () => {
+		const markdown = htmlToMarkdown(
+			'<div><p>Intro</p><button type="text">Menu</button><ol><li type="a" value="3">Third</li></ol><select type="currency" value="x"><option>USD</option></select></div>',
+			{ extractors: false },
+		);
+		expect(markdown).toContain("Intro");
+		expect(markdown).toContain("Third");
+	});
+
+	it("splits paragraphs at <br><br> and drops breaks at paragraph edges", () => {
+		const markdown = htmlToMarkdown("<p><br>First line<br>second line<br><br>Next part<br></p>", {
+			extractors: false,
+		});
+		expect(markdown.trimEnd()).toBe("First line\\\nsecond line\n\nNext part");
 	});
 });
 

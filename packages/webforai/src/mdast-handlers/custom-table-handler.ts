@@ -1,6 +1,7 @@
 import type { Element } from "hast";
 import { type Handle, defaultHandlers } from "hast-util-to-mdast";
 import { toText } from "hast-util-to-text";
+import type { Table, TableCell, TableRow } from "mdast";
 
 import { findElement, isElement, numericProperty, walk } from "../utils/hast-fast";
 import { flattenTableCells, tableHasCodeSamples, unfoldTable } from "./table-cell-flatten";
@@ -41,6 +42,48 @@ const startsWithHeaderRow = (table: Element): boolean => {
 	return cells.length > 0 && cells.every((cell) => cell.tagName === "th");
 };
 
+const isEmptyCell = (cell: TableCell): boolean =>
+	cell.children.every((child) => child.type === "text" && child.value.trim() === "");
+
+/** A row whose non-empty cells are each a single bold run: a header written with `<td><b>`. */
+const isBoldRow = (row: TableRow): boolean => {
+	const filled = row.children.filter((cell) => !isEmptyCell(cell));
+	return (
+		filled.length > 0 &&
+		filled.every((cell) => {
+			const content = cell.children.filter((child) => !(child.type === "text" && child.value.trim() === ""));
+			return content.length === 1 && content[0].type === "strong";
+		})
+	);
+};
+
+/**
+ * Drops structure that only page layout gives a table: columns empty in every row (spacer and
+ * icon-less status cells), and an all-empty first row.
+ *
+ * A table without `<th>` comes out of the converter with an empty header row, because GFM tables
+ * must have one. When the first body row is visibly a header — every non-empty cell entirely bold
+ * — it becomes the header instead; a first row of ordinary data keeps the empty header.
+ */
+const tidyTable = (table: Table): void => {
+	const width = Math.max(0, ...table.children.map((row) => row.children.length));
+	const keep = Array.from({ length: width }, (_, column) =>
+		table.children.some((row) => row.children[column] && !isEmptyCell(row.children[column])),
+	);
+	if (keep.some((kept) => !kept) && keep.some(Boolean)) {
+		for (const row of table.children) {
+			row.children = row.children.filter((_, column) => keep[column] ?? true);
+		}
+		if (table.align) {
+			table.align = table.align.filter((_, column) => keep[column] ?? true);
+		}
+	}
+	const [first, second] = table.children;
+	if (first && second && first.children.every(isEmptyCell) && isBoldRow(second)) {
+		table.children.shift();
+	}
+};
+
 export const customTableHandler =
 	(options?: { asText?: boolean }): Handle =>
 	(state, node) => {
@@ -59,5 +102,6 @@ export const customTableHandler =
 			return unfoldTable(result, startsWithHeaderRow(node));
 		}
 		flattenTableCells(result);
+		tidyTable(result);
 		return result;
 	};

@@ -4,7 +4,7 @@ import type { Nodes as Mdast } from "mdast";
 import { parseHtml } from "./utils/parse-html";
 
 import { extractMdast } from "./extract-mdast";
-import { type ExtractorSelectors, pipeExtractors } from "./extractors";
+import { type ExtractionReport, type ExtractorSelectors, pipeExtractors } from "./extractors";
 import { customAHandler } from "./mdast-handlers/custom-a-handler";
 import { customCodeHandler } from "./mdast-handlers/custom-code-handler";
 import { customDivHandler } from "./mdast-handlers/custom-div-handler";
@@ -43,6 +43,11 @@ export type HtmlToMdastOptions = {
 	 * the single most expensive step on large documents.
 	 */
 	owned?: boolean;
+	/**
+	 * Receives what the extractor reports about its result: which extractor ran and, for the
+	 * learned extractor, a page confidence. See {@link ExtractionReport}.
+	 */
+	onExtraction?: (report: ExtractionReport) => void;
 };
 
 /**
@@ -78,7 +83,10 @@ export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOpti
 
 	// Own the tree before extraction: disabled or custom extractors may return their input,
 	// and normalization plus conversion handlers mutate it regardless of extractor choice.
-	const extractedHast = pipeExtractors({ hast: isOwned ? hast : cloneHast(hast), lang, url, owned: true }, extractors);
+	const extractedHast = pipeExtractors(
+		{ hast: isOwned ? hast : cloneHast(hast), lang, url, owned: true, report: options?.onExtraction },
+		extractors,
+	);
 
 	// Repairs markup the Markdown conversion cannot interpret (lazy image URLs, doubly-rendered
 	// maths, ARIA-only headings). Runs after extraction so it only visits surviving nodes.

@@ -82,6 +82,148 @@ const liftDisplayMathIn = (node: Mdast): void => {
 	}
 };
 
+const isBlank = (node: PhrasingContent): boolean =>
+	node.type === "break" || (node.type === "text" && node.value.trim() === "");
+
+const trimEdges = (children: PhrasingContent[]): PhrasingContent[] => {
+	let start = 0;
+	let end = children.length;
+	while (start < end && isBlank(children[start])) {
+		start += 1;
+	}
+	while (end > start && isBlank(children[end - 1])) {
+		end -= 1;
+	}
+	return children.slice(start, end);
+};
+
+/**
+ * Splits phrasing content at runs of two or more breaks (a `<br><br>` the page uses as a
+ * paragraph gap) and trims breaks at the edges of each part, which would render as stray
+ * backslashes. Single breaks inside a part stay.
+ */
+const splitAtBreakRuns = (children: PhrasingContent[]): PhrasingContent[][] => {
+	const parts: PhrasingContent[][] = [];
+	let current: PhrasingContent[] = [];
+	let breaks = 0;
+	let pending: PhrasingContent[] = [];
+	for (const phrasing of children) {
+		if (isBlank(phrasing)) {
+			breaks += phrasing.type === "break" ? 1 : 0;
+			pending.push(phrasing);
+			continue;
+		}
+		if (breaks >= 2) {
+			parts.push(current);
+			current = [];
+		} else {
+			current.push(...pending);
+		}
+		pending = [];
+		breaks = 0;
+		current.push(phrasing);
+	}
+	parts.push(current);
+	return parts.map(trimEdges).filter((part) => part.length > 0);
+};
+
+/**
+ * Tidies hard breaks, which Markdown writes as a trailing backslash: a paragraph is split where
+ * the page leaves a blank line with `<br><br>`, and breaks at the start or end of a paragraph or
+ * heading are dropped. A paragraph left with nothing is removed.
+ */
+const tidyBreaks = (node: Mdast): void => {
+	if (!("children" in node)) {
+		return;
+	}
+	const parent = node as Parent;
+	for (let index = 0; index < parent.children.length; index++) {
+		const child = parent.children[index] as Mdast;
+		if (child.type === "heading" && child.children.some((c) => c.type === "break")) {
+			child.children = trimEdges(child.children);
+		} else if (child.type === "paragraph" && child.children.some((c) => c.type === "break")) {
+			const parts = splitAtBreakRuns(child.children).map((children) => ({ ...child, children }));
+			parent.children.splice(index, 1, ...(parts as Parent["children"]));
+			index += parts.length - 1;
+			continue;
+		}
+		tidyBreaks(child);
+	}
+};
+
+const ATTENTION = new Set(["strong", "emphasis", "delete"]);
+
+/** Strips whitespace from the edges of an attention node's text; reports what was removed. */
+const stripEdgeWhitespace = (inner: PhrasingContent[]): { lead: boolean; trail: boolean } => {
+	const first = inner[0];
+	const last = inner[inner.length - 1];
+	const lead = first?.type === "text" && /^\s/.test(first.value);
+	const trail = last?.type === "text" && /\s$/.test(last.value);
+	if (lead && first.type === "text") {
+		first.value = first.value.trimStart();
+	}
+	if (trail && last.type === "text") {
+		last.value = last.value.trimEnd();
+	}
+	return { lead, trail };
+};
+
+/** Adds a space to the text on one side of `index`, or a new text node if there is none. */
+const spaceBeside = (children: Parent["children"], index: number, side: "before" | "after"): number => {
+	const neighbour = children[side === "before" ? index - 1 : index + 1] as Mdast | undefined;
+	if (neighbour?.type === "text") {
+		if (side === "before" && !/\s$/.test(neighbour.value)) {
+			neighbour.value += " ";
+		} else if (side === "after" && !/^\s/.test(neighbour.value)) {
+			neighbour.value = ` ${neighbour.value}`;
+		}
+		return 0;
+	}
+	// At the edge of the parent a space would only be encoded (`&#x20;`); between two nodes
+	// that are not text it separates them.
+	if (!neighbour) {
+		return 0;
+	}
+	children.splice(side === "before" ? index : index + 1, 0, { type: "text", value: " " } as Parent["children"][number]);
+	return 1;
+};
+
+/**
+ * Moves whitespace at the edges of strong/emphasis/delete outside them. `<b>WIN55 </b>next`
+ * would otherwise become `**WIN55 **next`, which Markdown does not read as bold: a closing
+ * delimiter may not follow whitespace. A node left with no text is replaced by the space.
+ */
+const hoistAttentionWhitespace = (node: Mdast): void => {
+	if (!("children" in node)) {
+		return;
+	}
+	const parent = node as Parent;
+	for (let index = 0; index < parent.children.length; index++) {
+		const child = parent.children[index] as Mdast;
+		hoistAttentionWhitespace(child);
+		if (!(ATTENTION.has(child.type) && "children" in child)) {
+			continue;
+		}
+		const inner = child.children as PhrasingContent[];
+		const { lead, trail } = stripEdgeWhitespace(inner);
+		if (inner.every((phrasing) => phrasing.type === "text" && phrasing.value === "")) {
+			// `<b> </b>`: keep only the separation, and only between two neighbours.
+			parent.children.splice(index, 1);
+			if ((lead || trail) && index > 0 && index < parent.children.length) {
+				spaceBeside(parent.children, index - 1, "after");
+			}
+			index -= 1;
+			continue;
+		}
+		if (lead) {
+			index += spaceBeside(parent.children, index, "before");
+		}
+		if (trail) {
+			spaceBeside(parent.children, index, "after");
+		}
+	}
+};
+
 export const extractMdast = (node: Mdast) => {
 	const extracted = filter(node, (node) => {
 		if (!emptyDeclarationFilter(node as Mdast)) {
@@ -91,6 +233,8 @@ export const extractMdast = (node: Mdast) => {
 	});
 	if (extracted) {
 		liftDisplayMathIn(extracted as Mdast);
+		tidyBreaks(extracted as Mdast);
+		hoistAttentionWhitespace(extracted as Mdast);
 	}
 	return extracted as Mdast;
 };

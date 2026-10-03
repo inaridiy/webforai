@@ -18,10 +18,12 @@ import { FEATURE_COUNT, STACKED_FEATURE_COUNT, blockFeatures, stackedFeatures } 
 import { type BlockModel, isUsableModel, scoreBlocks } from "../lib/block-model";
 import { BLOCK_MODEL, BLOCK_STACK_MODEL } from "../lib/block-model.generated";
 import { BLOCK_TAGS, type BlockFrame, type TextBlock, segmentBlocks } from "../lib/blocks";
+import { type ConfidenceInput, confidenceFeatures, scoreConfidence } from "../lib/confidence";
+import { CONFIDENCE_MODEL } from "../lib/confidence-model.generated";
 import { unwrapLayoutTables } from "../lib/layout-tables";
 import { REFERENCE_HEADING, cleanContent, stripNonContent } from "../lib/sanitize";
 import { takumiSelection } from "../lib/takumi-signal";
-import type { ExtractParams, Extractor } from "../types";
+import type { ExtractParams, ExtractionReport, Extractor } from "../types";
 import { takumiExtractor } from "./takumi";
 
 /**
@@ -38,6 +40,8 @@ export interface KiwameExtractorOptions {
 	stackModel?: BlockModel | null;
 	/** Run the widget clean-up of the heuristic extractor on the result. Default `true`. */
 	cleanup?: boolean;
+	/** Page-confidence model (see `lib/confidence`); defaults to the shipped one. */
+	confidenceModel?: BlockModel;
 }
 
 const findBody = (hast: Hast): Hast => findElement(hast, (element) => element.tagName === "body") ?? hast;
@@ -235,8 +239,19 @@ const pruneToBlocks = (element: Element | Root, kept: Set<Element>, ownerKept: b
 	return selfKept || keepChildren;
 };
 
+/** The extraction report: which extractor ran and the page confidence. */
+const report = (input: ConfidenceInput, model: BlockModel | undefined): ExtractionReport => ({
+	extractor: input.fellBack ? "takumi" : "kiwame",
+	confidence: scoreConfidence(confidenceFeatures(input), model),
+});
+
 export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Extractor => {
-	const { threshold = DEFAULT_THRESHOLD, model = BLOCK_MODEL, cleanup = true } = options;
+	const {
+		threshold = DEFAULT_THRESHOLD,
+		model = BLOCK_MODEL,
+		cleanup = true,
+		confidenceModel = CONFIDENCE_MODEL,
+	} = options;
 	const stackModel = options.stackModel === undefined ? BLOCK_STACK_MODEL : options.stackModel;
 	const usable = isUsableModel(model);
 	const stackUsable = stackModel ? isUsableModel(stackModel, STACKED_FEATURE_COUNT) : false;
@@ -270,7 +285,9 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 				kept.add(block.owner);
 			}
 		}
-		if (kept.size === 0) {
+		const fellBack = kept.size === 0;
+		params.report?.(report({ blocks, probabilities, threshold, takumiKept, fellBack }, confidenceModel));
+		if (fellBack) {
 			return takumiExtractor({ hast: body, lang, url: params.url, owned: true });
 		}
 

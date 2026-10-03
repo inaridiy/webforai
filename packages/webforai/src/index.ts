@@ -22,6 +22,7 @@ export {
 	type ExtractorSelectors,
 	type ExtractorSelector,
 	type ExtractParams,
+	type ExtractionReport,
 	type Extractor,
 } from "./extractors";
 
