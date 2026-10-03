@@ -1,6 +1,7 @@
 import { TimeoutError } from "@cloudflare/puppeteer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadHtml } from "./cf-puppeteer";
+import { annotateGeometry } from "./geometry";
 
 const mocks = vi.hoisted(() => ({
 	launch: vi.fn(),
@@ -8,6 +9,7 @@ const mocks = vi.hoisted(() => ({
 	close: vi.fn(),
 	goto: vi.fn(),
 	waitForNetworkIdle: vi.fn(),
+	evaluate: vi.fn(),
 	content: vi.fn(),
 	pageClose: vi.fn(),
 }));
@@ -26,6 +28,7 @@ beforeEach(() => {
 	mocks.newPage.mockResolvedValue({
 		goto: mocks.goto,
 		waitForNetworkIdle: mocks.waitForNetworkIdle,
+		evaluate: mocks.evaluate,
 		content: mocks.content,
 		close: mocks.pageClose,
 	});
@@ -39,6 +42,15 @@ describe("Cloudflare Puppeteer loader", () => {
 			mocks.content.mock.invocationCallOrder[0],
 		);
 		expect(mocks.close).toHaveBeenCalledTimes(1);
+	});
+
+	it("annotates rendered geometry after the page settles and before reading it", async () => {
+		await loadHtml("https://example.test", binding);
+		expect(mocks.evaluate).toHaveBeenCalledWith(annotateGeometry);
+		expect(mocks.waitForNetworkIdle.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.evaluate.mock.invocationCallOrder[0],
+		);
+		expect(mocks.evaluate.mock.invocationCallOrder[0]).toBeLessThan(mocks.content.mock.invocationCallOrder[0]);
 	});
 
 	it.each(["newPage", "goto", "content"] as const)("closes the browser when %s fails", async (method) => {

@@ -22,7 +22,14 @@ describe("Puppeteer loader", () => {
 		const html =
 			'<body><script>setTimeout(() => { document.body.textContent = "Rendered article"; }, 50)</script></body>';
 		const result = await loadHtml(`data:text/html,${encodeURIComponent(html)}`);
-		expect(result).toContain("<body>Rendered article</body>");
+		expect(result).toMatch(/<body[^>]*>Rendered article<\/body>/);
+	});
+
+	it("annotates every element with its rendered box", async () => {
+		const html = '<body><p>Visible</p><p style="display:none">Hidden</p></body>';
+		const result = await loadHtml(`data:text/html,${encodeURIComponent(html)}`);
+		expect(result).toMatch(/<p data-rwidth="[1-9][\d.]*" data-rheight="[1-9][\d.]*">Visible<\/p>/);
+		expect(result).toMatch(/data-rwidth="0" data-rheight="0">Hidden<\/p>/);
 	});
 
 	it("closes its browser when navigation fails", async () => {
