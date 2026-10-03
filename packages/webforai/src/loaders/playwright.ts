@@ -1,5 +1,7 @@
 import { type Browser, type BrowserContext, chromium, devices } from "playwright-core";
 
+import { annotateGeometry } from "./geometry";
+
 export type LoadHtmlOptions = {
 	browser?: Browser;
 	timeout?: number;
@@ -59,14 +61,7 @@ export const loadHtml = async (url: string, options?: LoadHtmlOptions) => {
 		}
 
 		await page.goto(url, { waitUntil: waitUntil ?? "load", timeout });
-		await page.evaluate(() => {
-			const elements = document.querySelectorAll("*");
-			for (const element of elements) {
-				const rect = element.getBoundingClientRect();
-				element.setAttribute("data-rwidth", rect.width.toString());
-				element.setAttribute("data-rheight", rect.height.toString());
-			}
-		});
+		await page.evaluate(annotateGeometry);
 		return await page.content();
 	} finally {
 		if (browser) {

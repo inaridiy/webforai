@@ -1,5 +1,7 @@
 import puppeteer, { TimeoutError } from "@cloudflare/puppeteer";
 
+import { annotateGeometry } from "./geometry";
+
 export const loadHtml = async (url: string, ctx: puppeteer.BrowserWorker) => {
 	const browser = await puppeteer.launch(ctx);
 	try {
@@ -12,6 +14,7 @@ export const loadHtml = async (url: string, ctx: puppeteer.BrowserWorker) => {
 				throw error;
 			}
 		}
+		await page.evaluate(annotateGeometry);
 		return await page.content();
 	} finally {
 		await browser.close();
