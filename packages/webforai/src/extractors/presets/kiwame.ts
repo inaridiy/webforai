@@ -21,15 +21,19 @@ import { BLOCK_TAGS, type BlockFrame, type TextBlock, segmentBlocks } from "../l
 import { type ConfidenceInput, confidenceFeatures, scoreConfidence } from "../lib/confidence";
 import { CONFIDENCE_MODEL } from "../lib/confidence-model.generated";
 import { unwrapLayoutTables } from "../lib/layout-tables";
+import { type NeuralModel, isUsableNeuralModel, scoreBlocksNeural } from "../lib/neural-model";
+import { NEURAL_MODEL } from "../lib/neural-model.generated";
 import { REFERENCE_HEADING, cleanContent, stripNonContent } from "../lib/sanitize";
 import { takumiSelection } from "../lib/takumi-signal";
+import { truncateTrailingBoilerplate } from "../lib/terminators";
+import { pageTitle } from "../lib/title-anchor";
 import type { ExtractParams, ExtractionReport, Extractor } from "../types";
 import { takumiExtractor } from "./takumi";
 
 /**
  * Probability above which a block is kept, tuned together with the model's training settings.
  */
-export const DEFAULT_THRESHOLD = 0.47;
+export const DEFAULT_THRESHOLD = 0.5;
 
 export interface KiwameExtractorOptions {
 	/** Probability above which a block is kept. Default {@link DEFAULT_THRESHOLD}. */
@@ -42,6 +46,16 @@ export interface KiwameExtractorOptions {
 	cleanup?: boolean;
 	/** Page-confidence model (see `lib/confidence`); defaults to the shipped one. */
 	confidenceModel?: BlockModel;
+	/** Evaluation hook: replaces the models' block probabilities when it returns an array. */
+	probabilities?: (blocks: TextBlock[]) => Float32Array | undefined;
+	/** Apply the keep-rules (code, section headings, lists, tables). Default `true`. */
+	postRules?: boolean;
+	/** Sequence model averaged with the GBDT (see `lib/neural-model`); `null` disables it. */
+	neuralModel?: NeuralModel | null;
+	/** Weight of the sequence model in the average. Default {@link NEURAL_WEIGHT}. */
+	neuralWeight?: number;
+	/** The link-block clean-up spares elements holding a block with at least this probability. Default: `threshold`. */
+	cleanupSpare?: number;
 }
 
 const findBody = (hast: Hast): Hast => findElement(hast, (element) => element.tagName === "body") ?? hast;
@@ -239,6 +253,75 @@ const pruneToBlocks = (element: Element | Root, kept: Set<Element>, ownerKept: b
 	return selfKept || keepChildren;
 };
 
+/** Weight of the sequence model when averaged with the GBDT, chosen with the threshold. */
+export const NEURAL_WEIGHT = 0.6;
+
+const blend = (
+	blocks: TextBlock[],
+	features: Float32Array,
+	gbdt: Float32Array,
+	model: NeuralModel | null,
+	weight: number,
+): Float32Array => {
+	if (!model) {
+		return gbdt;
+	}
+	const neural = scoreBlocksNeural(blocks, features, FEATURE_COUNT, model);
+	const out = new Float32Array(gbdt.length);
+	for (let index = 0; index < out.length; index++) {
+		out[index] = weight * neural[index] + (1 - weight) * gbdt[index];
+	}
+	return out;
+};
+
+const scoreTwoStage = (
+	blocks: TextBlock[],
+	features: Float32Array,
+	model: BlockModel,
+	stackModel: BlockModel | null | undefined,
+): Float32Array => {
+	const scored = scoreBlocks(features, blocks.length, model, FEATURE_COUNT);
+	if (!stackModel) {
+		return scored;
+	}
+	return scoreBlocks(stackedFeatures(blocks, features, scored), blocks.length, stackModel, STACKED_FEATURE_COUNT);
+};
+
+const applyKeepRules = (
+	kept: Set<Element>,
+	blocks: TextBlock[],
+	probabilities: Float32Array,
+	enabled: boolean,
+): void => {
+	if (!enabled) {
+		return;
+	}
+	keepCodeInContent(kept, blocks, probabilities);
+	keepSectionHeadings(kept, blocks);
+	keepAuthoredLists(kept, blocks);
+	completeTables(kept, blocks);
+};
+
+/** Elements holding a block the model is sure of: the widget clean-up leaves them alone. */
+const spareSet = (
+	blocks: TextBlock[],
+	probabilities: Float32Array,
+	threshold: number | undefined,
+): Set<Element> | undefined => {
+	if (threshold === undefined) {
+		return undefined;
+	}
+	const spare = new Set<Element>();
+	for (const block of blocks) {
+		if (probabilities[block.index] >= threshold) {
+			for (let frame: BlockFrame | undefined = block.frame; frame; frame = frame.parent) {
+				spare.add(frame.element);
+			}
+		}
+	}
+	return spare;
+};
+
 /** The extraction report: which extractor ran and the page confidence. */
 const report = (input: ConfidenceInput, model: BlockModel | undefined): ExtractionReport => ({
 	extractor: input.fellBack ? "takumi" : "kiwame",
@@ -251,10 +334,15 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 		model = BLOCK_MODEL,
 		cleanup = true,
 		confidenceModel = CONFIDENCE_MODEL,
+		postRules = true,
 	} = options;
 	const stackModel = options.stackModel === undefined ? BLOCK_STACK_MODEL : options.stackModel;
 	const usable = isUsableModel(model);
 	const stackUsable = stackModel ? isUsableModel(stackModel, STACKED_FEATURE_COUNT) : false;
+	const stage2 = stackUsable ? stackModel : null;
+	const neuralOption = options.neuralModel === undefined ? NEURAL_MODEL : options.neuralModel;
+	const neural = isUsableNeuralModel(neuralOption ?? undefined, FEATURE_COUNT) ? (neuralOption as NeuralModel) : null;
+	const neuralWeight = options.neuralWeight ?? NEURAL_WEIGHT;
 
 	return (params: ExtractParams): Hast => {
 		if (!usable) {
@@ -262,6 +350,7 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 		}
 
 		const { hast, lang, owned } = params;
+		const title = pageTitle(hast);
 		const body = owned ? findBody(hast) : cloneHast(findBody(hast));
 		stripNonContent(body);
 
@@ -272,12 +361,10 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 
 		const collector = new MetricsCollector();
 		const takumiKept = takumiSelection(body, lang, params.url);
-		const features = blockFeatures({ root: body, blocks, collector, lang, takumiKept });
-		let probabilities = scoreBlocks(features, blocks.length, model, FEATURE_COUNT);
-		if (stackModel && stackUsable) {
-			const stacked = stackedFeatures(blocks, features, probabilities);
-			probabilities = scoreBlocks(stacked, blocks.length, stackModel, STACKED_FEATURE_COUNT);
-		}
+		const features = blockFeatures({ root: body, blocks, collector, lang, takumiKept, title });
+		const probabilities =
+			options.probabilities?.(blocks) ??
+			blend(blocks, features, scoreTwoStage(blocks, features, model, stage2), neural, neuralWeight);
 
 		const kept = new Set<Element>();
 		for (const block of blocks) {
@@ -291,10 +378,7 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 			return takumiExtractor({ hast: body, lang, url: params.url, owned: true });
 		}
 
-		keepCodeInContent(kept, blocks, probabilities);
-		keepSectionHeadings(kept, blocks);
-		keepAuthoredLists(kept, blocks);
-		completeTables(kept, blocks);
+		applyKeepRules(kept, blocks, probabilities, postRules);
 		pruneToBlocks(body, kept, false);
 		unwrapLayoutTables(body);
 		if (!cleanup) {
@@ -307,7 +391,14 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 				node.tagName = "div";
 			}
 		});
-		return cleanContent(body, new MetricsCollector());
+		// As in the heuristic extractor: the first tail-positioned terminator ("Related articles",
+		// "Was this page helpful?") ends the content, whatever the models scored after it.
+		truncateTrailingBoilerplate(body);
+		return cleanContent(
+			body,
+			new MetricsCollector(),
+			spareSet(blocks, probabilities, options.cleanupSpare ?? threshold),
+		);
 	};
 };
 
