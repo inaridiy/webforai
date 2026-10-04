@@ -47,15 +47,21 @@ block classifier:
 
 1. The page is split into **text blocks** — runs of inline content inside one block-level element.
 2. Each block gets cheap features: its text statistics and those of its neighbours, where it sits
-   in the document, class and role hints, and what the heuristic `takumiExtractor` (Readability-style
-   container scoring) would keep.
+   in the document, class and role hints, where it sits relative to the block that repeats the
+   page's title, and what the heuristic `takumiExtractor` (Readability-style container scoring)
+   would keep.
 3. A small **gradient-boosted tree model**, plus a second stage that looks at its neighbours'
-   scores, estimates the probability that each block is main content.
+   scores and at where each score sits within the page, estimates the probability that each block
+   is main content. A small **sequence model** reads the same blocks in page order — their
+   features, hashed words and character pairs, and the tag and class names around them — and its
+   estimate is averaged with the trees'.
 4. The tree is pruned to the kept blocks, keeping the original structure, so headings, lists,
-   tables and code convert as before.
+   tables and code convert as before. Link-only blocks the models chose to keep (a grid of product
+   cards, a list of results) survive the final clean-up; a trailing "Related articles" rail or
+   feedback widget still ends the content.
 
-The model ships as plain TypeScript arrays (no WASM, no runtime dependency), so it runs anywhere
-the library does. See [Benchmarks](/benchmarks) for how the output compares with other tools. The heuristic extractor is still available
+Both models ship as plain TypeScript (no WASM, no runtime dependency; about 220 KB of weights,
+the sequence model as int8), so they run anywhere the library does. See [Benchmarks](/benchmarks) for how the output compares with other tools. The heuristic extractor is still available
 as `takumiExtractor` (CLI: `--extractor takumi`), and it is what `kiwameExtractor` falls back to
 if the model keeps nothing.
 
