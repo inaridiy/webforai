@@ -1,5 +1,11 @@
 # site
 
+## 0.1.1
+
+### Patch Changes
+
+- [#71](https://github.com/inaridiy/webforai/pull/71) [`a1da0c5`](https://github.com/inaridiy/webforai/commit/a1da0c57c1cb1b649c9789dbae0f22df41c49db0) Thanks [@inaridiy](https://github.com/inaridiy)! - feat: cleaner Markdown structure, extraction confidence, parsing crash fix
+
 ## 0.1.0
 
 ### Minor Changes
