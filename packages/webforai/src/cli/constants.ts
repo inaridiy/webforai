@@ -1,3 +1,5 @@
+import { EXTRACTOR_PRESETS, type ExtractorPreset } from "../extractors/preset-names";
+
 export const DEFAULT_PATH = "https://example.com";
 
 /**
@@ -12,11 +14,9 @@ export type Loader = (typeof LOADERS)[number] | "local";
 export const MODES = ["default", "ai"] as const;
 export type Mode = (typeof MODES)[number];
 
-export const EXTRACTORS = ["auto", "readability", "agent", "kiwame", "takumi", "minimal", "none"] as const;
-export type ExtractorName = (typeof EXTRACTORS)[number];
-
-/** Presets the hosted platform accepts; `kiwame` is local-only for now. */
-export const PLATFORM_EXTRACTORS = ["auto", "takumi", "minimal", "none"] as const;
+/** Extraction presets, for local conversion and the hosted platform alike. */
+export const EXTRACTORS = EXTRACTOR_PRESETS;
+export type ExtractorName = ExtractorPreset;
 
 export const API_KEY_ENV = "WEBFORAI_API_KEY";
 export const PLATFORM_URL_ENV = "WEBFORAI_PLATFORM_URL";

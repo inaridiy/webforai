@@ -1,15 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import {
-	agentExtractor,
-	detectClientShell,
-	htmlToMarkdownWithMetadata,
-	kiwameExtractor,
-	minimalFilter,
-	takumiExtractor,
-} from "../../../index";
-import type { HtmlToMarkdownOptions } from "../../../index";
-import { type ExtractorPreset, createPlatformClient } from "../../../platform";
+import { detectClientShell, htmlToMarkdownWithMetadata, presetExtractors } from "../../../index";
+import { createPlatformClient } from "../../../platform";
 import { isUrl } from "../../utils";
 import { loadHtml } from "./loadHtml";
 import type { ResolvedRun, RunEnvelope } from "./options";
@@ -21,23 +13,6 @@ const debugLog = (enabled: boolean | undefined, message: string): void => {
 };
 
 const AI_MODE_OPTIONS = { linkAsText: true, tableAsText: true, hideImage: true } as const;
-
-const extractorOptions = (name: ResolvedRun["extractor"]): HtmlToMarkdownOptions["extractors"] => {
-	switch (name) {
-		case "takumi":
-			return takumiExtractor;
-		case "kiwame":
-			return kiwameExtractor;
-		case "agent":
-			return agentExtractor;
-		case "minimal":
-			return minimalFilter;
-		case "none":
-			return false;
-		default:
-			return undefined;
-	}
-};
 
 const convertViaPlatform = async (run: ResolvedRun): Promise<RunEnvelope> => {
 	const platform = createPlatformClient({ apiKey: run.apiKey, baseUrl: run.platformUrl });
@@ -52,8 +27,7 @@ const convertViaPlatform = async (run: ResolvedRun): Promise<RunEnvelope> => {
 		region: run.region,
 		screenshot: run.screenshot ? true : undefined,
 		respectRobotsTxt: run.respectRobotsTxt ? true : undefined,
-		// `kiwame` is rejected for the platform loader during option resolution.
-		convert: { extractor: run.extractor as ExtractorPreset, frontmatter: run.frontmatter },
+		convert: { extractor: run.extractor, frontmatter: run.frontmatter },
 	});
 
 	return {
@@ -64,6 +38,7 @@ const convertViaPlatform = async (run: ResolvedRun): Promise<RunEnvelope> => {
 		region: run.region,
 		markdown: result.markdown,
 		metadata: result.metadata,
+		extraction: result.extraction,
 		credits: result.credits,
 		screenshotUrl: result.screenshotUrl,
 		warning: result.warning,
@@ -74,11 +49,11 @@ const convertLocally = async (run: ResolvedRun): Promise<RunEnvelope> => {
 	const html = await loadHtml(run.source, run.loader, { debug: run.debug });
 	const sourceUrl = isUrl(run.source) ? run.source : undefined;
 
-	const { markdown, metadata } = htmlToMarkdownWithMetadata(html, {
+	const { markdown, metadata, extraction } = htmlToMarkdownWithMetadata(html, {
 		baseUrl: sourceUrl,
 		url: sourceUrl,
 		frontmatter: run.frontmatter,
-		extractors: extractorOptions(run.extractor),
+		extractors: presetExtractors(run.extractor),
 		...(run.mode === "ai" ? AI_MODE_OPTIONS : {}),
 	});
 
@@ -95,6 +70,7 @@ const convertLocally = async (run: ResolvedRun): Promise<RunEnvelope> => {
 		url: sourceUrl,
 		markdown,
 		metadata: metadata as unknown as Record<string, unknown>,
+		extraction,
 		warning,
 	};
 };

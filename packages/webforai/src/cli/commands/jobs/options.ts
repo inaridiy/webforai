@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { CRAWL_SITEMAP_MODES, REGIONS, REQUESTED_ENGINES } from "../../../platform";
 import type { CrawlSitemapMode, Region, RequestedEngine } from "../../../platform";
-import { API_KEY_ENV, PLATFORM_EXTRACTORS, PLATFORM_URL_ENV } from "../../constants";
+import { API_KEY_ENV, EXTRACTORS, PLATFORM_URL_ENV } from "../../constants";
 import { UsageError, missingApiKeyError } from "../webforai/options";
 
 /** Server-side caps (docs/specs/platform/03_api.md); checked locally to fail before billing. */
@@ -44,7 +44,7 @@ export interface ResolvedJob {
 	outputDir: string;
 	engine?: RequestedEngine;
 	region?: Region;
-	extractor: (typeof PLATFORM_EXTRACTORS)[number];
+	extractor: (typeof EXTRACTORS)[number];
 	frontmatter: boolean;
 	respectRobotsTxt?: boolean;
 	apiKey: string;
@@ -165,7 +165,7 @@ export const resolveJobOptions = (
 		outputDir: flags.output,
 		engine: flags.engine ? oneOf("engine", flags.engine, REQUESTED_ENGINES) : undefined,
 		region: flags.region ? oneOf("region", flags.region, REGIONS) : undefined,
-		extractor: flags.extractor ? oneOf("extractor", flags.extractor, PLATFORM_EXTRACTORS) : "auto",
+		extractor: flags.extractor ? oneOf("extractor", flags.extractor, EXTRACTORS) : "auto",
 		frontmatter: flags.frontmatter ?? false,
 		respectRobotsTxt: flags.respectRobots,
 		apiKey,

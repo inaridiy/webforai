@@ -59,6 +59,13 @@ describe("resolveRunOptions", () => {
 		expect(run).toMatchObject({ loader: "platform", respectRobotsTxt: true });
 	});
 
+	it("passes every extractor preset to the platform loader", () => {
+		for (const extractor of ["agent", "kiwame", "readability"]) {
+			const run = resolveRunOptions(URL_SOURCE, { loader: "platform", extractor }, { [API_KEY_ENV]: "k" });
+			expect(run).toMatchObject({ loader: "platform", extractor });
+		}
+	});
+
 	it("rejects an explicit remote loader for a local path", () => {
 		expect(() => resolveRunOptions(FIXTURE, { loader: "playwright" }, {})).toThrow(UsageError);
 	});
