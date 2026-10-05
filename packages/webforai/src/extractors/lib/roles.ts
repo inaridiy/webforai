@@ -106,8 +106,14 @@ const textOf = (node: ElementContent): string => {
 	return node.children.map((child) => textOf(child)).join("");
 };
 
-/** Links in a block's own inline content (not inside nested block elements). */
+const linkCache = new WeakMap<TextBlock, BlockLink[]>();
+
+/** Links in a block's own inline content (not inside nested block elements); cached per block. */
 export const blockLinks = (block: TextBlock): BlockLink[] => {
+	const cached = linkCache.get(block);
+	if (cached) {
+		return cached;
+	}
 	const out: BlockLink[] = [];
 	const visit = (element: Element) => {
 		for (const child of element.children) {
@@ -127,6 +133,7 @@ export const blockLinks = (block: TextBlock): BlockLink[] => {
 		}
 	};
 	visit(block.owner);
+	linkCache.set(block, out);
 	return out;
 };
 

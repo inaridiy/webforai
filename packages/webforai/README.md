@@ -100,6 +100,9 @@ see [Loaders](https://webforai.dev/docs/loaders).
   classifier (plain TypeScript, no WASM, runs in a Cloudflare Worker). See
   [How it works](https://webforai.dev/how-it-works) for the model, the benchmark and how to switch
   back to the heuristic extractor.
+- **Agent mode.** `agentExtractor` returns the same main content followed by the page's other
+  links grouped by role (related, pagination, section navigation, breadcrumb, site navigation),
+  so an agent can decide where to go next; `--extractor agent` on the CLI.
 - **Site adapters** for GitHub, Stack Overflow, npm, MDN, Zenn, Qiita, Medium, Substack, note,
   Hatena, WordPress, Wikipedia, Reddit, YouTube, Hacker News, Docusaurus, VitePress, MkDocs,
   Read the Docs and GitBook — matched by hostname or by a platform fingerprint, so self-hosted

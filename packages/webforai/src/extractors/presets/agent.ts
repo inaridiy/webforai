@@ -75,10 +75,27 @@ const addLinks = (sections: Sections, role: LinkRole, block: TextBlock, seen: Se
 		if (seen.has(link.href)) {
 			continue;
 		}
-		seen.add(link.href);
 		const list = sections.links.get(role) ?? [];
 		list.push(link);
 		sections.links.set(role, list);
+	}
+};
+
+/**
+ * Lists each link once: a URL found under several roles (a post in both the header menu and the
+ * related rail) goes to the most specific one, in {@link LINK_ROLES} order.
+ */
+const dedupe = (sections: Sections): void => {
+	const taken = new Set<string>();
+	for (const role of LINK_ROLES) {
+		const unique: BlockLink[] = [];
+		for (const link of sections.links.get(role) ?? []) {
+			if (!taken.has(link.href)) {
+				taken.add(link.href);
+				unique.push(link);
+			}
+		}
+		sections.links.set(role, unique);
 	}
 };
 
@@ -106,6 +123,7 @@ const collect = (
 			addLinks(sections, role, block, seen);
 		}
 	}
+	dedupe(sections);
 	return sections;
 };
 
@@ -160,4 +178,6 @@ export const createAgentExtractor = (options: AgentExtractorOptions = {}): Extra
 };
 
 /** The agent extractor behind the site adapters, like the default `autoExtractor`. */
-export const agentExtractor: Extractor = createAutoExtractor({ fallback: createAgentExtractor() });
+export const agentExtractor: Extractor = /* @__PURE__ */ createAutoExtractor({
+	fallback: /* @__PURE__ */ createAgentExtractor(),
+});
