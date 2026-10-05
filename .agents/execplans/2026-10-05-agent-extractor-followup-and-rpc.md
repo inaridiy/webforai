@@ -58,3 +58,6 @@ section "理想 PlatformRpc 契約" and its "webforai TODO" list).
   the old regex stopped a start tag at a `>` inside `data-mw='…'`, which also affected the
   existing >2M-character safety valve. Old and new regexes were quadratic on unclosed tags or
   quotes (550k chars: 17–25 s); the scanner takes milliseconds.
+- (2026-10-05) Accuracy check for the `stripScriptBodies` fix (`gold:eval --impl=…` on main's
+  source vs this branch): WCEB 3,985 pages, every group's P/R/F1 identical (all 0.892, macro
+  0.9179) and 0 pages with a different score; `stress` passes every case under 128 MB.
