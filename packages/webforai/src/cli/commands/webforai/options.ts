@@ -126,8 +126,8 @@ export const resolveRunOptions = (
 	};
 
 	if (resolved.loader === "platform") {
-		if (resolved.extractor === "kiwame") {
-			throw new UsageError("--extractor kiwame is only available for local conversion");
+		if (resolved.extractor === "kiwame" || resolved.extractor === "agent") {
+			throw new UsageError(`--extractor ${resolved.extractor} is only available for local conversion`);
 		}
 		applyPlatformFields(resolved, flags, env);
 	} else if (flags.screenshot) {

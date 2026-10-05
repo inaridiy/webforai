@@ -86,6 +86,49 @@ flag pages for review, retry with other options, or weigh results; it is absent 
 and custom extractors. Lower-level callers can receive the same report through
 `htmlToMdast(html, { onExtraction })`.
 
+### Agent Output
+
+`readabilityExtractor` (the default, also exported as `autoExtractor`) keeps only the main content —
+what a reader-mode view shows. An AI agent browsing a site also needs the links it might follow
+next. `agentExtractor` keeps exactly the same main content, then appends the reader comments and the
+page's other links, grouped by what they are for:
+
+```md
+<main content>
+
+## Comments
+...
+
+## Links
+
+### Related
+- [Sourdough starter](https://example.com/sourdough)
+
+### Pagination
+- [Next recipe](https://example.com/recipes/bread/2)
+
+### Section navigation
+### Breadcrumb
+### Site navigation
+```
+
+Share buttons, ads, sign-up boxes and legal links are left out, each link is listed once (under its
+most specific role), and empty groups are omitted. The roles come from small per-role models over
+kiwame's block features plus class, `aria-label` and `rel` hints and where each block sits relative
+to the main content (about 100 KB of weights, loaded only when you import `agentExtractor`).
+Site-adapter pages get the adapter's content without the link sections.
+
+```ts
+import { htmlToMarkdown, agentExtractor, createAgentExtractor } from "webforai";
+
+const forAgents = htmlToMarkdown(html, { url, extractors: agentExtractor });
+
+// Only the links that move through the site's content, no global menus:
+const nextSteps = createAgentExtractor({ roles: ["related", "pagination", "local_nav"] });
+```
+
+CLI: `webforai <url> --extractor agent` (local conversion only).
+
 ### Customizing the Extraction
 
 **webforai** allows you to define **multiple extractors** and chain them together.

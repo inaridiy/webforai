@@ -56,6 +56,16 @@ export interface KiwameExtractorOptions {
 	neuralWeight?: number;
 	/** The link-block clean-up spares elements holding a block with at least this probability. Default: `threshold`. */
 	cleanupSpare?: number;
+	/** Called with the scored page before pruning (the agent extractor reads the dropped blocks here). */
+	onScored?: (page: ScoredPage) => void;
+}
+
+/** A page as kiwame scored it: blocks, their feature rows and final probabilities. */
+export interface ScoredPage {
+	blocks: TextBlock[];
+	features: Float32Array;
+	probabilities: Float32Array;
+	threshold: number;
 }
 
 const findBody = (hast: Hast): Hast => findElement(hast, (element) => element.tagName === "body") ?? hast;
@@ -274,6 +284,17 @@ const blend = (
 	return out;
 };
 
+/**
+ * kiwame's block probabilities with the shipped models (both GBDT stages averaged with the
+ * sequence model), for tooling that needs them without extracting.
+ */
+export const scoreKiwameBlocks = (blocks: TextBlock[], features: Float32Array): Float32Array => {
+	const stage2 =
+		BLOCK_STACK_MODEL && isUsableModel(BLOCK_STACK_MODEL, STACKED_FEATURE_COUNT) ? BLOCK_STACK_MODEL : null;
+	const neural = isUsableNeuralModel(NEURAL_MODEL, FEATURE_COUNT) ? NEURAL_MODEL : null;
+	return blend(blocks, features, scoreTwoStage(blocks, features, BLOCK_MODEL, stage2), neural, NEURAL_WEIGHT);
+};
+
 const scoreTwoStage = (
 	blocks: TextBlock[],
 	features: Float32Array,
@@ -372,6 +393,7 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 				kept.add(block.owner);
 			}
 		}
+		options.onScored?.({ blocks, features, probabilities, threshold });
 		const fellBack = kept.size === 0;
 		params.report?.(report({ blocks, probabilities, threshold, takumiKept, fellBack }, confidenceModel));
 		if (fellBack) {
