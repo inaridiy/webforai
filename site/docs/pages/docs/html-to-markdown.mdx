@@ -24,6 +24,23 @@ const markdown = htmlToMarkdown(html);
 
 The converted Markdown string.
 
+## htmlToMarkdownWithMetadata
+
+Takes the same arguments and returns the Markdown together with what the conversion learned
+about the page:
+
+```ts twoslash
+import { htmlToMarkdownWithMetadata } from "webforai";
+
+const html = "<html><head><title>Hello</title></head><body><article><p>Hello, world!</p></article></body></html>";
+const { markdown, metadata, extraction } = htmlToMarkdownWithMetadata(html, { url: "https://example.com/" });
+// metadata: { title, description, author, published, modified, siteName, canonicalUrl, lang, image, type }
+// extraction: { extractor: "kiwame" | "takumi" | "adapter", confidence?: number }
+```
+
+`extraction.confidence` (0–1, kiwame only) estimates how well the selection matches the page's
+main content; see [How it works](/how-it-works#extraction-report-and-confidence).
+
 ## Parameters
 
 ### htmlOrHast
@@ -50,12 +67,52 @@ const markdown = htmlToMarkdown("<a href='/foo'>bar</a>", {
 // => "[bar](https://example.com/foo)"
 ```
 
+### options.url
+
+type: `string`
+
+The page's URL. Selects a site adapter (GitHub, MDN, …) and anchors the page title; read from
+the canonical link when absent.
+
+### options.frontmatter
+
+type: `boolean` (default `false`)
+
+Prepend a YAML front-matter block built from the page's metadata (JSON-LD, Open Graph, meta tags).
+
+### options.title
+
+type: `boolean` (default `true`)
+
+Prepend the page title as a `#` heading when the extracted content does not already open with it.
+Set to `false` to keep only what the extractor found.
+
 ### options.extractors
 
 type: `ExtractorSelectors`
 
-An array of extractors to extract specific elements from the HTML.
-You can define your own functions in addition to the Extractor provided as a preset.
+The extractor, or an array of extractors run in order, that select the content to convert.
+Omitted, `autoExtractor` runs; `false` converts the whole document. The built-in presets:
+
+| Extractor | Preset name | Selects |
+| --- | --- | --- |
+| `autoExtractor` / `readabilityExtractor` | `auto` / `readability` | A site adapter when one applies, otherwise `kiwameExtractor` (the default). |
+| `agentExtractor` | `agent` | The same main content, then reader comments and the page's other links grouped by role. `createAgentExtractor({ roles, comments })` picks the groups. |
+| `kiwameExtractor` | `kiwame` | The learned block classifier alone. `createKiwameExtractor({ threshold, … })` tunes it. |
+| `takumiExtractor` | `takumi` | The heuristic, Readability-style extractor. |
+| `minimalFilter` | `minimal` | Removes only what is clearly not content. |
+
+`presetExtractors(name)` returns the option for a preset name, and `EXTRACTOR_PRESETS` lists
+the names (the CLI's `--extractor` and the platform's `convert.extractor` take the same ones):
+
+```ts twoslash
+import { htmlToMarkdown, presetExtractors } from "webforai";
+
+const html = "<article><p>Hello, world!</p></article>";
+const markdown = htmlToMarkdown(html, { extractors: presetExtractors("agent") });
+```
+
+You can define your own functions in addition to the presets:
 
 ```ts twoslash
 import { htmlToMarkdown, type Extractor, takumiExtractor } from "webforai"

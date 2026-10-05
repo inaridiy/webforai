@@ -31,7 +31,7 @@ npx webforai@latest https://example.com --json | jq -r .markdown
 | `-o, --output <path>` | Write Markdown to a file instead of stdout. |
 | `-l, --loader <loader>` | `fetch` (default for URLs), `playwright`, or `platform`. Local files are detected automatically. |
 | `-m, --mode <mode>` | `default` or `ai` — `ai` strips links, tables and images down to plain text (local conversion only). |
-| `--extractor <name>` | Main-content extraction preset: `auto` (default: site adapters, then the learned `kiwame` classifier), `kiwame`, `takumi` (the heuristic, Readability-style extractor), `minimal`, or `none` for the whole page. The platform loader accepts all but `kiwame`. |
+| `--extractor <name>` | Main-content extraction preset: `auto` (default: site adapters, then the learned `kiwame` classifier; also named `readability`), `agent` (the same content, then reader comments and the page's other links grouped by role), `kiwame`, `takumi` (the heuristic, Readability-style extractor), `minimal`, or `none` for the whole page. Every preset works with every loader. |
 | `--frontmatter` | Prepend YAML front matter built from the page metadata (title, author, canonical URL, …). |
 | `--json` | Print a JSON envelope instead of raw Markdown (below). |
 | `--engine <engine>` | Platform engine: `auto` (renders JavaScript only when the page needs it), `fetch`, `browser`, `proxy-fetch`, `proxy-browser` (proxy engines need a subscription). Implies `-l platform`. |

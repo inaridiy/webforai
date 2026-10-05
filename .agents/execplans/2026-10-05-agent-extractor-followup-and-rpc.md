@@ -17,9 +17,13 @@ section "理想 PlatformRpc 契約" and its "webforai TODO" list).
 - [x] (2026-10-05) PlatformRpc: `tryConvert` (errors as data), `frontmatter`/`titleHeading`, unknown option
       keys ignored, typed metadata with ISO dates, `extraction`, coded `warnings[]`, `images[]`,
       errors with `httpStatus`/`contentType`/`retryable`. `convert` keeps throwing.
-- [ ] Docs: site (htmlToMarkdown options and presets, CLI, cookbook, platform API), READMEs,
+- [x] (2026-10-05) Docs: site (htmlToMarkdown options and presets, CLI, cookbook, platform API), READMEs,
       skill, specs revision notes; changesets.
-- [ ] Gates: biome, typecheck, `pnpm test --run`, platform tests + build.
+- [x] (2026-10-05) Gates: biome (no new warnings), typecheck, `pnpm run test --run` 872/875
+      (the 3 failures are KI-3, Playwright's pinned Chromium is not installed), platform 505
+      tests + build, site build (twoslash examples compile).
+- [ ] Owner: deploy the platform (TODO 7 of the Re:Babel plan), then release the library
+      (the CLI now sends `agent`/`kiwame`/`readability` to the platform).
 
 ## Decision log
 
