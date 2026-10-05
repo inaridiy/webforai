@@ -1,12 +1,4 @@
-import {
-	type ClientShellReason,
-	type ExtractorSelectors,
-	detectClientShell,
-	extractMetaRefresh,
-	htmlToMarkdownWithMetadata,
-	minimalFilter,
-	takumiExtractor,
-} from "webforai";
+import { type ClientShellReason, detectClientShell, extractMetaRefresh, htmlToMarkdownWithMetadata } from "webforai";
 
 import type { ArtifactStore } from "../artifacts/store";
 import { creditsFor } from "../billing/credits";
@@ -16,7 +8,7 @@ import { type RobotsTxtLoader, createRobotsTxtLoader } from "./robots-fetch";
 import { assertPublicHttpUrl } from "./ssrf";
 import {
 	type AcquiredPage,
-	type ConvertOptions,
+	type AcquisitionNote,
 	type Engine,
 	type EngineSet,
 	EscalationExhaustedError,
@@ -43,27 +35,6 @@ export interface ScrapeDeps {
 	/** Injected by unit tests for `respectRobotsTxt`; defaults to the edge-cached Workers loader. */
 	robotsTxt?: RobotsTxtLoader;
 }
-
-/**
- * Maps the API's extractor preset onto webforai's extractor pipeline.
- *
- * - `auto` (and an unset preset) leave `extractors` undefined so webforai applies its own
- *   default, `DEFAULT_EXTRACTORS = [autoExtractor]`.
- * - `takumi` / `minimal` pin a single preset extractor.
- * - `none` passes `false`, which `pipeExtractors` skips — the whole document is converted.
- */
-export const resolveExtractors = (preset: ConvertOptions["extractor"]): ExtractorSelectors | undefined => {
-	switch (preset) {
-		case "takumi":
-			return takumiExtractor;
-		case "minimal":
-			return minimalFilter;
-		case "none":
-			return false;
-		default:
-			return undefined;
-	}
-};
 
 const supportsScreenshot = (engine: Engine): boolean => SCREENSHOT_ENGINES.includes(engine);
 
@@ -150,6 +121,31 @@ const escalationWarning = (reason: ClientShellReason, escalation: Engine, error:
 		error instanceof Error ? error.message : String(error)
 	}); returning the unrendered result.`;
 
+const renderNotes = (page: FetchedPage): AcquisitionNote[] =>
+	page.renderTimedOut
+		? [
+				{
+					code: "browser_timeout",
+					message: "The page was still loading when the render budget ran out; content it loads later may be missing.",
+				},
+			]
+		: [];
+
+/** Binds a page to its engine, with the notes gathered on the way and the browser's own. */
+const acquired = (page: FetchedPage, engine: Engine, notes: AcquisitionNote[], warning?: string): AcquiredPage => {
+	const all = [...notes, ...renderNotes(page)];
+	return {
+		...page,
+		engine,
+		...(all.length === 0 ? {} : { notes: all }),
+		...(warning === undefined ? {} : { warning }),
+	};
+};
+
+/** The unrendered result of a shell: the REST `warning` and the same text as a coded note. */
+const unrendered = (page: FetchedPage, engine: Engine, notes: AcquisitionNote[], warning: string): AcquiredPage =>
+	acquired(page, engine, [...notes, { code: "client_shell_unrendered", message: warning }], warning);
+
 /**
  * Guards + HTML acquisition — the first half of `scrapePage`.
  *
@@ -183,11 +179,11 @@ export const fetchForScrape = async (deps: ScrapeDeps, req: ScrapeRequest): Prom
 	if (supportsScreenshot(base)) {
 		// Browser engines already ran the page's JavaScript; there is nothing to detect, and
 		// they follow meta refreshes themselves.
-		const page = await deps.engines[base](params);
-		return { ...page, engine: base };
+		return acquired(await deps.engines[base](params), base, []);
 	}
 
 	let page: FetchedPage;
+	const notes: AcquisitionNote[] = [];
 	try {
 		page = await deps.engines[base](params);
 
@@ -205,6 +201,10 @@ export const fetchForScrape = async (deps: ScrapeDeps, req: ScrapeRequest): Prom
 				await assertRobotsAllowed(deps, next);
 			}
 			page = await deps.engines[base]({ ...params, url: next.href });
+			notes.push({
+				code: "meta_refresh_followed",
+				message: `Followed a <meta http-equiv="refresh"> redirect to ${next.href}.`,
+			});
 		}
 	} catch (error) {
 		// The fetch tier produced nothing at all. When the failure is one a real browser
@@ -216,8 +216,7 @@ export const fetchForScrape = async (deps: ScrapeDeps, req: ScrapeRequest): Prom
 			throw error;
 		}
 		try {
-			const rendered = await deps.engines[escalation](params);
-			return { ...rendered, engine: escalation };
+			return acquired(await deps.engines[escalation](params), escalation, []);
 		} catch (escalationError) {
 			throw escalationFailed(base, error, escalation, escalationError);
 		}
@@ -225,18 +224,18 @@ export const fetchForScrape = async (deps: ScrapeDeps, req: ScrapeRequest): Prom
 
 	const verdict = detectClientShell(page.html);
 	if (!verdict.isShell || verdict.reason === undefined) {
-		return { ...page, engine: base };
+		return acquired(page, base, notes);
 	}
 	if (escalation === undefined) {
-		return { ...page, engine: base, warning: shellWarning(verdict.reason) };
+		return unrendered(page, base, notes, shellWarning(verdict.reason));
 	}
 	try {
-		const rendered = await deps.engines[escalation](params);
-		return { ...rendered, engine: escalation };
+		// The browser starts again from the requested URL and follows any refresh itself.
+		return acquired(await deps.engines[escalation](params), escalation, []);
 	} catch (error) {
 		// Best-effort: the caller asked for `auto`, and an unrendered page with a warning beats
 		// a hard failure when the browser tier is unavailable on this deployment.
-		return { ...page, engine: base, warning: escalationWarning(verdict.reason, escalation, error) };
+		return unrendered(page, base, notes, escalationWarning(verdict.reason, escalation, error));
 	}
 };
 
@@ -246,10 +245,10 @@ export const convertFetchedPage = async (
 	req: ScrapeRequest,
 	page: AcquiredPage,
 ): Promise<ScrapeSuccess> => {
-	const { markdown, metadata } = htmlToMarkdownWithMetadata(page.html, {
-		...toHtmlToMarkdownOptions(page.url, req.convert),
-		extractors: resolveExtractors(req.convert.extractor),
-	});
+	const { markdown, metadata, extraction } = htmlToMarkdownWithMetadata(
+		page.html,
+		toHtmlToMarkdownOptions(page.url, req.convert),
+	);
 
 	let screenshotUrl: string | undefined;
 	if (req.screenshot) {
@@ -270,6 +269,7 @@ export const convertFetchedPage = async (
 		engine: page.engine,
 		markdown: rehosted?.markdown ?? markdown,
 		metadata: { ...metadata },
+		...(extraction === undefined ? {} : { extraction }),
 		credits: creditsFor({
 			engine: page.engine,
 			screenshot: req.screenshot,

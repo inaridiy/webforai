@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { annotateGeometry } from "webforai/loaders/geometry";
 
 import { PlatformError } from "../core/types";
 import {
@@ -114,9 +115,18 @@ describe("guardPageRequests", () => {
 
 describe("readPageHtml", () => {
 	it("returns ordinary documents and refuses ones over the HTML cap", async () => {
-		await expect(readPageHtml({ content: () => Promise.resolve("<p>hi</p>") })).resolves.toBe("<p>hi</p>");
+		const evaluated: unknown[] = [];
+		const page = (html: string) => ({
+			content: () => Promise.resolve(html),
+			evaluate: (fn: () => void) => {
+				evaluated.push(fn);
+				return Promise.resolve();
+			},
+		});
+		await expect(readPageHtml(page("<p>hi</p>"))).resolves.toBe("<p>hi</p>");
+		expect(evaluated).toEqual([annotateGeometry]);
 		const huge = "a".repeat(MAX_HTML_BYTES + 1);
-		await expect(readPageHtml({ content: () => Promise.resolve(huge) })).rejects.toMatchObject({
+		await expect(readPageHtml(page(huge))).rejects.toMatchObject({
 			code: "response_too_large",
 			status: 413,
 		});

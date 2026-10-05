@@ -2,8 +2,6 @@ import type { ExtractorPreset } from "../extractors/preset-names";
 import type { ExtractionReport } from "../extractors/types";
 import type { PageMetadata } from "../metadata";
 
-export { EXTRACTOR_PRESETS, type ExtractorPreset } from "../extractors/preset-names";
-
 /**
  * Wire types for the webforai platform HTTP API (`/v1`) and its internal `PlatformRpc`
  * Service Binding entrypoint.

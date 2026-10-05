@@ -45,6 +45,7 @@ export const playgroundSchema: z.ZodType<PlaygroundResult> = z.object({
 	engine: z.string(),
 	markdown: z.string(),
 	metadata,
+	extraction: z.object({ extractor: z.string(), confidence: z.number().optional() }).optional(),
 	credits: count,
 	screenshotUrl: z.string().optional(),
 	images: z.array(z.object({ original: z.string(), rehosted: z.string() })).optional(),

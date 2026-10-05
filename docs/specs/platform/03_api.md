@@ -1,5 +1,9 @@
 # Platform API
 
+Revision note (2026-10-05, extractor presets): `convert.extractor` accepts every library preset
+(`auto | readability | agent | kiwame | takumi | minimal | none`; the list is the library's
+`EXTRACTOR_PRESETS`). Scrape results (sync, job pages, playground) carry `extraction`
+(`{ extractor, confidence? }`, the library's report), absent with `extractor: "none"`.
 Revision note (2026-10-01, review fixes): Job status/result reads (`GET /v1/jobs/*`) are exempt
 from the per-minute limit (polling a few jobs must not exhaust a free budget); a queued/running
 job whose row has not moved for an hour stops counting toward the concurrency cap (lost
@@ -105,7 +109,7 @@ Runs on the plain Worker (fast, not durable). With `"async": true` it instead en
   "respectRobotsTxt": false,     // opt-in robots.txt check (see below)
   "async": false,
   "convert": {                   // passthrough to webforai (all optional)
-    "extractor": "auto",        // auto | takumi | minimal | none
+    "extractor": "auto",        // auto | readability | agent | kiwame | takumi | minimal | none
     "frontmatter": true,
     "baseUrl": "..."
   }
@@ -126,6 +130,7 @@ failing, so one default can be set for a mixed-engine workload. Pricing is unaff
   "engine": "fetch",            // the engine that ran — `auto` resolves to a concrete one
   "markdown": "# ...",
   "metadata": { "title": "..." },
+  "extraction": { "extractor": "kiwame", "confidence": 0.93 }, // absent with extractor "none"
   "screenshotUrl": "https://...r2...", // when requested; expires
   "images": [{ "original": "https://...", "rehosted": "https://..." }],
   "credits": 1,

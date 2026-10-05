@@ -8,13 +8,13 @@ section "理想 PlatformRpc 契約" and its "webforai TODO" list).
 
 ## Progress
 
-- [ ] Library: one list of extractor preset names (`EXTRACTOR_PRESETS`) and resolver
+- [x] (2026-10-05) Library: one list of extractor preset names (`EXTRACTOR_PRESETS`) and resolver
       (`presetExtractors`), shared by the CLI and the platform; root exports the types the new
       options mention (`ScoredPage`, `RoleModels`, `LINK_ROLE_TITLES`); `webforai/platform`
       gains the new presets, `extraction` on scrape results, and the RPC wire types.
-- [ ] Platform: REST/playground/RPC accept every preset; scrape results carry `extraction`;
+- [x] (2026-10-05) Platform: REST/playground/RPC accept every preset; scrape results carry `extraction`;
       both browser engines annotate rendered geometry before reading the DOM.
-- [ ] PlatformRpc: `tryConvert` (errors as data), `frontmatter`/`titleHeading`, unknown option
+- [x] (2026-10-05) PlatformRpc: `tryConvert` (errors as data), `frontmatter`/`titleHeading`, unknown option
       keys ignored, typed metadata with ISO dates, `extraction`, coded `warnings[]`, `images[]`,
       errors with `httpStatus`/`contentType`/`retryable`. `convert` keeps throwing.
 - [ ] Docs: site (htmlToMarkdown options and presets, CLI, cookbook, platform API), READMEs,
@@ -35,3 +35,8 @@ section "理想 PlatformRpc 契約" and its "webforai TODO" list).
 - (2026-10-05) Warning codes: `client_shell_unrendered` (fetch-tier shell left unrendered),
   `browser_timeout` (the render budget ran out before the network went idle; the DOM read then
   is returned), `low_confidence` (kiwame confidence below 0.5), `meta_refresh_followed`.
+- (2026-10-05) `extraction.textLength` counts the markdown body (front matter removed, trimmed);
+  `extraction.extractor` falls back to the preset name for presets that report nothing
+  (`none`, `minimal`). `images[]` skips fenced code and private/local targets.
+- (2026-10-05) Webforai TODOs of the Re:Babel plan done here: 1–6, 8 (types in
+  `webforai/platform`), 9 (tenants in `02_architecture.md`). 7 (deploy) is the owner's.

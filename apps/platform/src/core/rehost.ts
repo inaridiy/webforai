@@ -46,7 +46,11 @@ const HTML_IMAGE = /<img\b[^<>]*?\bsrc\s*=\s*(?:"([^"<>]*)"|'([^'<>]*)'|([^\s<>]
 /** Markdown allows `<...>` around a destination; the angle brackets are not part of the URL. */
 const stripAngles = (raw: string): string => (raw.startsWith("<") && raw.endsWith(">") ? raw.slice(1, -1) : raw);
 
-const resolveImageUrl = (raw: string, baseUrl: string): string | undefined => {
+/**
+ * An image destination as written in the markdown → its absolute public http(s) URL, or
+ * `undefined` for data/script URLs, fragments and private or local targets.
+ */
+export const resolveImageUrl = (raw: string, baseUrl: string): string | undefined => {
 	const candidate = stripAngles(raw).trim();
 	if (!candidate || candidate.startsWith("#") || /^(data|javascript|mailto|tel):/i.test(candidate)) {
 		return undefined;

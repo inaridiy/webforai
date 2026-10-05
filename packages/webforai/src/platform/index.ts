@@ -7,11 +7,11 @@ export {
 	type WaitForJobOptions,
 } from "./client";
 export { PlatformApiError } from "./error";
+export { EXTRACTOR_PRESETS, type ExtractorPreset } from "../extractors/preset-names";
 export type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch";
 export {
 	CRAWL_SITEMAP_MODES,
 	ENGINES,
-	EXTRACTOR_PRESETS,
 	RPC_ENGINES,
 	RPC_ERROR_CODES,
 	RPC_FORMATS,
@@ -26,7 +26,6 @@ export {
 	type DemoResult,
 	type DemoScrapeOptions,
 	type Engine,
-	type ExtractorPreset,
 	type JobRef,
 	type JobResultItem,
 	type JobResultsPage,

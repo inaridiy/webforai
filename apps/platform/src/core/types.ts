@@ -1,4 +1,4 @@
-import type { HtmlToMarkdownOptions } from "webforai";
+import { type ExtractionReport, type ExtractorPreset, type HtmlToMarkdownOptions, presetExtractors } from "webforai";
 import type { Region } from "./regions";
 
 export const ENGINES = ["fetch", "browser", "proxy-fetch", "proxy-browser"] as const;
@@ -16,8 +16,10 @@ export type RequestedEngine = (typeof REQUESTED_ENGINES)[number];
 export const SCREENSHOT_ENGINES: readonly Engine[] = ["browser", "proxy-browser"];
 
 export interface ConvertOptions {
-	extractor?: "auto" | "takumi" | "minimal" | "none";
+	extractor?: ExtractorPreset;
 	frontmatter?: boolean;
+	/** Prepend the page title as a heading when the content lacks one. Absent means `true`. */
+	titleHeading?: boolean;
 	baseUrl?: string;
 }
 
@@ -44,14 +46,23 @@ export interface FetchedPage {
 	status: number;
 	/** PNG bytes, present only when the request asked for a screenshot and the engine supports it. */
 	screenshot?: Uint8Array;
+	/** Browser engines: the render budget ran out before the network went idle. */
+	renderTimedOut?: true;
+}
+
+/** Something worth knowing about how a page was acquired, coded for callers that act on it. */
+export interface AcquisitionNote {
+	code: "client_shell_unrendered" | "browser_timeout" | "meta_refresh_followed";
+	message: string;
 }
 
 /**
  * A fetched page bound to the engine that actually produced it. `engine` can differ from
  * the request's when that asked for `auto`; `warning` explains a result that is probably
- * not what the caller wanted (a client-rendered shell fetched without rendering).
+ * not what the caller wanted (a client-rendered shell fetched without rendering). `notes`
+ * carries the same and lesser observations with codes (read by `PlatformRpc`).
  */
-export type AcquiredPage = FetchedPage & { engine: Engine; warning?: string };
+export type AcquiredPage = FetchedPage & { engine: Engine; warning?: string; notes?: AcquisitionNote[] };
 
 export interface EngineFetchParams {
 	url: string;
@@ -78,6 +89,8 @@ export interface ScrapeSuccess extends ScrapeArtifacts {
 	engine: Engine;
 	markdown: string;
 	metadata: Record<string, unknown>;
+	/** The extractor that ran and, for kiwame, its confidence; absent with `extractor: "none"`. */
+	extraction?: ExtractionReport;
 	credits: number;
 	/** Present when the result is probably degraded (e.g. an unrendered client-side shell). */
 	warning?: string;
@@ -111,5 +124,6 @@ export const toHtmlToMarkdownOptions = (url: string, convert: ConvertOptions): H
 	baseUrl: convert.baseUrl ?? url,
 	url,
 	frontmatter: convert.frontmatter ?? true,
-	extractors: convert.extractor === "none" ? false : undefined,
+	title: convert.titleHeading ?? true,
+	extractors: presetExtractors(convert.extractor),
 });
