@@ -24,6 +24,8 @@ import { isElement, isParent, pruneInPlace } from "../../utils/hast-fast";
 const TERMINATOR_PATTERNS: RegExp[] = [
 	/^was this (page|article|document) helpful/i,
 	/^thanks for the feedback/i,
+	// Site-generator credit closing the page ("Powered by Docsify.js", "Powered by GitBook").
+	/^powered by\b/i,
 	/^(this page was )?last (modified|updated) (on|at|:)?\s/i,
 	/^learn how to contribute/i,
 	/^help (us )?improve\b/i,

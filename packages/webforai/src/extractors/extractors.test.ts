@@ -293,6 +293,17 @@ describe("trailing boilerplate truncation", () => {
 		expect(markdown).toContain("comment systems");
 	});
 
+	it("cuts at a site-generator credit (docsify's footer)", () => {
+		const html = article(
+			'<p>Powered by <a href="https://docsify.js.org/">Docsify.js</a> <a href="/edit">Edit Page</a></p><p>Trailing junk after the credit.</p>',
+		);
+		const markdown = htmlToMarkdown(html);
+
+		expect(markdown).toContain("Sentence with, some prose.");
+		expect(markdown).not.toContain("Powered by");
+		expect(markdown).not.toContain("Trailing junk");
+	});
+
 	it("removes a stranded feedback widget", () => {
 		const html = article(
 			"<div><p>Was this page helpful?</p><button>Yes</button><button>No</button><p>Thanks for the feedback. Ask on Stack Overflow.</p></div>",

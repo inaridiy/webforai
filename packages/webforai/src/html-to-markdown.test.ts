@@ -129,6 +129,47 @@ describe("htmlToMarkdown", () => {
 		);
 	});
 
+	it("reads SyntaxHighlighter's brush class (MDN)", () => {
+		const convert = (html: string) => htmlToMarkdown(html, { extractors: false });
+		expect(convert('<pre class="brush: js example-bad notranslate"><code>let a = 1;</code></pre>')).toBe(
+			"```js\nlet a = 1;\n```\n",
+		);
+		expect(convert('<pre class="brush:css"><code>a {}</code></pre>')).toBe("```css\na {}\n```\n");
+		expect(convert('<pre class="brush: plain notranslate"><code>a b c</code></pre>')).toBe("```\na b c\n```\n");
+	});
+
+	it("reads Sandpack's language class (react.dev) and ignores its other sp-* classes", () => {
+		const markdown = htmlToMarkdown(
+			'<div class="sandpack sandpack--codeblock"><div class="sp-wrapper"><div class="sp-stack"><div class="sp-code-editor"><pre class="sp-cm sp-pristine sp-javascript flex align-start"><code class="sp-pre-placeholder"><div class="cm-line"><span class="sp-syntax-keyword">const</span> <span class="sp-syntax-plain">PRODUCTS</span> = [];</div></code></pre></div></div></div></div>',
+			{ extractors: false },
+		);
+		expect(markdown).toBe("```javascript\nconst PRODUCTS = [];\n```\n");
+		expect(htmlToMarkdown('<pre class="sp-syntax-plain sp-wrapper"><code>x</code></pre>', { extractors: false })).toBe(
+			"```\nx\n```\n",
+		);
+	});
+
+	it("writes no language rather than a weak guess", () => {
+		// A JSX component: its <tr>/<th> tags used to make it "html", keyword counts "ts".
+		const jsx =
+			'function ProductCategoryRow({ category }) {\n  return (\n    <tr>\n      <th colSpan="2">\n        {category}\n      </th>\n    </tr>\n  );\n}';
+		expect(htmlToMarkdown(`<pre><code>${jsx.replace(/</g, "&lt;")}</code></pre>`, { extractors: false })).toBe(
+			`\`\`\`\n${jsx}\n\`\`\`\n`,
+		);
+		expect(htmlToMarkdown("<pre><code>npm install webforai</code></pre>", { extractors: false })).toBe(
+			"```\nnpm install webforai\n```\n",
+		);
+	});
+
+	it("still guesses a language from a decisive signal", () => {
+		expect(htmlToMarkdown("<pre><code>#!/bin/bash\necho hi</code></pre>", { extractors: false })).toBe(
+			"```bash\n#!/bin/bash\necho hi\n```\n",
+		);
+		expect(htmlToMarkdown("<pre><code>FROM node:22\nRUN pnpm install</code></pre>", { extractors: false })).toBe(
+			"```docker\nFROM node:22\nRUN pnpm install\n```\n",
+		);
+	});
+
 	it("keeps every example in a code tab group", () => {
 		const markdown = htmlToMarkdown(
 			'<div class="codegroup"><pre><code>first example</code></pre><pre><code>second example</code></pre></div>',

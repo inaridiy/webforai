@@ -252,6 +252,113 @@ export const removeIconFonts = (tree: Hast): void => {
 	}
 };
 
+const textOfNode = (node: Hast): string =>
+	node.type === "text" ? node.value : "children" in node ? node.children.map(textOfNode).join("") : "";
+
+/**
+ * Unwraps a heading's permalink: `<h2 id="x"><a href="#x">Title</a></h2>` (MDN, docsify's
+ * `#/page?id=x`) is an affordance for copying the section's URL, not a link to follow, and
+ * converts to `## [Title](#x)`. Only an in-page (`#…`) link that covers the heading's entire
+ * text qualifies: a heading that links to another page, or one with a link inside a longer
+ * title, keeps its link.
+ */
+export const unwrapHeadingAnchors = (tree: Hast): void => {
+	walk(tree, (node) => {
+		if (!(isElement(node) && /^h[1-6]$/.test(node.tagName))) {
+			return;
+		}
+		const title = textOfNode(node).trim();
+		if (title === "") {
+			return;
+		}
+		const anchorAt = node.children.findIndex(
+			(child) =>
+				isElement(child) &&
+				child.tagName === "a" &&
+				stringProperty(child, "href")?.startsWith("#") &&
+				textOfNode(child).trim() === title,
+		);
+		const anchor = node.children[anchorAt];
+		if (isElement(anchor)) {
+			node.children.splice(anchorAt, 1, ...anchor.children);
+		}
+	});
+};
+
+/** Language names that documentation sites print as a code block's label. */
+const LABEL_LANGUAGES = new Set([
+	"js",
+	"javascript",
+	"ts",
+	"typescript",
+	"jsx",
+	"tsx",
+	"html",
+	"css",
+	"scss",
+	"json",
+	"bash",
+	"sh",
+	"shell",
+	"console",
+	"python",
+	"py",
+	"sql",
+	"xml",
+	"yaml",
+	"toml",
+	"http",
+	"rust",
+	"go",
+	"java",
+	"kotlin",
+	"swift",
+	"c",
+	"cpp",
+	"md",
+	"markdown",
+	"diff",
+]);
+
+/** Labels that name no language: the label goes, the fence stays without an info string. */
+const LABEL_NO_LANGUAGE = new Set(["plain", "plaintext", "text"]);
+
+/**
+ * Folds a code block's language label into the block. Documentation sites print the language
+ * in a header beside the `<pre>` (MDN's `.code-example > .example-header > .language-name`);
+ * converted, it is a stray `js` paragraph above the fence. Only an element whose children are
+ * exactly the label and the `<pre>` qualifies, the label must be a known language name, and a
+ * heading is never treated as a label. The label becomes the `<pre>`'s `data-language` unless it
+ * already declares one; class-declared languages still take precedence in the code handler.
+ */
+export const foldCodeLabels = (tree: Hast): void => {
+	walk(tree, (node) => {
+		if (!isElement(node) || node.tagName === "pre") {
+			return;
+		}
+		const elements = node.children.filter(isElement);
+		if (elements.length !== 2 || node.children.some((child) => child.type === "text" && child.value.trim() !== "")) {
+			return;
+		}
+		const [label, pre] = elements;
+		if (
+			pre.tagName !== "pre" ||
+			/^(h[1-6]|pre)$/.test(label.tagName) ||
+			findElement(label, (el) => el.tagName === "pre")
+		) {
+			return;
+		}
+		const name = textOfNode(label).trim().toLowerCase();
+		if (!(LABEL_LANGUAGES.has(name) || LABEL_NO_LANGUAGE.has(name))) {
+			return;
+		}
+		if (LABEL_LANGUAGES.has(name) && pre.properties.dataLanguage === undefined) {
+			pre.properties.dataLanguage = name;
+		}
+		node.children = node.children.filter((child) => child !== label);
+	});
+};
+
 /** Inline elements that pages lay out side by side with CSS (margins, flex) instead of spaces. */
 const SPACED_INLINE = new Set(["span", "time", "label"]);
 
@@ -282,9 +389,6 @@ const needsSpace = (left: string, right: string): boolean => {
 	return a !== undefined && b !== undefined && a !== b;
 };
 const NO_SPACING = new Set(["pre", "code", "kbd", "samp", "ruby", "math", "svg"]);
-
-const textOfNode = (node: Hast): string =>
-	node.type === "text" ? node.value : "children" in node ? node.children.map(textOfNode).join("") : "";
 
 /**
  * Puts a space between adjacent inline elements that the page separates only visually:
@@ -326,6 +430,10 @@ export interface NormalizeOptions {
 	ariaHeadings?: boolean;
 	/** Remove ligature icon-font glyphs (Material Icons/Symbols). Default `true`. */
 	iconFonts?: boolean;
+	/** Unwrap in-page permalink anchors that cover a heading's whole text. Default `true`. */
+	headingAnchors?: boolean;
+	/** Fold a language label printed beside a code block into the block. Default `true`. */
+	codeLabels?: boolean;
 	/** Separate adjacent inline elements laid out side by side. Default `true`. */
 	inlineSpacing?: boolean;
 }
@@ -337,7 +445,15 @@ export interface NormalizeOptions {
  * @param options - {@link NormalizeOptions}
  */
 export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast => {
-	const { images = true, math = true, ariaHeadings = true, iconFonts = true, inlineSpacing = true } = options;
+	const {
+		images = true,
+		math = true,
+		ariaHeadings = true,
+		iconFonts = true,
+		headingAnchors = true,
+		codeLabels = true,
+		inlineSpacing = true,
+	} = options;
 
 	if (images) {
 		resolveImageSources(tree);
@@ -350,6 +466,12 @@ export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast 
 	}
 	if (iconFonts) {
 		removeIconFonts(tree);
+	}
+	if (headingAnchors) {
+		unwrapHeadingAnchors(tree);
+	}
+	if (codeLabels) {
+		foldCodeLabels(tree);
 	}
 	if (inlineSpacing) {
 		separateAdjacentInlines(tree);
