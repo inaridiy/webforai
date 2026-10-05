@@ -1,5 +1,11 @@
 # Platform Architecture
 
+Revision note (2026-10-05, script bodies): Browser engines (`browser`, `proxy-browser`) empty the
+script and style bodies conversion never reads (`stripScriptBodies` from the library: JSON-LD,
+YouTube's player response and bot-challenge scripts are kept) before the 5 MiB check, so inline
+bundles no longer push a page over the cap; `proxy-fetch` does the same inside the container before
+returning, after the raw-body cap that bounds proxy bandwidth. Over the 60-page corpus the HTML is
+45% smaller and the Markdown, metadata, extraction report and shell verdict are identical.
 Revision note (2026-10-05, internal RPC v2): `PlatformRpc` gains `tryConvert(url, options)`,
 which returns `{ ok: true, result } | { ok: false, error }` instead of throwing; `convert` keeps
 throwing `code: message` for existing callers. The wire types are `PlatformRpc` and the `Rpc*`

@@ -100,12 +100,15 @@ const scriptText = (root: Hast): string[] =>
 		script.children.map((child) => (child.type === "text" ? child.value : "")).join(""),
 	);
 
+/** The script variable holding a watch page's title, description and caption tracks. */
+export const PLAYER_RESPONSE_VARIABLE = "ytInitialPlayerResponse";
+
 const findPlayerResponse = (root: Hast): Record<string, unknown> | undefined => {
 	for (const source of scriptText(root)) {
-		if (!source.includes("ytInitialPlayerResponse")) {
+		if (!source.includes(PLAYER_RESPONSE_VARIABLE)) {
 			continue;
 		}
-		const parsed = extractAssignedJson(source, "ytInitialPlayerResponse");
+		const parsed = extractAssignedJson(source, PLAYER_RESPONSE_VARIABLE);
 		if (parsed && typeof parsed === "object") {
 			return parsed as Record<string, unknown>;
 		}

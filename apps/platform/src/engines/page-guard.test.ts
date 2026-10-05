@@ -124,7 +124,10 @@ describe("readPageHtml", () => {
 			},
 		});
 		await expect(readPageHtml(page("<p>hi</p>"))).resolves.toBe("<p>hi</p>");
-		expect(evaluated).toEqual([annotateGeometry]);
+		await expect(readPageHtml(page("<p>hi</p><script>bundle()</script>"))).resolves.toBe("<p>hi</p><script></script>");
+		expect(evaluated).toEqual([annotateGeometry, annotateGeometry]);
+		const scriptHeavy = `<p>hi</p><script>${"x".repeat(MAX_HTML_BYTES + 1)}</script>`;
+		await expect(readPageHtml(page(scriptHeavy))).resolves.toBe("<p>hi</p><script></script>");
 		const huge = "a".repeat(MAX_HTML_BYTES + 1);
 		await expect(readPageHtml(page(huge))).rejects.toMatchObject({
 			code: "response_too_large",

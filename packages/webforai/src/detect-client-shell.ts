@@ -40,7 +40,7 @@ const MOUNT_POINT_PATTERN =
 	/<[a-z][^>]*\sid=["'](?:root|app|__next|___gatsby|__nuxt|q-app|svelte|react-root)["']|<app-root[\s>]|\sdata-reactroot[\s>=]/i;
 
 /** Fingerprints of bot-challenge interstitials (Cloudflare, Imperva, PerimeterX, DataDome). */
-const CHALLENGE_PATTERN =
+export const CHALLENGE_PATTERN =
 	/cf-chl|challenge-platform|cf_chl_opt|just a moment|attention required|checking your browser|_incapsula_|px-captcha|datadome/i;
 
 const ENTITIES: Record<string, string> = {

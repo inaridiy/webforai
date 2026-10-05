@@ -67,3 +67,4 @@ export {
 } from "./extract-meta-refresh";
 export { extractMetadata, toFrontmatter, type PageMetadata } from "./metadata";
 export { normalizeHast, type NormalizeOptions } from "./normalize";
+export { stripScriptBodies } from "./utils/parse-html";

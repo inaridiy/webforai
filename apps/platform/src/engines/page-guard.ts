@@ -1,3 +1,4 @@
+import { stripScriptBodies } from "webforai";
 import { annotateGeometry } from "webforai/loaders/geometry";
 
 import { isPublicHttpUrl } from "../core/ssrf";
@@ -97,13 +98,17 @@ const encoder = new TextEncoder();
  * Each element's rendered box is written into the DOM first (`data-rwidth`/`data-rheight`, the
  * library's `annotateGeometry`), so extraction drops what the browser laid out to nothing — menus
  * and sections hidden by CSS classes — exactly as the library's own browser loaders do.
+ *
+ * Script and style bodies conversion never reads are emptied before the size check
+ * (`stripScriptBodies`): inline bundles count against neither the cap nor the transfer from
+ * the container, and the Markdown is the same.
  */
 export const readPageHtml = async (page: {
 	content(): Promise<string>;
 	evaluate(fn: () => void): Promise<unknown>;
 }): Promise<string> => {
 	await page.evaluate(annotateGeometry);
-	const html = await page.content();
+	const html = stripScriptBodies(await page.content());
 	// Each UTF-16 code unit encodes to at most 3 UTF-8 bytes, so short documents skip encoding.
 	if (html.length * 3 > MAX_HTML_BYTES && encoder.encode(html).byteLength > MAX_HTML_BYTES) {
 		throw new PlatformError("response_too_large", `rendered page exceeds ${MAX_HTML_BYTES} bytes`, 413);
