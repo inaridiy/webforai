@@ -102,7 +102,8 @@ see [Loaders](https://webforai.dev/docs/loaders).
   back to the heuristic extractor.
 - **Agent mode.** `agentExtractor` returns the same main content followed by the page's other
   links grouped by role (related, pagination, section navigation, breadcrumb, site navigation),
-  so an agent can decide where to go next; `--extractor agent` on the CLI.
+  so an agent can decide where to go next; `--extractor agent` on the CLI, and
+  `convert: { extractor: "agent" }` on the hosted platform.
 - **Site adapters** for GitHub, Stack Overflow, npm, MDN, Zenn, Qiita, Medium, Substack, note,
   Hatena, WordPress, Wikipedia, Reddit, YouTube, Hacker News, Docusaurus, VitePress, MkDocs,
   Read the Docs and GitBook — matched by hostname or by a platform fingerprint, so self-hosted

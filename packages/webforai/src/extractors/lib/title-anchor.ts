@@ -1,4 +1,4 @@
-import type { Element, Nodes } from "hast";
+import type { Nodes } from "hast";
 import { type MetricsCollector, findElement, stringProperty } from "../../utils/hast-fast";
 import type { BlockFrame, TextBlock } from "./blocks";
 

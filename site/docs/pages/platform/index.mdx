@@ -114,8 +114,9 @@ active subscription — on the free allowance they return `402 payment_required`
   batch, on by default for crawl (send `false` to turn it off); when on, a URL
   the rules disallow fails with `robots_disallowed` and is not billed. See
   [the API reference](/platform/api-reference#robotstxt).
-- `convert` — extraction options passed straight through to webforai (`extractor` preset,
-  `frontmatter`, `baseUrl`).
+- `convert` — extraction options passed straight through to webforai (`extractor` preset —
+  `auto`, `readability`, `agent`, `kiwame`, `takumi`, `minimal` or `none` —, `frontmatter`,
+  `baseUrl`). Results report which extractor ran and, for the learned one, its confidence.
 
 ## Accounts and pricing
 

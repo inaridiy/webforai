@@ -1,3 +1,4 @@
+import { EXTRACTOR_PRESETS } from "webforai";
 import { z } from "zod";
 import { MAX_PATH_PATTERNS, pathPatternProblem } from "../core/links";
 import { REGIONS } from "../core/regions";
@@ -41,7 +42,7 @@ const pathPatternsSchema = z.array(pathPatternSchema).max(MAX_PATH_PATTERNS);
 
 const convertSchema = z
 	.object({
-		extractor: z.enum(["auto", "takumi", "minimal", "none"]).optional(),
+		extractor: z.enum(EXTRACTOR_PRESETS).optional(),
 		frontmatter: z.boolean().optional(),
 		baseUrl: urlSchema.optional(),
 	})

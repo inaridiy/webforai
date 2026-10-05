@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { minimalFilter, takumiExtractor } from "webforai";
 
 import type { ArtifactStore } from "../artifacts/store";
 import type { FetchLike } from "./rehost";
 import { ALLOW_ALL, parseRobotsTxt } from "./robots";
 import type { RobotsTxtLoader } from "./robots-fetch";
-import { type ScrapeDeps, resolveExtractors, scrapePage } from "./scrape-core";
+import { type ScrapeDeps, fetchForScrape, scrapePage } from "./scrape-core";
 import {
 	type Engine,
 	type EngineFetchParams,
@@ -78,13 +77,67 @@ const deps = (engines: EngineSet, artifacts: ArtifactStore, fetchImpl: FetchLike
 });
 
 describe("extractor presets", () => {
-	it("maps API presets onto webforai's extractor pipeline", () => {
-		// `auto` stays undefined so webforai applies DEFAULT_EXTRACTORS ([autoExtractor]).
-		expect(resolveExtractors("auto")).toBeUndefined();
-		expect(resolveExtractors(undefined)).toBeUndefined();
-		expect(resolveExtractors("takumi")).toBe(takumiExtractor);
-		expect(resolveExtractors("minimal")).toBe(minimalFilter);
-		expect(resolveExtractors("none")).toBe(false);
+	it("reports the extractor, and keeps the page's other links under the agent preset", async () => {
+		const { artifacts } = fakeArtifacts();
+		const auto = await scrapePage(deps(fakeEngines(), artifacts), request());
+		expect(auto.extraction?.extractor).toBeDefined();
+		expect(auto.markdown).not.toContain("## Links");
+
+		const agent = await scrapePage(deps(fakeEngines(), artifacts), request({ convert: { extractor: "agent" } }));
+		expect(agent.markdown).toContain("First paragraph");
+
+		const none = await scrapePage(deps(fakeEngines(), artifacts), request({ convert: { extractor: "none" } }));
+		expect(none.extraction).toBeUndefined();
+		expect(none.markdown).toContain("[nav](https://example.com/elsewhere)");
+	});
+
+	it("leaves the title heading out when asked", async () => {
+		const { artifacts } = fakeArtifacts();
+		const html =
+			"<html><head><title>Only in head</title></head><body><article><p>Body text that is long enough to be the article content of this page.</p></article></body></html>";
+		const engines = fakeEngines({ fetch: (params) => Promise.resolve({ html, url: params.url, status: 200 }) });
+		const titled = await scrapePage(deps(engines, artifacts), request({ convert: { frontmatter: false } }));
+		const bare = await scrapePage(
+			deps(engines, artifacts),
+			request({ convert: { frontmatter: false, titleHeading: false } }),
+		);
+		expect(titled.markdown).toMatch(/^# Only in head/);
+		expect(bare.markdown).not.toContain("# Only in head");
+	});
+});
+
+describe("acquisition notes", () => {
+	it("codes a followed meta refresh, an unrendered shell and an unsettled render", async () => {
+		const { artifacts } = fakeArtifacts();
+		const refreshed = await fetchForScrape(
+			deps(fakeEngines({ fetch: stubServingEngine("fetch", { "/article": "/ja/" }) }), artifacts),
+			request(),
+		);
+		expect(refreshed.notes?.map((note) => note.code)).toEqual(["meta_refresh_followed"]);
+
+		const shell = await fetchForScrape(
+			deps(
+				fakeEngines({ fetch: (params) => Promise.resolve({ html: SHELL_HTML, url: params.url, status: 200 }) }),
+				artifacts,
+			),
+			request({ engine: "fetch" }),
+		);
+		expect(shell.notes).toEqual([{ code: "client_shell_unrendered", message: shell.warning }]);
+
+		const slow = await fetchForScrape(
+			deps(
+				fakeEngines({
+					browser: (params) =>
+						Promise.resolve({ html: PAGE_HTML, url: params.url, status: 200, renderTimedOut: true as const }),
+				}),
+				artifacts,
+			),
+			request({ engine: "browser" }),
+		);
+		expect(slow.notes?.map((note) => note.code)).toEqual(["browser_timeout"]);
+
+		const plain = await fetchForScrape(deps(fakeEngines(), artifacts), request());
+		expect(plain.notes).toBeUndefined();
 	});
 });
 

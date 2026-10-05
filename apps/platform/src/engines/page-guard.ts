@@ -1,3 +1,5 @@
+import { annotateGeometry } from "webforai/loaders/geometry";
+
 import { isPublicHttpUrl } from "../core/ssrf";
 import { PlatformError } from "../core/types";
 import { FETCH_TIMEOUT_MS, MAX_HTML_BYTES } from "./workers-fetch";
@@ -89,8 +91,18 @@ export const guardPageRequests = async (page: GuardablePage, options: GuardOptio
 
 const encoder = new TextEncoder();
 
-/** The rendered DOM, held to the same 5 MiB ceiling as fetched HTML; oversized pages fail. */
-export const readPageHtml = async (page: { content(): Promise<string> }): Promise<string> => {
+/**
+ * The rendered DOM, held to the same 5 MiB ceiling as fetched HTML; oversized pages fail.
+ *
+ * Each element's rendered box is written into the DOM first (`data-rwidth`/`data-rheight`, the
+ * library's `annotateGeometry`), so extraction drops what the browser laid out to nothing — menus
+ * and sections hidden by CSS classes — exactly as the library's own browser loaders do.
+ */
+export const readPageHtml = async (page: {
+	content(): Promise<string>;
+	evaluate(fn: () => void): Promise<unknown>;
+}): Promise<string> => {
+	await page.evaluate(annotateGeometry);
 	const html = await page.content();
 	// Each UTF-16 code unit encodes to at most 3 UTF-8 bytes, so short documents skip encoding.
 	if (html.length * 3 > MAX_HTML_BYTES && encoder.encode(html).byteLength > MAX_HTML_BYTES) {

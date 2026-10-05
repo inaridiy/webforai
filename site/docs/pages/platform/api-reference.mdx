@@ -149,7 +149,7 @@ instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and retu
   "respectRobotsTxt": false,    // opt-in; see robots.txt above
   "async": false,
   "convert": {                   // passthrough to webforai (all optional)
-    "extractor": "auto",         // auto (learned) | takumi (heuristic) | minimal | none — see /how-it-works
+    "extractor": "auto",         // auto | readability | agent | kiwame | takumi | minimal | none — see below
     "frontmatter": true,
     "baseUrl": "..."
   }
@@ -164,12 +164,32 @@ instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and retu
   "engine": "fetch",             // the engine that ran — "auto" resolves to a concrete one
   "markdown": "# ...",
   "metadata": { "title": "..." },
+  "extraction": { "extractor": "kiwame", "confidence": 0.93 }, // which extractor ran; absent with "none"
   "warning": "...",              // only when the result is probably degraded (unrendered shell)
   "screenshotUrl": "https://...r2...", // when requested; expires
   "images": [{ "original": "https://...", "rehosted": "https://..." }],
   "credits": 1
 }
 ```
+
+### Extractor presets
+
+`convert.extractor` picks how the main content is selected, with the same presets as the
+library and the CLI (see [How it works](/how-it-works)):
+
+| Preset | Output |
+| --- | --- |
+| `auto` (default), `readability` | A site adapter when one applies, otherwise the learned `kiwame` classifier: the main content, as a reader view shows it. |
+| `agent` | The same main content, then the reader comments and the page's other links grouped by role (Related, Pagination, Section navigation, Breadcrumb, Site navigation) — for AI agents that decide where to go next. |
+| `kiwame` | The learned classifier alone, without site adapters. |
+| `takumi` | The heuristic, Readability-style extractor. |
+| `minimal` | Removes only what is clearly not content (metadata, hidden nodes, page chrome). |
+| `none` | The whole page. |
+
+`extraction` in the response names what produced the content — `adapter`, `kiwame`, or `takumi`
+(kiwame's fallback) — and, for kiwame, `confidence`: an estimate from 0 to 1 of how well the
+selection matches the page's main content (about the expected token F1). Values below about 0.5
+flag pages worth a second look, or a retry with another preset.
 
 ### The `auto` engine
 

@@ -2,6 +2,7 @@ import { WorkerEntrypoint } from "cloudflare:workers";
 import { type Context, Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 
+import type { PlatformRpc as PlatformRpcContract, RpcConvertOutcome } from "webforai/platform";
 import { createArtifactStore } from "./artifacts/store";
 import { type Auth, createAuth } from "./auth/auth";
 import { type AuthVariables, requireApiKey, sessionMiddleware } from "./auth/middleware";
@@ -24,7 +25,7 @@ import { permalinkRoutes } from "./routes/permalink";
 import { playgroundRoutes } from "./routes/playground";
 import { requestBodyLimit, requireSameOrigin, securityHeaders } from "./routes/security";
 import { v1Routes } from "./routes/v1";
-import { type ConvertOptions, type ConvertResult, rpcConvert } from "./rpc/convert";
+import { type ConvertOptions, type ConvertResult, type RpcConvertDeps, rpcConvert, rpcTryConvert } from "./rpc/convert";
 
 /**
  * Composition root.
@@ -211,23 +212,30 @@ const RETRY_USAGE_PAGE_SIZE = 100;
 /** Each row costs a Stripe call and a D1 write; 4 pages stays well inside one invocation's D1 query limit. */
 const RETRY_USAGE_MAX_PAGES = 4;
 
+/** Outside the class: every method of a `WorkerEntrypoint`, private or not, is callable over RPC. */
+const rpcDeps = (env: Env): RpcConvertDeps => {
+	const config = loadConfig(env);
+	return {
+		scrape: { engines: createEngines(env, config), artifacts: createArtifactStore(env, config) },
+		limiter: env.RATE_LIMIT_INTERNAL,
+	};
+};
+
 /**
  * Internal conversion service for other Workers on this account, via a Service Binding:
  * `services: [{ binding: "WEBFORAI", service: "webforai-platform", entrypoint: "PlatformRpc" }]`.
  * No API key or billing — the binding is the credential; see `src/rpc/convert.ts` for what is
  * bypassed and what is kept (SSRF guard, Browser Run, the per-tenant `RATE_LIMIT_INTERNAL`).
+ * The contract is `PlatformRpc` in `webforai/platform`: `convert` throws `code: message`,
+ * `tryConvert` returns failures as data.
  */
-export class PlatformRpc extends WorkerEntrypoint<Env> {
+export class PlatformRpc extends WorkerEntrypoint<Env> implements PlatformRpcContract {
 	async convert(url: string, options: ConvertOptions): Promise<ConvertResult> {
-		const config = loadConfig(this.env);
-		return rpcConvert(
-			{
-				scrape: { engines: createEngines(this.env, config), artifacts: createArtifactStore(this.env, config) },
-				limiter: this.env.RATE_LIMIT_INTERNAL,
-			},
-			url,
-			options,
-		);
+		return rpcConvert(rpcDeps(this.env), url, options);
+	}
+
+	async tryConvert(url: string, options: ConvertOptions): Promise<RpcConvertOutcome> {
+		return rpcTryConvert(rpcDeps(this.env), url, options);
 	}
 }
 

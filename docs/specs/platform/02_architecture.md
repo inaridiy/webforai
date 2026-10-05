@@ -1,5 +1,27 @@
 # Platform Architecture
 
+Revision note (2026-10-05, internal RPC v2): `PlatformRpc` gains `tryConvert(url, options)`,
+which returns `{ ok: true, result } | { ok: false, error }` instead of throwing; `convert` keeps
+throwing `code: message` for existing callers. The wire types are `PlatformRpc` and the `Rpc*`
+types in `webforai/platform`; `src/rpc/convert.ts` implements them (`implements` on the
+entrypoint), so the published types follow the deployment. Options add `frontmatter` and
+`titleHeading` (both default `true`; a body-only caller sends `false`), accept every extractor
+preset, and drop unknown keys instead of rejecting them (a newer client can call an older
+deployment). Results add a literal `engine` (`fetch | browser`), `metadata` limited to the
+library's `PageMetadata` fields with `published`/`modified` as ISO-8601 when they parse,
+`extraction` (`extractor`, `confidence` or `null`, `textLength` of the body; no platform-side
+confidence threshold — the caller decides what is too low), coded
+`warnings[]` (`client_shell_unrendered`, `browser_timeout` — the render budget ran out before
+network idle, `meta_refresh_followed`) and
+`images[]` (absolute public URLs left in the markdown, outside code fences); `warning` stays for
+compatibility. Errors carry `code` (`invalid_request | invalid_url | rate_limited | fetch_failed |
+unsupported_content_type | response_too_large | engine_failed | internal_error`), `httpStatus`
+(the upstream status of a `fetch_failed`), `contentType` (of an `unsupported_content_type`, e.g.
+`application/pdf`) and `retryable`: false for bad input, unsupported or oversized content, an
+exhausted `auto` escalation and an upstream 4xx other than 408/425/429; true otherwise.
+Tenants: `shadcn-explorer`, `rebabel-prod`, `rebabel-dev` (`RATE_LIMIT_INTERNAL` is per tenant).
+Both browser engines now run the library's `annotateGeometry` before reading the DOM (as the
+library's loaders do since #73), and report when navigation never reached network idle.
 Revision note (2026-10-01): moved from README (operator/dashboard internals). Dashboard: a
 "Get set up" checklist (key → first request → optional billing) until the account has a key and
 usage; one usage panel (credits this month, estimate from `PRICE_TIERS`, plan + billing

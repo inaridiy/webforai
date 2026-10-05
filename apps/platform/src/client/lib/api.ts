@@ -76,6 +76,8 @@ export type PlaygroundResult = {
 	engine: string;
 	markdown: string;
 	metadata: Record<string, unknown>;
+	/** Which extractor ran and, for kiwame, its confidence (0–1, about the expected token F1). */
+	extraction?: { extractor: string; confidence?: number };
 	credits: number;
 	screenshotUrl?: string;
 	images?: { original: string; rehosted: string }[];

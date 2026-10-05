@@ -117,6 +117,8 @@ export interface ProxyFetchResult {
 export interface ProxyBrowserResult extends ProxyFetchResult {
 	/** Full-page PNG, base64-encoded because RPC returns must be plain-serializable. */
 	screenshotBase64?: string;
+	/** Set when the render budget ran out before the network went idle. */
+	renderTimedOut?: true;
 }
 
 /**
@@ -188,13 +190,19 @@ export const proxyBrowser = nodejsFn(
 				// Playwright forces it through the configured proxy, like every other request.
 				const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT, serviceWorkers: "block" });
 				const guard = await guardPageRequests(page, screenshot ? {} : { blockResourceTypes: UNUSED_RESOURCE_TYPES });
-				const response = await navigate(page, target, FETCH_TIMEOUT_MS);
+				const { response, settled } = await navigate(page, target, FETCH_TIMEOUT_MS);
 				guard.assertClean();
 				const finalUrl = assertAllowedUrl(page.url() || target);
 				const html = await readPageHtml(page);
 				const screenshotBase64 = screenshot ? (await captureScreenshot(page)).toString("base64") : undefined;
 
-				return { html, finalUrl, status: response?.status() ?? 200, screenshotBase64 };
+				return {
+					html,
+					finalUrl,
+					status: response?.status() ?? 200,
+					screenshotBase64,
+					...(settled ? {} : { renderTimedOut: true }),
+				};
 			});
 		} catch (error) {
 			throw normalizeFailure(error, target);

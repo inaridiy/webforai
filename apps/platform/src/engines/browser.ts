@@ -29,14 +29,20 @@ export const browserEngine = async (binding: Env["BROWSER"], params: EngineFetch
 			// Service workers would fetch outside request interception.
 			const page = await browser.newPage({ userAgent: PLATFORM_USER_AGENT, serviceWorkers: "block" });
 			const guard = await guardPageRequests(page);
-			const response = await navigate(page, target.href, FETCH_TIMEOUT_MS);
+			const { response, settled } = await navigate(page, target.href, FETCH_TIMEOUT_MS);
 
 			guard.assertClean();
 			const finalUrl = assertPublicHttpUrl(page.url() || target.href);
 			const html = await readPageHtml(page);
 			const screenshot = params.screenshot ? new Uint8Array(await captureScreenshot(page)) : undefined;
 
-			return { html, url: finalUrl.href, status: response?.status() ?? 200, screenshot };
+			return {
+				html,
+				url: finalUrl.href,
+				status: response?.status() ?? 200,
+				screenshot,
+				...(settled ? {} : { renderTimedOut: true }),
+			};
 		});
 	} catch (error) {
 		if (error instanceof PlatformError) {

@@ -19,23 +19,31 @@ export type NavigablePage<R = Response> = {
 
 const isTimeout = (error: unknown): boolean => error instanceof Error && error.name === "TimeoutError";
 
+export interface Navigation<R> {
+	response: R | null;
+	/** False when the budget ran out before the network went idle: late content may be missing. */
+	settled: boolean;
+}
+
 export const navigate = async <R>(
 	page: NavigablePage<R>,
 	url: string,
 	budgetMs: number,
 	now: () => number = Date.now,
-): Promise<R | null> => {
+): Promise<Navigation<R>> => {
 	const startedAt = now();
 	const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: budgetMs });
 	const remaining = budgetMs - (now() - startedAt);
-	if (remaining > 0) {
-		try {
-			await page.waitForLoadState("networkidle", { timeout: remaining });
-		} catch (error) {
-			if (!isTimeout(error)) {
-				throw error;
-			}
-		}
+	if (remaining <= 0) {
+		return { response, settled: false };
 	}
-	return response;
+	try {
+		await page.waitForLoadState("networkidle", { timeout: remaining });
+	} catch (error) {
+		if (!isTimeout(error)) {
+			throw error;
+		}
+		return { response, settled: false };
+	}
+	return { response, settled: true };
 };

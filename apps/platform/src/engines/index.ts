@@ -114,6 +114,7 @@ export const createEngines = (env: Env, config: AppConfig): EngineSet => ({
 			url: page.finalUrl,
 			status: page.status,
 			screenshot: page.screenshotBase64 ? decodeBase64(page.screenshotBase64) : undefined,
+			...(page.renderTimedOut ? { renderTimedOut: true } : {}),
 		};
 	},
 });

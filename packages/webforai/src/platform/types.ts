@@ -1,5 +1,10 @@
+import type { ExtractorPreset } from "../extractors/preset-names";
+import type { ExtractionReport } from "../extractors/types";
+import type { PageMetadata } from "../metadata";
+
 /**
- * Wire types for the webforai platform HTTP API (`/v1`).
+ * Wire types for the webforai platform HTTP API (`/v1`) and its internal `PlatformRpc`
+ * Service Binding entrypoint.
  *
  * These mirror the server contract exactly (`apps/platform/src/routes/*` in the webforai
  * repository is the source of truth). Request bodies are validated strictly server-side:
@@ -22,9 +27,6 @@ export type RequestedEngine = (typeof REQUESTED_ENGINES)[number];
 /** Egress regions the hosted platform can honour (Japan, or no geo-targeting). */
 export const REGIONS = ["auto", "jp"] as const;
 export type Region = (typeof REGIONS)[number];
-
-/** Extraction presets understood by the platform (passed through to the webforai library). */
-export type ExtractorPreset = "auto" | "takumi" | "minimal" | "none";
 
 export interface ConvertOptions {
 	extractor?: ExtractorPreset;
@@ -90,6 +92,11 @@ export interface ScrapeResult {
 	engine: Engine;
 	markdown: string;
 	metadata: Record<string, unknown>;
+	/**
+	 * Which extractor produced the content and, for kiwame, its confidence (0–1, about the
+	 * expected token F1). Absent with `extractor: "none"` and from deployments before 2026-10-05.
+	 */
+	extraction?: ExtractionReport;
 	credits: number;
 	/** Present when a screenshot was requested; the URL expires after ~24h. */
 	screenshotUrl?: string;
@@ -181,3 +188,111 @@ export interface DemoResult {
 /** Narrows a job-results item to the out-of-band stub form. */
 export const isStoredPageStub = (item: JobResultItem): item is StoredPageStub =>
 	item.status === "ok" && "resultUrl" in item;
+
+/*
+ * PlatformRpc — the internal conversion service other Workers on the platform's Cloudflare
+ * account reach through a Service Binding:
+ *
+ *   services: [{ binding: "WEBFORAI", service: "webforai-platform", entrypoint: "PlatformRpc" }]
+ *
+ * No API key or billing: the binding is the credential. The platform implements these types
+ * (`apps/platform/src/rpc/convert.ts` is checked against them), so they match the deployment.
+ */
+
+/** Engines the RPC offers; proxy engines are not available over RPC. */
+export const RPC_ENGINES = ["auto", "fetch", "browser"] as const;
+export type RpcEngine = (typeof RPC_ENGINES)[number];
+
+export const RPC_FORMATS = ["markdown", "links"] as const;
+export type RpcFormat = (typeof RPC_FORMATS)[number];
+
+export interface RpcConvertOptions {
+	/** Who is calling, for logs and the per-tenant rate limit: `/^[a-z0-9][a-z0-9._-]*$/i`, at most 64 characters. */
+	tenant: string;
+	/** Default `["markdown"]`. */
+	formats?: RpcFormat[];
+	/** Default `auto`. */
+	extractor?: ExtractorPreset;
+	/** Default `auto`: `fetch`, escalated to `browser` for a client-rendered shell or a bot wall. */
+	engine?: RpcEngine;
+	/** Prepend YAML front matter built from the page's metadata. Default `true`. */
+	frontmatter?: boolean;
+	/** Prepend the page title as a `#` heading when the content lacks one. Default `true`. */
+	titleHeading?: boolean;
+}
+
+/** Metadata the page publishes about itself; `published`/`modified` are ISO-8601 when they parse, verbatim otherwise. */
+export type RpcPageMetadata = PageMetadata;
+
+export const RPC_WARNING_CODES = [
+	/** The fetched HTML is a client-rendered shell and rendering it was not possible; the markdown is probably empty. */
+	"client_shell_unrendered",
+	/** The browser's render budget ran out before the network went idle; content loaded later may be missing. */
+	"browser_timeout",
+	/** The URL answered with a `<meta http-equiv="refresh">` redirect, which was followed; `url` is where it led. */
+	"meta_refresh_followed",
+] as const;
+export type RpcWarningCode = (typeof RPC_WARNING_CODES)[number];
+
+export interface RpcWarning {
+	code: RpcWarningCode;
+	message: string;
+}
+
+export interface RpcConvertResult {
+	/** The final URL after redirects. */
+	url: string;
+	/** The engine that produced the page (`auto` resolved). */
+	engine: "fetch" | "browser";
+	/** Empty when `formats` omits `markdown`; only the body when `frontmatter` and `titleHeading` are `false`. */
+	markdown: string;
+	/** Every http(s) link on the page, absolute, when `formats` includes `links`. */
+	links?: string[];
+	/** Present when `formats` includes `markdown`. */
+	metadata?: RpcPageMetadata;
+	/**
+	 * Present when `formats` includes `markdown`. `confidence` is kiwame's estimate (0–1, about the
+	 * expected token F1 against the page's main content), `null` for other extractors; how low is
+	 * too low is the caller's call. `textLength` counts the characters of the markdown body.
+	 */
+	extraction?: { extractor: string; confidence: number | null; textLength: number };
+	warnings?: RpcWarning[];
+	/** Absolute URLs of the images left in the markdown, in order, each once. */
+	images?: { url: string; alt?: string }[];
+	/** @deprecated The first warning's message; read `warnings`. */
+	warning?: string;
+}
+
+export const RPC_ERROR_CODES = [
+	"invalid_request",
+	"invalid_url",
+	"rate_limited",
+	"fetch_failed",
+	"unsupported_content_type",
+	"response_too_large",
+	"engine_failed",
+	"internal_error",
+] as const;
+export type RpcErrorCode = (typeof RPC_ERROR_CODES)[number];
+
+export interface RpcConvertError {
+	code: RpcErrorCode;
+	message: string;
+	/** The upstream HTTP status, when the target answered with one (`fetch_failed`). */
+	httpStatus?: number;
+	/** The response's content type (`unsupported_content_type`, e.g. `application/pdf`). */
+	contentType?: string;
+	/** Whether the same call may succeed later. `false` for bad input, refusals the target will repeat, and unsupported content. */
+	retryable: boolean;
+}
+
+export type RpcConvertOutcome = { ok: true; result: RpcConvertResult } | { ok: false; error: RpcConvertError };
+
+/**
+ * The `PlatformRpc` entrypoint. `convert` throws an `Error` whose message is `"<code>: <message>"`
+ * (Workers RPC drops custom error properties); `tryConvert` returns failures as data.
+ */
+export interface PlatformRpc {
+	convert(url: string, options: RpcConvertOptions): Promise<RpcConvertResult>;
+	tryConvert(url: string, options: RpcConvertOptions): Promise<RpcConvertOutcome>;
+}

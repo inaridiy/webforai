@@ -7,10 +7,15 @@ export {
 	type WaitForJobOptions,
 } from "./client";
 export { PlatformApiError } from "./error";
+export { EXTRACTOR_PRESETS, type ExtractorPreset } from "../extractors/preset-names";
 export type { FetchLike, FetchRequestInit, FetchResponseLike } from "./fetch";
 export {
 	CRAWL_SITEMAP_MODES,
 	ENGINES,
+	RPC_ENGINES,
+	RPC_ERROR_CODES,
+	RPC_FORMATS,
+	RPC_WARNING_CODES,
 	REGIONS,
 	REQUESTED_ENGINES,
 	isStoredPageStub,
@@ -21,7 +26,6 @@ export {
 	type DemoResult,
 	type DemoScrapeOptions,
 	type Engine,
-	type ExtractorPreset,
 	type JobRef,
 	type JobResultItem,
 	type JobResultsPage,
@@ -32,8 +36,19 @@ export {
 	type PageFailure,
 	type PageResult,
 	type PageSuccess,
+	type PlatformRpc,
 	type Region,
 	type RequestedEngine,
+	type RpcConvertError,
+	type RpcConvertOptions,
+	type RpcConvertOutcome,
+	type RpcConvertResult,
+	type RpcEngine,
+	type RpcErrorCode,
+	type RpcFormat,
+	type RpcPageMetadata,
+	type RpcWarning,
+	type RpcWarningCode,
 	type ScrapeOptions,
 	type ScrapeResult,
 	type StoredPageStub,

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import type { ExtractionReport } from "../../../extractors";
 import { REGIONS, REQUESTED_ENGINES } from "../../../platform";
 import { API_KEY_ENV, EXTRACTORS, LOADERS, MODES, PLATFORM_URL_ENV } from "../../constants";
 import type { ExtractorName, Loader, Mode } from "../../constants";
@@ -126,9 +127,6 @@ export const resolveRunOptions = (
 	};
 
 	if (resolved.loader === "platform") {
-		if (resolved.extractor === "kiwame" || resolved.extractor === "agent") {
-			throw new UsageError(`--extractor ${resolved.extractor} is only available for local conversion`);
-		}
 		applyPlatformFields(resolved, flags, env);
 	} else if (flags.screenshot) {
 		throw new UsageError("--screenshot is only available with the platform loader (browser engines)");
@@ -149,6 +147,8 @@ export interface RunEnvelope {
 	region?: string;
 	markdown: string;
 	metadata: Record<string, unknown>;
+	/** Which extractor produced the content and, for kiwame, its confidence (0–1). */
+	extraction?: ExtractionReport;
 	credits?: number;
 	screenshotUrl?: string;
 	/** Present when the result is probably degraded (e.g. an unrendered client-side shell). */

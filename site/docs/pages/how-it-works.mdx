@@ -127,7 +127,9 @@ const forAgents = htmlToMarkdown(html, { url, extractors: agentExtractor });
 const nextSteps = createAgentExtractor({ roles: ["related", "pagination", "local_nav"] });
 ```
 
-CLI: `webforai <url> --extractor agent` (local conversion only).
+CLI: `webforai <url> --extractor agent`; on the hosted platform, `convert: { extractor: "agent" }`.
+`presetExtractors(name)` returns the `extractors` option for any preset name (`"agent"`,
+`"readability"`, `"kiwame"`, …), for code that takes the preset from configuration.
 
 ### Customizing the Extraction
 

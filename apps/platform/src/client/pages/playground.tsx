@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { EXTRACTOR_PRESETS } from "webforai/platform";
 import { ENGINE_CREDITS } from "../../billing/credits";
 import { MarkdownPanes } from "../components/markdown-panes";
 import {
@@ -51,12 +52,8 @@ const REGION_OPTIONS: SelectOption[] = [
 	{ value: "jp", label: "jp · paid" },
 ];
 
-const EXTRACTOR_OPTIONS: SelectOption[] = [
-	{ value: "auto", label: "auto" },
-	{ value: "takumi", label: "takumi" },
-	{ value: "minimal", label: "minimal" },
-	{ value: "none", label: "none" },
-];
+/** `webforai/platform` lists the presets without pulling the extractors into the SPA bundle. */
+const EXTRACTOR_OPTIONS: SelectOption[] = EXTRACTOR_PRESETS.map((value) => ({ value, label: value }));
 
 // `auto` renders in a browser when asked for a screenshot, and pins to the proxy tier when a
 // region is set — so both toggles stay live for it.
@@ -215,6 +212,14 @@ const ResultView = ({ result }: { result: PlaygroundResult }) => {
 					{result.credits} credit{result.credits === 1 ? "" : "s"} used
 				</Badge>
 				<Badge tone="neutral">{result.engine}</Badge>
+				{result.extraction === undefined ? null : (
+					<Badge tone="neutral">
+						{result.extraction.extractor}
+						{result.extraction.confidence === undefined
+							? ""
+							: ` · confidence ${result.extraction.confidence.toFixed(2)}`}
+					</Badge>
+				)}
 				{title === undefined ? null : <span className="font-medium text-foreground text-sm">{title}</span>}
 			</div>
 			{result.warning === undefined ? null : (

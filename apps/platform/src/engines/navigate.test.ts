@@ -24,9 +24,9 @@ describe("navigate", () => {
 		const clock = { t: 0 };
 		const { page, calls } = fakePage({ clock, gotoMs: 4_000 });
 
-		const response = await navigate(page, "https://example.com/", 30_000, () => clock.t);
+		const navigation = await navigate(page, "https://example.com/", 30_000, () => clock.t);
 
-		expect(response).toBe("response");
+		expect(navigation).toEqual({ response: "response", settled: true });
 		expect(calls).toEqual(["goto https://example.com/ domcontentloaded 30000", "wait networkidle 26000"]);
 	});
 
@@ -34,7 +34,10 @@ describe("navigate", () => {
 		const clock = { t: 0 };
 		const { page, calls } = fakePage({ clock, idle: () => Promise.reject(timeoutError()) });
 
-		await expect(navigate(page, "https://example.com/", 30_000, () => clock.t)).resolves.toBe("response");
+		await expect(navigate(page, "https://example.com/", 30_000, () => clock.t)).resolves.toEqual({
+			response: "response",
+			settled: false,
+		});
 		expect(calls.filter((call) => call.startsWith("goto"))).toHaveLength(1);
 	});
 
@@ -42,8 +45,9 @@ describe("navigate", () => {
 		const clock = { t: 0 };
 		const { page, calls } = fakePage({ clock, gotoMs: 30_000 });
 
-		await navigate(page, "https://example.com/", 30_000, () => clock.t);
+		const navigation = await navigate(page, "https://example.com/", 30_000, () => clock.t);
 
+		expect(navigation.settled).toBe(false);
 		expect(calls).toEqual(["goto https://example.com/ domcontentloaded 30000"]);
 	});
 
