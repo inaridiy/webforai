@@ -38,7 +38,11 @@ section "理想 PlatformRpc 契約" and its "webforai TODO" list).
   `rate_limited`, `engine_failed`, `engine_unavailable` and `internal_error` are transient.
 - (2026-10-05) Warning codes: `client_shell_unrendered` (fetch-tier shell left unrendered),
   `browser_timeout` (the render budget ran out before the network went idle; the DOM read then
-  is returned), `low_confidence` (kiwame confidence below 0.5), `meta_refresh_followed`.
+  is returned), `meta_refresh_followed`.
+- (2026-10-05, owner) No `low_confidence` warning: the RPC returns `extraction.confidence` as is
+  and the caller picks its own threshold. A platform-side 0.5 was an uncalibrated judgment baked
+  into the contract. (Re:Babel's plan lists `low_confidence` among the warning codes; it should
+  read `extraction.confidence` instead.)
 - (2026-10-05) `extraction.textLength` counts the markdown body (front matter removed, trimmed);
   `extraction.extractor` falls back to the preset name for presets that report nothing
   (`none`, `minimal`). `images[]` skips fenced code and private/local targets.

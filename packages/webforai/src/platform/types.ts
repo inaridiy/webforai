@@ -229,8 +229,6 @@ export const RPC_WARNING_CODES = [
 	"client_shell_unrendered",
 	/** The browser's render budget ran out before the network went idle; content loaded later may be missing. */
 	"browser_timeout",
-	/** kiwame's confidence is below 0.5: the extracted content probably misses or mixes up the main content. */
-	"low_confidence",
 	/** The URL answered with a `<meta http-equiv="refresh">` redirect, which was followed; `url` is where it led. */
 	"meta_refresh_followed",
 ] as const;
@@ -252,7 +250,11 @@ export interface RpcConvertResult {
 	links?: string[];
 	/** Present when `formats` includes `markdown`. */
 	metadata?: RpcPageMetadata;
-	/** Present when `formats` includes `markdown`. `textLength` counts the characters of the markdown body. */
+	/**
+	 * Present when `formats` includes `markdown`. `confidence` is kiwame's estimate (0–1, about the
+	 * expected token F1 against the page's main content), `null` for other extractors; how low is
+	 * too low is the caller's call. `textLength` counts the characters of the markdown body.
+	 */
 	extraction?: { extractor: string; confidence: number | null; textLength: number };
 	warnings?: RpcWarning[];
 	/** Absolute URLs of the images left in the markdown, in order, each once. */

@@ -63,9 +63,6 @@ export interface RpcConvertDeps {
 	now?: () => number;
 }
 
-/** Below this kiwame confidence (about the expected token F1) a result carries `low_confidence`. */
-export const LOW_CONFIDENCE = 0.5;
-
 /**
  * Workers RPC keeps an Error's `message` across the binding but not custom properties, so
  * `convert` sends the machine-readable code as a `code: message` prefix (the same convention the
@@ -266,24 +263,15 @@ const run = async (deps: RpcConvertDeps, rawUrl: unknown, rawOptions: unknown): 
 		if (options.formats.includes("markdown")) {
 			const converted = await convertFetchedPage(deps.scrape, request, page);
 			const body = options.frontmatter ? converted.markdown.replace(FRONT_MATTER, "") : converted.markdown;
-			const confidence = converted.extraction?.confidence ?? null;
 			result.markdown = converted.markdown;
 			result.metadata = toRpcMetadata(converted.metadata);
 			result.extraction = {
 				// Presets whose extractor reports nothing (`none`, `minimal`) are named by the preset.
 				extractor: converted.extraction?.extractor ?? options.extractor ?? "auto",
-				confidence,
+				confidence: converted.extraction?.confidence ?? null,
 				textLength: body.trim().length,
 			};
 			result.images = markdownImages(converted.markdown, page.url);
-			if (confidence !== null && confidence < LOW_CONFIDENCE) {
-				warnings.push({
-					code: "low_confidence",
-					message: `The extractor's confidence is ${confidence.toFixed(
-						2,
-					)}; the content may miss or mix up the page's main content.`,
-				});
-			}
 		}
 		if (options.formats.includes("links")) {
 			result.links = extractPageLinks(page.html, page.url);

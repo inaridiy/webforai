@@ -9,9 +9,10 @@ entrypoint), so the published types follow the deployment. Options add `frontmat
 preset, and drop unknown keys instead of rejecting them (a newer client can call an older
 deployment). Results add a literal `engine` (`fetch | browser`), `metadata` limited to the
 library's `PageMetadata` fields with `published`/`modified` as ISO-8601 when they parse,
-`extraction` (`extractor`, `confidence` or `null`, `textLength` of the body), coded
+`extraction` (`extractor`, `confidence` or `null`, `textLength` of the body; no platform-side
+confidence threshold — the caller decides what is too low), coded
 `warnings[]` (`client_shell_unrendered`, `browser_timeout` — the render budget ran out before
-network idle, `low_confidence` — kiwame confidence < 0.5, `meta_refresh_followed`) and
+network idle, `meta_refresh_followed`) and
 `images[]` (absolute public URLs left in the markdown, outside code fences); `warning` stays for
 compatibility. Errors carry `code` (`invalid_request | invalid_url | rate_limited | fetch_failed |
 unsupported_content_type | response_too_large | engine_failed | internal_error`), `httpStatus`
