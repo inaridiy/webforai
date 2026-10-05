@@ -133,13 +133,13 @@ used only for measurement, never for tuning.
 
 | Pipeline | WCEB F1 (mean over pages / over the 8 datasets) | Precision / recall (pages) |
 | --- | ---: | ---: |
-| webforai | 0.892 / 0.903 | 0.903 / 0.920 |
+| webforai | 0.892 / 0.909 | 0.922 / 0.909 |
 | webforai with the heuristic extractor (`takumiExtractor`) | 0.874 / 0.892 | 0.911 / 0.890 |
 | Readability + Turndown | 0.880 / 0.901 | 0.917 / 0.892 |
 | Firecrawl OSS | 0.743 / 0.760 | 0.668 / 0.939 |
 
 Readability + Turndown is ahead on three of the eight WCEB datasets — its own test set (F1 0.98
-against webforai's 0.93), Scrapinghub and L3S-GN1 — and webforai on the other five. Firecrawl
+against webforai's 0.95), Scrapinghub and L3S-GN1 — and webforai on the other five. Firecrawl
 recovers the most of the reference text but keeps the most besides it: its precision is the lowest
 on every dataset.
 

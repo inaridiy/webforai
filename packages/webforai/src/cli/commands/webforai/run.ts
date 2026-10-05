@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
+	agentExtractor,
 	detectClientShell,
 	htmlToMarkdownWithMetadata,
 	kiwameExtractor,
@@ -27,6 +28,8 @@ const extractorOptions = (name: ResolvedRun["extractor"]): HtmlToMarkdownOptions
 			return takumiExtractor;
 		case "kiwame":
 			return kiwameExtractor;
+		case "agent":
+			return agentExtractor;
 		case "minimal":
 			return minimalFilter;
 		case "none":

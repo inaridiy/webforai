@@ -654,8 +654,13 @@ const introducedByColon = (siblings: Parent["children"], index: number, collecto
  * Separated from the removal itself so callers can price the pass first. Cloning the selected
  * content just to keep a fallback copy costs more than the entire rest of extraction.
  */
-export const findCleanupTargets = (tree: Hast, collector: MetricsCollector): Element[] => {
+export const findCleanupTargets = (
+	tree: Hast,
+	collector: MetricsCollector,
+	spare?: ReadonlySet<Element>,
+): Element[] => {
 	const doomed: Element[] = [];
+	const isCondemnedLinkBlock = (element: Element) => isLinkOnlyBlock(element, collector) && !spare?.has(element);
 
 	const visit = (node: Hast): void => {
 		if (!("children" in node)) {
@@ -681,7 +686,7 @@ export const findCleanupTargets = (tree: Hast, collector: MetricsCollector): Ele
 				continue;
 			}
 
-			if (isLinkOnlyBlock(child, collector)) {
+			if (isCondemnedLinkBlock(child)) {
 				condemnLinkBlock(child, siblings, index, collector, doomed);
 				continue;
 			}
@@ -835,8 +840,8 @@ const hasBlockDescendant = (element: Element): boolean =>
  * Removes share bars, related-post rails and comment forms, then drops the empty wrappers that
  * component markup leaves behind.
  */
-export const cleanContent = (tree: Hast, collector: MetricsCollector): Hast => {
-	const doomed = new Set(findCleanupTargets(tree, collector));
+export const cleanContent = (tree: Hast, collector: MetricsCollector, spare?: ReadonlySet<Element>): Hast => {
+	const doomed = new Set(findCleanupTargets(tree, collector, spare));
 
 	if (doomed.size > 0) {
 		pruneInPlace(tree, (node) => !(isElement(node) && doomed.has(node)));

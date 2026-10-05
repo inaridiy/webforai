@@ -15,6 +15,7 @@ import { type BlockFrame, type TextBlock, ancestorAt } from "./blocks";
 import { CONTENT_ROLES, REGEXPS, UNLIKELY_ROLES } from "./constants";
 import { findLandmarkChrome, unlikelyTier } from "./sanitize";
 import { buildScoringContext, scoreCandidates } from "./score";
+import { TITLE_FEATURE_NAMES, titleFeatures } from "./title-anchor";
 
 /** Feature names, in vector order. The generated model refers to features by position. */
 export const FEATURE_NAMES = [
@@ -75,6 +76,7 @@ export const FEATURE_NAMES = [
 	"candidateScore",
 	"inTopSibling",
 	"takumi_kept",
+	...TITLE_FEATURE_NAMES,
 ] as const;
 
 export const FEATURE_COUNT = FEATURE_NAMES.length;
@@ -175,6 +177,8 @@ export interface BlockFeatureInput {
 	lang?: string;
 	/** Elements the heuristic extractor keeps (see `takumiSelection`). */
 	takumiKept?: Set<Element>;
+	/** The page title (`pageTitle`, read before invisible content is stripped). */
+	title?: string;
 }
 
 /** Sequential writer for one feature row. */
@@ -380,7 +384,14 @@ const writeContainers = (row: RowWriter, block: TextBlock, collector: MetricsCol
  * scan and one candidate-scoring pass over the tree — both of which the heuristic extractor
  * performs anyway.
  */
-export const blockFeatures = ({ root, blocks, collector, lang, takumiKept }: BlockFeatureInput): Float32Array => {
+export const blockFeatures = ({
+	root,
+	blocks,
+	collector,
+	lang,
+	takumiKept,
+	title,
+}: BlockFeatureInput): Float32Array => {
 	const count = blocks.length;
 	const out = new Float32Array(count * FEATURE_COUNT);
 
@@ -397,6 +408,7 @@ export const blockFeatures = ({ root, blocks, collector, lang, takumiKept }: Blo
 	const density = blocks.map((block) => (block.text.length === 0 ? 0 : block.linkChars / block.text.length));
 	const totalChars = textLen.reduce((sum, length) => sum + length, 0) || 1;
 	let charsBefore = 0;
+	const anchored = titleFeatures(blocks, title ?? "", collector);
 
 	for (let index = 0; index < count; index++) {
 		const block = blocks[index];
@@ -419,6 +431,9 @@ export const blockFeatures = ({ root, blocks, collector, lang, takumiKept }: Blo
 		row.push(chain.nearestScore);
 		row.push(chain.inTopSibling);
 		row.flag(takumiKept?.has(block.owner));
+		for (let k = 0; k < TITLE_FEATURE_NAMES.length; k++) {
+			row.push(anchored[index * TITLE_FEATURE_NAMES.length + k]);
+		}
 	}
 
 	return out;
@@ -435,6 +450,12 @@ export const STACK_FEATURE_NAMES = [
 	"s1_parentShare",
 	"s1_distHigh",
 	"s1_docShare",
+	"s1_relMax",
+	"s1_minusMean",
+	"s1_rank",
+	"s1_shareAbove",
+	"s1_pageMax",
+	"s1_pageAbove",
 ] as const;
 
 export const STACKED_FEATURE_COUNT = FEATURE_COUNT + STACK_FEATURE_NAMES.length;
@@ -500,6 +521,39 @@ const distanceToHigh = (probabilities: Float32Array): Float32Array => {
 };
 
 /**
+ * Where each first-stage probability sits within its page.
+ *
+ * One fixed threshold is wrong for whole classes of pages: on a listing every item may score
+ * 0.3 while the page's navigation scores 0.1, on an article the body 0.9 and a related rail 0.5.
+ * Rank, share of the page's text scoring at least as high, and the ratio to the page maximum let
+ * the second stage decide relative to the page instead.
+ */
+const pageRelative = (blocks: TextBlock[], probabilities: Float32Array) => {
+	const count = blocks.length;
+	const weight = (index: number) => blocks[index].text.length + 10;
+	const order = Array.from({ length: count }, (_, index) => index).sort((a, b) => probabilities[b] - probabilities[a]);
+	const rank = new Float32Array(count);
+	const shareAbove = new Float32Array(count);
+	let total = 0;
+	let above = 0;
+	for (let index = 0; index < count; index++) {
+		total += weight(index);
+		if (probabilities[index] >= 0.5) {
+			above += weight(index);
+		}
+	}
+	let cumulative = 0;
+	for (let position = 0; position < count; position++) {
+		const index = order[position];
+		cumulative += weight(index);
+		rank[index] = count > 1 ? 1 - position / (count - 1) : 1;
+		shareAbove[index] = total > 0 ? cumulative / total : 0;
+	}
+	const max = count > 0 ? probabilities[order[0]] : 0;
+	return { rank, shareAbove, max, aboveShare: total > 0 ? above / total : 0 };
+};
+
+/**
  * Appends context aggregates of first-stage probabilities to every feature row.
  *
  * A block surrounded by main content, or inside a container whose text is mostly main content,
@@ -517,6 +571,7 @@ export const stackedFeatures = (blocks: TextBlock[], base: Float32Array, probabi
 		return entry ? entry.p / entry.w : fallback;
 	};
 	const distance = distanceToHigh(probabilities);
+	const relative = pageRelative(blocks, probabilities);
 
 	for (let index = 0; index < count; index++) {
 		const row = index * stride;
@@ -544,6 +599,12 @@ export const stackedFeatures = (blocks: TextBlock[], base: Float32Array, probabi
 		out[f++] = parentWeightShare(ancestorAt(block, 1));
 		out[f++] = Math.log1p(distance[index]);
 		out[f++] = docShare;
+		out[f++] = relative.max > 0 ? p / relative.max : 0;
+		out[f++] = p - docShare;
+		out[f++] = relative.rank[index];
+		out[f++] = relative.shareAbove[index];
+		out[f++] = relative.max;
+		out[f++] = relative.aboveShare;
 	}
 	return out;
 };
