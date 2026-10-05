@@ -1,5 +1,91 @@
 # webforai
 
+## 4.2.0
+
+### Minor Changes
+
+- [#74](https://github.com/inaridiy/webforai/pull/74) [`a241df4`](https://github.com/inaridiy/webforai/commit/a241df497e76b86f0ae120370211c354d0efb5ca) Thanks [@inaridiy](https://github.com/inaridiy)! - `agentExtractor`: main content for AI agents, plus the links they may follow.
+
+  - Keeps exactly the main content of the default extractor, then appends reader comments
+    (`## Comments`) and the page's other links under `## Links`, grouped as Related, Pagination,
+    Section navigation, Breadcrumb and Site navigation. Share buttons, ads, sign-up and legal links are
+    left out; each link is listed once, under its most specific role.
+  - Roles come from small per-role models (about 100 KB, loaded only when `agentExtractor` or
+    `createAgentExtractor` is imported); `createAgentExtractor({ roles, comments, roleModels })`
+    chooses the groups, and `roleModels: null` falls back to class/aria hints.
+  - `readabilityExtractor` names the default main-content extractor (same as `autoExtractor`).
+  - CLI: `--extractor agent` and `--extractor readability` (local conversion).
+  - `createKiwameExtractor` accepts `onScored`, called with the scored blocks before pruning.
+
+- [#71](https://github.com/inaridiy/webforai/pull/71) [`a1da0c5`](https://github.com/inaridiy/webforai/commit/a1da0c57c1cb1b649c9789dbae0f22df41c49db0) Thanks [@inaridiy](https://github.com/inaridiy)! - Cleaner Markdown structure, an extraction report with a page confidence, and a parsing crash fix.
+
+  - **Extraction report**: `htmlToMarkdownWithMetadata` returns `extraction: { extractor, confidence }`
+    (also via `htmlToMdast(html, { onExtraction })`). `extractor` is `kiwame`, `takumi` (its fallback)
+    or `adapter`; for kiwame, `confidence` (0–1) estimates how well the extracted content matches the
+    page's main content (about the expected token F1), from a ~2.5 KB model over page statistics. Use
+    it to flag pages that probably went wrong.
+  - **Line breaks**: a paragraph is split where the page leaves a blank line with `<br><br>`, and
+    breaks at the start or end of a paragraph or heading no longer leave stray backslashes.
+  - **Tables**: a table without `<th>` whose first row is entirely bold uses it as the header instead
+    of an empty header row; columns empty in every row are dropped; a heading alone in its row (a
+    section caption in a pricing table) no longer turns a data table into flattened paragraphs.
+  - **Inline text**: whitespace at the edges of bold/italic/strikethrough moves outside the markers
+    (`**WIN55 **` did not render as bold); Material Icons/Symbols ligature names (`query_builder`) are
+    dropped; adjacent `span`/`time`/`label` elements laid out side by side get a space where the
+    script changes (`2026-04-10点击次数` → `2026-04-10 点击次数`).
+  - **Parsing**: requires `hast-util-from-parse5` ^8.0.3, whose hastscript 9 no longer turns elements
+    such as `<button type="text">` or `<li type="a" value="3">` into a malformed node that made
+    `htmlToMarkdown` throw.
+
+  WCEB token F1 is unchanged (0.892); these changes are about structure and robustness.
+
+- [#76](https://github.com/inaridiy/webforai/pull/76) [`d3ccd10`](https://github.com/inaridiy/webforai/commit/d3ccd1090bb207177fb09828d04e4d72c7bff7fa) Thanks [@inaridiy](https://github.com/inaridiy)! - One list of extractor presets for the library, the CLI and the hosted platform.
+
+  - `EXTRACTOR_PRESETS` (`auto`, `readability`, `agent`, `kiwame`, `takumi`, `minimal`, `none`) and
+    `presetExtractors(name)`, which returns the `extractors` option for a preset name.
+  - The root export now includes the types the extractor options mention: `ScoredPage` (for
+    `onScored`), `RoleModels` (for `roleModels`), and `LINK_ROLE_TITLES`.
+  - CLI: every `--extractor` preset works with `--loader platform` and the `crawl`/`batch` jobs
+    (`agent`, `kiwame` and `readability` were local-only or rejected); `--json` includes
+    `extraction` (which extractor ran and kiwame's confidence).
+  - `webforai/platform`: `ExtractorPreset` covers every preset, scrape results carry
+    `extraction`, and the types of the internal `PlatformRpc` Service Binding entrypoint are
+    exported (`PlatformRpc`, `RpcConvertOptions`, `RpcConvertResult`, `RpcConvertOutcome`,
+    `RpcConvertError`, warning and error codes).
+
+- [#74](https://github.com/inaridiy/webforai/pull/74) [`a241df4`](https://github.com/inaridiy/webforai/commit/a241df497e76b86f0ae120370211c354d0efb5ca) Thanks [@inaridiy](https://github.com/inaridiy)! - kiwame, the default extractor for pages without a site adapter, selects main content more
+  accurately.
+
+  - **Sequence model**: a small bidirectional GRU reads the page's blocks in order — their features,
+    hashed words and character pairs, and the tag and class names around them — and its estimate is
+    averaged with the gradient-boosted trees'. Weights are int8 (about 100 KB); it adds a few
+    milliseconds on a typical page.
+  - **Page title**: blocks are scored by where they sit relative to the block that repeats the page's
+    title (`og:title` or `<title>`), so a product page's own details are told apart from the other
+    products listed beside them, and an article from its related-posts rail.
+  - **Within-page scores**: the second stage sees where each block's score sits within its page
+    (rank, ratio to the page's best block), not only its absolute value.
+  - **Clean-up**: a link-only block the models chose to keep (a grid of product cards, a list of
+    results) is no longer removed by the final clean-up; a tail-positioned "Related articles" rail or
+    feedback widget still ends the content.
+  - The models were retrained; the default threshold is now 0.5 and the confidence model was
+    refitted.
+  - `createKiwameExtractor` accepts `neuralModel` (`null` turns the sequence model off),
+    `neuralWeight`, `cleanupSpare`, and evaluation hooks `probabilities` and `postRules`.
+
+  WCEB token F1 is 0.892 per page (unchanged) and 0.909 over its eight datasets (was 0.903).
+
+### Patch Changes
+
+- [#73](https://github.com/inaridiy/webforai/pull/73) [`1e537bb`](https://github.com/inaridiy/webforai/commit/1e537bb83fe4147eaf7627cfeed3007ac4ed98cb) Thanks [@inaridiy](https://github.com/inaridiy)! - All browser loaders annotate rendered geometry. The Puppeteer and Cloudflare Puppeteer loaders now
+  run the same `data-rwidth`/`data-rheight` annotation as the Playwright loader before reading the
+  page, so extraction drops elements the browser laid out to nothing (menus and sections hidden with
+  CSS classes) whichever loader fetched the page. The annotation is exported as `annotateGeometry`
+  from `webforai/loaders/geometry` for pages rendered with your own browser code
+  (`await page.evaluate(annotateGeometry)` before `page.content()`).
+
+- [#71](https://github.com/inaridiy/webforai/pull/71) [`a1da0c5`](https://github.com/inaridiy/webforai/commit/a1da0c57c1cb1b649c9789dbae0f22df41c49db0) Thanks [@inaridiy](https://github.com/inaridiy)! - feat: cleaner Markdown structure, extraction confidence, parsing crash fix
+
 ## 4.1.1
 
 ### Patch Changes
