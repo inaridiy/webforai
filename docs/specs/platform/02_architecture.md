@@ -1,5 +1,16 @@
 # Platform Architecture
 
+Revision note (2026-10-08, container image): The container image is `node:24.21.0-bookworm-slim`
+plus Playwright's headless Chromium shell and its system dependencies (`playwright install
+--with-deps --only-shell chromium`), instead of `mcr.microsoft.com/playwright`, which also ships
+full Chromium, Firefox and WebKit. `chromium.launch({ headless: true })` already ran the headless
+shell, so the browser build is the same. Docker 29.8's reported size went 3.68 GB → 1.33 GB:
+wrangler's pre-deploy check (`.Size` × 1.1 + 16 MiB per layer against the `basic` instance's
+4,000 MB) had started failing after a Docker upgrade counted unpacked and packed content
+together. The browser version now follows the `playwright` dependency, so no base-image tag has
+to match it. Measured on `basic` limits (¼ vCPU, 1 GiB), 20 cached pages × 3 interleaved rounds:
+launch, render, `content()` and screenshot totals within run-to-run noise (71.3 s vs 71.5 s).
+
 Revision note (2026-10-05, script bodies): Browser engines (`browser`, `proxy-browser`) empty the
 script and style bodies conversion never reads (`stripScriptBodies` from the library: JSON-LD,
 YouTube's player response and bot-challenge scripts are kept) before the 5 MiB check, so inline
