@@ -47,14 +47,28 @@ const languages = [
 	["yaml", [/^(\s+)?[a-z][a-z0-9]*:/gim, 10]],
 ] as const;
 
-export const detectLanguage = (code: string) => {
-	return (
-		languages
-			.map(
-				([lang, ...features]) =>
-					[lang, features.reduce((acc, [match, score]) => acc + [...code.matchAll(match)].length * score, 0)] as const,
-			)
-			.filter(([_, score]) => score > 20)
-			.sort((a, b) => b[1] - a[1])[0]?.[0] || "plain"
-	);
-};
+/**
+ * Score a guess must reach before it is written as the fence's language.
+ *
+ * A wrong info string is worse than none: renderers highlight JavaScript as Bash or TypeScript
+ * as HTML, and downstream readers trust the label. Keyword counts add up on any long block (ten
+ * `const`s and the snippet "is" TypeScript, a few `<tr>`s in JSX and it "is" HTML), so only a
+ * score that a decisive signal produces — a shebang, an `import … from`, a `<!DOCTYPE html>`,
+ * a Dockerfile `FROM` — or an overwhelming number of weak ones is accepted.
+ */
+const MIN_CONFIDENT_SCORE = 400;
+
+/**
+ * Guesses a code block's language from its content, for blocks whose markup declares none.
+ *
+ * @returns The language, or `undefined` when no guess is confident enough; the caller then
+ *   writes a fence without an info string.
+ */
+export const detectLanguage = (code: string): string | undefined =>
+	languages
+		.map(
+			([lang, ...features]) =>
+				[lang, features.reduce((acc, [match, score]) => acc + [...code.matchAll(match)].length * score, 0)] as const,
+		)
+		.filter(([_, score]) => score >= MIN_CONFIDENT_SCORE)
+		.sort((a, b) => b[1] - a[1])[0]?.[0];

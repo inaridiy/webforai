@@ -159,3 +159,75 @@ describe("definition lists", () => {
 		expect(markdown).toContain("支払方法についての説明文です");
 	});
 });
+
+describe("heading permalinks", () => {
+	it("unwraps an MDN self-anchor", () => {
+		const html =
+			'<h2 id="lexical_scoping" class="heading"><a class="heading-anchor" href="#lexical_scoping">Lexical scoping</a></h2>';
+		expect(convert(html).trim()).toBe("## Lexical scoping");
+	});
+
+	it("unwraps a docsify hash-route anchor around the whole title", () => {
+		const html =
+			'<h2 id="initialize" tabindex="-1"><a href="#/quickstart?id=initialize" data-id="initialize" class="anchor"><span>Initialize</span></a></h2>';
+		expect(convert(html).trim()).toBe("## Initialize");
+	});
+
+	it("keeps a heading link that leads to another page", () => {
+		expect(convert('<h2><a href="/guide">Guide</a></h2>').trim()).toBe("## [Guide](/guide)");
+	});
+
+	it("keeps an in-page link that covers only part of the heading", () => {
+		expect(convert('<h2>See <a href="#setup">setup</a></h2>').trim()).toBe("## See [setup](#setup)");
+	});
+
+	it("can be switched off", () => {
+		const markdown = htmlToMarkdown('<h2 id="x"><a href="#x">Title</a></h2>', {
+			extractors: false,
+			normalize: { headingAnchors: false },
+		});
+		expect(markdown.trim()).toBe("## [Title](#x)");
+	});
+});
+
+describe("code block language labels", () => {
+	/** MDN's `.code-example`: the language printed in a header beside the `<pre>`. */
+	const mdn = (label: string, brush: string, code: string) =>
+		`<div class="code-example"><div class="example-header"><span class="language-name">${label}</span></div><pre class="brush: ${brush} notranslate"><code>${code}</code></pre></div>`;
+
+	it("moves the label into the fence instead of leaving a stray paragraph", () => {
+		const markdown = convert(mdn("js", "js", 'function init() {\n  var name = "Mozilla";\n}\n'));
+		expect(markdown).toBe('```js\nfunction init() {\n  var name = "Mozilla";\n}\n```\n');
+	});
+
+	it("reads the label when the block declares no language of its own", () => {
+		const markdown = convert(
+			'<div><div class="header"><span>css</span></div><pre><code>a { color: red; }</code></pre></div>',
+		);
+		expect(markdown).toBe("```css\na { color: red; }\n```\n");
+	});
+
+	it("drops a plain-text label without inventing a language", () => {
+		expect(convert(mdn("plain", "plain", "x = y"))).toBe("```\nx = y\n```\n");
+	});
+
+	it("prefers the language the block's class declares", () => {
+		const markdown = convert('<div><span>js</span><pre><code class="language-ts">let a: number;</code></pre></div>');
+		expect(markdown).toBe("```ts\nlet a: number;\n```\n");
+	});
+
+	it("keeps a heading that happens to be a language name", () => {
+		const markdown = convert('<section><h3>JSON</h3><pre><code>{"a": 1}</code></pre></section>');
+		expect(markdown).toContain("### JSON");
+	});
+
+	it("keeps text that is not a language name", () => {
+		expect(convert("<div><span>Example</span><pre><code>x</code></pre></div>")).toContain("Example");
+	});
+
+	it("keeps the label when the wrapper holds more than the label and the code", () => {
+		const markdown = convert("<div><span>js</span><p>A note.</p><pre><code>x</code></pre></div>");
+		expect(markdown).toContain("js\n");
+		expect(markdown).toContain("A note.");
+	});
+});
