@@ -1,5 +1,35 @@
 # webforai
 
+## 4.3.0
+
+### Minor Changes
+
+- [#77](https://github.com/inaridiy/webforai/pull/77) [`2d7ec9c`](https://github.com/inaridiy/webforai/commit/2d7ec9c54c929c5f98e55f2ce0b60925696bec9a) Thanks [@inaridiy](https://github.com/inaridiy)! - `stripScriptBodies(html)`: empties the script and style bodies conversion never reads, so HTML can be
+  made smaller before it crosses a process boundary or a size cap; the converted Markdown is unchanged.
+
+  - JSON-LD, YouTube's player response and bot-challenge scripts are kept whole.
+  - Fix: attribute values containing `>` (MediaWiki's `data-mw`) no longer cut the tag short. Pages
+    over 2M characters, where the library already strips scripts to bound memory, could lose content
+    around such a `<style>` (a Wikipedia list item, for example).
+  - Linear on hostile input: thousands of unclosed tags or quotes took tens of seconds before; a
+    `<script>` inside an HTML comment is left alone.
+
+### Patch Changes
+
+- [#78](https://github.com/inaridiy/webforai/pull/78) [`250f653`](https://github.com/inaridiy/webforai/commit/250f65382d595217776f55f6f4ce94acbd6af1fd) Thanks [@inaridiy](https://github.com/inaridiy)! - Cleaner code fences and headings on documentation pages.
+
+  - **Code block languages**: SyntaxHighlighter's `brush: js` class (MDN) and Sandpack's `sp-javascript`
+    class (react.dev) are read as the block's language. Guessing from the code itself only adopts a
+    decisive signal (a shebang, `import … from`, a Dockerfile `FROM`); otherwise the fence has no info
+    string instead of a weak guess (JSX labelled `html`, JavaScript labelled `bash`) or `plain`.
+  - **Language labels**: a language name printed beside a code block (MDN's `js` header) becomes the
+    fence's language instead of a stray paragraph above it (`normalize.codeLabels`, default on).
+  - **Heading permalinks**: a heading wrapped in its own in-page anchor (`## [Title](#title)`, docsify's
+    `#/page?id=…`) is written as plain `## Title`. Links to other pages, and in-page links covering only
+    part of the heading, are kept (`normalize.headingAnchors`, default on).
+  - **Extraction**: a "Powered by …" credit in the tail of the page ends the main content, like the
+    existing feedback-widget and last-updated terminators.
+
 ## 4.2.0
 
 ### Minor Changes

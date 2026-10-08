@@ -1,5 +1,12 @@
 # @webforai/evals
 
+## 0.0.6
+
+### Patch Changes
+
+- Updated dependencies [[`250f653`](https://github.com/inaridiy/webforai/commit/250f65382d595217776f55f6f4ce94acbd6af1fd), [`2d7ec9c`](https://github.com/inaridiy/webforai/commit/2d7ec9c54c929c5f98e55f2ce0b60925696bec9a)]:
+  - webforai@4.3.0
+
 ## 0.0.5
 
 ### Patch Changes
