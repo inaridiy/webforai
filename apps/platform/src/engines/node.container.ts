@@ -1,6 +1,8 @@
 import { chromium } from "playwright";
 import { ProxyAgent, fetch as undiciFetch } from "undici";
 
+import { stripScriptBodies } from "webforai";
+
 import { nodejsFn } from "../__generated__/create-nodejs-fn.runtime";
 import { fetchFollowingRedirects } from "../core/redirects";
 import { assertPublicHttpUrl } from "../core/ssrf";
@@ -158,7 +160,9 @@ export const proxyFetch = nodejsFn(async (url: string, country?: string): Promis
 		// undici types its body with the Node `stream/web` ReadableStream; structurally identical
 		// to the DOM one this file is checked against.
 		const html = await readCappedText(response.body as unknown as ReadableStream<Uint8Array> | null);
-		return { html, finalUrl, status: response.status };
+		// Script and style bodies conversion never reads stay here instead of crossing the RPC
+		// boundary. The cap above still applies to the raw body: it bounds paid proxy bandwidth.
+		return { html: stripScriptBodies(html), finalUrl, status: response.status };
 	} catch (error) {
 		throw normalizeFailure(error, target);
 	} finally {

@@ -1,6 +1,9 @@
 import type { Root } from "hast";
+
 import { fromParse5 } from "hast-util-from-parse5";
 import { type DefaultTreeAdapterMap, parse, parseFragment } from "parse5";
+import { PLAYER_RESPONSE_VARIABLE } from "../adapters/sites/youtube";
+import { CHALLENGE_PATTERN } from "../detect-client-shell";
 
 type Parse5Node = DefaultTreeAdapterMap["node"];
 type Parse5Parent = DefaultTreeAdapterMap["parentNode"];
@@ -99,25 +102,113 @@ const flattenDeep = (root: Parse5Parent, maxDepth: number): void => {
 	}
 };
 
-/** A script or style element with its body; JSON-LD scripts are matched separately below. */
-const SCRIPT_OR_STYLE = /<(script|style)\b([^>]*)>[\s\S]*?<\/\1\s*>/gi;
+/** The start of a script or style element, or of a comment (whose content is not markup). */
+const SCRIPT_OR_STYLE_START = /<!--|<(script|style)(?=[\s/>])/gi;
+
+/** Where a script or style body ends: its closing tag, as the HTML tokenizer recognises it. */
+const CLOSING_TAG: Record<string, RegExp> = {
+	script: /<\/script[\s/>]/gi,
+	style: /<\/style[\s/>]/gi,
+};
+
+/**
+ * The index just past a start tag's `>`, or -1 when the document ends first. Attribute values
+ * may contain `>` (MediaWiki's `data-mw` JSON does), so a quoted value after `=` is skipped whole.
+ */
+const startTagEnd = (html: string, from: number): number => {
+	let index = from;
+	while (index < html.length) {
+		const char = html[index];
+		if (char === ">") {
+			return index + 1;
+		}
+		if (char === "=") {
+			let value = index + 1;
+			while (value < html.length && /\s/.test(html[value] ?? "")) {
+				value++;
+			}
+			const quote = html[value];
+			if (quote === '"' || quote === "'") {
+				const close = html.indexOf(quote, value + 1);
+				if (close < 0) {
+					return -1;
+				}
+				index = close + 1;
+				continue;
+			}
+			index = value;
+			continue;
+		}
+		index++;
+	}
+	return -1;
+};
+
+/** Script bodies something downstream reads: the YouTube adapter's player response, and bot-challenge fingerprints. */
+const isReadScript = (attributes: string, element: string): boolean =>
+	/application\/ld\+json/i.test(attributes) ||
+	element.includes(PLAYER_RESPONSE_VARIABLE) ||
+	CHALLENGE_PATTERN.test(element);
 
 /** Documents larger than this have their script and style bodies emptied before parsing. */
 export const LARGE_DOCUMENT_CHARS = 2_000_000;
 
 /**
- * Empties script and style bodies before parsing, except JSON-LD, which metadata reads.
+ * Empties the script and style bodies conversion never reads, keeping the elements and their
+ * attributes.
  *
- * A bundled application ships megabytes of inline script: an 11 MB documentation page with 5 MB
- * of it exhausted a 128 MB heap during parsing alone. Site adapters read some scripts (YouTube's
- * player response, MediaWiki's page configuration), so this only runs on documents past
- * {@link LARGE_DOCUMENT_CHARS}, as a memory safety valve. The parser ends a script at the first
- * `</script`, which is what the pattern matches too.
+ * Kept whole: JSON-LD (page metadata), YouTube's player response (its site adapter) and
+ * bot-challenge scripts (`detectClientShell`'s fingerprints). Extraction skips script and style
+ * content, so the converted Markdown is the same with or without this; what changes is the size
+ * of the HTML — a bundled application ships megabytes of inline script. Use it before sending
+ * HTML across a process boundary or holding it under a size cap.
+ *
+ * `parseHtml` applies it to documents past {@link LARGE_DOCUMENT_CHARS} as a memory safety
+ * valve: an 11 MB documentation page with 5 MB of inline script exhausted a 128 MB heap during
+ * parsing alone. A body ends where the HTML tokenizer ends it, at the first `</script` or
+ * `</style` followed by whitespace, `/` or `>`.
  */
-export const stripScriptBodies = (html: string): string =>
-	html.replace(SCRIPT_OR_STYLE, (match, tag: string, attributes: string) =>
-		/application\/ld\+json/i.test(attributes) ? match : `<${tag}${attributes}></${tag}>`,
-	);
+export const stripScriptBodies = (html: string): string => {
+	// One forward pass: every search starts where the previous one ended, so hostile input
+	// (thousands of unclosed tags or quotes) costs O(n), not O(n²).
+	const out: string[] = [];
+	let copied = 0;
+	const start = new RegExp(SCRIPT_OR_STYLE_START);
+	for (let match = start.exec(html); match; match = start.exec(html)) {
+		if (match[1] === undefined) {
+			// A `<script>` inside a comment is text; skip to the comment's end.
+			const commentEnd = html.indexOf("-->", match.index + 4);
+			if (commentEnd < 0) {
+				break;
+			}
+			start.lastIndex = commentEnd + 3;
+			continue;
+		}
+		const tag = match[1].toLowerCase();
+		const bodyStart = startTagEnd(html, match.index + match[0].length);
+		if (bodyStart < 0) {
+			break;
+		}
+		const closing = CLOSING_TAG[tag] as RegExp;
+		closing.lastIndex = bodyStart;
+		const close = closing.exec(html);
+		if (!close) {
+			// The tokenizer reads everything after an unclosed script or style as its body.
+			break;
+		}
+		const tagEnd = html.indexOf(">", close.index);
+		const elementEnd = tagEnd < 0 ? html.length : tagEnd + 1;
+		const element = html.slice(match.index, elementEnd);
+		const openingTag = html.slice(match.index, bodyStart);
+		if (!(tag === "script" && isReadScript(openingTag, element))) {
+			out.push(html.slice(copied, bodyStart), html.slice(close.index, elementEnd));
+			copied = elementEnd;
+		}
+		start.lastIndex = elementEnd;
+	}
+	out.push(html.slice(copied));
+	return out.join("");
+};
 
 /**
  * Parses HTML into HAST for conversion.

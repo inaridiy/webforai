@@ -22,8 +22,11 @@ section "理想 PlatformRpc 契約" and its "webforai TODO" list).
 - [x] (2026-10-05) Gates: biome (no new warnings), typecheck, `pnpm run test --run` 872/875
       (the 3 failures are KI-3, Playwright's pinned Chromium is not installed), platform 505
       tests + build, site build (twoslash examples compile).
-- [ ] Owner: deploy the platform (TODO 7 of the Re:Babel plan), then release the library
-      (the CLI now sends `agent`/`kiwame`/`readability` to the platform).
+- [x] (2026-10-05) Released (TODO 7 of the Re:Babel plan): PR #76, platform deployed (version
+      04698cc5), `webforai@4.2.0`.
+- [x] (2026-10-05) Script and style bodies dropped before the browser engines' size check and
+      before `proxy-fetch` returns from the container (`stripScriptBodies`, now public, rewritten
+      as a linear scan that reads quoted attributes whole).
 
 ## Decision log
 
@@ -48,3 +51,13 @@ section "理想 PlatformRpc 契約" and its "webforai TODO" list).
   (`none`, `minimal`). `images[]` skips fenced code and private/local targets.
 - (2026-10-05) Webforai TODOs of the Re:Babel plan done here: 1–6, 8 (types in
   `webforai/platform`), 9 (tenants in `02_architecture.md`). 7 (deploy) is the owner's.
+- (2026-10-05, owner) Conversion stays in the Worker for browser engines; only the HTML handed
+  over is slimmed. Equivalence check: `htmlToMarkdownWithMetadata` on raw vs stripped HTML over the
+  cached corpus (`evals/.cache/html`, 60 pages) — identical markdown, metadata, extraction and
+  `detectClientShell` verdict; total 25.0 MB → 13.6 MB. The check first failed on Wikipedia:
+  the old regex stopped a start tag at a `>` inside `data-mw='…'`, which also affected the
+  existing >2M-character safety valve. Old and new regexes were quadratic on unclosed tags or
+  quotes (550k chars: 17–25 s); the scanner takes milliseconds.
+- (2026-10-05) Accuracy check for the `stripScriptBodies` fix (`gold:eval --impl=…` on main's
+  source vs this branch): WCEB 3,985 pages, every group's P/R/F1 identical (all 0.892, macro
+  0.9179) and 0 pages with a different score; `stress` passes every case under 128 MB.
