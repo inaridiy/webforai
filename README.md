@@ -89,7 +89,7 @@ reproducible from [`evals/`](evals).
 - **Built for agents.** `agentExtractor` appends the page's other links, grouped by role
   (related, pagination, section navigation, breadcrumbs), so an agent knows where to go next.
   Metadata comes back as data or YAML front matter.
-- **Easy to embed.** About 100 packages and 14 MB installed, with no browser driver and no Node.js
+- **Easy to embed.** ~300 KB gzipped in a Worker, with no browser driver and no Node.js
   built-ins. It runs in Node.js (ESM and CommonJS), Cloudflare Workers (no `nodejs_compat`)
   and browsers. [Embedding in your project →](https://webforai.dev/embedding)
 

@@ -72,8 +72,8 @@ limitations: [webforai.dev/benchmarks](https://webforai.dev/benchmarks).
 | `webforai/loaders/cf-puppeteer` | the same with Cloudflare Browser Rendering | Workers | `@cloudflare/puppeteer` |
 
 Browser drivers are optional peer dependencies: installing `webforai` never installs them. The
-library uses no Node.js built-ins, installs as about 100 packages (14 MB), and runs in Workers
-without `nodejs_compat`; [Embedding in your project](https://webforai.dev/embedding) has the
+library uses no Node.js built-ins, is ~300 KB gzipped in a Worker, and runs there without
+`nodejs_compat`; [Embedding in your project](https://webforai.dev/embedding) has the
 details and bundle sizes.
 
 ## What you get
