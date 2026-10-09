@@ -63,7 +63,7 @@ mid / hard, token F1 unchanged (0.861; links as text 0.864):
 
 - (2026-10-09) The comments mode is a preset, not the default: WCXB and WebMainBench references
   leave comments out, and the readability output stays the main content only. Comments come from
-  the agent extractor's role models (trained on lab data, not on WCEB), unchanged.
+  the agent extractor's role models (trained outside this repository, not on WCEB), unchanged.
 - (2026-10-09) The table change is justified by output size (tokens spent on spaces); the
   WebMainBench analysis found it, so WebMainBench is re-measured once for the release, not tuned
   against.
