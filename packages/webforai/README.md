@@ -67,8 +67,6 @@ The library itself uses no Node.js built-ins, so it can be embedded in other lib
 bundled for Workers or browsers; [Embedding in your project](https://webforai.dev/embedding)
 lists its dependencies and bundle size.
 
-s).
-
 ## What you get
 
 - **Main content only.** Navigation, ads and footers are dropped. Pages are first matched
