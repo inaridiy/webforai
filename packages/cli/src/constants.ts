@@ -1,4 +1,4 @@
-import { EXTRACTOR_PRESETS, type ExtractorPreset } from "../extractors/preset-names";
+import { EXTRACTOR_PRESETS, type ExtractorPreset } from "webforai/platform";
 
 export const DEFAULT_PATH = "https://example.com";
 

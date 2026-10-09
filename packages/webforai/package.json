@@ -1,7 +1,7 @@
 {
 	"name": "webforai",
 	"version": "4.3.1",
-	"description": "Convert web pages and local HTML to clean, LLM-ready Markdown: library, CLI (npx webforai) and hosted-API client.",
+	"description": "Convert web pages and local HTML to clean, LLM-ready Markdown. A dependency-light TypeScript library that runs in Node.js, Cloudflare Workers and browsers; the CLI is webforai-cli.",
 	"author": "inaridiy",
 	"license": "Apache-2.0",
 	"keywords": [
@@ -13,7 +13,6 @@
 		"crawler",
 		"readability",
 		"web-scraping",
-		"cli",
 		"rag",
 		"html",
 		"html2md",
@@ -39,6 +38,7 @@
 	},
 	"files": [
 		"dist",
+		"bin",
 		"!dist/types/**/*.js",
 		"THIRD_PARTY_NOTICES.md"
 	],
@@ -46,7 +46,9 @@
 	"type": "module",
 	"module": "dist/index.js",
 	"types": "dist/types/index.d.ts",
-	"bin": "dist/bin.js",
+	"bin": {
+		"webforai-moved": "bin/moved-to-cli.js"
+	},
 	"exports": {
 		".": {
 			"types": "./dist/types/index.d.ts",
@@ -124,16 +126,13 @@
 			"optional": true
 		},
 		"playwright-core": {
-			"optional": false
+			"optional": true
 		},
 		"puppeteer": {
 			"optional": true
 		}
 	},
 	"dependencies": {
-		"@clack/prompts": "^0.7.0",
-		"boxen": "^8.0.1",
-		"commander": "^12.1.0",
 		"hast-util-from-html": "^2.0.3",
 		"hast-util-from-parse5": "^8.0.3",
 		"hast-util-select": "^6.0.2",
@@ -146,7 +145,6 @@
 		"mdast-util-math": "^3.0.0",
 		"mdast-util-to-markdown": "^2.1.0",
 		"parse5": "^7.1.2",
-		"picocolors": "^1.0.1",
 		"trim-trailing-lines": "^2.1.0",
 		"unist-util-filter": "^5.0.1"
 	},

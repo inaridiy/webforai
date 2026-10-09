@@ -28,7 +28,7 @@ import { htmlToMarkdownWithMetadata } from "webforai";
 const ORIGIN = "https://webforai.dev";
 const SITE_TITLE = "webforai";
 const SITE_SUMMARY =
-	"Convert web pages and local HTML to clean, LLM-ready Markdown — a TypeScript library (`webforai` on npm), the `npx webforai` CLI, and a hosted crawl/scrape API (webforai platform).";
+	"Convert web pages and local HTML to clean, LLM-ready Markdown — a TypeScript library (`webforai` on npm), the `webforai-cli` CLI (`npx webforai-cli`), and a hosted crawl/scrape API (webforai platform).";
 const TITLE_SUFFIX = / – Webforai$/u;
 
 const siteDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));

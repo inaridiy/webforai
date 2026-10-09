@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  Convert web pages and local HTML to clean, LLM-ready Markdown — with a TypeScript library, the <code>npx webforai</code> CLI, or a hosted API.
+  Convert web pages and local HTML to clean, LLM-ready Markdown — with a TypeScript library, a CLI (<code>npx webforai-cli</code>), or a hosted API.
 </p>
 
 <p align="center">
@@ -35,12 +35,19 @@ Everything is documented at **[webforai.dev](https://webforai.dev)**. Start from
 | I want to… | Use | Start here |
 | --- | --- | --- |
 | convert HTML in my own code (Node.js, browsers, Workers) | the `webforai` library | [Getting started](https://webforai.dev/getting-started) |
-| get Markdown for a URL from the shell or an AI agent | the CLI, `npx webforai <url>` | [CLI](https://webforai.dev/cli) |
+| embed webforai in my own library or tool | the `webforai` library | [Embedding in your project](https://webforai.dev/embedding) |
+| get Markdown for a URL from the shell or an AI agent | the CLI, `npx webforai-cli <url>` | [CLI](https://webforai.dev/cli) |
 | call a hosted API that runs the browsers and proxies for me | webforai platform | [platform.webforai.dev](https://platform.webforai.dev) (sign-up, API keys, usage) · [platform docs](https://webforai.dev/platform) |
 | run my own copy of that platform | [`apps/platform`](https://github.com/inaridiy/webforai/tree/main/apps/platform) | [Deploying your own instance](https://github.com/inaridiy/webforai/tree/main/apps/platform#deploying-your-own-instance) |
 
-The library, the CLI and the typed platform client (`webforai/platform`) all ship in the one
-`webforai` npm package.
+## Packages
+
+| npm package | source | what it is |
+| --- | --- | --- |
+| [`webforai`](https://www.npmjs.com/package/webforai) | [`packages/webforai`](packages/webforai) | The library: `htmlToMarkdown`, extractors, site adapters, loaders (`webforai/loaders/*`) and the typed platform client (`webforai/platform`). No CLI or browser dependencies. |
+| [`webforai-cli`](https://www.npmjs.com/package/webforai-cli) | [`packages/cli`](packages/cli) | The `webforai` command, built on the library. |
+
+Up to v4 the CLI shipped inside `webforai` (`npx webforai`); since v5 it is `webforai-cli`.
 
 ## Quick start
 
@@ -48,22 +55,22 @@ The library, the CLI and the typed platform client (`webforai/platform`) all shi
 
 ```bash
 # URL or local HTML file → Markdown on stdout (add -o out.md to write a file)
-npx webforai@latest https://example.com/article
+npx webforai-cli@latest https://example.com/article
 
 # machine-readable output
-npx webforai@latest https://example.com --json
+npx webforai-cli@latest https://example.com --json
 ```
 
 These commands use the [hosted platform](#platform-hosted-api) and need an API key:
 
 ```bash
-npx webforai@latest https://example.com --engine auto      # renders JavaScript when needed
-npx webforai@latest crawl https://docs.example.com -o docs --llms-txt   # site → .md files + llms.txt
-npx webforai@latest batch --file urls.txt -o pages         # many URLs → one .md per page
+npx webforai-cli@latest https://example.com --engine auto      # renders JavaScript when needed
+npx webforai-cli@latest crawl https://docs.example.com -o docs --llms-txt   # site → .md files + llms.txt
+npx webforai-cli@latest batch --file urls.txt -o pages         # many URLs → one .md per page
 ```
 
 To let an AI agent (Claude Code, Cursor, …) call the CLI, install it as an Agent Skill with
-`npx webforai@latest skill --install`. Flags, exit codes and error output are covered in the
+`npx webforai-cli@latest skill --install`. Flags, exit codes and error output are covered in the
 [CLI docs](https://webforai.dev/cli).
 
 ### Library
@@ -84,8 +91,9 @@ const markdown = htmlToMarkdown(html, { url, baseUrl: url });
 ```
 
 For pages that need JavaScript to render, load them with the Playwright loader
-(`import { loadHtml } from "webforai/loaders/playwright"`, after `npx playwright-core install`);
-see [Loaders](https://webforai.dev/docs/loaders).
+(`import { loadHtml } from "webforai/loaders/playwright"`). `playwright-core` is an optional
+peer dependency, so add it yourself (`npm i playwright-core`) and download a browser once
+(`npx playwright-core install chromium`); see [Loaders](https://webforai.dev/docs/loaders).
 
 ## What you get
 

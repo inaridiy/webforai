@@ -49,7 +49,7 @@ const STEPS: { title: string; body: string }[] = [
 	},
 	{
 		title: "Send your first request",
-		body: "With curl, the TypeScript client from the webforai package, or npx webforai on the command line.",
+		body: "With curl, the TypeScript client from the webforai package, or the webforai CLI (npx webforai-cli).",
 	},
 ];
 

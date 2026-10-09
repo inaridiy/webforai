@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { PlatformApiError, createPlatformClient, isStoredPageStub } from "../../../platform";
-import type { JobResultItem, JobStatus, PageFailure, PageResult, PageSuccess, PlatformClient } from "../../../platform";
+import { PlatformApiError, createPlatformClient, isStoredPageStub } from "webforai/platform";
+import type { JobResultItem, JobStatus, PageFailure, PageResult, PageSuccess, PlatformClient } from "webforai/platform";
 import { planOutputFiles, resolveInside } from "./files";
 import { renderLlmsFullTxt, renderLlmsTxt } from "./llms-txt";
 import type { ResolvedJob } from "./options";

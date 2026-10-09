@@ -1,12 +1,18 @@
 ---
 title: Installation
-description: Install the webforai package with your package manager, add the optional dependency for your loader, or run the CLI directly with npx webforai.
+description: Install the webforai library with your package manager, add the optional dependency for your loader, or run the CLI with npx webforai-cli.
 ---
 
 # Installation
 
-The CLI needs no install at all — `npx webforai@latest <url>` prints Markdown to stdout.
-See the [CLI reference](/cli). For the library, install `webforai`:
+webforai is two npm packages:
+
+| package | what it is | install |
+| --- | --- | --- |
+| `webforai` | the library: `htmlToMarkdown`, extractors, loaders and the [platform client](/platform/client) | `npm i webforai` |
+| `webforai-cli` | the [CLI](/cli) (`webforai` command), built on the library | none: `npx webforai-cli <url>` |
+
+## Library
 
 :::code-group
 
@@ -24,13 +30,30 @@ yarn add webforai
 
 :::
 
+The library has no CLI or browser dependencies, so it can be embedded in other packages and
+runs in Node.js, Cloudflare Workers and browsers. See
+[Embedding in your project](/embedding) for the dependency list, runtime support and bundle size.
+
 ## Loader dependencies
 
 Each [loader](/docs/loaders) needs its own extra setup; the core conversion functions need nothing more.
+The browser libraries are optional peer dependencies: installing webforai never installs them.
 
 | loader | import | setup |
 | --- | --- | --- |
 | fetch | `webforai/loaders/fetch` | None. |
-| Playwright | `webforai/loaders/playwright` | `playwright-core` is a peer dependency (installed with `webforai` by npm 7+ and pnpm; otherwise `npm i playwright-core`). Download a browser once with `npx playwright install chromium`. |
+| Playwright | `webforai/loaders/playwright` | `npm i playwright-core`, then download a browser once with `npx playwright-core install chromium`. |
 | Puppeteer | `webforai/loaders/puppeteer` | `npm i puppeteer` (downloads its own Chromium). |
 | Cloudflare Browser Rendering | `webforai/loaders/cf-puppeteer` | `npm i @cloudflare/puppeteer` and a `browser` binding in your Wrangler config. |
+
+## CLI
+
+The CLI needs no install: `npx webforai-cli@latest <url>` prints Markdown to stdout. To keep a
+`webforai` command on your `PATH`, install it globally:
+
+```bash
+npm i -g webforai-cli
+```
+
+See the [CLI reference](/cli). Up to v4 the CLI was part of the `webforai` package
+(`npx webforai`); since v5 that command only points you to `webforai-cli`.

@@ -1,6 +1,6 @@
 import fs from "node:fs";
-import { CRAWL_SITEMAP_MODES, REGIONS, REQUESTED_ENGINES } from "../../../platform";
-import type { CrawlSitemapMode, Region, RequestedEngine } from "../../../platform";
+import { CRAWL_SITEMAP_MODES, REGIONS, REQUESTED_ENGINES } from "webforai/platform";
+import type { CrawlSitemapMode, Region, RequestedEngine } from "webforai/platform";
 import { API_KEY_ENV, EXTRACTORS, PLATFORM_URL_ENV } from "../../constants";
 import { UsageError, missingApiKeyError } from "../webforai/options";
 

@@ -1,0 +1,54 @@
+{
+	"name": "webforai-cli",
+	"version": "4.3.1",
+	"description": "The webforai CLI: convert web pages and local HTML to clean, LLM-ready Markdown from the shell or an AI agent (npx webforai-cli <url>).",
+	"author": "inaridiy",
+	"license": "Apache-2.0",
+	"keywords": [
+		"html-to-markdown",
+		"markdown",
+		"llm",
+		"ai",
+		"cli",
+		"scraper",
+		"crawler",
+		"llms-txt",
+		"agent-skill"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/inaridiy/webforai.git",
+		"directory": "packages/cli"
+	},
+	"homepage": "https://webforai.dev/cli",
+	"bugs": {
+		"url": "https://github.com/inaridiy/webforai/issues"
+	},
+	"type": "module",
+	"bin": {
+		"webforai": "dist/bin.js"
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"clean": "rimraf dist",
+		"build": "pnpm clean && tsx build.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@clack/prompts": "^0.7.0",
+		"boxen": "^8.0.1",
+		"commander": "^12.1.0",
+		"picocolors": "^1.0.1",
+		"playwright-core": "^1.40.1",
+		"webforai": "workspace:^"
+	},
+	"devDependencies": {
+		"@types/node": "^20.14.10",
+		"esbuild": "^0.19.11",
+		"rimraf": "^5.0.5",
+		"tsx": "^4.19.1",
+		"typescript": "^5.4.5"
+	}
+}

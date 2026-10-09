@@ -1,6 +1,6 @@
 import { type Command, CommanderError, program } from "commander";
-import packageInfo from "../../package.json";
-import { DEFAULT_BASE_URL, PlatformApiError } from "../platform";
+import { DEFAULT_BASE_URL, PlatformApiError } from "webforai/platform";
+import packageInfo from "../package.json";
 import { type JobFlags, resolveJobOptions } from "./commands/jobs/options";
 import { JobIncompleteError, runJobCommand } from "./commands/jobs/run";
 import { type SkillFlags, skillCommand } from "./commands/skill";

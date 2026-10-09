@@ -60,12 +60,12 @@ The full reference is in the [API reference](/platform/api-reference).
   const { markdown } = await platform.scrape({ url: "https://example.com", engine: "browser" });
   ```
 
-- **CLI** — [`npx webforai`](/cli) uses the platform as a loader, and runs batch and crawl
+- **CLI** — [`npx webforai-cli`](/cli) uses the platform as a loader, and runs batch and crawl
   jobs straight into a folder of Markdown files:
 
   ```bash
-  WEBFORAI_API_KEY=wfa_... npx webforai https://example.com --engine browser --json
-  WEBFORAI_API_KEY=wfa_... npx webforai crawl https://docs.example.com -o docs --llms-txt
+  WEBFORAI_API_KEY=wfa_... npx webforai-cli https://example.com --engine browser --json
+  WEBFORAI_API_KEY=wfa_... npx webforai-cli crawl https://docs.example.com -o docs --llms-txt
   ```
 
 - **Anything that speaks HTTP** — the [API reference](/platform/api-reference) documents every

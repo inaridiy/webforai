@@ -7,13 +7,13 @@ static build is bound as `ASSETS`).
 Run locally: `pnpm --filter site dev` (no library build needed; `build` does need one).
 
 It is the **only** documentation source: the library (`packages/webforai`), the CLI
-(`npx webforai`), the `webforai/platform` client and the hosted platform API are all
+(`packages/cli`, `npx webforai-cli`), the `webforai/platform` client and the hosted platform API are all
 documented here. The platform app (platform.webforai.dev) has no docs of its own and links
 back to `/platform`.
 
 | path | content |
 | --- | --- |
-| `/`, `/getting-started`, `/installation`, `/how-it-works`, `/docs/*`, `/cookbook/*` | library |
+| `/`, `/getting-started`, `/installation`, `/embedding`, `/how-it-works`, `/docs/*`, `/cookbook/*` | library |
 | `/cli` | CLI and Agent Skill |
 | `/platform`, `/platform/api-reference`, `/platform/client`, `/platform/billing` | hosted platform API |
 

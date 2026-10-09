@@ -1,5 +1,5 @@
 ---
-description: webforai converts web pages and local HTML to clean, LLM-ready Markdown — a TypeScript library, the npx webforai CLI and a hosted API. Try it live.
+description: webforai converts web pages and local HTML to clean, LLM-ready Markdown — a TypeScript library, a CLI (npx webforai-cli) and a hosted API. Try it live.
 layout: landing
 content:
   width: 100%
@@ -15,7 +15,7 @@ import { WaysToUse } from "../components/WaysToUse";
       <div className="space-y-8 max-w-sm flex flex-col items-start max-md:items-center">
           <img className="h-[72px] dark:invert-[1] max-sm:h-[60px] pr-6" src="/images/logo-full-light.svg" alt="webforai" />
         <div className="font-regular text-lg max-sm:text-base max-md:text-center">
-          Convert web pages and local HTML to clean, LLM-ready Markdown — with a TypeScript library, the <code>npx webforai</code> CLI, or a hosted API.
+          Convert web pages and local HTML to clean, LLM-ready Markdown — with a TypeScript library, a CLI (<code>npx webforai-cli</code>), or a hosted API.
         </div>
         <div className="flex justify-center space-x-2">
           <HomePage.Button href="/getting-started" variant="accent">Get started</HomePage.Button>
@@ -31,19 +31,19 @@ import { WaysToUse } from "../components/WaysToUse";
 ```bash [npm]
 npm i webforai
 # or just run
-npx webforai@latest
+npx webforai-cli@latest
 ```
 
 ```bash [pnpm]
 pnpm i webforai
 # or just run
-pnpx webforai@latest
+pnpx webforai-cli@latest
 ```
 
 ```bash [yarn]
 yarn add webforai
 # or just run
-npx webforai@latest
+npx webforai-cli@latest
 ```
 
 :::
@@ -135,7 +135,7 @@ const markdown = htmlToMarkdown(html, { baseUrl: url }); // [!code hl]
 - Flexibility because it's built on [Syntax Tree](https://github.com/syntax-tree) ecosystem.
 - MathML to LaTeX with [mathml-to-latex](https://www.npmjs.com/package/mathml-to-latex) package.
 - Out-of-the-box loaders such as fetch, [playwright](https://www.npmjs.com/package/playwright), [puppeteer](https://www.npmjs.com/package/puppeteer).
-- CLI tool [`npx webforai <url>`](/cli) — Markdown on stdout, `--json` for scripts and AI agents
+- CLI tool [`npx webforai-cli <url>`](/cli) — Markdown on stdout, `--json` for scripts and AI agents
 
 </section>
 
