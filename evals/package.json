@@ -22,7 +22,9 @@
 		"trafilatura": "tsx src/cli/trafilatura.ts",
 		"gold:fetch-wcxb": "tsx src/cli/gold-fetch-wcxb.ts",
 		"gold:fetch-webmainbench": "tsx src/cli/gold-fetch-webmainbench.ts",
-		"gold:rouge-webmainbench": "uv run --quiet --script python/webmainbench_rouge.py"
+		"gold:rouge-webmainbench": "uv run --quiet --script python/webmainbench_rouge.py",
+		"webwalker:fetch": "tsx src/cli/webwalker-fetch.ts",
+		"webwalker:links": "tsx src/cli/webwalker-links.ts"
 	},
 	"dependencies": {
 		"playwright-core": "^1.40.1",

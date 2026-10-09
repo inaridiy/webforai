@@ -14,17 +14,14 @@
  * `.cache/trafilatura/<sha256 of the HTML>.json`.
  */
 
-import { type ChildProcess, spawn } from "node:child_process";
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { createInterface } from "node:readline";
 
-import { EVALS_ROOT } from "../config.js";
 import { CORPUS } from "../corpus.js";
 import { type RenderMode, readCached } from "../fetch.js";
 import { htmlKey } from "../firecrawl.js";
 import { loadGoldSets } from "../gold/sets.js";
-import { TRAFILATURA_CACHE, type TrafilaturaRecord } from "../trafilatura.js";
+import { TRAFILATURA_CACHE, type TrafilaturaRecord, startTrafilaturaWorker } from "../trafilatura.js";
 
 const arg = (name: string, fallback: string): string =>
 	process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -54,38 +51,6 @@ for (const set of sets) {
 }
 await mkdir(TRAFILATURA_CACHE, { recursive: true });
 
-interface Reply {
-	ok: boolean;
-	markdown: string;
-	error?: string;
-	ms: number;
-}
-
-/** One long-lived Python process; requests are answered in order, one line each. */
-const startWorker = async (): Promise<{
-	version: string;
-	ask: (page: object) => Promise<Reply>;
-	child: ChildProcess;
-}> => {
-	const child = spawn("uv", ["run", "--quiet", "--script", path.join(EVALS_ROOT, "python", "trafilatura_worker.py")], {
-		stdio: ["pipe", "pipe", "inherit"],
-	});
-	const lines = createInterface({ input: child.stdout as NodeJS.ReadableStream })[Symbol.asyncIterator]();
-	const next = async (): Promise<string> => {
-		const { value, done } = await lines.next();
-		if (done) {
-			throw new Error("Trafilatura worker exited");
-		}
-		return value as string;
-	};
-	const { version } = JSON.parse(await next()) as { version: string };
-	const ask = async (page: object): Promise<Reply> => {
-		child.stdin?.write(`${JSON.stringify(page)}\n`);
-		return JSON.parse(await next()) as Reply;
-	};
-	return { version, ask, child };
-};
-
 const queue = pages.slice(0, limit);
 const total = queue.length;
 let done = 0;
@@ -93,7 +58,7 @@ let failed = 0;
 let version = "";
 
 const worker = async (): Promise<void> => {
-	const python = await startWorker();
+	const python = await startTrafilaturaWorker();
 	version = python.version;
 	try {
 		for (;;) {

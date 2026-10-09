@@ -6,10 +6,12 @@
  * `extract` call: in-process, but in another runtime.
  */
 
+import { type ChildProcess, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { createInterface } from "node:readline";
 
-import { CACHE_DIR } from "./config.js";
+import { CACHE_DIR, EVALS_ROOT } from "./config.js";
 import { htmlKey } from "./firecrawl.js";
 
 export const TRAFILATURA_CACHE = path.join(CACHE_DIR, "trafilatura");
@@ -41,4 +43,39 @@ export const trafilaturaMarkdown = (html: string): string => {
 		throw new Error(`Trafilatura failed: ${record.error ?? "unknown error"}`);
 	}
 	return record.markdown;
+};
+
+export interface TrafilaturaReply {
+	ok: boolean;
+	markdown: string;
+	error?: string;
+	ms: number;
+}
+
+/**
+ * One long-lived `python/trafilatura_worker.py` process (started with `uv`); requests are answered
+ * in order, one line each. A request is `{ html, url, rounds, options? }`.
+ */
+export const startTrafilaturaWorker = async (): Promise<{
+	version: string;
+	ask: (request: object) => Promise<TrafilaturaReply>;
+	child: ChildProcess;
+}> => {
+	const child = spawn("uv", ["run", "--quiet", "--script", path.join(EVALS_ROOT, "python", "trafilatura_worker.py")], {
+		stdio: ["pipe", "pipe", "inherit"],
+	});
+	const lines = createInterface({ input: child.stdout as NodeJS.ReadableStream })[Symbol.asyncIterator]();
+	const next = async (): Promise<string> => {
+		const { value, done } = await lines.next();
+		if (done) {
+			throw new Error("Trafilatura worker exited");
+		}
+		return value as string;
+	};
+	const { version } = JSON.parse(await next()) as { version: string };
+	const ask = async (request: object): Promise<TrafilaturaReply> => {
+		child.stdin?.write(`${JSON.stringify(request)}\n`);
+		return JSON.parse(await next()) as TrafilaturaReply;
+	};
+	return { version, ask, child };
 };
