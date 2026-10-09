@@ -20,4 +20,4 @@ npx tsx src/index.ts --url https://webforai.dev/getting-started
 Writes `.output/output.html` (the rendered HTML), `.output/output.md` (extracted) and
 `.output/output.raw.md` (whole page). `--url` defaults to https://webforai.dev/.
 
-For the same thing without writing code, use the CLI: `npx webforai <url>`.
+For the same thing without writing code, use the CLI: `npx webforai-cli <url>`.

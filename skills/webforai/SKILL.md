@@ -11,18 +11,18 @@ to stdout, every log goes to stderr, so output can be piped or captured directly
 ## Basic usage
 
 ```bash
-npx @webforai/cli https://example.com/article            # Markdown to stdout
-npx @webforai/cli https://example.com/article -o out.md  # write to a file instead
-npx @webforai/cli ./page.html                            # convert a local HTML file
-npx @webforai/cli https://example.com --json             # machine-readable envelope (see below)
+npx webforai-cli https://example.com/article            # Markdown to stdout
+npx webforai-cli https://example.com/article -o out.md  # write to a file instead
+npx webforai-cli ./page.html                            # convert a local HTML file
+npx webforai-cli https://example.com --json             # machine-readable envelope (see below)
 ```
 
 ## Which command
 
-- One page, or a handful you will read right away → `npx @webforai/cli <url>` (free, local;
+- One page, or a handful you will read right away → `npx webforai-cli <url>` (free, local;
   add `--engine auto` when the page needs JavaScript or blocks plain fetches).
-- A known list of URLs (2–100) to keep as files → `npx @webforai/cli batch` (hosted platform).
-- A whole site or docs section → `npx @webforai/cli crawl` (hosted platform); add `--llms-txt`
+- A known list of URLs (2–100) to keep as files → `npx webforai-cli batch` (hosted platform).
+- A whole site or docs section → `npx webforai-cli crawl` (hosted platform); add `--llms-txt`
   for a single `llms-full.txt` you can read in one go.
 
 ## Flags
@@ -81,7 +81,7 @@ For JavaScript-heavy or bot-protected pages, the hosted platform fetches server-
 
 ```bash
 export WEBFORAI_API_KEY=wfa_...       # from https://platform.webforai.dev/dashboard
-npx @webforai/cli https://example.com --engine auto --json
+npx webforai-cli https://example.com --engine auto --json
 ```
 
 `WEBFORAI_PLATFORM_URL` overrides the host for self-hosted deployments. Accounts get 1,000
@@ -105,11 +105,11 @@ it. Batch and crawl jobs bill per converted page.
 
 ```bash
 # a docs site → one .md per page, mirroring URL paths, plus llms.txt / llms-full.txt
-npx @webforai/cli crawl https://docs.example.com -o docs --limit 100 --include '^/docs' --llms-txt
+npx webforai-cli crawl https://docs.example.com -o docs --limit 100 --include '^/docs' --llms-txt
 
 # a list of URLs (arguments, or one per line via --file; '-' reads stdin)
-npx @webforai/cli batch https://a.example/post https://b.example/news -o pages
-npx @webforai/cli batch --file urls.txt -o pages --json
+npx webforai-cli batch https://a.example/post https://b.example/news -o pages
+npx webforai-cli batch --file urls.txt -o pages --json
 ```
 
 Both submit an async job, wait for it, then write every converted page under `-o <dir>`

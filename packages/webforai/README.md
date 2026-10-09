@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  Convert web pages and local HTML to clean, LLM-ready Markdown — with a TypeScript library, the <code>npx webforai</code> CLI, or a hosted API.
+  Convert web pages and local HTML to clean, LLM-ready Markdown — a dependency-light TypeScript library for Node.js, Cloudflare Workers and browsers.
 </p>
 
 <p align="center">
@@ -28,51 +28,10 @@
   </a>
 </p>
 
-## Documentation
+Documentation: **[webforai.dev](https://webforai.dev)** ([Getting started](https://webforai.dev/getting-started) ·
+[API reference](https://webforai.dev/docs/html-to-markdown) · [Embedding in your project](https://webforai.dev/embedding)).
 
-Everything is documented at **[webforai.dev](https://webforai.dev)**. Start from what you want to do:
-
-| I want to… | Use | Start here |
-| --- | --- | --- |
-| convert HTML in my own code (Node.js, browsers, Workers) | the `webforai` library | [Getting started](https://webforai.dev/getting-started) |
-| get Markdown for a URL from the shell or an AI agent | the CLI, `npx webforai <url>` | [CLI](https://webforai.dev/cli) |
-| call a hosted API that runs the browsers and proxies for me | webforai platform | [platform.webforai.dev](https://platform.webforai.dev) (sign-up, API keys, usage) · [platform docs](https://webforai.dev/platform) |
-
-The library, the CLI and the typed platform client (`webforai/platform`) all ship in the one
-`webforai` npm package:
-
-| Import | What it is |
-| --- | --- |
-| `webforai` | `htmlToMarkdown` and the conversion API |
-| `webforai/platform` | typed client for the hosted platform |
-| `webforai/loaders/fetch` | load HTML over `fetch` |
-| `webforai/loaders/playwright` | load JavaScript-rendered pages (needs `playwright-core`) |
-
-## Quick start
-
-### CLI
-
-```bash
-# URL or local HTML file → Markdown on stdout (add -o out.md to write a file)
-npx webforai@latest https://example.com/article
-
-# machine-readable output
-npx webforai@latest https://example.com --json
-```
-
-These commands use the [hosted platform](#platform-hosted-api) and need an API key:
-
-```bash
-npx webforai@latest https://example.com --engine auto      # renders JavaScript when needed
-npx webforai@latest crawl https://docs.example.com -o docs --llms-txt   # site → .md files + llms.txt
-npx webforai@latest batch --file urls.txt -o pages         # many URLs → one .md per page
-```
-
-To let an AI agent (Claude Code, Cursor, …) call the CLI, install it as an Agent Skill with
-`npx webforai@latest skill --install`. Flags, exit codes and error output are covered in the
-[CLI docs](https://webforai.dev/cli).
-
-### Library
+## Install
 
 ```bash
 npm i webforai
@@ -89,9 +48,26 @@ const html = await (await fetch(url)).text();
 const markdown = htmlToMarkdown(html, { url, baseUrl: url });
 ```
 
-For pages that need JavaScript to render, load them with the Playwright loader
-(`import { loadHtml } from "webforai/loaders/playwright"`, after `npx playwright-core install`);
-see [Loaders](https://webforai.dev/docs/loaders).
+Looking for the command line? The CLI is a separate package, [`webforai-cli`](https://www.npmjs.com/package/webforai-cli):
+`npx webforai-cli <url>`. Up to v4 it shipped inside this package as `npx webforai`.
+
+## Entry points
+
+| Import | What it is | Runs in | Needs |
+| --- | --- | --- | --- |
+| `webforai` | `htmlToMarkdown` and the conversion API | Node.js, Workers, browsers | nothing |
+| `webforai/platform` | typed client for the [hosted platform](https://webforai.dev/platform) | anywhere with `fetch` | nothing |
+| `webforai/loaders/fetch` | load HTML over `fetch` | anywhere with `fetch` | nothing |
+| `webforai/loaders/playwright` | load JavaScript-rendered pages | Node.js | `npm i playwright-core` |
+| `webforai/loaders/puppeteer` | the same with Puppeteer | Node.js | `npm i puppeteer` |
+| `webforai/loaders/cf-puppeteer` | the same with Cloudflare Browser Rendering | Workers | `npm i @cloudflare/puppeteer` |
+
+The browser libraries are optional peer dependencies: installing `webforai` never installs them.
+The library itself uses no Node.js built-ins, so it can be embedded in other libraries and
+bundled for Workers or browsers; [Embedding in your project](https://webforai.dev/embedding)
+lists its dependencies and bundle size.
+
+s).
 
 ## What you get
 

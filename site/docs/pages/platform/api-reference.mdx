@@ -229,7 +229,7 @@ curl -X POST https://platform.webforai.dev/v1/scrape \
 ## POST /v1/batch
 
 Asynchronous, a list of URLs. Limit: **100 URLs per job**. Counts towards your
-[concurrent job limit](#rate-limits). From a shell, [`npx webforai batch`](/cli#batch-and-crawl)
+[concurrent job limit](#rate-limits). From a shell, [`npx webforai-cli batch`](/cli#batch-and-crawl)
 submits, waits and writes one Markdown file per page.
 
 ```jsonc
@@ -260,7 +260,7 @@ curl -X POST https://platform.webforai.dev/v1/batch \
 ## POST /v1/crawl
 
 Asynchronous, recursive same-origin crawl from a seed URL. Counts towards your
-[concurrent job limit](#rate-limits). From a shell, [`npx webforai crawl`](/cli#batch-and-crawl)
+[concurrent job limit](#rate-limits). From a shell, [`npx webforai-cli crawl`](/cli#batch-and-crawl)
 does the whole round trip and can also write `llms.txt` / `llms-full.txt`.
 
 ```jsonc

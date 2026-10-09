@@ -329,7 +329,7 @@ try {
 	// for the user's own code.
 	assert.equal(await page.getByLabel("Egress region").count(), 0);
 	await page.getByRole("heading", { name: "Same page, from your code", exact: true }).waitFor();
-	await page.getByText("npx @webforai/cli https://example.test", { exact: true }).waitFor();
+	await page.getByText("npx webforai-cli https://example.test", { exact: true }).waitFor();
 	await page.getByRole("tab", { name: "CLI", exact: true }).first().click();
 	assert.equal(await page.title(), "webforai platform — any web page as clean Markdown");
 	await page.route("**/async-fixture", (route) =>

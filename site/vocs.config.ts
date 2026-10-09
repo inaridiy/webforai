@@ -75,6 +75,10 @@ export default defineConfig({
 			link: "/getting-started",
 		},
 		{
+			text: "Embedding in your project",
+			link: "/embedding",
+		},
+		{
 			text: "How it works",
 			link: "/how-it-works",
 		},

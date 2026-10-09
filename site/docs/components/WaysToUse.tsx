@@ -33,7 +33,7 @@ const ways: Way[] = [
 	{
 		id: "cli",
 		title: "CLI",
-		snippet: "npx @webforai/cli <url>",
+		snippet: "npx webforai-cli <url>",
 		body: "One command from URL or HTML file to Markdown on stdout. Built for pipes, scripts and AI agents.",
 		primary: { text: "CLI guide", href: "/cli" },
 		secondary: { text: "Agent Skill", href: "/cli#for-ai-agents" },

@@ -1,7 +1,7 @@
 {
-	"name": "@webforai/cli",
+	"name": "webforai-cli",
 	"version": "4.3.1",
-	"description": "The webforai CLI: convert web pages and local HTML to clean, LLM-ready Markdown from the shell or an AI agent (npx @webforai/cli <url>).",
+	"description": "The webforai CLI: convert web pages and local HTML to clean, LLM-ready Markdown from the shell or an AI agent (npx webforai-cli <url>).",
 	"author": "inaridiy",
 	"license": "Apache-2.0",
 	"keywords": [
@@ -24,14 +24,13 @@
 	"bugs": {
 		"url": "https://github.com/inaridiy/webforai/issues"
 	},
-	"publishConfig": {
-		"access": "public"
-	},
 	"type": "module",
 	"bin": {
 		"webforai": "dist/bin.js"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"clean": "rimraf dist",
 		"build": "pnpm clean && tsx build.ts",

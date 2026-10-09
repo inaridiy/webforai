@@ -13,7 +13,7 @@ Everything here is OSS and runs on your own Cloudflare account. The hosted insta
 - Design specs (full API contract, architecture, internal RPC for other Workers, billing
   internals): [`docs/specs/platform/`](../../docs/specs/platform/)
 - Clients: the `webforai/platform` TypeScript client (a subpath of the
-  [`webforai`](../../packages/webforai) package) and the CLI ([`@webforai/cli`](../../packages/cli): `npx @webforai/cli <url> --engine auto`).
+  [`webforai`](../../packages/webforai) package) and the CLI ([`webforai-cli`](../../packages/cli): `npx webforai-cli <url> --engine auto`).
 
 ## Requirements
 

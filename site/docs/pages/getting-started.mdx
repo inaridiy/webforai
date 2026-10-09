@@ -11,7 +11,7 @@ Welcome to webforai, a library designed to convert **HTML to Markdown** with sim
 Whether you're working in a browser, Node.js, or even on Cloudflare Workers, webforai is your go-to tool for bridging between web and LLMs.
 
 :::tip
-webforai comes in three forms: this library, the [CLI](/cli) (`npx webforai <url>`), and a
+webforai comes in three forms: this library, the [CLI](/cli) (`npx webforai-cli <url>`, a separate package), and a
 [hosted API](/platform) that runs the browsers and proxies for you. This page covers the
 library and the CLI; for the hosted API, [create an account](https://platform.webforai.dev/signup)
 and follow the [platform quickstart](/platform#quickstart).
@@ -23,14 +23,14 @@ The CLI needs no install. Convert any URL (or local HTML file) to Markdown in on
 stdout, so it can be piped, redirected, or captured:
 
 ```bash
-npx webforai@latest https://www.npmjs.com/package/webforai
+npx webforai-cli@latest https://www.npmjs.com/package/webforai
 
 # write to a file / emit machine-readable JSON instead
-npx webforai@latest https://www.npmjs.com/package/webforai -o webforai.md
-npx webforai@latest https://example.com --json | jq -r .markdown
+npx webforai-cli@latest https://www.npmjs.com/package/webforai -o webforai.md
+npx webforai-cli@latest https://example.com --json | jq -r .markdown
 ```
 
-Prefer prompts? `npx webforai@latest -i` starts a guided interactive flow. The full flag
+Prefer prompts? `npx webforai-cli@latest -i` starts a guided interactive flow. The full flag
 reference — including JavaScript rendering via Playwright or the
 [hosted platform](/platform), and the Agent Skill for AI agents — lives on the
 [CLI page](/cli).
@@ -76,7 +76,7 @@ const html = await loadHtml(url); // [!code hl]
 
 
 ```tsx [playwright] twoslash
-// Before using the playwright loader, run `npx playwright install chromium`
+// Before using the playwright loader, run `npm i playwright-core && npx playwright-core install chromium`
 import { loadHtml } from "webforai/loaders/playwright"; // [!code hl]
 
 // Load html from url

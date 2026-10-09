@@ -162,7 +162,7 @@ const FromYourCode = ({ url }: { url: string }) => {
 				<p className="mt-3 text-muted-foreground leading-relaxed">
 					Free &amp; local, no key:
 					<code className="mt-1 block break-all rounded bg-muted px-2 py-1 font-mono text-[0.8125rem] text-foreground">
-						npx @webforai/cli {shellArg(url)}
+						npx webforai-cli {shellArg(url)}
 					</code>
 				</p>
 			</div>

@@ -1,27 +1,42 @@
 ---
 title: CLI
-description: npx webforai converts a URL or local HTML file to clean Markdown on stdout, and crawls or batch-converts sites into Markdown files and llms.txt through the hosted platform.
+description: npx webforai-cli converts a URL or local HTML file to clean Markdown on stdout, and crawls or batch-converts sites into Markdown files and llms.txt through the hosted platform.
 ---
 
 # CLI
 
-`npx webforai` converts a URL or a local HTML file to clean Markdown. It is
+`npx webforai-cli` converts a URL or a local HTML file to clean Markdown. It is
 **non-interactive by default**: the Markdown goes to stdout and every log goes to stderr, so
 the command composes with pipes, scripts and AI agents. The guided wizard is still there
 behind `-i`.
 
+The CLI is the `webforai-cli` package; the command it installs is `webforai`. Run it with
+`npx` without installing, or install it once:
+
+```bash
+npm i -g webforai-cli
+webforai https://example.com/article
+```
+
+:::info
+Up to v4 the CLI shipped inside the `webforai` package as `npx webforai`. Since v5, `webforai`
+is the library only, and `npx webforai` just prints the `webforai-cli` command to run instead.
+Flags, output and exit codes did not change. If you installed the Agent Skill, reinstall it
+([below](#for-ai-agents)) so it calls the new package.
+:::
+
 ```bash
 # Markdown to stdout
-npx webforai@latest https://example.com/article
+npx webforai-cli@latest https://example.com/article
 
 # write to a file instead
-npx webforai@latest https://example.com/article -o article.md
+npx webforai-cli@latest https://example.com/article -o article.md
 
 # convert a local HTML file
-npx webforai@latest ./page.html
+npx webforai-cli@latest ./page.html
 
 # machine-readable output
-npx webforai@latest https://example.com --json | jq -r .markdown
+npx webforai-cli@latest https://example.com --json | jq -r .markdown
 ```
 
 ## Flags
@@ -64,8 +79,8 @@ making a request. Interactive mode applies the same flag validation and environm
 
 ```bash
 export WEBFORAI_API_KEY=wfa_...   # from https://platform.webforai.dev/dashboard
-npx webforai@latest https://spa.example.com --engine auto
-npx webforai@latest https://blocked.example.com --engine proxy-fetch --region jp   # subscription
+npx webforai-cli@latest https://spa.example.com --engine auto
+npx webforai-cli@latest https://blocked.example.com --engine proxy-fetch --region jp   # subscription
 ```
 
 ## Batch and crawl
@@ -78,11 +93,11 @@ results and write **one Markdown file per page** into a directory.
 export WEBFORAI_API_KEY=wfa_...
 
 # crawl a docs site (same-origin), plus llms.txt and llms-full.txt
-npx webforai@latest crawl https://docs.example.com -o docs --limit 100 --include '^/docs' --llms-txt
+npx webforai-cli@latest crawl https://docs.example.com -o docs --limit 100 --include '^/docs' --llms-txt
 
 # convert a list of URLs (arguments, or one per line with --file; "-" reads stdin)
-npx webforai@latest batch https://a.example/post https://b.example/news -o pages
-cat urls.txt | npx webforai@latest batch --file - -o pages --json
+npx webforai-cli@latest batch https://a.example/post https://b.example/news -o pages
+cat urls.txt | npx webforai-cli@latest batch --file - -o pages --json
 ```
 
 | flag | meaning |
@@ -135,10 +150,10 @@ agents when and how to use it:
 
 ```bash
 # print the SKILL.md
-npx webforai@latest skill
+npx webforai-cli@latest skill
 
 # install it via Vercel's skills CLI (agent picker, symlinks, lockfile)
-npx webforai@latest skill --install
+npx webforai-cli@latest skill --install
 
 # or install straight from the repository
 npx skills add inaridiy/webforai
@@ -149,5 +164,5 @@ npx skills add inaridiy/webforai
 
 ## Interactive mode
 
-`npx webforai -i` walks through source, loader (including the platform), mode and output
+`npx webforai-cli -i` walks through source, loader (including the platform), mode and output
 path with prompts.

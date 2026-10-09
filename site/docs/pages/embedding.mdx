@@ -1,0 +1,89 @@
+---
+title: Embedding in your project
+description: What depending on webforai costs another library or tool — install footprint, optional peer dependencies, runtime support (Node.js, Cloudflare Workers, browsers) and bundle size.
+---
+
+# Embedding in your project
+
+This page is for projects that ship webforai to their own users: a library, a CLI, an agent
+framework, a Worker. It lists what `webforai` adds to their install and bundle, and where it runs.
+
+```bash
+npm i webforai
+```
+
+```ts
+import { htmlToMarkdown } from "webforai";
+
+const markdown = htmlToMarkdown(html, { url });
+```
+
+Depend on `webforai`, not on `webforai-cli`: the CLI package only adds the `webforai` command
+and its terminal dependencies.
+
+## Install footprint
+
+The library has no CLI dependencies and no required browser driver. Its runtime dependencies
+are the [unified](https://unifiedjs.com/) syntax-tree utilities it is built on (`hast-util-*`,
+`mdast-util-*`, `parse5`), plus `mathml-to-latex`, `trim-trailing-lines` and
+`unist-util-filter`.
+
+| `npm i webforai` into an empty project | packages added | `node_modules` |
+| --- | ---: | ---: |
+| v4 (CLI included, `playwright-core` auto-installed) | 125 | 31 MB |
+| v5 | 100 | 14 MB |
+
+Measured with npm 11 on 2026-10-09; of the 14 MB, webforai itself is 3.1 MB (1.4 MB of it type
+declarations) and nothing else is over 1 MB. pnpm gives the same result.
+
+## Optional peer dependencies
+
+Browser drivers are optional peers, imported only by their own loader subpath. Installing
+webforai never installs them; if your project uses a loader, add its driver to your own
+dependencies.
+
+| Import | Runs in | Your project adds |
+| --- | --- | --- |
+| `webforai` | Node.js, Workers, browsers | nothing |
+| `webforai/platform` | anywhere with `fetch` | nothing |
+| `webforai/loaders/fetch` | anywhere with `fetch` | nothing |
+| `webforai/loaders/playwright` | Node.js | `playwright-core` |
+| `webforai/loaders/puppeteer` | Node.js | `puppeteer` |
+| `webforai/loaders/cf-puppeteer` | Cloudflare Workers | `@cloudflare/puppeteer` (needs the `nodejs_compat` flag) |
+
+## Runtimes
+
+`webforai`, `webforai/platform` and `webforai/loaders/fetch` use no Node.js built-ins,
+`process` or `Buffer`.
+
+- **Node.js** — ESM (`import`) and CommonJS (`require`) builds, with TypeScript declarations
+  for both, selected through the package's `exports`.
+- **Cloudflare Workers** — runs without the `nodejs_compat` flag. A Worker that converts pages
+  with `htmlToMarkdown` and `loaders/fetch` uploads about 1.4 MB (375 KB gzipped) with
+  Wrangler's defaults, 830 KB (300 KB gzipped) with `--minify`.
+- **Browsers** — bundles with esbuild, Vite or any bundler that honours the `browser` export
+  condition, with no Node polyfills. The browser build decodes HTML entities through the DOM,
+  so run it in a real browser rather than a Node script.
+
+## Bundle size
+
+Minified sizes of an esbuild browser bundle (esbuild 0.19, `--platform=browser --minify`):
+
+| What you import | Minified | gzip |
+| --- | ---: | ---: |
+| `htmlToMarkdown` from `webforai` | 784 KB | 285 KB |
+| `createPlatformClient` from `webforai/platform` | 4 KB | 2 KB |
+| `loadHtml` from `webforai/loaders/fetch` | 1 KB | 1 KB |
+
+About 200 KB of the conversion bundle is the weights of the built-in learned extractor
+([kiwame](/how-it-works)); `parse5`, `mathml-to-latex` and its XML parser make up most of the rest.
+`webforai/platform` and `webforai/loaders/fetch` do not pull in the converter, so a project that
+only calls the [hosted platform](/platform/client) stays small.
+
+## Versioning
+
+webforai follows semver: depend on `"webforai": "^5.0.0"`. Breaking changes ship in a major
+release and are listed in the
+[CHANGELOG](https://github.com/inaridiy/webforai/blob/main/packages/webforai/CHANGELOG.md).
+Conversion output can improve in minor and patch releases (better extraction, cleaner
+Markdown); pin an exact version if your tests compare Markdown byte for byte.
