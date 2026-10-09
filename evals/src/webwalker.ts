@@ -125,7 +125,12 @@ export interface OutputLink {
 	section: string;
 }
 
-/** Links of a Markdown document (inline, reference and autolinks), normalized against `base`. */
+/**
+ * Links of a Markdown document (inline, reference and autolinks), normalized against `base`. Also
+ * any `](url)` the parser does not accept as a link — Turndown writes link text with blank lines
+ * inside the brackets, which CommonMark reads as text, but a model reading the output still sees
+ * the URL. Those get the section `""`.
+ */
 export const markdownLinks = (markdown: string, base: string): OutputLink[] => {
 	const tree = fromMarkdown(markdown, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] });
 	const definitions = new Map<string, string>();
@@ -151,6 +156,9 @@ export const markdownLinks = (markdown: string, base: string): OutputLink[] => {
 		}
 	};
 	visit(tree);
+	for (const match of markdown.matchAll(/\]\(\s*<?([^\s)>]+)/g)) {
+		found.push({ href: match[1], section: "" });
+	}
 	const links: OutputLink[] = [];
 	for (const { href, section: where } of found) {
 		const resolved = href.startsWith("ref:") ? definitions.get(href.slice(4)) : href;

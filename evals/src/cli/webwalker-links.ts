@@ -10,7 +10,8 @@
  * to the hop's target, compared with `normalizeUrl`. Size is o200k_base tokens of the output
  * (`python/count_tokens.py`). Outputs go to `.reports/webwalker/`.
  *
- * Pipelines: webforai's readability and agent presets; `webforai + all links`, the readability
+ * Pipelines: webforai's readability and agent presets; agent output without its role headings
+ * (same links, one flat list); `webforai + all links`, the readability
  * output followed by every other link of the page in document order (the baseline agent mode has
  * to beat: link roles are only worth something if they keep the links that matter in fewer
  * tokens than listing them all); Readability + Turndown and Defuddle, which keep links inside the
@@ -58,6 +59,25 @@ const withAllLinks = (html: string, url: string): string => {
 	return items.length > 0 ? `${body.trimEnd()}\n\n## Links\n\n${items.join("\n")}\n` : body;
 };
 
+const ROLE_HEADING = /^### (Related|Pagination|Section navigation|Breadcrumb|Site navigation)\n\n?/gm;
+
+/**
+ * Agent output with the role headings removed: the same links in the same order, one flat list.
+ * Separates what agent mode's link selection is worth from what grouping by role adds.
+ */
+const agentFlat = (html: string, url: string): string => {
+	const markdown = htmlToMarkdown(html, { baseUrl: url, url, extractors: agentExtractor });
+	const at = markdown.lastIndexOf("\n## Links\n");
+	if (at < 0) {
+		return markdown;
+	}
+	const links = markdown
+		.slice(at)
+		.replace(ROLE_HEADING, "")
+		.replace(/\n{2,}(?=- )/g, "\n");
+	return `${markdown.slice(0, at)}${links.replace("## Links\n", "## Links\n\n")}`;
+};
+
 let trafilatura: Awaited<ReturnType<typeof startTrafilaturaWorker>> | undefined;
 const trafilaturaWithLinks: Convert = async (html, url) => {
 	const file = path.join(TRAFILATURA_LINKS_CACHE, `${htmlKey(html)}.json`);
@@ -94,6 +114,7 @@ const PIPELINES: { id: string; label: string; convert: Convert }[] = [
 		label: "webforai (agent)",
 		convert: (html, url) => htmlToMarkdown(html, { baseUrl: url, url, extractors: agentExtractor }),
 	},
+	{ id: "webforai-agent-flat", label: "webforai (agent, no role headings)", convert: agentFlat },
 	{ id: "webforai-all-links", label: "webforai + all links", convert: withAllLinks },
 	{ id: "readability-turndown", label: "Readability + Turndown", convert: competitor("readability-turndown") },
 	{ id: "defuddle", label: "Defuddle", convert: competitor("defuddle") },

@@ -10,6 +10,10 @@
  * rendered DOM is cached in `.cache/webwalker/html/`, failures included. `WEBWALKER_CHROMIUM`
  * points at a Chromium binary when playwright-core's own is not installed.
  *
+ * Requests go through the proxy pool (`WEBFORAI_PROXY_LIST_URL` / `WEBFORAI_PROXY_URL`, see
+ * `config.ts`): up to three proxies per page, a failed or blocked (HTTP 403/429) answer moving on to
+ * the next. `--direct` fetches from this machine instead; without a configured proxy the run stops.
+ *
  * For each label the page's anchors are matched by text (`textKey`): exact matches first, else
  * anchors whose text contains the label or is contained in it. When several distinct URLs match,
  * up to three are tried and the first from which the rest of the path resolves wins. A page that
@@ -25,6 +29,7 @@ import { type Browser, chromium } from "playwright-core";
 import { fetch as undiciFetch } from "undici";
 
 import { USER_AGENT } from "../config.js";
+import { type Proxy as PoolProxy, ProxyPool, loadProxies } from "../proxy.js";
 import {
 	type CachedPage,
 	HOPS_FILE,
@@ -44,6 +49,15 @@ import {
 const arg = (name: string): string | undefined =>
 	process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3);
 const limit = Number(arg("limit") ?? Number.POSITIVE_INFINITY);
+const direct = process.argv.includes("--direct");
+const pool = direct ? undefined : new ProxyPool(await loadProxies());
+if (pool && pool.size === 0) {
+	throw new Error(
+		"No proxy configured (WEBFORAI_PROXY_LIST_URL or WEBFORAI_PROXY_URL); pass --direct to fetch without one",
+	);
+}
+/** Proxies tried per page before it is recorded as failed. */
+const PROXY_ATTEMPTS = 3;
 /** Distinct URLs tried when a label matches several links. */
 const MAX_CANDIDATES = 3;
 
@@ -85,7 +99,7 @@ const slot = async (): Promise<() => void> => {
 	};
 };
 
-const render = async (url: string): Promise<CachedPage> => {
+const render = async (url: string, proxy?: PoolProxy): Promise<CachedPage> => {
 	browser ??= chromium.launch({
 		headless: true,
 		executablePath: process.env.WEBWALKER_CHROMIUM,
@@ -96,6 +110,7 @@ const render = async (url: string): Promise<CachedPage> => {
 		userAgent: USER_AGENT,
 		viewport: { width: 1440, height: 900 },
 		locale: "en-US",
+		proxy: proxy ? { server: proxy.server, username: proxy.username, password: proxy.password } : undefined,
 	});
 	try {
 		const page = await context.newPage();
@@ -115,13 +130,24 @@ const render = async (url: string): Promise<CachedPage> => {
 	}
 };
 
+/** A failure another exit IP may get past: no response, or a block. */
+const blocked = (page: CachedPage): boolean => page.status === 0 || page.status === 403 || page.status === 429;
+
 const getPage = async (url: string): Promise<CachedPage> => {
 	const cached = await readPage(url);
 	if (cached) {
 		return cached;
 	}
 	return politely(url, async () => {
-		const page = await render(url);
+		let page: CachedPage | undefined;
+		for (let attempt = 0; attempt < (pool ? PROXY_ATTEMPTS : 1) && (!page || blocked(page)); attempt++) {
+			const proxy = pool?.next();
+			page = await render(url, proxy);
+			if (proxy) {
+				blocked(page) ? pool?.reportFailure(proxy) : pool?.reportSuccess(proxy);
+			}
+		}
+		page ??= await render(url);
 		await writePage(page);
 		return page;
 	});

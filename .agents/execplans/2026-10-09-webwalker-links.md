@@ -32,7 +32,11 @@ Stacked on `feat/comments-mode-compact-tables`. Not pushed until the owner decid
       tasks, 249 distinct hops on 103 pages). Unresolved: 125 source page no longer linked from
       the last page (site changes), 77 label not found, 25 fetch errors (bot blocks, timeouts).
 - [x] (2026-10-09) Score; results below.
-- [ ] Owner decision: build design B (single-step LLM choice) or improve roles first.
+- [x] (2026-10-09) Owner decision: run design B (single-step LLM choice) generously, through the
+      subscription CLIs rather than the API.
+- [x] (2026-10-09) Design B: 276 items × 9 pipelines; Haiku 5.5 ×3, Sonnet 5.5 ×3 (`claude -p`),
+      gpt-6.1-sol ×1 (`codex exec`, weekly quota 0% → 9%): 17,388 answers. Results below.
+- [ ] Fable review of how to strengthen agent mode with WebWalkerQA-style labels (English first).
 
 ## Results (webforai at the base branch's build, 2026-10-09)
 
@@ -43,10 +47,10 @@ Stacked on `feat/comments-mode-compact-tables`. Not pushed until the owner decid
 | webforai (readability) | 36.1% | 0.0% | 16.3% | 973 / 1,582 |
 | webforai (agent) | 79.1% | 67.3% | 64.9% | 2,616 / 2,933 |
 | webforai + all links | 100% | 100% | 100% | 3,071 / 3,704 |
-| Readability + Turndown | 15.7% | 9.4% | 6.7% | 463 / 934 |
-| Defuddle | 45.0% | 22.6% | 20.7% | 1,353 / 4,577 |
+| Readability + Turndown | 19.3% | 9.4% | 6.7% | 463 / 934 |
+| Defuddle | 45.4% | 22.6% | 20.7% | 1,353 / 4,577 |
 | Trafilatura (include_links) | 19.7% | 4.4% | 12.0% | 482 / 711 |
-| Turndown (full page) | 81.1% | 91.8% | 79.3% | 3,697 / 5,122 |
+| Turndown (full page) | 92.4% | 98.7% | 90.9% | 3,697 / 5,122 |
 | node-html-markdown (full page) | 94.0% | 96.2% | 91.3% | 3,546 / 4,619 |
 
 - **Agent mode does not beat "readability + all links" here.** It drops 21% of the hops to save
@@ -62,6 +66,50 @@ Stacked on `feat/comments-mode-compact-tables`. Not pushed until the owner decid
 - Caveats: WebWalkerQA paths are mostly site menus (as expected, little related/pagination);
   150 tasks on ~40 sites, so sites with many hops (sigchi, poms, vldb) weigh heavily; "all links"
   is 100% by construction, since hops were resolved from the same anchors.
+
+## Design B: next-link choice (`webwalker:choose`)
+
+- Items: one per task and page on a resolved path (276). The model gets the task's question, the
+  page URL and one pipeline's output, and answers with one URL copied from the page (structured
+  output). Correct: a next link of any of the task's golden paths on that page, or a source page;
+  the URL must be a link in the output (no navigating from memory). Outputs without links are
+  wrong without asking.
+- Pipelines as in A, plus **agent without role headings** (same links and order, one flat list):
+  agent − flat isolates what grouping by role adds; flat − all links what the link selection costs.
+- Models through the local CLIs: Haiku 5.5 and Sonnet 5.5 via `claude -p` (no tools, fixed system
+  prompt, 3 repetitions each), gpt-6.1-sol via `codex exec` (low effort, 1 repetition). Paired
+  differences with a 95% CI bootstrapped over sites.
+- Measurement fix found by the first B run: Turndown writes link text with blank lines inside the
+  brackets, which CommonMark does not parse as a link; `markdownLinks` now also takes any
+  `](url)`. Turndown (full page) hops kept 81.1% → 92.4%, Readability + Turndown 15.7% → 19.3%;
+  the other rows are unchanged.
+
+## Design B results (2026-10-09)
+
+Accuracy in % (mean over repetitions); median o200k tokens of the page output.
+
+| Pipeline | Haiku 5.5 | Sonnet 5.5 | gpt-6.1-sol | Tokens |
+| --- | ---: | ---: | ---: | ---: |
+| webforai (readability) | 30.2 | 31.0 | 31.5 | 973 |
+| webforai (agent) | 55.1 | 56.0 | 60.1 | 2,135 |
+| webforai (agent, no role headings) | 55.0 | 55.8 | 58.7 | 2,124 |
+| webforai + all links | **64.4** | **66.4** | **70.7** | 2,908 |
+| Readability + Turndown | 20.9 | 19.8 | 20.7 | 568 |
+| Defuddle | 33.5 | 34.1 | 36.2 | 1,064 |
+| Trafilatura (include_links) | 16.4 | 16.7 | 16.7 | 510 |
+| Turndown (full page) | 61.6 | 62.2 | 65.9 | 3,661 |
+| node-html-markdown (full page) | 62.8 | 62.0 | 67.4 | 3,364 |
+
+Paired, 95% CI over sites: agent − all links −9.3 [−14.8, −4.6] (Haiku), −10.4 [−15.2, −6.4]
+(Sonnet), −10.5 [−16.8, −5.3] (gpt); agent − no role headings +0.1 [−1.0, +1.2], +0.2 [−1.3, +2.2],
++1.4 [+0.3, +3.2]; agent − readability about +25 for every model.
+
+Conditioned on the correct link being in the agent output, agent and all links are equally easy
+to choose from (Haiku 71.0% / 69.6%, Sonnet 72.3% / 72.1%, gpt 77.6% / 76.2%); where agent dropped
+it, all links still gets 46–52%. **The whole gap is recall.** Neither the link selection nor the
+role grouping makes the choice easier for any of the three models; dropping links only costs.
+Agent mode's value over readability (+25 points) is real; its value over listing every link is,
+on this data, only ~27% fewer tokens.
 
 ## Decision log
 
