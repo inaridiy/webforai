@@ -51,7 +51,7 @@ const { markdown } = await platform.scrape({ url: ${JSON.stringify(url)} });`,
 			tab: "CLI",
 			label: "shell",
 			code: `export WEBFORAI_API_KEY=wfa_...${selfHosted ? `\nexport WEBFORAI_PLATFORM_URL=${origin}` : ""}
-npx webforai@latest ${shellArg(url)} --engine auto`,
+npx @webforai/cli@latest ${shellArg(url)} --engine auto`,
 			docs: { text: "CLI docs", href: links.cliDocs },
 		},
 	};
