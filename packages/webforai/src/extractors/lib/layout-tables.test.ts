@@ -39,4 +39,46 @@ describe("isLayoutTable", () => {
 		const table = tableOf(`<div><table>${row("<h2>Title</h2>")}${row("Body text of the page")}</table></div>`);
 		expect(isLayoutTable(table)).toBe(true);
 	});
+
+	it("keeps a small specification table of short cells as data", () => {
+		const table = tableOf(
+			`<div><table>${row("Model No.", "HT02G")}${row("Product Weight:", "19g")}${row(
+				"Flight Time",
+				"21 mins (3 batteries total)",
+			)}${row("Size:", "115*80*45mm")}${row("Transmitter operating frequency", "2.4GHz")}</table></div>`,
+		);
+		expect(isLayoutTable(table)).toBe(false);
+	});
+
+	it("still treats a small grid holding prose as page layout", () => {
+		const prose = "The article body sits in this cell, as table-layout pages did. ".repeat(4);
+		const table = tableOf(`<div><table>${row("Navigation", prose)}${row("Footer", "Contact")}</table></div>`);
+		expect(isLayoutTable(table)).toBe(true);
+	});
+
+	it("still treats a single row of short cells as page layout", () => {
+		const table = tableOf(`<div><table>${row("Home", "About", "Contact")}</table></div>`);
+		expect(isLayoutTable(table)).toBe(true);
+	});
+
+	it("still treats a small grid of links as page layout", () => {
+		const link = (text: string) => `<a href="/${text}">${text}</a>`;
+		const table = tableOf(
+			`<div><table>${row("Article Tools", "")}${row(link("Email a Friend"), link("Printer Friendly"))}${row(
+				link("RSS"),
+				link("Save This Page"),
+			)}</table></div>`,
+		);
+		expect(isLayoutTable(table)).toBe(true);
+	});
+
+	it("keeps a specification table whose values are links as data", () => {
+		const table = tableOf(
+			`<div><table>${row("Brand", '<a href="/b">Holyton</a>')}${row("Color", "gold")}${row(
+				"Weight",
+				"19 Grams",
+			)}</table></div>`,
+		);
+		expect(isLayoutTable(table)).toBe(false);
+	});
 });

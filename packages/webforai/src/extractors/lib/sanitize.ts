@@ -301,12 +301,66 @@ const containsMath = (element: Element): boolean => {
 	return false;
 };
 
+/** Text of a subtree, whitespace collapsed. */
+const collapsedText = (element: Element): string => {
+	let text = "";
+	walk(element, (node) => {
+		if (node.type === "text") {
+			text += node.value;
+		}
+	});
+	return text.replace(/\s+/g, " ").trim();
+};
+
+/** Per parent: the text of each child a reader is shown, computed once however many copies it has. */
+type SiblingTextCache = WeakMap<Parent, Set<string>>;
+
+const visibleSiblingText = (parent: Parent, cache: SiblingTextCache): Set<string> => {
+	let texts = cache.get(parent);
+	if (!texts) {
+		texts = new Set();
+		for (const child of parent.children) {
+			if (isElement(child) && !isTruthyAttribute(child, "aria-hidden") && !looksHidden(child)) {
+				texts.add(collapsedText(child));
+			}
+		}
+		cache.set(parent, texts);
+	}
+	return texts;
+};
+
+/**
+ * True for an `aria-hidden` copy of a sibling's text.
+ *
+ * Widgets that truncate or restyle text render it twice: once for screen readers and once, marked
+ * `aria-hidden="true"`, for sighted readers (Amazon's truncation widget pairs `a-offscreen` with
+ * `a-truncate-cut`). Converting both prints the text twice. Defuddle
+ * (https://github.com/kepano/defuddle, MIT, © 2025 Steph Ango; see THIRD_PARTY_NOTICES.md) removes
+ * every `aria-hidden` element; here only an exact copy of a visible sibling goes, because
+ * `aria-hidden` also marks text a reader does see (see `isHidden`).
+ */
+const isAriaHiddenDuplicate = (element: Element, parent: Parent, cache: SiblingTextCache): boolean => {
+	if (!isTruthyAttribute(element, "aria-hidden") || containsMath(element)) {
+		return false;
+	}
+	const text = collapsedText(element);
+	return text.length > 0 && visibleSiblingText(parent, cache).has(text);
+};
+
 /** Removes comments, metadata elements and anything the browser did not display. */
 export const stripNonContent = (tree: Hast): Hast => {
 	// Tab strips are chrome and disappear in later passes, so their labels are read now, in the
-	// traversal the noscript pass makes anyway.
+	// traversal the noscript pass makes anyway. Screen-reader duplicates are found in the same
+	// traversal, while every sibling is still in place.
 	const tabs = new CodeTabCollector((element) => looksHidden(element) || NON_CONTENT_TAGS.has(element.tagName));
-	hoistNoscriptImages(tree, (element, depth, parent) => tabs.visit(element, depth, parent));
+	const duplicates = new Set<Element>();
+	const siblingText: SiblingTextCache = new WeakMap();
+	hoistNoscriptImages(tree, (element, depth, parent) => {
+		tabs.visit(element, depth, parent);
+		if (isAriaHiddenDuplicate(element, parent, siblingText)) {
+			duplicates.add(element);
+		}
+	});
 	tabs.apply();
 
 	const siblingCode: SiblingCodeCache = new WeakMap();
@@ -314,7 +368,7 @@ export const stripNonContent = (tree: Hast): Hast => {
 		if (isNonContent(node)) {
 			return false;
 		}
-		if (isElement(node) && isHidden(node, parent, siblingCode)) {
+		if (isElement(node) && (duplicates.has(node) || isHidden(node, parent, siblingCode))) {
 			return false;
 		}
 		return true;

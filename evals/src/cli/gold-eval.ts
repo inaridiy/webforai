@@ -28,7 +28,7 @@ const limit = Number(arg("limit") ?? Number.POSITIVE_INFINITY);
 const impl = arg("impl");
 const name = arg("name") ?? (impl ? path.basename(path.dirname(path.dirname(path.dirname(impl)))) : "current");
 
-type Convert = (html: string, url: string) => string;
+type Convert = (html: string, url: string) => string | Promise<string>;
 
 const thresholdArg = arg("threshold");
 const threshold = thresholdArg === undefined ? undefined : Number(thresholdArg);
@@ -78,7 +78,7 @@ for (const pipelineId of pipelineIds) {
 		let crashed = false;
 		const start = performance.now();
 		try {
-			markdown = convert(html, page.url ?? "https://example.com/");
+			markdown = await convert(html, page.url ?? "https://example.com/");
 		} catch {
 			crashed = true;
 		}

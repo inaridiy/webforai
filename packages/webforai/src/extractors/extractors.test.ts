@@ -574,3 +574,30 @@ describe("CSS-only code tabs", () => {
 		expect(markdown).not.toContain("[x]");
 	});
 });
+
+describe("screen-reader duplicates", () => {
+	// Amazon's truncation widget: the full text for screen readers, the same text again for sighted
+	// readers under aria-hidden.
+	const truncated = `<p>Included: <span class="a-truncate"><span class="a-truncate-full a-offscreen">Transmitter, Battery, USB Cable</span><span class="a-truncate-cut" aria-hidden="true">Transmitter, Battery, USB Cable</span></span></p>`;
+
+	it("prints text once when an aria-hidden copy repeats a sibling", () => {
+		const markdown = htmlToMarkdown(article(truncated));
+		expect(markdown).toContain("Included: Transmitter, Battery, USB Cable");
+		expect(markdown).not.toContain("USB CableTransmitter");
+	});
+
+	it("keeps aria-hidden text that repeats nothing", () => {
+		const decorative = `<p>Rated <span aria-hidden="true">Four stars</span><span class="label">by readers</span></p>`;
+		expect(htmlToMarkdown(article(decorative))).toContain("Four stars");
+	});
+});
+
+describe("small specification tables", () => {
+	const spec =
+		"<table><tr><td>Model No.</td><td>HT02G</td></tr><tr><td>Product Weight:</td><td>19g</td></tr>" +
+		"<tr><td>Flight Time</td><td>21 mins (3 batteries total)</td></tr><tr><td>Size:</td><td>115*80*45mm</td></tr></table>";
+
+	it("converts a two-column table of short cells to a GFM table", () => {
+		expect(htmlToMarkdown(article(spec))).toMatch(/^\| Model No\.\s+\| HT02G\s+\|$/m);
+	});
+});
