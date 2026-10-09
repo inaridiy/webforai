@@ -9,10 +9,10 @@ import { describe, expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
 
-const PACKAGE_DIR = fileURLToPath(new URL("../..", import.meta.url));
+const PACKAGE_DIR = fileURLToPath(new URL("..", import.meta.url));
 const TSX = path.join(PACKAGE_DIR, "node_modules", ".bin", "tsx");
-const BIN = path.join(PACKAGE_DIR, "src", "cli", "bin.ts");
-const FIXTURE = path.join(PACKAGE_DIR, "src", "cli", "__fixtures__", "sample.html");
+const BIN = path.join(PACKAGE_DIR, "src", "bin.ts");
+const FIXTURE = path.join(PACKAGE_DIR, "src", "__fixtures__", "sample.html");
 
 const runCli = async (args: string[]) => {
 	try {

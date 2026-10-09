@@ -54,7 +54,7 @@ describe("renderSkillMarkdown", () => {
 	});
 
 	it("matches the copy committed at skills/webforai/SKILL.md (repo install channel)", () => {
-		const committedPath = fileURLToPath(new URL("../../../../../../skills/webforai/SKILL.md", import.meta.url));
+		const committedPath = fileURLToPath(new URL("../../../../../skills/webforai/SKILL.md", import.meta.url));
 		expect(readFileSync(committedPath, "utf-8")).toBe(renderSkillMarkdown());
 	});
 });

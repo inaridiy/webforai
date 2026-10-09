@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { DEFAULT_BASE_URL } from "../platform";
+import { DEFAULT_BASE_URL } from "webforai/platform";
 
 export const isUrl = (maybeUrl: string) => {
 	try {

@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 import boxen from "boxen";
 import pc from "picocolors";
 import { chromium } from "playwright-core";
-import { loadHtml as loadHtmlByFetch } from "../../../loaders/fetch";
-import { loadHtml as loadHtmlByPlaywright } from "../../../loaders/playwright";
+import { loadHtml as loadHtmlByFetch } from "webforai/loaders/fetch";
+import { loadHtml as loadHtmlByPlaywright } from "webforai/loaders/playwright";
 
 const debugLog = (enabled: boolean | undefined, message: string): void => {
 	if (enabled) {

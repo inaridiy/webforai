@@ -1,6 +1,6 @@
 import fs from "node:fs";
-import type { ExtractionReport } from "../../../extractors";
-import { REGIONS, REQUESTED_ENGINES } from "../../../platform";
+import type { ExtractionReport } from "webforai";
+import { REGIONS, REQUESTED_ENGINES } from "webforai/platform";
 import { API_KEY_ENV, EXTRACTORS, LOADERS, MODES, PLATFORM_URL_ENV } from "../../constants";
 import type { ExtractorName, Loader, Mode } from "../../constants";
 import { isUrl, platformDashboardUrl } from "../../utils";
