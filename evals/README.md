@@ -29,7 +29,8 @@ pnpm --filter @webforai/evals corpus:fetch
 
 Roughly 60 captures, about 25 MB. Fetching takes a few minutes.
 
-**Requirements:** Node 22.22.2+ or 24.15.0+ (jsdom 30, used for the Readability pipeline).
+**Requirements:** Node 22.22.2+ or 24.15.0+ (jsdom 30, used for the Readability pipeline). The
+Defuddle pipeline parses with linkedom and runs offline (`useAsync: false`).
 Note that `bench:compare` rewrites the committed `benchmarks/compare-summary.json`.
 
 ### Optional: outbound proxy
@@ -59,7 +60,7 @@ Run each as `pnpm --filter @webforai/evals <command>` (pass flags after `--`).
 | `compare` | Run the working tree and the published v2 baseline (`webforai@2.1.1`) over the same input |
 | `bench` | End-to-end throughput, interleaved and median-of-N (unrelated to `examples/bench`, which is an unscored by-eye demo) |
 | `bench:extract` | Extraction stage in isolation, with parsing outside the timed region |
-| `bench:compare` | webforai against Readability + Turndown, full-page Turndown and node-html-markdown. `--rounds=`, `--no-summary` |
+| `bench:compare` | webforai against Readability + Turndown, Defuddle, full-page Turndown, node-html-markdown and Firecrawl OSS. `--rounds=`, `--no-summary` |
 | `firecrawl-oss` | Run a self-hosted Firecrawl over the corpus and WCEB and cache its Markdown for the `firecrawl-oss` pipeline (see below) |
 | `stress` | Adversarial and very large pages, each in a child process with a 128 MB heap (a Worker's budget). `--case=` |
 

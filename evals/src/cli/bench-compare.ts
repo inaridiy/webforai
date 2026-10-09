@@ -139,6 +139,8 @@ const environment = {
 		turndown: await packageVersion("turndown"),
 		"turndown-plugin-gfm": await packageVersion("turndown-plugin-gfm"),
 		"node-html-markdown": await packageVersion("node-html-markdown"),
+		defuddle: await packageVersion("defuddle"),
+		linkedom: await packageVersion("linkedom"),
 		"firecrawl-oss": firecrawlCommit(),
 	},
 };
@@ -162,9 +164,9 @@ function firecrawlCommit(): string {
 	return "not run";
 }
 
-const runOnce = (competitor: Competitor, capture: Capture): Run => {
+const runOnce = async (competitor: Competitor, capture: Capture): Promise<Run> => {
 	try {
-		return { markdown: competitor.convert(capture.html, capture.site.url) };
+		return { markdown: await competitor.convert(capture.html, capture.site.url) };
 	} catch (thrown) {
 		return { markdown: "", error: thrown instanceof Error ? thrown.message : String(thrown) };
 	}
@@ -176,7 +178,7 @@ const key = (competitor: Competitor, capture: Capture): string =>
 	`${competitor.id}\u0000${capture.site.id}\u0000${capture.mode}`;
 for (const capture of captures) {
 	for (const competitor of COMPETITORS) {
-		outputs.set(key(competitor, capture), runOnce(competitor, capture));
+		outputs.set(key(competitor, capture), await runOnce(competitor, capture));
 	}
 }
 
@@ -197,7 +199,7 @@ for (let round = 0; round < rounds; round++) {
 	for (const capture of captures) {
 		for (const competitor of order) {
 			const t0 = performance.now();
-			runOnce(competitor, capture);
+			await runOnce(competitor, capture);
 			const measured = performance.now() - t0;
 			// A service's output is read from a cache; its own recorded time is the comparable figure.
 			const elapsed = competitor.serviceMs ? serviceTime(competitor, capture, measured) : measured;
@@ -349,7 +351,7 @@ const methodology = {
 		"for every <pre> in the source with a line of 12–200 characters (block elements inside <pre> count as line breaks), its longest such line (whitespace-collapsed) must appear as a line inside a code block of the output (fenced or indented, from a CommonMark parse); pooled over the corpus. Measures recall only — it cannot penalize keeping code from page chrome.",
 	tableRecall:
 		"source data tables = <table> with a <th> and no nested table; preserved = min(GFM tables in output, source data tables) per capture; pooled. Recall only.",
-	timing: `1 warm-up round, then ${rounds} measured rounds; each conversion timed individually with pipelines interleaved per capture and the starting pipeline rotated each round; per-capture median, summed over the corpus. Includes HTML parsing (jsdom for Readability). Single process, not CPU-pinned. Firecrawl OSS runs as a service: its figure is the per-page wall time of its scrape request recorded by \`firecrawl-oss\` (queueing, fetching the locally served page, extraction and conversion; 8 concurrent requests), not an in-process conversion, so it is not directly comparable.`,
+	timing: `1 warm-up round, then ${rounds} measured rounds; each conversion timed individually with pipelines interleaved per capture and the starting pipeline rotated each round; per-capture median, summed over the corpus. Includes HTML parsing (jsdom for Readability, linkedom for Defuddle). Single process, not CPU-pinned. Firecrawl OSS runs as a service: its figure is the per-page wall time of its scrape request recorded by \`firecrawl-oss\` (queueing, fetching the locally served page, extraction and conversion; 8 concurrent requests), not an in-process conversion, so it is not directly comparable.`,
 };
 
 // ---------------------------------------------------------------------------- outputs

@@ -8,7 +8,9 @@
  */
 
 import { Readability } from "@mozilla/readability";
+import { Defuddle } from "defuddle/node";
 import { JSDOM, VirtualConsole } from "jsdom";
+import { parseHTML } from "linkedom";
 import { NodeHtmlMarkdown } from "node-html-markdown";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
@@ -23,7 +25,8 @@ export interface Competitor {
 	pipeline: string;
 	/** Whether the pipeline tries to isolate the main content. */
 	extracts: boolean;
-	convert: (html: string, url: string) => string;
+	/** May be async: Defuddle's Node entry point returns a promise even when it does no I/O. */
+	convert: (html: string, url: string) => string | Promise<string>;
 	/**
 	 * For a pipeline that runs as a service and is read from a cache: the time the service took for
 	 * this page, reported instead of the (meaningless) time to read the cache.
@@ -71,6 +74,20 @@ const readabilityToMarkdown = (html: string, url: string): string => {
 	}
 };
 
+/**
+ * Defuddle as its README runs it in Node: a linkedom document passed to `defuddle/node` with
+ * `markdown: true`. `useAsync` is off so no extractor reaches a third-party API (YouTube
+ * transcripts, for one) — every pipeline here converts the same HTML offline. All other options
+ * are Defuddle's defaults.
+ */
+const defuddleToMarkdown = async (html: string, url: string): Promise<string> => {
+	const { document } = parseHTML(html);
+	const result = await Defuddle(document as unknown as Document, url, { markdown: true, useAsync: false });
+	// Defuddle, like Readability, returns the title separately.
+	const title = result.title?.trim();
+	return title ? `# ${title}\n\n${result.content}` : result.content;
+};
+
 export const COMPETITORS: Competitor[] = [
 	{
 		id: "webforai",
@@ -86,6 +103,14 @@ export const COMPETITORS: Competitor[] = [
 			"jsdom → @mozilla/readability parse() → turndown (atx, fenced, gfm plugin) on article.content, title prepended as h1",
 		extracts: true,
 		convert: readabilityToMarkdown,
+	},
+	{
+		id: "defuddle",
+		label: "Defuddle",
+		pipeline:
+			"linkedom parseHTML → defuddle/node Defuddle(document, url, { markdown: true, useAsync: false }); title prepended as h1",
+		extracts: true,
+		convert: defuddleToMarkdown,
 	},
 	{
 		id: "turndown",
