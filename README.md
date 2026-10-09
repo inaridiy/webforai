@@ -13,8 +13,8 @@
 
 <p align="center">
   Main content only — no navigation, ads or cookie banners. The highest WCEB score of every
-  converter we tested (Readability, Defuddle, Firecrawl OSS, Cloudflare toMarkdown), about 3× faster
-  than Readability + Turndown, and small enough to run in a Cloudflare Worker or a browser.
+  converter we tested (Readability, Defuddle, Firecrawl OSS, Cloudflare toMarkdown; Trafilatura when
+  both keep reader comments), about 3× faster than Readability + Turndown, and small enough to run in a Cloudflare Worker or a browser.
 </p>
 
 <p align="center">
@@ -47,7 +47,7 @@ const markdown = htmlToMarkdown(html, { url });
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="site/docs/public/images/benchmark-dark.svg">
-  <img alt="WCEB F1: webforai 0.892, Readability + Turndown 0.880, Defuddle 0.820, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.1 s, Defuddle 14.0 s" src="site/docs/public/images/benchmark-light.svg" width="100%">
+  <img alt="WCEB F1: webforai 0.892 (0.918 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
 [WCEB](https://github.com/chatnoir-eu/web-content-extraction-benchmark) (Bevendorff et al., SIGIR 2023)
@@ -56,21 +56,27 @@ blocks and time come from 60 cached real pages that webforai is developed agains
 likely favour it. Firecrawl OSS is the self-hosted open-source Firecrawl and Cloudflare toMarkdown
 is Workers AI's converter; both run as services, so they are not timed against local conversion.
 Not everything goes webforai's way: the others keep more data tables, mostly Wikipedia navigation
-boxes that webforai drops on purpose. The method, each pipeline's configuration and the
+boxes that webforai drops on purpose, and Trafilatura (timed in Python) is faster and scores higher
+on WCEB unless webforai keeps reader comments too, as Trafilatura does by default. The method, each pipeline's configuration and the
 limitations are on the [benchmarks page](https://webforai.dev/benchmarks); everything is
 reproducible from [`evals/`](evals).
 
 <details>
 <summary>All numbers</summary>
 
-|  | webforai | Readability + Turndown | Defuddle | Firecrawl OSS | Cloudflare toMarkdown |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| **WCEB F1** — 3,985 pages, reference text | **0.892** | 0.880 | 0.820 | 0.743 | 0.713 |
-| Precision / recall | **0.922** / 0.909 | 0.917 / 0.892 | 0.869 / 0.856 | 0.668 / 0.939 | 0.604 / **0.985** |
-| Code blocks kept as code — 748 blocks | **98.0%** | 45.9% | 89.2% | 51.9% | 53.6% |
-| Data tables kept — 64 tables | 39.1% | 29.7% | 54.7% | **95.3%** | 57.8% |
-| Quality checks passed | **75 / 75** | 64 / 75 | 73 / 75 | 53 / 75 | 62 / 75 |
-| Time to convert 60 pages (24 MiB) | **4.0 s** | 13.1 s | 14.0 s | service | service |
+|  | webforai | Readability + Turndown | Defuddle | Trafilatura | Firecrawl OSS | Cloudflare toMarkdown |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| **WCEB F1** — 3,985 pages, reference text | 0.892 (**0.918**\*) | 0.880 | 0.820 | 0.900 | 0.743 | 0.713 |
+| Precision / recall | **0.922** / 0.909 (0.912 / 0.950\*) | 0.917 / 0.892 | 0.869 / 0.856 | 0.916 / 0.915 | 0.668 / 0.939 | 0.604 / **0.985** |
+| Code blocks kept as code — 748 blocks | **98.0%** | 45.9% | 89.2% | 40.6% | 51.9% | 53.6% |
+| Data tables kept — 64 tables | 39.1% | 29.7% | 54.7% | 40.6% | **95.3%** | 57.8% |
+| Quality checks passed | **75 / 75** | 64 / 75 | 73 / 75 | 64 / 75 | 53 / 75 | 62 / 75 |
+| Time to convert 60 pages (24 MiB) | 4.0 s | 13.7 s | 13.8 s | **2.9 s**† | service | service |
+
+\* With the `comments` preset, which also keeps reader comments — as Trafilatura does by default,
+and as the references of WCEB's largest dataset (Dragnet, 1,379 pages) do. With the default
+extraction, webforai's 0.892 is below Trafilatura's 0.900. † Timed in Python around Trafilatura's
+`extract` call, not interleaved with the Node pipelines.
 
 </details>
 

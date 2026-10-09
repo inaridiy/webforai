@@ -15,7 +15,9 @@ measurable on WebMainBench or WCXB, before the README claims the highest accurac
       `webmainbench`, grouped by level). `gold:eval -- --save-outputs` and
       `gold:rouge-webmainbench` (MinerU-HTML's ROUGE-5 over jieba tokens, copied, Apache-2.0).
 - [x] (2026-10-09) First measurement of the holdouts (results below).
-- [ ] Owner decision: what the README and `/benchmarks` claim given these results (PR #85).
+- [x] (2026-10-09) Owner decision: Trafilatura goes into the README and `/benchmarks`, compared
+      with webforai's new `comments` preset (marked) as well as its default; tables are no longer
+      padded. See `2026-10-09-comments-preset-compact-tables.md`.
 
 ## Results (webforai at 2367b42 + dd14f61, Trafilatura 2.3.1, 2026-10-09)
 

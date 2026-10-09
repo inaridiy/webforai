@@ -15,10 +15,16 @@ const WCEB_F1 = {
 	webforai: 0.892,
 	"readability-turndown": 0.88,
 	defuddle: 0.82,
+	trafilatura: 0.9,
 	"firecrawl-oss": 0.743,
 	"cf-tomarkdown": 0.713,
 };
+// webforai with the `comments` preset, which keeps reader comments as Trafilatura does by default
+// (WCEB's Dragnet references include them). Shown next to the default score, marked with *.
+const WCEB_F1_COMMENTS = 0.918;
 const PIPELINES = Object.keys(WCEB_F1);
+// Timed in Python around its `extract` call, not interleaved with the Node pipelines.
+const PYTHON = new Set(["trafilatura"]);
 // Pipelines that run as a service: their time includes queueing and network, so it is not
 // drawn next to in-process conversion.
 const SERVICES = new Set(["firecrawl-oss", "cf-tomarkdown"]);
@@ -46,7 +52,7 @@ const columns = [
 		note: `WCEB F1 · ${(3985).toLocaleString("en-US")} pages`,
 		value: (r) => r.f1,
 		max: 1,
-		format: (v) => v.toFixed(3),
+		format: (v, r) => (r.id === "webforai" ? `${v.toFixed(3)} (${WCEB_F1_COMMENTS.toFixed(3)}*)` : v.toFixed(3)),
 	},
 	{
 		title: "Code blocks kept",
@@ -62,7 +68,7 @@ const columns = [
 		note: `${corpus.captures} pages · ${corpus.mebibytes.toFixed(0)} MiB of HTML`,
 		value: (r) => r.seconds,
 		max: Math.max(...rows.map((r) => r.seconds ?? 0)),
-		format: (v) => `${v.toFixed(1)} s`,
+		format: (v, r) => `${v.toFixed(1)} s${PYTHON.has(r.id) ? " (Python)" : ""}`,
 	},
 ];
 
@@ -97,7 +103,7 @@ const text = (x, y, size, fill, content, extra = "") =>
 const render = (theme) => {
 	const t = THEMES[theme];
 	const plotBottom = TOP + ROW_PITCH * rows.length - 12;
-	const height = plotBottom + 60;
+	const height = plotBottom + 76;
 	const parts = [];
 	columns.forEach((col, c) => {
 		const x0 = LABEL_W + c * (COL_W + COL_GAP);
@@ -131,7 +137,7 @@ const render = (theme) => {
 					y + 15,
 					13,
 					isUs ? t.ink : t.ink2,
-					esc(col.format(v)),
+					esc(col.format(v, row)),
 					`${isUs ? ' font-weight="600"' : ""} style="font-variant-numeric:tabular-nums"`,
 				),
 			);
@@ -146,10 +152,17 @@ const render = (theme) => {
 	parts.push(
 		text(
 			0,
-			height - 22,
+			height - 38,
 			11.5,
 			t.muted,
 			`WCEB: an independent benchmark, never used for tuning. Code and time: ${corpus.captures} of webforai's own test pages.`,
+		),
+		text(
+			0,
+			height - 22,
+			11.5,
+			t.muted,
+			"* With the comments preset, which keeps reader comments as Trafilatura does by default.",
 		),
 		text(
 			0,
@@ -165,7 +178,9 @@ const render = (theme) => {
 	const desc = rows
 		.map((r) => {
 			const time = r.seconds === undefined ? "" : `, ${r.seconds.toFixed(2)} s`;
-			return `${r.label}: WCEB F1 ${r.f1.toFixed(3)}, code blocks kept ${(r.code * 100).toFixed(1)}%${time}`;
+			const f1 =
+				r.id === "webforai" ? `${r.f1.toFixed(3)} (${WCEB_F1_COMMENTS.toFixed(3)} with comments)` : r.f1.toFixed(3);
+			return `${r.label}: WCEB F1 ${f1}, code blocks kept ${(r.code * 100).toFixed(1)}%${time}`;
 		})
 		.join("; ");
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${height}" viewBox="0 0 ${WIDTH} ${height}" role="img" aria-labelledby="t d" font-family='${FONT}'>

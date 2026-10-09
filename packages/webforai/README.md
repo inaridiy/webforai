@@ -52,12 +52,14 @@ Looking for the command line? That is [`webforai-cli`](https://www.npmjs.com/pac
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-dark.svg">
-  <img alt="WCEB F1: webforai 0.892, Readability + Turndown 0.880, Defuddle 0.820, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.1 s, Defuddle 14.0 s" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
+  <img alt="WCEB F1: webforai 0.892 (0.918 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
 WCEB scores extracted text against reference text on 3,985 pages and is never used for tuning.
 Code blocks and time come from 60 real pages that webforai is developed against, so they likely
-favour it. Firecrawl OSS and Cloudflare toMarkdown run as services and are not timed. Method and
+favour it. Against Trafilatura, webforai's WCEB lead needs the `comments` preset (0.918 against
+0.900), because Trafilatura keeps reader comments by default and so do many WCEB references; with
+the default extraction webforai scores 0.892. Trafilatura, timed in Python, is also faster. Firecrawl OSS and Cloudflare toMarkdown run as services and are not timed. Method and
 limitations: [webforai.dev/benchmarks](https://webforai.dev/benchmarks).
 
 ## Entry points
