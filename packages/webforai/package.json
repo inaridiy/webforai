@@ -39,7 +39,8 @@
 	},
 	"files": [
 		"dist",
-		"!dist/types/**/*.js"
+		"!dist/types/**/*.js",
+		"THIRD_PARTY_NOTICES.md"
 	],
 	"main": "dist/cjs/index.js",
 	"type": "module",

@@ -42,11 +42,31 @@ Corpus (`bench:compare`, 3 rounds): webforai 74/74 checks, code fenced 98.0%, ta
 
 - [x] (2026-10-09) Evals: Defuddle as a permanent `bench:compare` / `gold:eval` pipeline
       (`evals/src/competitors.ts`, devDependencies `defuddle` 0.19.4 and `linkedom` 0.18.13).
-- [ ] Library: multi-column tables without block content are data tables (from Defuddle).
-- [ ] Library: drop an `aria-hidden` element that repeats a sibling's text.
-- [ ] Attribution: THIRD_PARTY_NOTICES with Defuddle's MIT notice, shipped in the package.
+- [x] (2026-10-09) Library: a small table (≤ 10 cells, ≥ 2 rows and columns) is data when its
+      longest cell is ≤ 150 characters and at most half its text is link text
+      (`isLayoutTable`, adapted from Defuddle). Tests in `layout-tables.test.ts` and
+      `extractors.test.ts`.
+- [x] (2026-10-09) Library: an `aria-hidden` element whose collapsed text equals a visible
+      sibling's is dropped in `stripNonContent` (found in the same traversal as code tabs).
+- [x] (2026-10-09) Attribution: `packages/webforai/THIRD_PARTY_NOTICES.md` (Defuddle's MIT
+      notice), listed in the package's `files`; source comments name Defuddle; patch changeset.
 - [ ] Re-run `bench:compare` and `gold:eval`; update the summary JSON and the Benchmarks page.
 - [ ] Validation: biome, typecheck, tests, build; changeset; PR.
+
+## Measurements
+
+WCEB, `gold:eval --impl=<checkout>/packages/webforai/src/index.ts`, same cache:
+
+| | mean page F1 | macro F1 over groups | crashes |
+| --- | ---: | ---: | ---: |
+| main (84e86fd) | 0.892067 | 0.9179 | 0 |
+| tables, first cut (short cells only) | 0.892049 | 0.9179 | 0 |
+| branch (short cells + link share, aria-hidden copies) | 0.892069 | 0.9179 | 0 |
+
+The first cut changed 8 pages (3 up, 5 down; worst −0.037): two L3S news pages' "Article Tools"
+link grids and a Forbes subscription grid became tables, where before they were flattened and
+then removed as link clusters by the clean-up. The link-share condition keeps those as layout.
+The branch changes 5 pages, 3 up and 2 down (worst −0.0015). Corpus suite 32/32.
 
 ## Decision log
 
@@ -54,6 +74,14 @@ Corpus (`bench:compare`, 3 rounds): webforai 74/74 checks, code fenced 98.0%, ta
   `defuddle/node` with `markdown: true` — because the browser bundle's Markdown conversion needs a
   global `document`. `useAsync: false` keeps it offline like every other pipeline. The harness's
   `convert` may now return a promise; `bench:compare` times the awaited call.
+- Small-table thresholds: 150 characters per cell (Amazon's longest spec value is 57; a prose
+  cell in a layout grid runs to hundreds) and a link share of 0.5 (a label column of plain text
+  and a value column of links is still data). Single-row tables stay layout, unlike Defuddle: a
+  one-row GFM table is all header and reads worse than the cells as lines.
+- Screen-reader copies: only an exact text match with a sibling that is neither `aria-hidden`
+  nor hidden counts, and never a subtree holding math (KaTeX pairs MathML with an `aria-hidden`
+  rendering). Defuddle's broader rule (remove every `aria-hidden`) would drop visible text that
+  `isHidden` deliberately keeps.
 - License: Defuddle is MIT. The adopted ideas are reimplemented on hast, not copied, but each
   place they come from Defuddle names it, and the package ships Defuddle's copyright and
   permission notice in `THIRD_PARTY_NOTICES.md` so attribution travels with the code.
