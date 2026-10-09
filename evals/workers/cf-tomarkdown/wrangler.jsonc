@@ -1,0 +1,10 @@
+// A one-endpoint Worker that runs Cloudflare Workers AI `toMarkdown` on HTML posted to it.
+// Used only by the evals harness (`pnpm --filter @webforai/evals cf-tomarkdown`); never deployed.
+// Run it with `pnpm --filter platform exec wrangler dev --config ../../evals/workers/cf-tomarkdown/wrangler.jsonc`:
+// the AI binding always calls Cloudflare, under the account wrangler is logged in to.
+{
+	"name": "webforai-evals-cf-tomarkdown",
+	"main": "index.ts",
+	"compatibility_date": "2026-08-01",
+	"ai": { "binding": "AI", "remote": true }
+}

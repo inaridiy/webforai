@@ -99,6 +99,24 @@ Paste any URL and see the Markdown webforai produces — converted live by the h
 
 </section>
 
+<section className="max-w-screen-lg mx-auto" id="benchmarks">
+
+#
+# Benchmarks
+
+The highest WCEB score of every converter we tested — Readability + Turndown, Defuddle, Firecrawl OSS
+and Cloudflare's toMarkdown — at about 3× the speed of Readability + Turndown.
+
+<img src="/images/benchmark-light.svg" alt="WCEB F1: webforai 0.892, Readability + Turndown 0.880, Defuddle 0.820, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.1 s, Defuddle 14.0 s" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
+
+WCEB scores extracted text against reference text on 3,985 pages and is never used for tuning;
+code blocks and time come from 60 real pages webforai is developed against, so they likely favour
+it. Firecrawl OSS and Cloudflare toMarkdown run as services and are not timed. The others keep
+more data tables, mostly Wikipedia navigation boxes that webforai drops. Method, every pipeline's
+configuration and the limitations: [Benchmarks](/benchmarks).
+
+</section>
+
 <section className="max-w-screen-lg mx-auto" id="ways-to-use">
 
 #
@@ -130,12 +148,16 @@ const markdown = htmlToMarkdown(html, { baseUrl: url }); // [!code hl]
 #
 # Features
 
-- High-quality HTML to Markdown conversion with simple, customizable options
-- ESM-native, compatible with various environments (browser, Cloudflare Worker, Node.js, etc.)
-- Flexibility because it's built on [Syntax Tree](https://github.com/syntax-tree) ecosystem.
-- MathML to LaTeX with [mathml-to-latex](https://www.npmjs.com/package/mathml-to-latex) package.
-- Out-of-the-box loaders such as fetch, [playwright](https://www.npmjs.com/package/playwright), [puppeteer](https://www.npmjs.com/package/puppeteer).
-- CLI tool [`npx webforai-cli <url>`](/cli) — Markdown on stdout, `--json` for scripts and AI agents
+- **Main content, found by a model** — site adapters first, then kiwame, a small learned block
+  classifier in plain TypeScript (no WASM, no network calls). [How it works](/how-it-works)
+- **Twenty site adapters** — GitHub, Stack Overflow, npm, MDN, Wikipedia, Reddit, YouTube,
+  Hacker News, Zenn, Qiita and more, with generic extraction as the fallback.
+- **Markup that survives** — code blocks with their language, GFM tables, KaTeX/MathJax as LaTeX,
+  lazy-loaded images, definition lists.
+- **Built for agents** — `agentExtractor` appends the page's other links grouped by role; the
+  [CLI](/cli) (`npx webforai-cli <url>`) prints Markdown or JSON and ships an Agent Skill.
+- **Easy to embed** — ~300 KB gzipped in a Worker, no Node.js built-ins; runs in
+  Node.js, Cloudflare Workers and browsers. [Embedding in your project](/embedding)
 
 </section>
 

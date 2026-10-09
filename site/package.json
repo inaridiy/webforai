@@ -9,7 +9,8 @@
 		"preview": "vocs preview",
 		"worker:dev": "wrangler dev",
 		"worker:deploy": "wrangler deploy",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"benchmark-chart": "node scripts/benchmark-chart.mjs"
 	},
 	"devDependencies": {
 		"@ai-sdk/google": "^0.0.48",
