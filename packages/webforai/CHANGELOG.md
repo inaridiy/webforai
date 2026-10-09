@@ -1,5 +1,25 @@
 # webforai
 
+## 4.3.1
+
+### Patch Changes
+
+- [#81](https://github.com/inaridiy/webforai/pull/81) [`ba9a942`](https://github.com/inaridiy/webforai/commit/ba9a942b974137e0fe083bf77d86785c25efebf8) Thanks [@inaridiy](https://github.com/inaridiy)! - Two extraction fixes found by comparing webforai with [Defuddle](https://github.com/kepano/defuddle)
+  (MIT; the adapted rules are credited in the source and in `THIRD_PARTY_NOTICES.md`, now shipped in
+  the package).
+
+  - **Small specification tables**: a table of ten cells or fewer whose cells are all short
+    ("Model No. | HT02G", "Flight Time | 21 mins") is converted to a GFM table instead of being
+    flattened into loose lines as page layout. Small grids holding prose, single rows and
+    single columns are still treated as layout.
+  - **Screen-reader duplicates**: when an `aria-hidden="true"` element repeats a visible sibling's
+    text exactly (Amazon's truncation widget), the text is written once instead of twice. Other
+    `aria-hidden` content is kept.
+
+- [#82](https://github.com/inaridiy/webforai/pull/82) [`e7e88a7`](https://github.com/inaridiy/webforai/commit/e7e88a7d8ebca0aba14bb35fd077258d0fac103a) Thanks [@inaridiy](https://github.com/inaridiy)! - Hacker News: top-level comments keep their text. The adapter returned only the author line for
+  an unindented comment, so every top-level comment's body was missing (10 of 68 comments on the
+  corpus thread); replies were unaffected.
+
 ## 4.3.0
 
 ### Minor Changes
