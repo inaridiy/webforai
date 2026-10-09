@@ -50,6 +50,15 @@ Corpus (`bench:compare`): unpadded tables change no check, code or table figure;
 output 8,461 → 8,207 characters. Trafilatura: 64/75 checks, code 40.6%, tables 26/64, no nav leak,
 median 5,630 characters, 2.94 s in Python (webforai 4.04 s in the same summary, not interleaved).
 
+WebMainBench (7,809 pages, holdout; re-measured once for this release), ROUGE-5 all / simple /
+mid / hard, token F1 unchanged (0.861; links as text 0.864):
+
+| Pipeline | before (2367b42 + dd14f61) | 297b7df |
+| --- | ---: | ---: |
+| webforai | 0.585 | 0.621 / 0.725 / 0.619 / 0.519 |
+| webforai, links as text, no images | 0.668 | **0.711** / 0.788 / 0.713 / 0.630 |
+| Trafilatura (defaults: no links or images) | 0.673 | 0.673 |
+
 ## Decision log
 
 - (2026-10-09) The comments mode is a preset, not the default: WCXB and WebMainBench references
