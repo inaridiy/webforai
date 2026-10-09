@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { EXTRACTOR_PRESETS } from "../preset-names";
-import { agentExtractor } from "./agent";
+import { agentExtractor, commentsExtractor } from "./agent";
 import { readabilityExtractor } from "./auto";
 import { presetExtractors } from "./by-name";
 import { kiwameExtractor } from "./kiwame";
@@ -14,6 +14,7 @@ describe("presetExtractors", () => {
 			undefined,
 			readabilityExtractor,
 			agentExtractor,
+			commentsExtractor,
 			kiwameExtractor,
 			takumiExtractor,
 			minimalFilter,

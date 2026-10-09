@@ -98,6 +98,7 @@ Omitted, `autoExtractor` runs; `false` converts the whole document. The built-in
 | --- | --- | --- |
 | `autoExtractor` / `readabilityExtractor` | `auto` / `readability` | A site adapter when one applies, otherwise `kiwameExtractor` (the default). |
 | `agentExtractor` | `agent` | The same main content, then reader comments and the page's other links grouped by role. `createAgentExtractor({ roles, comments })` picks the groups. |
+| `commentsExtractor` | `comments` | The same main content, then reader comments, without the links. |
 | `kiwameExtractor` | `kiwame` | The learned block classifier alone. `createKiwameExtractor({ threshold, … })` tunes it. |
 | `takumiExtractor` | `takumi` | The heuristic, Readability-style extractor. |
 | `minimalFilter` | `minimal` | Removes only what is clearly not content. |
