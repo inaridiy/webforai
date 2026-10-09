@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="226" viewBox="0 0 880 226" role="img" aria-labelledby="t d" font-family='-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif'>
+<title id="t">webforai compared with Readability + Turndown and Defuddle</title>
+<desc id="d">webforai: WCEB F1 0.892, code blocks kept 98.0%, 3.73 s; Readability + Turndown: WCEB F1 0.880, code blocks kept 45.9%, 11.50 s; Defuddle: WCEB F1 0.820, code blocks kept 89.2%, 12.73 s</desc>
+<text x="196" y="20" font-size="14" font-weight="600" fill="#f0f6fc">Accuracy<tspan font-size="11.5" font-weight="400" fill="#848d97">  higher is better</tspan></text>
+<text x="196" y="38" font-size="11.5" fill="#848d97">WCEB F1 · 3,985 pages</text>
+<line x1="195.5" y1="50" x2="195.5" y2="166" stroke="#3d444d" stroke-width="1"/>
+<path d="M196 58h120.88a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-120.88z" fill="#2f8ff0"/>
+<text x="328.88" y="73" font-size="13" font-weight="600" fill="#f0f6fc" style="font-variant-numeric:tabular-nums">0.892</text>
+<path d="M196 98h119.20a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-119.20z" fill="#5c5b55"/>
+<text x="327.20" y="113" font-size="13" fill="#9198a1" style="font-variant-numeric:tabular-nums">0.880</text>
+<path d="M196 138h110.80a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-110.80z" fill="#5c5b55"/>
+<text x="318.80" y="153" font-size="13" fill="#9198a1" style="font-variant-numeric:tabular-nums">0.820</text>
+<text x="424" y="20" font-size="14" font-weight="600" fill="#f0f6fc">Code blocks kept<tspan font-size="11.5" font-weight="400" fill="#848d97">  higher is better</tspan></text>
+<text x="424" y="38" font-size="11.5" fill="#848d97">748 blocks · 60 pages</text>
+<line x1="423.5" y1="50" x2="423.5" y2="166" stroke="#3d444d" stroke-width="1"/>
+<path d="M424 58h133.19a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-133.19z" fill="#2f8ff0"/>
+<text x="569.19" y="73" font-size="13" font-weight="600" fill="#f0f6fc" style="font-variant-numeric:tabular-nums">98%</text>
+<path d="M424 98h60.20a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-60.20z" fill="#5c5b55"/>
+<text x="496.20" y="113" font-size="13" fill="#9198a1" style="font-variant-numeric:tabular-nums">46%</text>
+<path d="M424 138h120.84a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-120.84z" fill="#5c5b55"/>
+<text x="556.84" y="153" font-size="13" fill="#9198a1" style="font-variant-numeric:tabular-nums">89%</text>
+<text x="652" y="20" font-size="14" font-weight="600" fill="#f0f6fc">Time<tspan font-size="11.5" font-weight="400" fill="#848d97">  lower is better</tspan></text>
+<text x="652" y="38" font-size="11.5" fill="#848d97">60 pages · 24 MiB of HTML</text>
+<line x1="651.5" y1="50" x2="651.5" y2="166" stroke="#3d444d" stroke-width="1"/>
+<path d="M652 58h37.01a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-37.01z" fill="#2f8ff0"/>
+<text x="701.01" y="73" font-size="13" font-weight="600" fill="#f0f6fc" style="font-variant-numeric:tabular-nums">3.7 s</text>
+<path d="M652 98h122.42a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-122.42z" fill="#5c5b55"/>
+<text x="786.42" y="113" font-size="13" fill="#9198a1" style="font-variant-numeric:tabular-nums">11.5 s</text>
+<path d="M652 138h136.00a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-136.00z" fill="#5c5b55"/>
+<text x="800.00" y="153" font-size="13" fill="#9198a1" style="font-variant-numeric:tabular-nums">12.7 s</text>
+<text x="0" y="73" font-size="14" font-weight="600" fill="#f0f6fc">webforai</text>
+<text x="0" y="113" font-size="14" fill="#9198a1">Readability + Turndown</text>
+<text x="0" y="153" font-size="14" fill="#9198a1">Defuddle</text>
+<text x="0" y="204" font-size="11.5" fill="#848d97">WCEB: an independent benchmark, never used for tuning. Code and time: 60 of webforai's own test pages.</text>
+<text x="0" y="220" font-size="11.5" fill="#848d97">Node 24.15.0, 2026-10-09. Method and limitations: webforai.dev/benchmarks</text>
+</svg>

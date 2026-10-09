@@ -17,6 +17,12 @@ while developing webforai. Its quality assertions were written against webforai'
 failures. The results are therefore likely to favour webforai, and they are not a general measure
 of extraction quality.
 
+<img src="/images/benchmark-light.svg" alt="webforai against Readability + Turndown and Defuddle: WCEB F1 0.892 / 0.880 / 0.820, code blocks kept 98% / 46% / 89%, time for 60 pages 3.7 s / 11.5 s / 12.7 s" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
+
+The chart summarises three columns of the tables below. After a new run, regenerate it (for the
+README and this page) with `pnpm --filter site benchmark-chart`; the WCEB scores are constants in
+`site/scripts/benchmark-chart.mjs`, the rest is read from the committed summary.
+
 ## Pipelines
 
 | Pipeline | What runs | Extracts main content |

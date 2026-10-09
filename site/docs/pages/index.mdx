@@ -99,6 +99,23 @@ Paste any URL and see the Markdown webforai produces — converted live by the h
 
 </section>
 
+<section className="max-w-screen-lg mx-auto" id="benchmarks">
+
+#
+# Benchmarks
+
+The highest WCEB score of the open-source extractors we tested, at about 3× the speed of
+Readability + Turndown.
+
+<img src="/images/benchmark-light.svg" alt="webforai against Readability + Turndown and Defuddle: WCEB F1 0.892 / 0.880 / 0.820, code blocks kept 98% / 46% / 89%, time for 60 pages 3.7 s / 11.5 s / 12.7 s" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
+
+WCEB scores extracted text against reference text on 3,985 pages and is never used for tuning;
+code blocks and time come from 60 real pages webforai is developed against, so they likely favour
+it. Defuddle keeps more data tables (55% to 39%), mostly Wikipedia navigation boxes. Method, every
+pipeline's configuration and the limitations: [Benchmarks](/benchmarks).
+
+</section>
+
 <section className="max-w-screen-lg mx-auto" id="ways-to-use">
 
 #
@@ -130,12 +147,16 @@ const markdown = htmlToMarkdown(html, { baseUrl: url }); // [!code hl]
 #
 # Features
 
-- High-quality HTML to Markdown conversion with simple, customizable options
-- ESM-native, compatible with various environments (browser, Cloudflare Worker, Node.js, etc.)
-- Flexibility because it's built on [Syntax Tree](https://github.com/syntax-tree) ecosystem.
-- MathML to LaTeX with [mathml-to-latex](https://www.npmjs.com/package/mathml-to-latex) package.
-- Out-of-the-box loaders such as fetch, [playwright](https://www.npmjs.com/package/playwright), [puppeteer](https://www.npmjs.com/package/puppeteer).
-- CLI tool [`npx webforai-cli <url>`](/cli) — Markdown on stdout, `--json` for scripts and AI agents
+- **Main content, found by a model** — site adapters first, then kiwame, a small learned block
+  classifier in plain TypeScript (no WASM, no network calls). [How it works](/how-it-works)
+- **Twenty site adapters** — GitHub, Stack Overflow, npm, MDN, Wikipedia, Reddit, YouTube,
+  Hacker News, Zenn, Qiita and more, with generic extraction as the fallback.
+- **Markup that survives** — code blocks with their language, GFM tables, KaTeX/MathJax as LaTeX,
+  lazy-loaded images, definition lists.
+- **Built for agents** — `agentExtractor` appends the page's other links grouped by role; the
+  [CLI](/cli) (`npx webforai-cli <url>`) prints Markdown or JSON and ships an Agent Skill.
+- **Easy to embed** — about 100 packages and 14 MB installed, no Node.js built-ins; runs in
+  Node.js, Cloudflare Workers and browsers. [Embedding in your project](/embedding)
 
 </section>
 

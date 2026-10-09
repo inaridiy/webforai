@@ -4,34 +4,32 @@
   <a href="https://webforai.dev">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://webforai.dev/images/logo-full-dark.svg">
-      <img alt="webforai logo" src="https://webforai.dev/images/logo-full-light.svg" width="auto" height="40">
+      <img alt="webforai" src="https://webforai.dev/images/logo-full-light.svg" width="auto" height="44">
     </picture>
   </a>
+</p>
+
+<h3 align="center">Any web page, as clean Markdown for LLMs.</h3>
+
+<p align="center">
+  Main content only — no navigation, ads or cookie banners. A dependency-light TypeScript library
+  for Node.js, Cloudflare Workers and browsers.
 </p>
 
 <p align="center">
-  Convert web pages and local HTML to clean, LLM-ready Markdown — a dependency-light TypeScript library for Node.js, Cloudflare Workers and browsers.
+  <a href="https://www.npmjs.com/package/webforai"><img src="https://img.shields.io/npm/v/webforai?style=flat&color=1f8fff" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/webforai"><img src="https://img.shields.io/npm/dm/webforai?style=flat&color=1f8fff" alt="npm downloads"></a>
+  <a href="https://github.com/inaridiy/webforai/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/webforai?style=flat" alt="Apache-2.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/webforai">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/npm/v/webforai?style=flat">
-      <img src="https://img.shields.io/npm/v/webforai?style=flat" alt="Version">
-    </picture>
-  </a>
-  <a href="https://github.com/inaridiy/webforai/blob/main/LICENSE">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/npm/l/webforai?style=flat">
-      <img src="https://img.shields.io/npm/l/webforai?style=flat" alt="Apache License">
-    </picture>
-  </a>
+  <a href="https://webforai.dev/getting-started"><b>Docs</b></a> ·
+  <a href="https://webforai.dev/docs/html-to-markdown"><b>API reference</b></a> ·
+  <a href="https://webforai.dev/benchmarks"><b>Benchmarks</b></a> ·
+  <a href="https://github.com/inaridiy/webforai"><b>GitHub</b></a>
 </p>
 
-Documentation: **[webforai.dev](https://webforai.dev)** ([Getting started](https://webforai.dev/getting-started) ·
-[API reference](https://webforai.dev/docs/html-to-markdown) · [Embedding in your project](https://webforai.dev/embedding)).
-
-## Install
+<br/>
 
 ```bash
 npm i webforai
@@ -43,47 +41,54 @@ import { htmlToMarkdown } from "webforai";
 const url = "https://example.com/article";
 const html = await (await fetch(url)).text();
 
-// url selects a site-specific adapter (GitHub, MDN, …) and fills metadata;
-// baseUrl resolves relative links
+// url selects a site adapter (GitHub, MDN, …) and fills metadata; baseUrl resolves relative links
 const markdown = htmlToMarkdown(html, { url, baseUrl: url });
 ```
 
-Looking for the command line? The CLI is a separate package, [`webforai-cli`](https://www.npmjs.com/package/webforai-cli):
+Looking for the command line? That is [`webforai-cli`](https://www.npmjs.com/package/webforai-cli):
 `npx webforai-cli <url>`. Up to v4 it shipped inside this package as `npx webforai`.
+
+## Benchmarks
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-dark.svg">
+  <img alt="webforai against Readability + Turndown and Defuddle: WCEB F1 0.892 / 0.880 / 0.820, code blocks kept 98% / 46% / 89%, time for 60 pages 3.7 s / 11.5 s / 12.7 s" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
+</picture>
+
+WCEB scores extracted text against reference text on 3,985 pages and is never used for tuning.
+Code blocks and time come from 60 real pages that webforai is developed against, so they likely
+favour it. Method, Firecrawl and the limitations: [webforai.dev/benchmarks](https://webforai.dev/benchmarks).
 
 ## Entry points
 
-| Import | What it is | Runs in | Needs |
+| Import | What it is | Runs in | Your project adds |
 | --- | --- | --- | --- |
 | `webforai` | `htmlToMarkdown` and the conversion API | Node.js, Workers, browsers | nothing |
 | `webforai/platform` | typed client for the [hosted platform](https://webforai.dev/platform) | anywhere with `fetch` | nothing |
 | `webforai/loaders/fetch` | load HTML over `fetch` | anywhere with `fetch` | nothing |
-| `webforai/loaders/playwright` | load JavaScript-rendered pages | Node.js | `npm i playwright-core` |
-| `webforai/loaders/puppeteer` | the same with Puppeteer | Node.js | `npm i puppeteer` |
-| `webforai/loaders/cf-puppeteer` | the same with Cloudflare Browser Rendering | Workers | `npm i @cloudflare/puppeteer` |
+| `webforai/loaders/playwright` | load JavaScript-rendered pages | Node.js | `playwright-core` |
+| `webforai/loaders/puppeteer` | the same with Puppeteer | Node.js | `puppeteer` |
+| `webforai/loaders/cf-puppeteer` | the same with Cloudflare Browser Rendering | Workers | `@cloudflare/puppeteer` |
 
-The browser libraries are optional peer dependencies: installing `webforai` never installs them.
-The library itself uses no Node.js built-ins, so it can be embedded in other libraries and
-bundled for Workers or browsers; [Embedding in your project](https://webforai.dev/embedding)
-lists its dependencies and bundle size.
+Browser drivers are optional peer dependencies: installing `webforai` never installs them. The
+library uses no Node.js built-ins, installs as about 100 packages (14 MB), and runs in Workers
+without `nodejs_compat`; [Embedding in your project](https://webforai.dev/embedding) has the
+details and bundle sizes.
 
 ## What you get
 
-- **Main content only.** Navigation, ads and footers are dropped. Pages are first matched
-  against site adapters; every other page goes through **kiwame**, a small built-in learned
-  classifier (plain TypeScript, no WASM, runs in a Cloudflare Worker). See
-  [How it works](https://webforai.dev/how-it-works) for the model, the benchmark and how to switch
-  back to the heuristic extractor.
-- **Agent mode.** `agentExtractor` returns the same main content followed by the page's other
-  links grouped by role (related, pagination, section navigation, breadcrumb, site navigation),
-  so an agent can decide where to go next; `--extractor agent` on the CLI, and
-  `convert: { extractor: "agent" }` on the hosted platform.
-- **Site adapters** for GitHub, Stack Overflow, npm, MDN, Zenn, Qiita, Medium, Substack, note,
-  Hatena, WordPress, Wikipedia, Reddit, YouTube, Hacker News, Docusaurus, VitePress, MkDocs,
-  Read the Docs and GitBook — matched by hostname or by a platform fingerprint, so self-hosted
-  instances are covered too. An adapter that produces too little falls back to generic
-  extraction, so a site redesign degrades rather than breaks.
-- **Page metadata** as data or as YAML front matter:
+- **Main content, found by a model.** Site adapters first, then **kiwame**, a small learned block
+  classifier in plain TypeScript (no WASM, no network calls).
+  [How it works →](https://webforai.dev/how-it-works)
+- **Twenty site adapters**: GitHub, Stack Overflow, npm, MDN, Wikipedia, Reddit, YouTube,
+  Hacker News, Medium, Substack, Zenn, Qiita, note, Hatena, WordPress, Docusaurus, VitePress,
+  MkDocs, Read the Docs and GitBook. Matched by hostname or platform fingerprint, with generic
+  extraction as the fallback when a site changes.
+- **Markup that survives**: code blocks with their language (tabs and Twoslash included), GFM
+  tables, KaTeX/MathJax as LaTeX, lazy-loaded images, definition lists, sub/superscripts.
+- **Agent mode**: `agentExtractor` appends the page's other links grouped by role (related,
+  pagination, section navigation, breadcrumbs).
+- **Metadata** as data or YAML front matter:
 
   ```ts
   import { htmlToMarkdown, htmlToMarkdownWithMetadata } from "webforai";
@@ -95,17 +100,11 @@ lists its dependencies and bundle size.
   const withFrontmatter = htmlToMarkdown(html, { url, frontmatter: true });
   ```
 
-- **Markup that survives conversion**: lazily-loaded images, KaTeX/MathJax, code blocks and tabs,
-  tables, definition lists, and superscripts/subscripts.
+## Hosted platform
 
-Release notes and breaking changes are in the
-[CHANGELOG](https://github.com/inaridiy/webforai/blob/main/packages/webforai/CHANGELOG.md).
-
-## Platform (hosted API)
-
-webforai platform runs the browsers, proxies and crawl queues for you and returns the same
-Markdown as the library. It includes 1,000 free credits a month; sign up and create an API key
-at [platform.webforai.dev](https://platform.webforai.dev).
+When you need JavaScript rendering, proxies or whole-site crawls, the
+[webforai platform](https://platform.webforai.dev) runs them and returns the same Markdown
+(1,000 free credits a month). The typed client ships in this package:
 
 ```ts
 import { createPlatformClient } from "webforai/platform";
@@ -115,14 +114,8 @@ const page = await platform.scrape({ url: "https://example.com/article" });
 page.markdown;
 ```
 
-See the [platform docs](https://webforai.dev/platform) for the API reference and
-[billing](https://webforai.dev/platform/billing).
+## Links
 
-## Support
-
-- [GitHub Sponsors](https://github.com/sponsors/inaridiy)
-- [@inaridiy on X](https://x.com/inaridiy)
-
-## License
-
-[Apache 2.0](https://github.com/inaridiy/webforai/blob/main/LICENSE)
+- [Changelog](https://github.com/inaridiy/webforai/blob/main/packages/webforai/CHANGELOG.md) ·
+  [GitHub Sponsors](https://github.com/sponsors/inaridiy) · [@inaridiy on X](https://x.com/inaridiy)
+- License: [Apache 2.0](https://github.com/inaridiy/webforai/blob/main/LICENSE)
