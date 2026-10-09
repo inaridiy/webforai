@@ -6,6 +6,7 @@
 			"package.json",
 			"apps/platform/drizzle/**",
 			"apps/platform/wrangler.jsonc",
+			"evals/workers/*/wrangler.jsonc",
 			"apps/platform/src/__generated__/**",
 			"packages/webforai/src/**/*.generated.ts",
 			"apps/platform/.create-nodejs-fn/**",

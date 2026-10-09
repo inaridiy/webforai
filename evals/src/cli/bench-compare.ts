@@ -20,6 +20,7 @@ import path from "node:path";
 import { fromHtml } from "hast-util-from-html";
 import { BUILTIN_ADAPTERS, buildPageSignature, resolveAdapter } from "webforai";
 
+import { readCfToMarkdownRecord } from "../cf-tomarkdown.js";
 import {
 	BOILERPLATE_MARKERS,
 	type Check,
@@ -142,6 +143,7 @@ const environment = {
 		defuddle: await packageVersion("defuddle"),
 		linkedom: await packageVersion("linkedom"),
 		"firecrawl-oss": firecrawlCommit(),
+		"cf-tomarkdown": cfToMarkdownDate(),
 	},
 };
 
@@ -157,6 +159,18 @@ function firecrawlCommit(): string {
 	for (const capture of captures) {
 		try {
 			return readFirecrawlRecord(capture.html).commit;
+		} catch {
+			// not cached for this capture
+		}
+	}
+	return "not run";
+}
+
+/** The date the cached Cloudflare toMarkdown outputs were produced (the service is unversioned). */
+function cfToMarkdownDate(): string {
+	for (const capture of captures) {
+		try {
+			return `run ${readCfToMarkdownRecord(capture.html).date}`;
 		} catch {
 			// not cached for this capture
 		}
@@ -351,7 +365,7 @@ const methodology = {
 		"for every <pre> in the source with a line of 12–200 characters (block elements inside <pre> count as line breaks), its longest such line (whitespace-collapsed) must appear as a line inside a code block of the output (fenced or indented, from a CommonMark parse); pooled over the corpus. Measures recall only — it cannot penalize keeping code from page chrome.",
 	tableRecall:
 		"source data tables = <table> with a <th> and no nested table; preserved = min(GFM tables in output, source data tables) per capture; pooled. Recall only.",
-	timing: `1 warm-up round, then ${rounds} measured rounds; each conversion timed individually with pipelines interleaved per capture and the starting pipeline rotated each round; per-capture median, summed over the corpus. Includes HTML parsing (jsdom for Readability, linkedom for Defuddle). Single process, not CPU-pinned. Firecrawl OSS runs as a service: its figure is the per-page wall time of its scrape request recorded by \`firecrawl-oss\` (queueing, fetching the locally served page, extraction and conversion; 8 concurrent requests), not an in-process conversion, so it is not directly comparable.`,
+	timing: `1 warm-up round, then ${rounds} measured rounds; each conversion timed individually with pipelines interleaved per capture and the starting pipeline rotated each round; per-capture median, summed over the corpus. Includes HTML parsing (jsdom for Readability, linkedom for Defuddle). Single process, not CPU-pinned. Firecrawl OSS runs as a service: its figure is the per-page wall time of its scrape request recorded by \`firecrawl-oss\` (queueing, fetching the locally served page, extraction and conversion; 8 concurrent requests), not an in-process conversion, so it is not directly comparable. Cloudflare toMarkdown likewise runs on Cloudflare: its figure is the time of the \`env.AI.toMarkdown\` call recorded by \`cf-tomarkdown\` inside a local \`wrangler dev\` Worker, which includes the round trip to Cloudflare.`,
 };
 
 // ---------------------------------------------------------------------------- outputs

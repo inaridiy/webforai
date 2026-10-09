@@ -104,15 +104,16 @@ Paste any URL and see the Markdown webforai produces — converted live by the h
 #
 # Benchmarks
 
-The highest WCEB score of the open-source extractors we tested, at about 3× the speed of
-Readability + Turndown.
+The highest WCEB score of every converter we tested — Readability + Turndown, Defuddle, Firecrawl OSS
+and Cloudflare's toMarkdown — at about 3× the speed of Readability + Turndown.
 
-<img src="/images/benchmark-light.svg" alt="webforai against Readability + Turndown and Defuddle: WCEB F1 0.892 / 0.880 / 0.820, code blocks kept 98% / 46% / 89%, time for 60 pages 3.7 s / 11.5 s / 12.7 s" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
+<img src="/images/benchmark-light.svg" alt="WCEB F1: webforai 0.892, Readability + Turndown 0.880, Defuddle 0.820, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.1 s, Defuddle 14.0 s" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
 
 WCEB scores extracted text against reference text on 3,985 pages and is never used for tuning;
 code blocks and time come from 60 real pages webforai is developed against, so they likely favour
-it. Defuddle keeps more data tables (55% to 39%), mostly Wikipedia navigation boxes. Method, every
-pipeline's configuration and the limitations: [Benchmarks](/benchmarks).
+it. Firecrawl OSS and Cloudflare toMarkdown run as services and are not timed. The others keep
+more data tables, mostly Wikipedia navigation boxes that webforai drops. Method, every pipeline's
+configuration and the limitations: [Benchmarks](/benchmarks).
 
 </section>
 

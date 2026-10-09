@@ -12,9 +12,9 @@
 <h3 align="center">Any web page, as clean Markdown for LLMs.</h3>
 
 <p align="center">
-  Main content only — no navigation, ads or cookie banners. The highest WCEB score of the
-  open-source extractors we tested, about 3× faster than Readability + Turndown, and small enough
-  to run in a Cloudflare Worker or a browser.
+  Main content only — no navigation, ads or cookie banners. The highest WCEB score of every
+  converter we tested (Readability, Defuddle, Firecrawl OSS, Cloudflare toMarkdown), about 3× faster
+  than Readability + Turndown, and small enough to run in a Cloudflare Worker or a browser.
 </p>
 
 <p align="center">
@@ -47,28 +47,30 @@ const markdown = htmlToMarkdown(html, { url });
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="site/docs/public/images/benchmark-dark.svg">
-  <img alt="webforai against Readability + Turndown and Defuddle: WCEB F1 0.892 / 0.880 / 0.820, code blocks kept 98% / 46% / 89%, time for 60 pages 3.7 s / 11.5 s / 12.7 s" src="site/docs/public/images/benchmark-light.svg" width="100%">
+  <img alt="WCEB F1: webforai 0.892, Readability + Turndown 0.880, Defuddle 0.820, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.1 s, Defuddle 14.0 s" src="site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
 [WCEB](https://github.com/chatnoir-eu/web-content-extraction-benchmark) (Bevendorff et al., SIGIR 2023)
 scores extracted text against reference text on 3,985 pages; webforai is never tuned on it. Code
 blocks and time come from 60 cached real pages that webforai is developed against, so those
-likely favour it. Not everything goes webforai's way: Defuddle keeps more data tables (55% to
-39%), mostly Wikipedia navigation boxes that webforai drops on purpose. The method, each
-pipeline's configuration, Firecrawl and the limitations are on the
-[benchmarks page](https://webforai.dev/benchmarks); everything is reproducible from [`evals/`](evals).
+likely favour it. Firecrawl OSS is the self-hosted open-source Firecrawl and Cloudflare toMarkdown
+is Workers AI's converter; both run as services, so they are not timed against local conversion.
+Not everything goes webforai's way: the others keep more data tables, mostly Wikipedia navigation
+boxes that webforai drops on purpose. The method, each pipeline's configuration and the
+limitations are on the [benchmarks page](https://webforai.dev/benchmarks); everything is
+reproducible from [`evals/`](evals).
 
 <details>
 <summary>All numbers</summary>
 
-|  | webforai | Readability + Turndown | Defuddle |
-| --- | ---: | ---: | ---: |
-| **WCEB F1** — 3,985 pages, reference text | **0.892** | 0.880 | 0.820 |
-| Precision / recall | **0.922 / 0.909** | 0.917 / 0.892 | 0.869 / 0.856 |
-| Code blocks kept as code — 748 blocks | **98.0%** | 45.9% | 89.2% |
-| Data tables kept — 64 tables | 39.1% | 29.7% | **54.7%** |
-| Quality checks passed | **74 / 74** | 63 / 74 | 72 / 74 |
-| Time to convert 60 pages (24 MiB) | **3.7 s** | 11.5 s | 12.7 s |
+|  | webforai | Readability + Turndown | Defuddle | Firecrawl OSS | Cloudflare toMarkdown |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| **WCEB F1** — 3,985 pages, reference text | **0.892** | 0.880 | 0.820 | 0.743 | 0.713 |
+| Precision / recall | **0.922** / 0.909 | 0.917 / 0.892 | 0.869 / 0.856 | 0.668 / 0.939 | 0.604 / **0.985** |
+| Code blocks kept as code — 748 blocks | **98.0%** | 45.9% | 89.2% | 51.9% | 53.6% |
+| Data tables kept — 64 tables | 39.1% | 29.7% | 54.7% | **95.3%** | 57.8% |
+| Quality checks passed | **75 / 75** | 64 / 75 | 73 / 75 | 53 / 75 | 62 / 75 |
+| Time to convert 60 pages (24 MiB) | **4.0 s** | 13.1 s | 14.0 s | service | service |
 
 </details>
 

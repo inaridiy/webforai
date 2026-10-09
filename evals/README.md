@@ -62,6 +62,7 @@ Run each as `pnpm --filter @webforai/evals <command>` (pass flags after `--`).
 | `bench:extract` | Extraction stage in isolation, with parsing outside the timed region |
 | `bench:compare` | webforai against Readability + Turndown, Defuddle, full-page Turndown, node-html-markdown and Firecrawl OSS. `--rounds=`, `--no-summary` |
 | `firecrawl-oss` | Run a self-hosted Firecrawl over the corpus and WCEB and cache its Markdown for the `firecrawl-oss` pipeline (see below) |
+| `cf-tomarkdown` | Run Cloudflare Workers AI `toMarkdown` over the corpus and WCEB through a local helper Worker and cache its Markdown for the `cf-tomarkdown` pipeline (see below) |
 | `stress` | Adversarial and very large pages, each in a child process with a 128 MB heap (a Worker's budget). `--case=` |
 
 The accuracy suite runs under the repository's vitest:
@@ -124,6 +125,23 @@ pnpm --filter @webforai/evals firecrawl-oss -- --sets=corpus,wceb --commit=<fire
 
 With rootful Docker the stage container is unnecessary: omit `--stage-dir`, and the script serves
 the pages itself on `--serve-host` (the host's address on Docker's bridge).
+
+## Cloudflare toMarkdown
+
+`toMarkdown` runs on Cloudflare, so its output is cached in `.cache/cf-tomarkdown/` the same way.
+The helper Worker in `workers/cf-tomarkdown/` posts each page's HTML to `env.AI.toMarkdown()` with
+default options; under `wrangler dev` the AI binding calls Cloudflare with wrangler's login, so no
+API token is stored here. Cloudflare documents toMarkdown as free for most formats (only image
+descriptions use billed models), but it runs under your account.
+
+```bash
+npx wrangler login                          # once; any account with Workers AI
+pnpm --filter platform exec wrangler dev --config ../../evals/workers/cf-tomarkdown/wrangler.jsonc --port 8799
+CF_TOMARKDOWN_URL=http://localhost:8799 pnpm --filter @webforai/evals cf-tomarkdown -- --sets=corpus,wceb
+```
+
+Cloudflare does not version the service; each cached record carries the run date, which
+`bench:compare` reports.
 
 ## Reading the numbers
 

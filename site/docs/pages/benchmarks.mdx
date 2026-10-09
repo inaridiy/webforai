@@ -1,15 +1,16 @@
 ---
 title: Benchmarks
-description: A reproducible comparison of webforai with Readability + Turndown, Defuddle, plain Turndown, node-html-markdown and Firecrawl OSS on cached real pages — method, results and limitations.
+description: A reproducible comparison of webforai with Readability + Turndown, Defuddle, plain Turndown, node-html-markdown, Firecrawl OSS and Cloudflare's toMarkdown on cached real pages — method, results and limitations.
 ---
 
 # Benchmarks
 
 This page compares webforai with common open-source HTML→Markdown pipelines, including
-[Defuddle](https://github.com/kepano/defuddle), and with a self-hosted Firecrawl, on the same
+[Defuddle](https://github.com/kepano/defuddle), with a self-hosted Firecrawl and with Cloudflare's
+[toMarkdown](https://developers.cloudflare.com/workers-ai/features/markdown-conversion/), on the same
 cached pages. Everything runs locally from the repository's
-evaluation harness, with no network access and no API keys at measure time. The numbers below are from the run on 2026-10-09 (commit
-`386ca9b`); the raw summary is
+evaluation harness, with no network access and no API keys at measure time. The corpus numbers below are from the run on 2026-10-09 at commit
+`2367b42` (WCEB: `386ca9b` and later, unchanged in between); the raw summary is
 [`evals/benchmarks/compare-summary.json`](https://github.com/inaridiy/webforai/blob/main/evals/benchmarks/compare-summary.json).
 
 **Read the limitations first.** The corpus is small (60 captures of 46 sites) and was assembled
@@ -17,7 +18,7 @@ while developing webforai. Its quality assertions were written against webforai'
 failures. The results are therefore likely to favour webforai, and they are not a general measure
 of extraction quality.
 
-<img src="/images/benchmark-light.svg" alt="webforai against Readability + Turndown and Defuddle: WCEB F1 0.892 / 0.880 / 0.820, code blocks kept 98% / 46% / 89%, time for 60 pages 3.7 s / 11.5 s / 12.7 s" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
+<img src="/images/benchmark-light.svg" alt="WCEB F1: webforai 0.892, Readability + Turndown 0.880, Defuddle 0.820, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.1 s, Defuddle 14.0 s" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
 
 The chart summarises three columns of the tables below. After a new run, regenerate it (for the
 README and this page) with `pnpm --filter site benchmark-chart`; the WCEB scores are constants in
@@ -33,6 +34,7 @@ README and this page) with `pnpm --filter site benchmark-chart`; the WCEB scores
 | Turndown (full page) | Turndown 7.2.4 + GFM plugin on the whole document; `head`, `script`, `style`, `noscript` and `template` removed | no |
 | node-html-markdown (full page) | `NodeHtmlMarkdown.translate(html)` 2.0.0 on the whole document, default options | no |
 | Firecrawl OSS | Self-hosted [Firecrawl](https://github.com/firecrawl/firecrawl) (open source, commit `034293a`), `POST /v2/scrape` with `formats: ["markdown"]` and `onlyMainContent: true` (its defaults), fetch engine only (no browser rendering), each page served from the same cached HTML | yes (fixed selector list) |
+| Cloudflare toMarkdown | Workers AI [`env.AI.toMarkdown()`](https://developers.cloudflare.com/workers-ai/features/markdown-conversion/) on each page's HTML with default options, called from a local `wrangler dev` Worker. Per Cloudflare's documentation it drops `script`, `style`, `header`, `footer` and `head`, prepends the page metadata as front matter and appends any JSON-LD | no (removes header and footer only) |
 
 Turndown is configured with ATX headings, fenced code blocks and `-` bullets, the usual setup for
 GFM output. Defuddle runs with its defaults except `useAsync: false`, which stops it from calling
@@ -40,7 +42,9 @@ third-party APIs (YouTube transcripts, for one) when a page has no local content
 converts the same HTML offline. The two full-page pipelines are baselines: they show what
 conversion without content extraction produces. Firecrawl runs as a service, so its Markdown is produced once by
 `firecrawl-oss` and read from a cache; it is the hosted product's open-source core, not the hosted
-API, which may differ. Rendering was disabled so every pipeline converts identical HTML — in a
+API, which may differ. Cloudflare toMarkdown also runs as a service (on Cloudflare, under the
+evaluator's account); its output is produced once by `cf-tomarkdown` and read from a cache, and
+since Cloudflare does not version it, the run date identifies it. Rendering was disabled so every pipeline converts identical HTML — in a
 browser the cached pages' scripts could rewrite the DOM.
 
 ## Metrics
@@ -56,6 +60,10 @@ lines inside code as headings, and credited tables whose rows a Markdown parser 
 (Turndown's output for Sphinx tables). Every pipeline is measured with the new definitions; the
 Python-docs heading floor was corrected from 20 to its 19 real content headings.
 
+Revision note (2026-10-09, later): Cloudflare toMarkdown was added as a pipeline (corpus and WCEB,
+run 2026-10-09), full-page Turndown was scored on WCEB for context, and the corpus comparison was
+re-run for all pipelines at the same time.
+
 Revision note (2026-10-09): Defuddle was added as a pipeline, and the corpus and WCEB were re-run
 with webforai at `386ca9b`, which keeps small specification tables and no longer prints
 screen-reader text twice — two changes adapted from Defuddle after this comparison (credited in
@@ -69,10 +77,10 @@ from the 2026-10-01 run. The other pipelines' versions and the captures are unch
   [`evals/src/assertions.ts`](https://github.com/inaridiy/webforai/blob/main/evals/src/assertions.ts),
   applied to every pipeline's output: minimum headings, code blocks and length;
   maximum share of link-only lines; and short presence/absence anchors such as Wikipedia's
-  `[edit]` links. 74 checks over 22 captures. 14 further checks are webforai-specific and are
+  `[edit]` links. 75 checks over 22 captures. 14 further checks are webforai-specific and are
   excluded: 10 check which webforai site adapter claims a page, and 4 match the Markdown format
   that webforai's YouTube and Hacker News adapters emit (`- Channel:` lines, a `## Comments`
-  heading, nested blockquotes for replies). webforai passes 88/88 when they are included.
+  heading, nested blockquotes for replies). webforai passes 89/89 when they are included.
 - **Crashes / empty** — a thrown error, or trimmed output shorter than 200 characters.
 - **Nav leak** — captures where more than 20% of non-blank output lines are nothing but a link.
   This is the harness's main signal that navigation survived.
@@ -95,21 +103,24 @@ from the 2026-10-01 run. The other pipelines' versions and the captures are unch
 
 | Pipeline | Checks passed | Crashes | Empty | Nav leak | Boilerplate | Code fenced | Tables | Median output (chars) | Total time |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| webforai | 74/74 | 0 | 4 | 5 | 1 | 98.0% (733/748) | 39.1% (25/64) | 8,461 | 3.73 s |
-| Readability + Turndown | 63/74 | 0 | 2 | 8 | 3 | 45.9% (343/748) | 29.7% (19/64) | 9,139 | 11.50 s |
-| Defuddle | 72/74 | 0 | 3 | 8 | 2 | 89.2% (667/748) | 54.7% (35/64) | 7,874 | 12.73 s |
-| Turndown (full page) | 50/74 | 1 | 1 | 30 | 31 | 52.8% (395/748) | 31.3% (20/64) | 16,956 | 1.50 s |
-| node-html-markdown (full page) | 50/74 | 0 | 1 | 37 | 32 | 52.5% (393/748) | 57.8% (37/64) | 18,140 | 14.85 s |
-| Firecrawl OSS | 52/74 | 1 | 0 | 15 | 22 | 51.9% (388/748) | 95.3% (61/64) | 11,975 | 16.55 s (service) |
+| webforai | 75/75 | 0 | 4 | 5 | 1 | 98.0% (733/748) | 39.1% (25/64) | 8,461 | 3.95 s |
+| Readability + Turndown | 64/75 | 0 | 2 | 8 | 3 | 45.9% (343/748) | 29.7% (19/64) | 9,139 | 13.09 s |
+| Defuddle | 73/75 | 0 | 3 | 8 | 2 | 89.2% (667/748) | 54.7% (35/64) | 7,874 | 14.02 s |
+| Turndown (full page) | 51/75 | 1 | 1 | 30 | 31 | 52.8% (395/748) | 31.3% (20/64) | 16,956 | 1.65 s |
+| node-html-markdown (full page) | 51/75 | 0 | 1 | 37 | 32 | 52.5% (393/748) | 57.8% (37/64) | 18,140 | 15.94 s |
+| Firecrawl OSS | 53/75 | 1 | 0 | 15 | 22 | 51.9% (388/748) | 95.3% (61/64) | 11,975 | 16.55 s (service) |
+| Cloudflare toMarkdown | 62/75 | 0 | 1 | 13 | 22 | 53.6% (401/748) | 57.8% (37/64) | 10,611 | 50.80 s (service) |
 
 60 captures, 24.17 MiB of HTML. Nav leak, boilerplate and empty count captures out of 60. Times
-were measured with a load average of about 4 (recorded in the summary); pipelines are interleaved
+were measured with a load average of about 3 (recorded in the summary); pipelines are interleaved
 per capture, so compare them as ratios. Firecrawl's figure is unchanged from the 2026-10-01 run,
-because its outputs are read from the cache that run produced.
+because its outputs are read from the cache that run produced. Cloudflare toMarkdown's is the sum
+of each page's `toMarkdown` call (6 concurrent), including the round trip from this machine to
+Cloudflare; like Firecrawl's, it is a service latency.
 
 ### What the numbers show
 
-- **Where webforai is behind.** Full-page Turndown is about 2.5× faster, because it does no
+- **Where webforai is behind.** Full-page Turndown is about 2.4× faster, because it does no
   extraction. Firecrawl and node-html-markdown keep the most tables: they remove little or nothing,
   so Wikipedia's navboxes and sidebars (navigation tables built from `<th>` cells; 30 on the Japanese
   capture) count as kept. Most of the tables webforai drops are those, plus a PostgreSQL navigation
@@ -133,6 +144,16 @@ because its outputs are read from the cache that run produced.
   parse counts; on CodeMirror-style pages (React, Sandpack) each block's lines are joined into one,
   so those probes are missed. The one crash is the Reddit capture (a client-rendered shell), which
   its fetch engine reported as a failure.
+- **Cloudflare toMarkdown.** It removes `<header>` and `<footer>` but nothing else, so it behaves
+  like the full-page baselines with less chrome: navigation leaks on 13 captures and page-chrome
+  phrases on 22. Of its 13 failed checks, 6 are link-only-line ratios (shadcn/ui, Hatena, the
+  Cloudflare blog, WordPress, GIGAZINE, English Wikipedia), 3 are Wikipedia chrome left in
+  ("Jump to content", `[edit]`, "Retrieved from"), 3 are missing headings on YouTube and Hacker
+  News (the page title goes into the front matter, not an `#` heading) and 1 is the TypeScript
+  handbook's code-block count. It fences code about as often as
+  the Turndown pipelines (53.6%) and keeps the same share of tables as node-html-markdown,
+  navboxes included. Every page starts with front matter built from the `<meta>` tags and ends
+  with the page's JSON-LD, if any.
 - **Checks.** Readability + Turndown misses on Wikipedia (heading count, `[edit]` links), on
   YouTube's watch page (no output), on heading counts for the Python docs, Substack and Hacker
   News pages, and on link-only-line ratios for two documentation pages (shadcn/ui, TypeScript
@@ -169,11 +190,13 @@ used only for measurement, never for tuning.
 | Readability + Turndown | 0.880 / 0.901 | 0.917 / 0.892 |
 | Defuddle | 0.820 / 0.850 | 0.869 / 0.856 |
 | Firecrawl OSS | 0.743 / 0.760 | 0.668 / 0.939 |
+| Cloudflare toMarkdown | 0.713 / 0.702 | 0.604 / 0.985 |
+| Turndown (full page) | 0.676 / 0.671 | 0.563 / 0.972 |
 
 Readability + Turndown is ahead on three of the eight WCEB datasets — its own test set (F1 0.98
-against webforai's 0.95), Scrapinghub and L3S-GN1 — and webforai on the other five. Firecrawl
-recovers the most of the reference text but keeps the most besides it: its precision is the lowest
-on every dataset. Defuddle is level with webforai on Scrapinghub (0.920 against 0.919) and behind
+against webforai's 0.95), Scrapinghub and L3S-GN1 — and webforai on the other five. Of the
+pipelines that extract main content, Firecrawl recovers the most of the reference text but keeps
+the most besides it: its precision is the lowest of them on every dataset. Defuddle is level with webforai on Scrapinghub (0.920 against 0.919) and behind
 it on the other seven, by most on L3S-GN1 (0.716 against 0.920) and CleanEval (0.784 against
 0.913). It scores more than 0.2 above webforai on 89 pages and more than 0.2 below on 427. Of the
 89, 57 are wins on recall and 46 are Dragnet pages; the ones inspected are pages where Defuddle
@@ -181,6 +204,13 @@ keeps the whole page and the reference counts more than the article as content �
 which Dragnet's references include, or a page that is mostly a list of links. Defuddle is designed
 for a browser, where it also reads the page's mobile stylesheet to find clutter; under linkedom
 there are no stylesheets, so that signal is absent here.
+
+Cloudflare toMarkdown converts nearly all of the page, so it has the highest recall in the table
+(0.985) and, after full-page Turndown, the lowest precision (0.604). It removes the header and footer, which puts it above
+full-page Turndown on every dataset, but below Firecrawl OSS on every dataset and below webforai on
+all eight; it scores more than 0.2 above webforai on 226 pages and more than 0.2 below on 1,754.
+Its output also starts with the page metadata as front matter and ends with any JSON-LD, which the
+reference text does not contain. Full-page Turndown threw on 84 WCEB pages, scored as empty.
 
 ## Limitations
 
@@ -210,6 +240,15 @@ there are no stylesheets, so that signal is absent here.
 pnpm install
 pnpm --filter @webforai/evals corpus:fetch   # populate evals/.cache (not committed)
 pnpm --filter @webforai/evals bench:compare  # add -- --rounds=7 or -- --no-summary as needed
+```
+
+The two service pipelines are read from caches that are filled first. Firecrawl OSS needs a
+self-hosted Firecrawl (`firecrawl-oss`, see `evals/README.md`); Cloudflare toMarkdown needs
+`wrangler login` and a helper Worker run locally, whose AI binding calls Cloudflare:
+
+```bash
+pnpm --filter platform exec wrangler dev --config ../../evals/workers/cf-tomarkdown/wrangler.jsonc --port 8799
+CF_TOMARKDOWN_URL=http://localhost:8799 pnpm --filter @webforai/evals cf-tomarkdown -- --sets=corpus,wceb
 ```
 
 The run writes the full per-capture results, a Markdown report and every pipeline's output to

@@ -52,12 +52,13 @@ Looking for the command line? That is [`webforai-cli`](https://www.npmjs.com/pac
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-dark.svg">
-  <img alt="webforai against Readability + Turndown and Defuddle: WCEB F1 0.892 / 0.880 / 0.820, code blocks kept 98% / 46% / 89%, time for 60 pages 3.7 s / 11.5 s / 12.7 s" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
+  <img alt="WCEB F1: webforai 0.892, Readability + Turndown 0.880, Defuddle 0.820, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.1 s, Defuddle 14.0 s" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
 WCEB scores extracted text against reference text on 3,985 pages and is never used for tuning.
 Code blocks and time come from 60 real pages that webforai is developed against, so they likely
-favour it. Method, Firecrawl and the limitations: [webforai.dev/benchmarks](https://webforai.dev/benchmarks).
+favour it. Firecrawl OSS and Cloudflare toMarkdown run as services and are not timed. Method and
+limitations: [webforai.dev/benchmarks](https://webforai.dev/benchmarks).
 
 ## Entry points
 

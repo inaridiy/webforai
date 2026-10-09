@@ -16,6 +16,7 @@ import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import { htmlToMarkdown } from "webforai";
 
+import { cfToMarkdown, readCfToMarkdownRecord } from "./cf-tomarkdown.js";
 import { firecrawlMarkdown, readFirecrawlRecord } from "./firecrawl.js";
 
 export interface Competitor {
@@ -134,5 +135,15 @@ export const COMPETITORS: Competitor[] = [
 		extracts: true,
 		convert: (html) => firecrawlMarkdown(html),
 		serviceMs: (html) => readFirecrawlRecord(html).ms,
+	},
+	{
+		id: "cf-tomarkdown",
+		label: "Cloudflare toMarkdown",
+		pipeline:
+			"Cloudflare Workers AI env.AI.toMarkdown([{ name: page.html, blob }]) with default options (drops script/style/header/footer, appends JSON-LD); output cached by `cf-tomarkdown`",
+		// It removes <header>/<footer> but does not look for the main content.
+		extracts: false,
+		convert: (html) => cfToMarkdown(html),
+		serviceMs: (html) => readCfToMarkdownRecord(html).ms,
 	},
 ];
