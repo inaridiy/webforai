@@ -148,8 +148,9 @@ export const EXPECTATIONS: SiteExpectation[] = [
 		id: "hackernews-item",
 		mode: "static",
 		adapter: "hackernews",
-		// Nested blockquotes are how the adapter encodes reply depth.
-		mustContain: [/^# .+/m, "## Comments", /^> /m],
+		// Nested blockquotes are how the adapter encodes reply depth. The first top-level comment's
+		// text pins that unquoted comments keep their body, not just the author line.
+		mustContain: [/^# .+/m, "## Comments", /^> /m, "About 20 years ago, I was programming for the Hughes radar"],
 		structure: { minHeadings: 2, minLength: 5_000 },
 	},
 

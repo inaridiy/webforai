@@ -46,13 +46,18 @@ const commentDepth = (row: Element): number => {
 	return width === undefined ? 0 : Math.round(width / 40);
 };
 
-/** Wraps `content` in `depth` levels of blockquote. */
+/**
+ * Wraps a comment's nodes in one container, then in `depth` levels of blockquote.
+ *
+ * The container matters at depth 0: a top-level comment is its author line *and* its body, and
+ * returning only the first node dropped every top-level comment's text.
+ */
 const nest = (content: ElementContent[], depth: number): ElementContent => {
-	let current: ElementContent[] = content;
+	let current: ElementContent = element("div", content);
 	for (let level = 0; level < Math.min(depth, MAX_QUOTE_DEPTH); level++) {
-		current = [element("blockquote", current)];
+		current = element("blockquote", [current]);
 	}
-	return current[0];
+	return current;
 };
 
 const storyNodes = (root: Hast): ElementContent[] => {
