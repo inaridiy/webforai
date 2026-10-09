@@ -18,6 +18,7 @@ import { htmlToMarkdown } from "webforai";
 
 import { cfToMarkdown, readCfToMarkdownRecord } from "./cf-tomarkdown.js";
 import { firecrawlMarkdown, readFirecrawlRecord } from "./firecrawl.js";
+import { readTrafilaturaRecord, trafilaturaMarkdown } from "./trafilatura.js";
 
 export interface Competitor {
 	id: string;
@@ -112,6 +113,16 @@ export const COMPETITORS: Competitor[] = [
 			"linkedom parseHTML → defuddle/node Defuddle(document, url, { markdown: true, useAsync: false }); title prepended as h1",
 		extracts: true,
 		convert: defuddleToMarkdown,
+	},
+	{
+		id: "trafilatura",
+		label: "Trafilatura",
+		pipeline:
+			'Python trafilatura 2.3.1 extract(html, url=url, output_format="markdown"), its defaults otherwise; output cached by `trafilatura`',
+		extracts: true,
+		convert: (html) => trafilaturaMarkdown(html),
+		// Measured in Python around `extract`: in-process, but another runtime.
+		serviceMs: (html) => readTrafilaturaRecord(html).ms,
 	},
 	{
 		id: "turndown",

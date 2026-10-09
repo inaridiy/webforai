@@ -63,6 +63,7 @@ Run each as `pnpm --filter @webforai/evals <command>` (pass flags after `--`).
 | `bench:compare` | webforai against Readability + Turndown, Defuddle, full-page Turndown, node-html-markdown and Firecrawl OSS. `--rounds=`, `--no-summary` |
 | `firecrawl-oss` | Run a self-hosted Firecrawl over the corpus and WCEB and cache its Markdown for the `firecrawl-oss` pipeline (see below) |
 | `cf-tomarkdown` | Run Cloudflare Workers AI `toMarkdown` over the corpus and WCEB through a local helper Worker and cache its Markdown for the `cf-tomarkdown` pipeline (see below) |
+| `trafilatura` | Run Trafilatura (Python, via `uv`) over the corpus and the reference sets and cache its Markdown for the `trafilatura` pipeline (see below) |
 | `stress` | Adversarial and very large pages, each in a child process with a 128 MB heap (a Worker's budget). `--case=` |
 
 The accuracy suite runs under the repository's vitest:
@@ -76,19 +77,41 @@ It skips any site that is not cached, so it is meaningful locally and harmless i
 ## Ground truth
 
 The corpus above has assertions, not answers. `gold:eval` scores extraction against reference
-main-content text instead: token precision, recall and F1 per page, averaged per dataset.
+main-content text instead: token precision, recall and F1 per page, averaged per dataset. No
+model or LLM is involved in scoring.
+
+| Set (`--sets=`) | What it is | Reference | Fetch |
+| --- | --- | --- | --- |
+| `wceb` (default) | WCEB (Bevendorff et al., SIGIR 2023): 3,985 pages from eight datasets, mostly news 2007–2017. Apache-2.0 | plain text | `gold:fetch-wceb` (≈50 MB) |
+| `wcxb-test`, `wcxb-dev` | WCXB v1.0 (Foley, arXiv:2605.21097): 511 / 1,497 pages in seven page types (article, forum, product, collection, listing, documentation, service). CC BY 4.0 | plain text; scored with its own tokenizer (`\w+`, lower-cased), as its `evaluate.py` does | `gold:fetch-wcxb` (≈85 MB) |
+| `webmainbench` | WebMainBench (OpenDataLab, arXiv:2511.23119): 7,809 human-annotated pages, 46 languages, split simple / mid / hard. Apache-2.0 | `convert_main_content` (html2text Markdown of the annotated main HTML) | `gold:fetch-webmainbench` (1.35 GB) |
 
 | Command | What it does |
 | --- | --- |
-| `gold:fetch-wceb` | Download WCEB (Bevendorff et al., SIGIR 2023; Apache-2.0, ≈50 MB) into the cache |
-| `gold:eval` | Token precision/recall/F1 against WCEB's reference text. `--pipelines=webforai,webforai-kiwame,readability-turndown`, `--impl=<path>` to measure another checkout, `--threshold=`, `--limit=` |
+| `gold:eval` | Token precision/recall/F1 against a set's reference text. `--sets=`, `--pipelines=webforai,webforai-kiwame,readability-turndown`, `--impl=<path>` to measure another checkout, `--threshold=`, `--limit=`, `--name=` (report file prefix), `--save-outputs` (also write each page's Markdown) |
+| `gold:rouge-webmainbench` | WebMainBench's published metric (ROUGE-5 F1 over jieba tokens, MD mode) for outputs saved with `--sets=webmainbench --save-outputs`; needs `uv` |
+
+The two WebMainBench numbers differ on purpose. The token F1 ignores formatting, like the WCEB
+and WCXB scores. ROUGE-5 is what the Dripper paper's leaderboard reports: it counts every jieba
+token, spaces and punctuation included, so it also rewards matching html2text's Markdown style
+(`*` bullets, indented code). It is computed by copying MinerU-HTML's `calc_rouge_n_score`:
+
+```bash
+pnpm --filter @webforai/evals gold:eval -- --sets=webmainbench --save-outputs --pipelines=webforai,trafilatura
+pnpm --filter @webforai/evals gold:rouge-webmainbench .reports/gold/current-webforai.outputs.jsonl .reports/gold/current-trafilatura.outputs.jsonl
+```
+
+The page HTML of WebMainBench carries its annotation (`cc-select`, `data-anno-uid`); every pipeline
+receives it unchanged, as the benchmark's own baselines do, and none of them reads it.
 
 Pipelines: `webforai` is the published entry point with its defaults (kiwame), or the build at
 `--impl`; `webforai-kiwame` builds the kiwame extractor from source so `--threshold=` and
 `--no-stack` can vary it; the rest are the competitors in `src/competitors.ts`.
 
 The learned block classifier's weights (`packages/webforai/src/extractors/lib/block-model.generated.ts`)
-are generated outside this repository; WCEB is used to measure them, never to tune them.
+are generated outside this repository; WCEB, WCXB and WebMainBench are used to measure them,
+never to train them. Treat `wcxb-test` and `webmainbench` as held out: measure a release on them,
+do not iterate against them.
 
 ## Cross-tool comparison
 
@@ -142,6 +165,22 @@ CF_TOMARKDOWN_URL=http://localhost:8799 pnpm --filter @webforai/evals cf-tomarkd
 
 Cloudflare does not version the service; each cached record carries the run date, which
 `bench:compare` reports.
+
+## Trafilatura
+
+Trafilatura is a Python library, so its output is cached in `.cache/trafilatura/` too. The
+harness starts Python workers with `uv run --script python/trafilatura_worker.py`, which installs
+the pinned Trafilatura (2.3.1) on first use, and sends each page's HTML to
+`trafilatura.extract(html, url=url, output_format="markdown")` with every other option at its
+default (comments and tables included, no links or images).
+
+```bash
+pnpm --filter @webforai/evals trafilatura -- --sets=corpus --rounds=5 --concurrency=1   # timed
+pnpm --filter @webforai/evals trafilatura -- --sets=wceb,wcxb-test,webmainbench --concurrency=8
+```
+
+Its time is measured in Python around the `extract` call (median of `--rounds` after a warm-up):
+in-process like webforai's, but in another runtime.
 
 ## Reading the numbers
 

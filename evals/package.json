@@ -18,7 +18,11 @@
 		"gold:fetch-wceb": "tsx src/cli/gold-fetch-wceb.ts",
 		"stress": "tsx src/cli/stress.ts",
 		"firecrawl-oss": "tsx src/cli/firecrawl-oss.ts",
-		"cf-tomarkdown": "tsx src/cli/cf-tomarkdown.ts"
+		"cf-tomarkdown": "tsx src/cli/cf-tomarkdown.ts",
+		"trafilatura": "tsx src/cli/trafilatura.ts",
+		"gold:fetch-wcxb": "tsx src/cli/gold-fetch-wcxb.ts",
+		"gold:fetch-webmainbench": "tsx src/cli/gold-fetch-webmainbench.ts",
+		"gold:rouge-webmainbench": "uv run --quiet --script python/webmainbench_rouge.py"
 	},
 	"dependencies": {
 		"playwright-core": "^1.40.1",
