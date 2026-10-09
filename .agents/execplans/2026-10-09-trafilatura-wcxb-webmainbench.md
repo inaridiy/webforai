@@ -45,6 +45,15 @@ WebMainBench (7,809 pages):
 | webforai | **0.861** | 0.585 / 0.707 / 0.579 / 0.468 | 0.537 / 0.752 |
 | webforai, links as text, no images | 0.864 | 0.668 / 0.770 / 0.668 / 0.566 | 0.650 / 0.764 |
 | Trafilatura | 0.814 | **0.673** / 0.757 / 0.681 / 0.577 | 0.699 / 0.695 |
+| Readability + Turndown | 0.810 | 0.570 / 0.685 / 0.566 / 0.458 | 0.551 / 0.694 |
+| Defuddle | 0.778 | 0.544 / 0.661 / 0.547 / 0.419 | 0.515 / 0.697 |
+
+Paired bootstrap (1,000), webforai − other: token F1 vs Trafilatura +0.047 [+0.042, +0.052],
+vs Readability + Turndown +0.052 [+0.046, +0.056], vs Defuddle +0.083 [+0.077, +0.089]; ROUGE-5
+vs Trafilatura −0.088 [−0.094, −0.083], links-as-text variant −0.004 [−0.009, +0.001].
+Readability + Turndown crashed on 13 pages (scored empty). Its ROUGE-5 is below the published
+Readability row because that row is readability-lxml's HTML through html2text with links and
+images dropped, the reference's own format.
 
 Published ROUGE-5 (Dripper, Table 2): Readability (readability-lxml, Html+MD) 0.654,
 Trafilatura Html+MD 0.640, Trafilatura MD 0.628; Dripper 0.878, its LLM variants up to 0.910.
