@@ -181,3 +181,11 @@ export const createAgentExtractor = (options: AgentExtractorOptions = {}): Extra
 export const agentExtractor: Extractor = /* @__PURE__ */ createAutoExtractor({
 	fallback: /* @__PURE__ */ createAgentExtractor(),
 });
+
+/**
+ * The default extraction plus reader comments under `## Comments`, without the link sections:
+ * the content a reader-mode extractor that keeps comments returns (Trafilatura does by default).
+ */
+export const commentsExtractor: Extractor = /* @__PURE__ */ createAutoExtractor({
+	fallback: /* @__PURE__ */ createAgentExtractor({ roles: [] }),
+});

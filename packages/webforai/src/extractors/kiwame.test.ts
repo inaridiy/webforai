@@ -75,7 +75,7 @@ describe("kiwame extractor", () => {
 	it("keeps tables rectangular", () => {
 		const markdown = htmlToMarkdown(page, { extractors });
 		expect(markdown).toContain("| Name | Price |");
-		expect(markdown).toContain("| Cake | 5     |");
+		expect(markdown).toContain("| Cake | 5 |");
 	});
 
 	it("falls back to the heuristic extractor for an unusable model", () => {

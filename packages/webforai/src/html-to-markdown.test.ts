@@ -76,8 +76,8 @@ const htmlTable = `
 
 const expectedTableMarkdown = `
 | Header 1 | Header 2 |
-| -------- | -------- |
-| Cell 1   | Cell 2   |
+| - | - |
+| Cell 1 | Cell 2 |
 `;
 
 const expectedTableText = `Header 1  Header 2

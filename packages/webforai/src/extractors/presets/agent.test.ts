@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { htmlToMarkdown } from "../../html-to-markdown";
-import { agentExtractor, createAgentExtractor } from "./agent";
+import { agentExtractor, commentsExtractor, createAgentExtractor } from "./agent";
 import { readabilityExtractor } from "./auto";
 
 const page = `<html><head><title>How to bake bread</title></head><body>
@@ -12,6 +12,10 @@ const page = `<html><head><title>How to bake bread</title></head><body>
 <div class="pagination"><a href="/recipes/bread/2" rel="next">Next recipe</a></div>
 <aside class="related-posts"><h2>Related posts</h2><ul><li><a href="/sourdough">Sourdough starter</a></li><li><a href="/rye">Rye bread</a></li></ul></aside>
 <div class="share"><a href="https://twitter.com/intent/tweet">Share on Twitter</a></div>
+<section id="comments" class="comments"><h2>3 comments</h2><ol class="comment-list">
+<li class="comment"><div class="comment-author">Mia</div><div class="comment-body"><p>I added a spoonful of honey to the dough and the crust browned beautifully, thank you for this recipe.</p></div></li>
+<li class="comment"><div class="comment-author">Tom</div><div class="comment-body"><p>Does this work with whole wheat flour, or does the dough need more water and a longer rise?</p></div></li>
+</ol></section>
 </body></html>`;
 
 const convert = (extractors: typeof agentExtractor) =>
@@ -48,5 +52,23 @@ describe("agentExtractor", () => {
 		expect(markdown).toContain("### Pagination");
 		expect(markdown).not.toContain("### Related");
 		expect(markdown).not.toContain("### Site navigation");
+	});
+});
+
+describe("commentsExtractor", () => {
+	it("keeps the readability content and lists no links", () => {
+		const markdown = convert(commentsExtractor);
+
+		expect(markdown.split("## Comments")[0].trim()).toBe(convert(readabilityExtractor).trim());
+		expect(markdown).not.toContain("## Links");
+	});
+
+	it("appends reader comments after the content (class and aria hints)", () => {
+		const [body, comments] = convert(createAgentExtractor({ roles: [], roleModels: null })).split("## Comments");
+
+		expect(body).not.toContain("spoonful of honey");
+		expect(comments).toContain("spoonful of honey");
+		expect(comments).toContain("whole wheat flour");
+		expect(comments).not.toContain("## Links");
 	});
 });

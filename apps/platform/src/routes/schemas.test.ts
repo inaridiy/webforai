@@ -84,7 +84,7 @@ describe("scrape body", () => {
 	});
 
 	it("accepts every library preset and rejects an unknown one", () => {
-		for (const extractor of ["auto", "readability", "agent", "kiwame", "takumi", "minimal", "none"]) {
+		for (const extractor of ["auto", "readability", "agent", "comments", "kiwame", "takumi", "minimal", "none"]) {
 			expect(scrapeBodySchema.safeParse({ url: "https://example.com", convert: { extractor } }).success).toBe(true);
 		}
 		expect(scrapeBodySchema.safeParse({ url: "https://example.com", convert: { extractor: "best" } }).success).toBe(

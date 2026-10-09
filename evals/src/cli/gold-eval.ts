@@ -19,7 +19,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { htmlToMarkdown } from "webforai";
+import { commentsExtractor, htmlToMarkdown } from "webforai";
 
 import { COMPETITORS } from "../competitors.js";
 import { REPORTS_DIR } from "../config.js";
@@ -50,6 +50,10 @@ const resolvePipeline = async (id: string): Promise<Convert> => {
 		const stackModel = process.argv.includes("--no-stack") ? null : undefined;
 		const extractors = createAutoExtractor({ fallback: createKiwameExtractor({ threshold, stackModel }) });
 		return (html, url) => htmlToMarkdown(html, { baseUrl: url, url, extractors });
+	}
+	if (id === "webforai-comments") {
+		// The `comments` preset: the default content plus reader comments, which Trafilatura keeps by default.
+		return (html, url) => htmlToMarkdown(html, { baseUrl: url, url, extractors: commentsExtractor });
 	}
 	if (id === "webforai-nolinks") {
 		// Links as text and no images: what WebMainBench's references (html2text with ignore_links and

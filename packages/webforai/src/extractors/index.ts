@@ -16,6 +16,7 @@ export { minimalFilter } from "./presets/minimal-filter";
 export { autoExtractor, createAutoExtractor, readabilityExtractor, type AutoExtractorOptions } from "./presets/auto";
 export {
 	agentExtractor,
+	commentsExtractor,
 	createAgentExtractor,
 	LINK_ROLE_TITLES,
 	type AgentExtractorOptions,

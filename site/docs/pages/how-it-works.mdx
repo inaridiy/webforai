@@ -116,7 +116,8 @@ Share buttons, ads, sign-up boxes and legal links are left out, each link is lis
 most specific role), and empty groups are omitted. The roles come from small per-role models over
 kiwame's block features plus class, `aria-label` and `rel` hints and where each block sits relative
 to the main content (about 100 KB of weights, loaded only when you import `agentExtractor`).
-Site-adapter pages get the adapter's content without the link sections.
+Site-adapter pages get the adapter's content without the link sections. `commentsExtractor`
+(preset `comments`) is the same without the links: the main content, then the reader comments.
 
 ```ts
 import { htmlToMarkdown, agentExtractor, createAgentExtractor } from "webforai";
