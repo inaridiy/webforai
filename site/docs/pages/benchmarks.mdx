@@ -1,14 +1,15 @@
 ---
 title: Benchmarks
-description: A reproducible comparison of webforai with Readability + Turndown, plain Turndown, node-html-markdown and Firecrawl OSS on cached real pages — method, results and limitations.
+description: A reproducible comparison of webforai with Readability + Turndown, Defuddle, plain Turndown, node-html-markdown and Firecrawl OSS on cached real pages — method, results and limitations.
 ---
 
 # Benchmarks
 
-This page compares webforai with common open-source HTML→Markdown pipelines, and with a
-self-hosted Firecrawl, on the same cached pages. Everything runs locally from the repository's
-evaluation harness, with no network access and no API keys at measure time. The numbers below are from the run on 2026-10-01 (commit
-`3cd9177`); the raw summary is
+This page compares webforai with common open-source HTML→Markdown pipelines, including
+[Defuddle](https://github.com/kepano/defuddle), and with a self-hosted Firecrawl, on the same
+cached pages. Everything runs locally from the repository's
+evaluation harness, with no network access and no API keys at measure time. The numbers below are from the run on 2026-10-09 (commit
+`386ca9b`); the raw summary is
 [`evals/benchmarks/compare-summary.json`](https://github.com/inaridiy/webforai/blob/main/evals/benchmarks/compare-summary.json).
 
 **Read the limitations first.** The corpus is small (60 captures of 46 sites) and was assembled
@@ -22,13 +23,16 @@ of extraction quality.
 | --- | --- | --- |
 | webforai (at that commit) | `htmlToMarkdown(html, { baseUrl: url, url })` with the default extractors (site adapters, then the learned block classifier) | yes |
 | Readability + Turndown | jsdom 30.0.1 → `@mozilla/readability` 0.6.0 `parse()` → Turndown 7.2.4 with `turndown-plugin-gfm` 1.0.2 on `article.content`; the article title is prepended as an h1 | yes |
+| Defuddle | linkedom 0.18.13 document → `defuddle/node` 0.19.4 `Defuddle(document, url, { markdown: true, useAsync: false })`, as its README shows for Node; the title is prepended as an h1 | yes |
 | Turndown (full page) | Turndown 7.2.4 + GFM plugin on the whole document; `head`, `script`, `style`, `noscript` and `template` removed | no |
 | node-html-markdown (full page) | `NodeHtmlMarkdown.translate(html)` 2.0.0 on the whole document, default options | no |
 | Firecrawl OSS | Self-hosted [Firecrawl](https://github.com/firecrawl/firecrawl) (open source, commit `034293a`), `POST /v2/scrape` with `formats: ["markdown"]` and `onlyMainContent: true` (its defaults), fetch engine only (no browser rendering), each page served from the same cached HTML | yes (fixed selector list) |
 
 Turndown is configured with ATX headings, fenced code blocks and `-` bullets, the usual setup for
-GFM output. The two full-page pipelines are baselines: they show what conversion without content
-extraction produces. Firecrawl runs as a service, so its Markdown is produced once by
+GFM output. Defuddle runs with its defaults except `useAsync: false`, which stops it from calling
+third-party APIs (YouTube transcripts, for one) when a page has no local content — every pipeline
+converts the same HTML offline. The two full-page pipelines are baselines: they show what
+conversion without content extraction produces. Firecrawl runs as a service, so its Markdown is produced once by
 `firecrawl-oss` and read from a cache; it is the hosted product's open-source core, not the hosted
 API, which may differ. Rendering was disabled so every pipeline converts identical HTML — in a
 browser the cached pages' scripts could rewrite the DOM.
@@ -45,6 +49,15 @@ syntax, not structure: they missed setext headings and indented code blocks, cou
 lines inside code as headings, and credited tables whose rows a Markdown parser does not accept
 (Turndown's output for Sphinx tables). Every pipeline is measured with the new definitions; the
 Python-docs heading floor was corrected from 20 to its 19 real content headings.
+
+Revision note (2026-10-09): Defuddle was added as a pipeline, and the corpus and WCEB were re-run
+with webforai at `386ca9b`, which keeps small specification tables and no longer prints
+screen-reader text twice — two changes adapted from Defuddle after this comparison (credited in
+the source and in the package's `THIRD_PARTY_NOTICES.md`). They add two kept tables (Amazon) and
+change 5 WCEB pages (mean F1 0.892067 → 0.892069). webforai's empty outputs rose from 1 to 4
+between the two runs, before these changes (`84e86fd` gives the same 4): the Medium capture, a
+404 page, is now reduced to its short not-found message. The heuristic-extractor WCEB row is
+from the 2026-10-01 run. The other pipelines' versions and the captures are unchanged.
 
 - **Checks passed** — the existing corpus assertions in
   [`evals/src/assertions.ts`](https://github.com/inaridiy/webforai/blob/main/evals/src/assertions.ts),
@@ -76,28 +89,38 @@ Python-docs heading floor was corrected from 20 to its 19 real content headings.
 
 | Pipeline | Checks passed | Crashes | Empty | Nav leak | Boilerplate | Code fenced | Tables | Median output (chars) | Total time |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| webforai | 74/74 | 0 | 1 | 5 | 1 | 98.1% (734/748) | 35.9% (23/64) | 8,698 | 5.47 s |
-| Readability + Turndown | 63/74 | 0 | 2 | 8 | 3 | 45.9% (343/748) | 29.7% (19/64) | 9,139 | 23.64 s |
-| Turndown (full page) | 50/74 | 1 | 1 | 30 | 31 | 52.8% (395/748) | 31.3% (20/64) | 16,956 | 2.71 s |
-| node-html-markdown (full page) | 50/74 | 0 | 1 | 37 | 32 | 52.5% (393/748) | 57.8% (37/64) | 18,140 | 23.73 s |
+| webforai | 74/74 | 0 | 4 | 5 | 1 | 98.0% (733/748) | 39.1% (25/64) | 8,461 | 3.73 s |
+| Readability + Turndown | 63/74 | 0 | 2 | 8 | 3 | 45.9% (343/748) | 29.7% (19/64) | 9,139 | 11.50 s |
+| Defuddle | 72/74 | 0 | 3 | 8 | 2 | 89.2% (667/748) | 54.7% (35/64) | 7,874 | 12.73 s |
+| Turndown (full page) | 50/74 | 1 | 1 | 30 | 31 | 52.8% (395/748) | 31.3% (20/64) | 16,956 | 1.50 s |
+| node-html-markdown (full page) | 50/74 | 0 | 1 | 37 | 32 | 52.5% (393/748) | 57.8% (37/64) | 18,140 | 14.85 s |
 | Firecrawl OSS | 52/74 | 1 | 0 | 15 | 22 | 51.9% (388/748) | 95.3% (61/64) | 11,975 | 16.55 s (service) |
 
-60 captures, 24.17 MiB of HTML. Nav leak, boilerplate and empty count captures out of 60. Times were
-measured while the machine was busy with other work (load average ≈ 17, recorded in the summary);
-pipelines are interleaved per capture, so compare them as ratios — on an idle machine the same
-code took 2.97 s (webforai), 10.79 s, 1.44 s and 14.38 s.
+60 captures, 24.17 MiB of HTML. Nav leak, boilerplate and empty count captures out of 60. Times
+were measured with a load average of about 4 (recorded in the summary); pipelines are interleaved
+per capture, so compare them as ratios. Firecrawl's figure is unchanged from the 2026-10-01 run,
+because its outputs are read from the cache that run produced.
 
 ### What the numbers show
 
-- **Where webforai is behind.** Full-page Turndown is about 2.0× faster, because it does no
+- **Where webforai is behind.** Full-page Turndown is about 2.5× faster, because it does no
   extraction. Firecrawl and node-html-markdown keep the most tables: they remove little or nothing,
   so Wikipedia's navboxes and sidebars (navigation tables built from `<th>` cells; 30 on the Japanese
   capture) count as kept. Most of the tables webforai drops are those, plus a PostgreSQL navigation
-  header, GitHub's repository file list and two of the four tables on the Amazon product page; it
-  keeps the infoboxes and article tables. One table is laid out as blocks on purpose: Wikipedia's
+  header, GitHub's repository file list and a two-row table on the Amazon product page; it keeps
+  the infoboxes and article tables. One table is laid out as blocks on purpose: Wikipedia's
   Markdown-versus-HTML comparison, whose cells are multi-line code samples, becomes labelled code
   blocks. webforai leaks navigation on 5 captures, all news, index or gated pages (the BBC and The
   Verge front pages, NHK, ICS MEDIA).
+- **Defuddle.** It keeps more tables than webforai (35 against 25), but mostly the same Wikipedia
+  navboxes: 14 of the 33 on the Japanese capture, against webforai's 3, where only 2 are article
+  tables. Its two failed checks are link-only-line ratios on GIGAZINE and Japanese Wikipedia, and
+  navigation leaks on 8 captures — the Medium capture (a 404 page) comes out whole, inline SVG
+  logo included, and on NHK the related-article lists make the output about 25 times longer than
+  webforai's. It normalises bare `<pre>` into code blocks, so it fences far more code than the
+  Turndown pipelines; most of its misses are on the TypeScript handbook, Drizzle, viem and the
+  English Wikipedia's code samples. It prints a stack trace to the console for a page whose
+  schema.org JSON is malformed (the CNN.co.jp capture), without failing.
 - **Firecrawl OSS.** Its main-content step removes a fixed list of selectors (`header`, `nav`,
   `.sidebar`, `.ad`, …), so pages whose chrome uses other names keep it: navigation leaks on 15
   captures and page-chrome phrases appear on 22. Code is emitted as indented blocks, which the
@@ -119,10 +142,12 @@ code took 2.97 s (webforai), 10.79 s, 1.44 s and 14.38 s.
   also treats every `<div>` inside `<pre>` as a line break, so on Vite and Hono it picks a
   fragment of a Twoslash hover card, which webforai keeps on the token's line.
 - **Robustness.** Turndown threw on one capture (Amazon, rendered). Every pipeline produced empty
-  output for the Reddit capture, which is a client-rendered shell; Readability also returned
-  nothing for the YouTube watch page.
-- **Speed.** Readability's time includes building a jsdom document. node-html-markdown is slow
-  on the largest pages (about 5 s for Japanese Wikipedia alone).
+  output for the Reddit capture, which is a client-rendered shell; Readability and Defuddle also
+  returned nothing for the YouTube watch page (Defuddle's YouTube extractor needs the network,
+  which is off here). webforai's other two empty outputs are the Medium capture, a 404 page,
+  which it reduces to the page's 188-character not-found message.
+- **Speed.** Readability's time includes building a jsdom document, Defuddle's a linkedom one.
+  node-html-markdown is slow on the largest pages (about 5 s for Japanese Wikipedia alone).
 
 ## Against reference text
 
@@ -136,12 +161,20 @@ used only for measurement, never for tuning.
 | webforai | 0.892 / 0.909 | 0.922 / 0.909 |
 | webforai with the heuristic extractor (`takumiExtractor`) | 0.874 / 0.892 | 0.911 / 0.890 |
 | Readability + Turndown | 0.880 / 0.901 | 0.917 / 0.892 |
+| Defuddle | 0.820 / 0.850 | 0.869 / 0.856 |
 | Firecrawl OSS | 0.743 / 0.760 | 0.668 / 0.939 |
 
 Readability + Turndown is ahead on three of the eight WCEB datasets — its own test set (F1 0.98
 against webforai's 0.95), Scrapinghub and L3S-GN1 — and webforai on the other five. Firecrawl
 recovers the most of the reference text but keeps the most besides it: its precision is the lowest
-on every dataset.
+on every dataset. Defuddle is level with webforai on Scrapinghub (0.920 against 0.919) and behind
+it on the other seven, by most on L3S-GN1 (0.716 against 0.920) and CleanEval (0.784 against
+0.913). It scores more than 0.2 above webforai on 89 pages and more than 0.2 below on 427. Of the
+89, 57 are wins on recall and 46 are Dragnet pages; the ones inspected are pages where Defuddle
+keeps the whole page and the reference counts more than the article as content — reader comments,
+which Dragnet's references include, or a page that is mostly a list of links. Defuddle is designed
+for a browser, where it also reads the page's mobile stylesheet to find clutter; under linkedom
+there are no stylesheets, so that signal is absent here.
 
 ## Limitations
 
@@ -157,7 +190,8 @@ on every dataset.
   better.
 - **Configuration.** Each competitor runs with a typical, untuned configuration. Different
   Turndown rules (for example a rule for bare `<pre>`), a different DOM implementation or a
-  Readability fallback would change their numbers.
+  Readability fallback would change their numbers. Defuddle on jsdom instead of linkedom scored
+  the same on a 20-page WCEB sample (F1 0.917 against 0.915) at about four times the time.
 - **Stale captures.** Captures are cached snapshots and may differ from the live sites. Page
   HTML is not committed (third-party content), so reproducing the exact numbers requires the same
   captures; the corpus fingerprint in the summary identifies them.

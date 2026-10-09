@@ -50,7 +50,10 @@ Corpus (`bench:compare`, 3 rounds): webforai 74/74 checks, code fenced 98.0%, ta
       sibling's is dropped in `stripNonContent` (found in the same traversal as code tabs).
 - [x] (2026-10-09) Attribution: `packages/webforai/THIRD_PARTY_NOTICES.md` (Defuddle's MIT
       notice), listed in the package's `files`; source comments name Defuddle; patch changeset.
-- [ ] Re-run `bench:compare` and `gold:eval`; update the summary JSON and the Benchmarks page.
+- [x] (2026-10-09) Re-run `bench:compare` (5 rounds, load ≈ 4) at 386ca9b and `gold:eval` for
+      the built package and Defuddle; `evals/benchmarks/compare-summary.json` and
+      `site/docs/pages/benchmarks.mdx` updated with a revision note. webforai tables 35.9% → 39.1%
+      (25/64); WCEB unchanged at 0.892 / 0.909 (pages / datasets); Defuddle 0.820 / 0.850.
 - [ ] Validation: biome, typecheck, tests, build; changeset; PR.
 
 ## Measurements
@@ -82,6 +85,9 @@ The branch changes 5 pages, 3 up and 2 down (worst −0.0015). Corpus suite 32/3
   nor hidden counts, and never a subtree holding math (KaTeX pairs MathML with an `aria-hidden`
   rendering). Defuddle's broader rule (remove every `aria-hidden`) would drop visible text that
   `isHidden` deliberately keeps.
+- webforai's empty outputs are 4 in this run against 1 in the 2026-10-01 summary (webforai
+  4.0.0). main (84e86fd) already gives 4 — Medium (a 404 capture) and Reddit, static and
+  rendered — so it predates this work; recorded on the Benchmarks page, not investigated here.
 - License: Defuddle is MIT. The adopted ideas are reimplemented on hast, not copied, but each
   place they come from Defuddle names it, and the package ships Defuddle's copyright and
   permission notice in `THIRD_PARTY_NOTICES.md` so attribution travels with the code.
