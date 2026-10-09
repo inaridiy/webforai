@@ -106,7 +106,9 @@ receives it unchanged, as the benchmark's own baselines do, and none of them rea
 
 Pipelines: `webforai` is the published entry point with its defaults (kiwame), or the build at
 `--impl`; `webforai-kiwame` builds the kiwame extractor from source so `--threshold=` and
-`--no-stack` can vary it; the rest are the competitors in `src/competitors.ts`.
+`--no-stack` can vary it; `webforai-comments` is the `comments` preset (reader comments kept, as
+Trafilatura keeps them by default); `webforai-nolinks` writes links as text and drops images; the rest
+are the competitors in `src/competitors.ts`.
 
 The learned block classifier's weights (`packages/webforai/src/extractors/lib/block-model.generated.ts`)
 are generated outside this repository; WCEB, WCXB and WebMainBench are used to measure them,
