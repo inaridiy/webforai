@@ -54,7 +54,9 @@ Corpus (`bench:compare`, 3 rounds): webforai 74/74 checks, code fenced 98.0%, ta
       the built package and Defuddle; `evals/benchmarks/compare-summary.json` and
       `site/docs/pages/benchmarks.mdx` updated with a revision note. webforai tables 35.9% → 39.1%
       (25/64); WCEB unchanged at 0.892 / 0.909 (pages / datasets); Defuddle 0.820 / 0.850.
-- [ ] Validation: biome, typecheck, tests, build; changeset; PR.
+- [x] (2026-10-09) Validation: biome (no new diagnostics), typecheck, `pnpm run test --run`
+      (902 pass; only the 3 KI-3 Playwright tests fail), corpus suite 32/32, `pnpm build`,
+      `npm pack --dry-run` lists `THIRD_PARTY_NOTICES.md`. Patch changeset; PR opened.
 
 ## Measurements
 
