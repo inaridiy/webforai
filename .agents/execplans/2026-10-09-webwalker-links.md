@@ -36,7 +36,10 @@ Stacked on `feat/comments-mode-compact-tables`. Not pushed until the owner decid
       subscription CLIs rather than the API.
 - [x] (2026-10-09) Design B: 276 items × 9 pipelines; Haiku 5.5 ×3, Sonnet 5.5 ×3 (`claude -p`),
       gpt-6.1-sol ×1 (`codex exec`, weekly quota 0% → 9%): 17,388 answers. Results below.
-- [ ] Fable review of how to strengthen agent mode with WebWalkerQA-style labels (English first).
+- [x] (2026-10-10) Fable review: WebWalkerQA is not training data (39 sites, half the hops on root
+      pages); it decides operating points and finds rule bugs. English WebWalkerQA is demoted to
+      dev for agent mode, since its misses were inspected. Changes on `feat/agent-recall`.
+- [x] (2026-10-10) A and B re-run after `feat/agent-recall` (results below).
 
 ## Results (webforai at the base branch's build, 2026-10-09)
 
@@ -110,6 +113,26 @@ it, all links still gets 46–52%. **The whole gap is recall.** Neither the link
 role grouping makes the choice easier for any of the three models; dropping links only costs.
 Agent mode's value over readability (+25 points) is real; its value over listing every link is,
 on this data, only ~27% fewer tokens.
+
+## After `feat/agent-recall` (2026-10-10; WebWalkerQA is dev from here)
+
+Misses traced to rules, not labels: card links (`<a href><div>…</div></a>`, never seen by
+`blockLinks`), links in hidden menus (removed before role scoring), and near-threshold roles.
+Fixed with card links in `blockLinks`, hidden navigation links listed under Site navigation,
+`keepScale` 0.4 (a link is kept at 0.4× its role's threshold; role choice unchanged) and a share-URL
+filter.
+
+| | Hops kept | Mean tokens | Haiku | Sonnet | gpt-6.1-sol |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| agent before | 79.1% | 2,933 | 55.1 | 56.0 | 60.1 |
+| agent after | 98.8% | 3,344 | 63.9 | 64.3 | 67.8 |
+| all links | 100% | 3,704 | 64.4 | 66.4 | 70.7 |
+| node-html-markdown (full page) | 94.0% | 4,619 | 62.8 | 62.0 | 67.4 |
+
+Agent − all links now −0.5 [−1.9, +0.8], −2.2 [−4.7, +0.0], −2.9 [−6.3, +0.0] (was −9 to −10.5);
+agent − node-html-markdown +1.1, +2.3, +0.4 (n.s.); agent − readability +33 to +36. Agent output is
+90% of the all-links size here (8% fewer median tokens): the conference and society sites of
+WebWalkerQA carry few boilerplate links, so the token saving is small.
 
 ## Decision log
 

@@ -48,8 +48,8 @@ export interface AgentExtractorOptions extends KiwameExtractorOptions {
  * The role thresholds maximise each role's F1, which drops a link whenever its role is unsure.
  * For an agent a missing link costs more than an extra one: on WebWalkerQA's navigation tasks a
  * model picks the right next link as often from agent output as from a list of every link, as
- * long as the link is there. At 0.4 agent mode keeps 13 points more of those next links for 4%
- * more tokens.
+ * long as the link is there. At 0.4 agent mode keeps about 12 points more of those next links
+ * for 4% more tokens.
  */
 export const DEFAULT_KEEP_SCALE = 0.4;
 
