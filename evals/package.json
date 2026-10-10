@@ -25,7 +25,8 @@
 		"gold:rouge-webmainbench": "uv run --quiet --script python/webmainbench_rouge.py",
 		"webwalker:fetch": "tsx src/cli/webwalker-fetch.ts",
 		"webwalker:links": "tsx src/cli/webwalker-links.ts",
-		"webwalker:choose": "tsx src/cli/webwalker-choose.ts"
+		"webwalker:choose": "tsx src/cli/webwalker-choose.ts",
+		"related-hops:build": "tsx src/cli/related-hops-build.ts --set=related-hops"
 	},
 	"dependencies": {
 		"playwright-core": "^1.40.1",
