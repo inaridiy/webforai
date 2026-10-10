@@ -108,24 +108,39 @@ const textOf = (node: ElementContent): string => {
 
 const linkCache = new WeakMap<TextBlock, BlockLink[]>();
 
-/** Links in a block's own inline content (not inside nested block elements); cached per block. */
+const linkOf = (element: Element): BlockLink | undefined => {
+	const href = stringProperty(element, "href")?.trim();
+	const text = textOf(element).replace(/\s+/g, " ").trim();
+	if (!href || !text || UNFOLLOWABLE.test(href)) {
+		return undefined;
+	}
+	const rel = element.properties?.rel;
+	return { href, text, rel: Array.isArray(rel) ? rel.join(" ") : String(rel ?? "") };
+};
+
+/**
+ * Links in a block's own inline content (not inside nested block elements), and the link the
+ * whole block sits inside, for card links; cached per block.
+ */
 export const blockLinks = (block: TextBlock): BlockLink[] => {
 	const cached = linkCache.get(block);
 	if (cached) {
 		return cached;
 	}
 	const out: BlockLink[] = [];
+	const card = block.link ? linkOf(block.link) : undefined;
+	if (card) {
+		out.push(card);
+	}
 	const visit = (element: Element) => {
 		for (const child of element.children) {
 			if (!isElement(child) || BLOCK_TAGS.has(child.tagName)) {
 				continue;
 			}
 			if (child.tagName === "a") {
-				const href = stringProperty(child, "href")?.trim();
-				const text = textOf(child).replace(/\s+/g, " ").trim();
-				if (href && text && !UNFOLLOWABLE.test(href)) {
-					const rel = child.properties?.rel;
-					out.push({ href, text, rel: Array.isArray(rel) ? rel.join(" ") : String(rel ?? "") });
+				const link = linkOf(child);
+				if (link) {
+					out.push(link);
 				}
 				continue;
 			}

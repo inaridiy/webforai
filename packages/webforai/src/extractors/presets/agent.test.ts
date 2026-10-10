@@ -55,6 +55,21 @@ describe("agentExtractor", () => {
 	});
 });
 
+describe("agentExtractor card links", () => {
+	it("lists links that wrap block elements", () => {
+		const html = page.replace(
+			'<aside class="related-posts">',
+			'<aside class="related-posts"><a href="/focaccia"><div><h3>Focaccia</h3><p>A flat oven-baked bread.</p></div></a>',
+		);
+		const links = htmlToMarkdown(html, {
+			baseUrl: "https://example.com/recipes/bread/1",
+			extractors: createAgentExtractor({ roleModels: null }),
+		}).split("## Links")[1];
+
+		expect(links).toContain("(https://example.com/focaccia)");
+	});
+});
+
 describe("commentsExtractor", () => {
 	it("keeps the readability content and lists no links", () => {
 		const markdown = convert(commentsExtractor);
