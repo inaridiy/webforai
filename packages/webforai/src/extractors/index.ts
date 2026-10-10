@@ -17,6 +17,7 @@ export { autoExtractor, createAutoExtractor, readabilityExtractor, type AutoExtr
 export {
 	agentExtractor,
 	commentsExtractor,
+	createAgentAutoExtractor,
 	createAgentExtractor,
 	LINK_ROLE_TITLES,
 	type AgentExtractorOptions,

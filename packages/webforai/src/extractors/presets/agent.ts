@@ -1,4 +1,5 @@
 import type { Element, ElementContent, Nodes as Hast, Root } from "hast";
+import { runAdapters } from "../../adapters";
 import { classList, cloneHast, isElement, stringProperty } from "../../utils/hast-fast";
 import { BLOCK_TAGS, type TextBlock } from "../lib/blocks";
 import { ROLE_MODELS } from "../lib/role-model.generated";
@@ -17,7 +18,7 @@ import {
 } from "../lib/roles";
 import { looksHidden } from "../lib/sanitize";
 import type { ExtractParams, Extractor } from "../types";
-import { createAutoExtractor } from "./auto";
+import { type AutoExtractorOptions, createAutoExtractor } from "./auto";
 import { type KiwameExtractorOptions, type ScoredPage, createKiwameExtractor } from "./kiwame";
 
 /** Section titles of agent output, as the reference outputs name them. */
@@ -161,20 +162,27 @@ const dedupe = (sections: Sections): void => {
 	}
 };
 
+interface CollectOptions {
+	roleModels: RoleModels | null;
+	wanted: Set<LinkRole>;
+	comments: boolean;
+	/** Links of hidden navigation, read before sanitizing. */
+	hidden: BlockLink[];
+	keepScale: number;
+	/** Links the content already has, when it is not kiwame's (a site adapter's output). */
+	content?: Set<string>;
+}
+
 const collect = (
 	page: ScoredPage,
-	roleModels: RoleModels | null,
-	wanted: Set<LinkRole>,
-	comments: boolean,
-	hidden: BlockLink[],
-	keepScale: number,
+	{ roleModels, wanted, comments, hidden, keepScale, content }: CollectOptions,
 ): Sections => {
 	const { blocks, features, probabilities, threshold } = page;
 	const rows = roleFeatures(blocks, features, probabilities, threshold);
 	const roles = roleModels
 		? scoreRoles(rows, blocks.length, roleModels, keepScale)
 		: heuristicRoles(rows, blocks.length);
-	const seen = keptLinks(page);
+	const seen = content ?? keptLinks(page);
 	const sections: Sections = { comments: [], links: new Map() };
 	for (const block of blocks) {
 		const role = roles[block.index] < 0 ? undefined : ROLE_NAMES[roles[block.index]];
@@ -216,13 +224,34 @@ const append = (tree: Root | Element, sections: Sections, order: readonly LinkRo
 	(tree.children as ElementContent[]).push(...extra);
 };
 
+/** Every `href` in a tree, as written. */
+const hrefsIn = (tree: Hast): Set<string> => {
+	const hrefs = new Set<string>();
+	const visit = (node: Hast): void => {
+		if (isElement(node) && node.tagName === "a") {
+			const href = stringProperty(node, "href")?.trim();
+			if (href) {
+				hrefs.add(href);
+			}
+		}
+		if ("children" in node) {
+			for (const child of node.children) {
+				visit(child as Hast);
+			}
+		}
+	};
+	visit(tree);
+	return hrefs;
+};
+
 /**
- * kiwame's main content for an AI agent: the same selection, then reader comments, then the
- * links an agent may follow, grouped by role (related content, pagination, the section's own
- * navigation, the breadcrumb, the site's menus). Boilerplate links (share buttons, ads, sign-up,
- * legal) are left out, and each link is listed once.
+ * Runs agent extraction on a page. With `adapted` (a site adapter's output for it), that output is
+ * the content: kiwame still scores the original document so the page's other links can be listed,
+ * minus those the adapter kept, and comments are left to the adapter.
  */
-export const createAgentExtractor = (options: AgentExtractorOptions = {}): Extractor => {
+type AgentRun = (params: ExtractParams, adapted?: Hast) => Hast;
+
+const createAgentRun = (options: AgentExtractorOptions): AgentRun => {
 	const order = options.roles ?? LINK_ROLES;
 	const wanted = new Set<LinkRole>(order);
 	const comments = options.comments ?? true;
@@ -231,31 +260,72 @@ export const createAgentExtractor = (options: AgentExtractorOptions = {}): Extra
 	const keepScale = options.keepScale ?? (roleModels?.keep ? 1 : DEFAULT_KEEP_SCALE);
 	// Sections are collected when kiwame has scored the page, before pruning empties the dropped blocks.
 	let sections: Sections | undefined;
-	let hidden: BlockLink[] = [];
+	let collecting: CollectOptions = { roleModels, wanted, comments, hidden: [], keepScale };
 	const kiwame = createKiwameExtractor({
 		...options,
 		onScored: (page) => {
-			sections = collect(page, roleModels, wanted, comments, hidden, keepScale);
+			sections = collect(page, collecting);
 			options.onScored?.(page);
 		},
 	});
-	return (params: ExtractParams) => {
+	return (params, adapted) => {
 		sections = undefined;
-		// Read before kiwame runs: it prunes hidden elements, in place when the tree is owned.
-		hidden = wanted.has("site_nav") ? hiddenNavLinks(params.hast) : [];
-		const tree = kiwame(params);
+		collecting = {
+			roleModels,
+			wanted,
+			comments: comments && !adapted,
+			// Read before kiwame runs: it prunes hidden elements, in place when the tree is owned.
+			hidden: wanted.has("site_nav") ? hiddenNavLinks(params.hast) : [],
+			keepScale,
+			content: adapted ? hrefsIn(adapted) : undefined,
+		};
+		const tree = kiwame(adapted ? { ...params, report: undefined } : params);
+		const target = adapted ?? tree;
 		const found = sections as Sections | undefined;
-		if (found && "children" in tree) {
-			append(tree as Root | Element, found, order);
+		if (found && "children" in target) {
+			append(target as Root | Element, found, order);
 		}
-		return tree;
+		return target;
+	};
+};
+
+/**
+ * kiwame's main content for an AI agent: the same selection, then reader comments, then the
+ * links an agent may follow, grouped by role (related content, pagination, the section's own
+ * navigation, the breadcrumb, the site's menus). Boilerplate links (share buttons, ads, sign-up,
+ * legal) are left out, and each link is listed once.
+ */
+export const createAgentExtractor = (options: AgentExtractorOptions = {}): Extractor => {
+	const run = createAgentRun(options);
+	return (params) => run(params);
+};
+
+/**
+ * Agent extraction behind the site adapters: when an adapter claims the page, its output is the
+ * content and the page's other links follow it, scored on the original document; otherwise
+ * {@link createAgentExtractor}.
+ */
+export const createAgentAutoExtractor = (
+	options: AgentExtractorOptions & Pick<AutoExtractorOptions, "adapters"> = {},
+): Extractor => {
+	const run = createAgentRun(options);
+	return (params) => {
+		if (options.adapters !== false) {
+			const extracted = runAdapters(
+				{ hast: params.hast, url: params.url, lang: params.lang },
+				options.adapters ?? undefined,
+			);
+			if (extracted) {
+				params.report?.({ extractor: "adapter" });
+				return run(params, extracted);
+			}
+		}
+		return run(params);
 	};
 };
 
 /** The agent extractor behind the site adapters, like the default `autoExtractor`. */
-export const agentExtractor: Extractor = /* @__PURE__ */ createAutoExtractor({
-	fallback: /* @__PURE__ */ createAgentExtractor(),
-});
+export const agentExtractor: Extractor = /* @__PURE__ */ createAgentAutoExtractor();
 
 /**
  * The default extraction plus reader comments under `## Comments`, without the link sections:

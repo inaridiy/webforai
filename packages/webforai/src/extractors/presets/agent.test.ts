@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { htmlToMarkdown } from "../../html-to-markdown";
-import { agentExtractor, commentsExtractor, createAgentExtractor } from "./agent";
+import { agentExtractor, commentsExtractor, createAgentAutoExtractor, createAgentExtractor } from "./agent";
 import { readabilityExtractor } from "./auto";
 
 const page = `<html><head><title>How to bake bread</title></head><body>
@@ -67,6 +67,32 @@ describe("agentExtractor card links", () => {
 		}).split("## Links")[1];
 
 		expect(links).toContain("(https://example.com/focaccia)");
+	});
+});
+
+describe("agent mode on pages a site adapter claims", () => {
+	const wordpress = `<html><head><title>Sourdough at home</title><meta name="generator" content="WordPress 6.6"></head><body>
+<header><nav class="main-nav"><a href="/">Home</a> <a href="/recipes/">Recipes</a></nav></header>
+<article><h1>Sourdough at home</h1><div class="entry-content">
+<p>A starter is flour and water left to ferment for a week, fed every day until it doubles reliably after each feeding.</p>
+<p>Mix the dough, fold it four times over two hours, shape it, and leave it in the fridge overnight before baking it hot.</p>
+<div class="jp-relatedposts"><h3>Related</h3><a href="/rye-bread/">Rye bread</a></div>
+</div>
+<nav class="pagination"><a href="/focaccia/" rel="prev">Previous post: Focaccia</a> <a href="/brioche/" rel="next">Next post: Brioche</a></nav>
+</article>
+</body></html>`;
+
+	it("keeps the adapter's content and lists the page's other links", () => {
+		const markdown = htmlToMarkdown(wordpress, {
+			baseUrl: "https://bakery.example/sourdough/",
+			extractors: createAgentAutoExtractor({ roleModels: null }),
+		});
+		const [body, links] = markdown.split("## Links");
+
+		expect(body).toContain("fold it four times");
+		expect(body).not.toContain("Rye bread");
+		expect(links).toContain("(https://bakery.example/brioche/)");
+		expect(links).toContain("(https://bakery.example/rye-bread/)");
 	});
 });
 
