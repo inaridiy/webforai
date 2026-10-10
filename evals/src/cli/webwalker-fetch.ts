@@ -25,13 +25,10 @@
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { type Browser, chromium } from "playwright-core";
 import { fetch as undiciFetch } from "undici";
 
-import { USER_AGENT } from "../config.js";
-import { type Proxy as PoolProxy, ProxyPool, loadProxies } from "../proxy.js";
+import { createPageFetcher } from "../live-pages.js";
 import {
-	type CachedPage,
 	HOPS_FILE,
 	type Hop,
 	WEBWALKER_DATA,
@@ -41,23 +38,12 @@ import {
 	isEnglish,
 	loadTasks,
 	normalizeUrl,
-	readPage,
 	textKey,
-	writePage,
 } from "../webwalker.js";
 
 const arg = (name: string): string | undefined =>
 	process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3);
 const limit = Number(arg("limit") ?? Number.POSITIVE_INFINITY);
-const direct = process.argv.includes("--direct");
-const pool = direct ? undefined : new ProxyPool(await loadProxies());
-if (pool && pool.size === 0) {
-	throw new Error(
-		"No proxy configured (WEBFORAI_PROXY_LIST_URL or WEBFORAI_PROXY_URL); pass --direct to fetch without one",
-	);
-}
-/** Proxies tried per page before it is recorded as failed. */
-const PROXY_ATTEMPTS = 3;
 /** Distinct URLs tried when a label matches several links. */
 const MAX_CANDIDATES = 3;
 
@@ -67,91 +53,8 @@ if (!(await stat(WEBWALKER_DATA).catch(() => undefined))) {
 	await writeFile(WEBWALKER_DATA, await response.text());
 }
 
-// One request at a time per host, with a pause: these are small conference and society sites.
-const hostQueues = new Map<string, Promise<unknown>>();
-const politely = <T>(url: string, task: () => Promise<T>): Promise<T> => {
-	const host = new URL(url).hostname;
-	const previous = hostQueues.get(host) ?? Promise.resolve();
-	const next = previous.then(
-		() => task().finally(() => new Promise((resolve) => setTimeout(resolve, 500))),
-		() => task(),
-	);
-	hostQueues.set(
-		host,
-		next.catch(() => undefined),
-	);
-	return next;
-};
-
-let browser: Promise<Browser> | undefined;
-/** Pages open at once, across hosts. */
-const MAX_OPEN = 6;
-let open = 0;
-const waiting: (() => void)[] = [];
-const slot = async (): Promise<() => void> => {
-	if (open >= MAX_OPEN) {
-		await new Promise<void>((resolve) => waiting.push(resolve));
-	}
-	open += 1;
-	return () => {
-		open -= 1;
-		waiting.shift()?.();
-	};
-};
-
-const render = async (url: string, proxy?: PoolProxy): Promise<CachedPage> => {
-	browser ??= chromium.launch({
-		headless: true,
-		executablePath: process.env.WEBWALKER_CHROMIUM,
-		args: ["--no-sandbox"],
-	});
-	const release = await slot();
-	const context = await (await browser).newContext({
-		userAgent: USER_AGENT,
-		viewport: { width: 1440, height: 900 },
-		locale: "en-US",
-		proxy: proxy ? { server: proxy.server, username: proxy.username, password: proxy.password } : undefined,
-	});
-	try {
-		const page = await context.newPage();
-		const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
-		const contentType = (await response?.headerValue("content-type")) ?? "";
-		if (!contentType.includes("html")) {
-			return { url, finalUrl: page.url(), status: response?.status() ?? 0, contentType, html: "" };
-		}
-		// `networkidle` never settles on pages with long-polling, so cap the extra settle time.
-		await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => undefined);
-		return { url, finalUrl: page.url(), status: response?.status() ?? 0, contentType, html: await page.content() };
-	} catch (error) {
-		return { url, finalUrl: url, status: 0, contentType: "", html: "", error: (error as Error).message.split("\n")[0] };
-	} finally {
-		await context.close().catch(() => undefined);
-		release();
-	}
-};
-
-/** A failure another exit IP may get past: no response, or a block. */
-const blocked = (page: CachedPage): boolean => page.status === 0 || page.status === 403 || page.status === 429;
-
-const getPage = async (url: string): Promise<CachedPage> => {
-	const cached = await readPage(url);
-	if (cached) {
-		return cached;
-	}
-	return politely(url, async () => {
-		let page: CachedPage | undefined;
-		for (let attempt = 0; attempt < (pool ? PROXY_ATTEMPTS : 1) && (!page || blocked(page)); attempt++) {
-			const proxy = pool?.next();
-			page = await render(url, proxy);
-			if (proxy) {
-				blocked(page) ? pool?.reportFailure(proxy) : pool?.reportSuccess(proxy);
-			}
-		}
-		page ??= await render(url);
-		await writePage(page);
-		return page;
-	});
-};
+const pages = await createPageFetcher({ direct: process.argv.includes("--direct") });
+const getPage = pages.get;
 
 type Resolution = { hops: Omit<Hop, "task" | "path">[] } | { failure: string };
 
@@ -234,7 +137,7 @@ await Promise.all(
 	}),
 );
 
-await (await browser)?.close();
+await pages.close();
 hops.sort((a, b) => a.task - b.task || a.path - b.path || a.step - b.step);
 await mkdir(WEBWALKER_DIR, { recursive: true });
 await writeFile(HOPS_FILE, `${hops.map((hop) => JSON.stringify(hop)).join("\n")}\n`);

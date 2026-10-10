@@ -9,9 +9,13 @@
  * (page, URL of the next page). `webwalker:links` converts each hop's page with every pipeline and
  * checks whether the next URL appears as a link in the output.
  *
- * Fetch once (the dataset is ~1 MB; pages are fetched from the live sites, statically):
+ * Fetch once (the dataset is ~1 MB; pages are rendered from the live sites, see `live-pages.ts`):
  *
  *   pnpm --filter @webforai/evals webwalker:fetch
+ *
+ * The same scoring runs on other link sets with `--set=` (default `webwalker`): `related-hops`
+ * is built by `related-hops:build` (`cli/related-hops-build.ts`). A set lives in `.cache/<set>/`
+ * (pages, `hops.jsonl`, the set's tasks, cached answers) and reports in `.reports/<set>/`.
  */
 
 import { createHash } from "node:crypto";
@@ -24,9 +28,12 @@ import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { gfm } from "micromark-extension-gfm";
 
-import { CACHE_DIR } from "./config.js";
+import { CACHE_DIR, REPORTS_DIR } from "./config.js";
 
-export const WEBWALKER_DIR = path.join(CACHE_DIR, "webwalker");
+/** The link set the CLIs work on: `--set=`, default `webwalker`. */
+export const LINK_SET = process.argv.find((value) => value.startsWith("--set="))?.slice(6) ?? "webwalker";
+export const WEBWALKER_DIR = path.join(CACHE_DIR, LINK_SET);
+export const LINK_REPORTS_DIR = path.join(REPORTS_DIR, LINK_SET);
 export const WEBWALKER_DATA = path.join(CACHE_DIR, "gold", "webwalkerqa", "main.jsonl");
 export const WEBWALKER_DATA_URL =
 	"https://huggingface.co/datasets/callanwu/WebWalkerQA/resolve/main/data/main-00000-of-00001.jsonl";
@@ -188,6 +195,8 @@ export const isEnglish = (task: WebWalkerTask): boolean => task.info.lang === "e
 
 export interface CachedPage {
 	url: string;
+	/** When the page was rendered (pages cached before this field existed lack it). */
+	fetchedAt?: string;
 	finalUrl: string;
 	status: number;
 	contentType: string;
@@ -216,3 +225,56 @@ export const loadHops = async (): Promise<Hop[]> =>
 		.split("\n")
 		.filter((line) => line.trim())
 		.map((line) => JSON.parse(line) as Hop);
+
+/** What the next-link choice needs from a task, whatever set it comes from. */
+export interface NavTask {
+	question: string;
+	/** Pages holding the answer: choosing one of them directly is also correct. */
+	sources: string[];
+	/** The task's site, for bootstrapping over sites. */
+	site: string;
+}
+
+/** One line of a related-hops `tasks.jsonl` (`related-hops:build`). */
+export interface RelatedTask {
+	id: string;
+	/** Host of the start page. */
+	site: string;
+	/** Start page (P0), as requested. */
+	pageUrl: string;
+	/** The link to follow (P1), absolute, and normalized. */
+	targetHref: string;
+	target: string;
+	/** Anchor text of the link on P0. */
+	label: string;
+	/** related, read_next, prev_next_article, series or next_page (labeller's category). */
+	category: string;
+	question: string;
+	answer: string;
+	/** When P0 and P1 were rendered. */
+	capturedAt: { start: string; target: string };
+}
+
+export const RELATED_TASKS_FILE = path.join(WEBWALKER_DIR, "tasks.jsonl");
+
+export const loadRelatedTasks = async (): Promise<RelatedTask[]> =>
+	(await readFile(RELATED_TASKS_FILE, "utf8"))
+		.split("\n")
+		.filter((line) => line.trim())
+		.map((line) => JSON.parse(line) as RelatedTask);
+
+/** The current set's tasks, indexed like `Hop.task`. */
+export const loadNavTasks = async (): Promise<NavTask[]> => {
+	if (LINK_SET === "webwalker") {
+		return (await loadTasks()).map((task) => ({
+			question: task.question,
+			sources: task.info.source_website,
+			site: new URL(task.root_url).hostname,
+		}));
+	}
+	return (await loadRelatedTasks()).map((task) => ({
+		question: task.question,
+		sources: [task.targetHref],
+		site: task.site,
+	}));
+};

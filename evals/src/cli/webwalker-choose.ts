@@ -3,7 +3,7 @@
  * page, does a model pick a link that leads to the answer?
  *
  * Usage (after `webwalker:fetch` and `webwalker:links`):
- *   pnpm --filter @webforai/evals webwalker:choose -- --models=haiku --reps=3 --concurrency=12
+ *   pnpm --filter @webforai/evals webwalker:choose -- --models=haiku --reps=3 --concurrency=12 [--set=related-hops]
  *   pnpm --filter @webforai/evals webwalker:choose -- --models=haiku,sonnet,codex --report
  *
  * Models run through the local CLIs, so a subscription can pay for them: `claude -p` (Haiku 5.5,
@@ -24,8 +24,17 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { REPORTS_DIR } from "../config.js";
-import { type Hop, WEBWALKER_DIR, loadHops, loadTasks, markdownLinks, normalizeUrl, readPage } from "../webwalker.js";
+import {
+	type Hop,
+	LINK_REPORTS_DIR,
+	LINK_SET,
+	WEBWALKER_DIR,
+	loadHops,
+	loadNavTasks,
+	markdownLinks,
+	normalizeUrl,
+	readPage,
+} from "../webwalker.js";
 
 const arg = (name: string, fallback: string): string =>
 	process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -35,7 +44,7 @@ const concurrency = Number(arg("concurrency", "12"));
 const limit = Number(arg("limit", "100000"));
 const reportOnly = process.argv.includes("--report");
 
-const OUT_DIR = path.join(REPORTS_DIR, "webwalker");
+const OUT_DIR = LINK_REPORTS_DIR;
 const CHOICES_DIR = path.join(WEBWALKER_DIR, "choices");
 const TIMEOUT_MS = 180_000;
 /** Outputs longer than this are cut (full-page conversions of a few portal pages). */
@@ -176,7 +185,7 @@ const askCodex = async (system: string, user: string): Promise<Answer> => {
 
 // ------------------------------------------------------------------------ items
 
-const tasks = await loadTasks();
+const tasks = await loadNavTasks();
 const hops = await loadHops();
 const outputs = new Map<string, Map<string, string>>();
 for (const [id] of PIPELINES) {
@@ -201,7 +210,7 @@ const accepted = (hop: Hop): Set<string> => {
 	const set = new Set(
 		hops.filter((other) => other.task === hop.task && other.pageUrl === hop.pageUrl).map((other) => other.target),
 	);
-	for (const source of tasks[hop.task].info.source_website) {
+	for (const source of tasks[hop.task].sources) {
 		const url = normalizeUrl(source, source);
 		if (url) {
 			set.add(url);
@@ -285,7 +294,7 @@ const tokens = new Map<string, Record<string, number>>();
 for (const [id] of PIPELINES) {
 	tokens.set(id, JSON.parse(await readFile(path.join(OUT_DIR, `${id}.tokens.json`), "utf8")) as Record<string, number>);
 }
-const site = (hop: Hop): string => new URL(tasks[hop.task].root_url).hostname;
+const site = (hop: Hop): string => tasks[hop.task].site;
 
 /** Per model, pipeline and item: share of reps answered correctly (undefined when unanswered). */
 const correctness = async (model: string, pipeline: string): Promise<Map<string, number>> => {
@@ -353,7 +362,7 @@ const pairedBySite = (a: Map<string, number>, b: Map<string, number>): string =>
 };
 
 const lines: string[] = [
-	`# WebWalkerQA next-link choice — ${new Date().toISOString().slice(0, 10)}`,
+	`# ${LINK_SET} next-link choice — ${new Date().toISOString().slice(0, 10)}`,
 	"",
 	`${items.length} items (task × page) from ${
 		new Set(items.map(site)).size

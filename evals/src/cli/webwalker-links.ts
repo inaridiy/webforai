@@ -3,7 +3,7 @@
  * pipeline's output link to the next page, and at what size of output?
  *
  * Usage (needs `uv` for Trafilatura and the token count):
- *   pnpm --filter @webforai/evals webwalker:links
+ *   pnpm --filter @webforai/evals webwalker:links [-- --set=related-hops]
  *
  * Every page a golden path clicks on is converted once per pipeline, with the page's URL after
  * redirects as the base. A hop counts as kept when the output links (inline, reference or autolink)
@@ -26,11 +26,13 @@ import path from "node:path";
 import { agentExtractor, htmlToMarkdown } from "webforai";
 
 import { COMPETITORS } from "../competitors.js";
-import { EVALS_ROOT, REPORTS_DIR } from "../config.js";
+import { EVALS_ROOT } from "../config.js";
 import { htmlKey } from "../firecrawl.js";
 import { startTrafilaturaWorker } from "../trafilatura.js";
 import {
 	type Hop,
+	LINK_REPORTS_DIR,
+	LINK_SET,
 	type OutputLink,
 	WEBWALKER_DIR,
 	htmlAnchors,
@@ -39,7 +41,7 @@ import {
 	readPage,
 } from "../webwalker.js";
 
-const OUT_DIR = path.join(REPORTS_DIR, "webwalker");
+const OUT_DIR = LINK_REPORTS_DIR;
 const TRAFILATURA_LINKS_CACHE = path.join(WEBWALKER_DIR, "trafilatura-links");
 
 type Convert = (html: string, url: string) => string | Promise<string>;
@@ -237,7 +239,7 @@ for (const pipeline of PIPELINES) {
 	}
 }
 
-const report = `# WebWalkerQA links — ${new Date().toISOString().slice(0, 10)}
+const report = `# ${LINK_SET} links — ${new Date().toISOString().slice(0, 10)}
 
 ${scored.length} distinct hops on ${pages.size} pages (${pathKeys.length} golden paths, ${
 	new Set(hops.map((hop) => hop.task)).size
