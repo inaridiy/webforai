@@ -37,15 +37,16 @@ export interface AgentExtractorOptions extends KiwameExtractorOptions {
 	/** Role models; `null` uses class/aria hints only. Defaults to the shipped models. */
 	roleModels?: RoleModels | null;
 	/**
-	 * How sure a role model must be before a link is listed, as a multiple of its role's
-	 * threshold. Default {@link DEFAULT_KEEP_SCALE}; 1 lists only links whose role is as likely
-	 * as the thresholds were tuned for.
+	 * How sure the models must be before a link is listed, as a multiple of the tuned threshold:
+	 * the keep model's when the role models have one (default 1), else each link role's (default
+	 * {@link DEFAULT_KEEP_SCALE}). Lower lists more links.
 	 */
 	keepScale?: number;
 }
 
 /**
- * The role thresholds maximise each role's F1, which drops a link whenever its role is unsure.
+ * For role models without a keep model. The role thresholds maximise each role's F1, which drops
+ * a link whenever its role is unsure.
  * For an agent a missing link costs more than an extra one: on WebWalkerQA's navigation tasks a
  * model picks the right next link as often from agent output as from a list of every link, as
  * long as the link is there. At 0.4 agent mode keeps about 12 points more of those next links
@@ -227,7 +228,7 @@ export const createAgentExtractor = (options: AgentExtractorOptions = {}): Extra
 	const comments = options.comments ?? true;
 	const shipped = isUsableRoleModels(ROLE_MODELS) ? ROLE_MODELS : null;
 	const roleModels = options.roleModels === undefined ? shipped : options.roleModels;
-	const keepScale = options.keepScale ?? DEFAULT_KEEP_SCALE;
+	const keepScale = options.keepScale ?? (roleModels?.keep ? 1 : DEFAULT_KEEP_SCALE);
 	// Sections are collected when kiwame has scored the page, before pruning empties the dropped blocks.
 	let sections: Sections | undefined;
 	let hidden: BlockLink[] = [];

@@ -213,33 +213,51 @@ export const roleFeatures = (
 export interface RoleModels {
 	models: Record<RoleName, BlockModel>;
 	thresholds: Record<RoleName, number>;
+	/**
+	 * Optional binary model of "has a link role" against boilerplate, trained for the keep decision
+	 * alone; with it, a block's links are listed when it reaches `keepThreshold`, under the link
+	 * role with the largest multiple of its threshold.
+	 */
+	keep?: BlockModel;
+	keepThreshold?: number;
 }
 
 export const isUsableRoleModels = (models: RoleModels | undefined): models is RoleModels =>
 	models !== undefined &&
-	ROLE_NAMES.every((role) => models.models[role] && isUsableModel(models.models[role], ROLE_FEATURE_COUNT));
+	ROLE_NAMES.every((role) => models.models[role] && isUsableModel(models.models[role], ROLE_FEATURE_COUNT)) &&
+	(models.keep === undefined || isUsableModel(models.keep, ROLE_FEATURE_COUNT));
 
 /**
- * Each block's role (index into {@link ROLE_NAMES}), or -1 for boilerplate: the role whose
- * probability is the largest multiple of its threshold, among the roles that reach `scale` times
- * their threshold. `scale` applies to the link roles only (comments keep their threshold): below 1
- * it keeps more links without changing which role a block gets.
+ * Each block's role (index into {@link ROLE_NAMES}), or -1 for boilerplate.
+ *
+ * A comment is a block whose comment probability reaches its threshold and beats every link
+ * role's multiple of its threshold. For the other blocks, the candidate is the link role with the
+ * largest multiple of its threshold; it is kept when the keep model reaches `keepThreshold × scale`
+ * or, without a keep model, when that multiple reaches `scale`.
  */
 export const scoreRoles = (rows: Float32Array, count: number, roleModels: RoleModels, scale = 1): Int8Array => {
 	const out = new Int8Array(count).fill(-1);
-	const best = new Float32Array(count);
-	ROLE_NAMES.forEach((role, roleIndex) => {
+	const comment = ROLE_NAMES.indexOf("comment");
+	const margins = ROLE_NAMES.map((role) => {
 		const p = scoreBlocks(rows, count, roleModels.models[role], ROLE_FEATURE_COUNT);
 		const threshold = roleModels.thresholds[role];
-		const needed = role === "comment" ? 1 : scale;
-		for (let index = 0; index < count; index++) {
-			const margin = p[index] / threshold;
-			if (margin >= needed && margin > best[index]) {
-				best[index] = margin;
-				out[index] = roleIndex;
+		return Float32Array.from(p, (value) => value / threshold);
+	});
+	const keep = roleModels.keep ? scoreBlocks(rows, count, roleModels.keep, ROLE_FEATURE_COUNT) : undefined;
+	const keepAt = (roleModels.keepThreshold ?? 0.5) * scale;
+	for (let index = 0; index < count; index++) {
+		let best = -1;
+		for (let role = 0; role < ROLE_NAMES.length; role++) {
+			if (role !== comment && (best < 0 || margins[role][index] > margins[best][index])) {
+				best = role;
 			}
 		}
-	});
+		if (margins[comment][index] >= 1 && margins[comment][index] >= margins[best][index]) {
+			out[index] = comment;
+		} else if (keep ? keep[index] >= keepAt : margins[best][index] >= scale) {
+			out[index] = best;
+		}
+	}
 	return out;
 };
 
