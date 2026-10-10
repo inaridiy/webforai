@@ -1,5 +1,5 @@
-import type { Element, ElementContent, Root } from "hast";
-import { cloneHast, isElement } from "../../utils/hast-fast";
+import type { Element, ElementContent, Nodes as Hast, Root } from "hast";
+import { classList, cloneHast, isElement, stringProperty } from "../../utils/hast-fast";
 import { BLOCK_TAGS, type TextBlock } from "../lib/blocks";
 import { ROLE_MODELS } from "../lib/role-model.generated";
 import {
@@ -11,9 +11,11 @@ import {
 	blockLinks,
 	heuristicRoles,
 	isUsableRoleModels,
+	linkOf,
 	roleFeatures,
 	scoreRoles,
 } from "../lib/roles";
+import { looksHidden } from "../lib/sanitize";
 import type { ExtractParams, Extractor } from "../types";
 import { createAutoExtractor } from "./auto";
 import { type KiwameExtractorOptions, type ScoredPage, createKiwameExtractor } from "./kiwame";
@@ -34,7 +36,22 @@ export interface AgentExtractorOptions extends KiwameExtractorOptions {
 	comments?: boolean;
 	/** Role models; `null` uses class/aria hints only. Defaults to the shipped models. */
 	roleModels?: RoleModels | null;
+	/**
+	 * How sure a role model must be before a link is listed, as a multiple of its role's
+	 * threshold. Default {@link DEFAULT_KEEP_SCALE}; 1 lists only links whose role is as likely
+	 * as the thresholds were tuned for.
+	 */
+	keepScale?: number;
 }
+
+/**
+ * The role thresholds maximise each role's F1, which drops a link whenever its role is unsure.
+ * For an agent a missing link costs more than an extra one: on WebWalkerQA's navigation tasks a
+ * model picks the right next link as often from agent output as from a list of every link, as
+ * long as the link is there. At 0.4 agent mode keeps 13 points more of those next links for 4%
+ * more tokens.
+ */
+export const DEFAULT_KEEP_SCALE = 0.4;
 
 const element = (tagName: string, children: ElementContent[], properties: Element["properties"] = {}): Element => ({
 	type: "element",
@@ -57,6 +74,46 @@ interface Sections {
 	links: Map<LinkRole, BlockLink[]>;
 }
 
+const NAV_TAGS = new Set(["nav", "header"]);
+const NAV_ROLES = new Set(["navigation", "menu", "menubar"]);
+/** Class or id words of menus: `main-nav`, `mainmenu`, `dropdown-menu`, `greedy-nav`, … */
+const NAV_HINT = /nav|menu|dropdown/i;
+
+const isNavContext = (element: Element): boolean =>
+	NAV_TAGS.has(element.tagName) ||
+	NAV_ROLES.has(stringProperty(element, "role") ?? "") ||
+	NAV_HINT.test(stringProperty(element, "id") ?? "") ||
+	classList(element).some((name) => NAV_HINT.test(name));
+
+/**
+ * Links in hidden parts of the page's navigation: collapsed dropdowns, overflow menus, the mobile
+ * menu. Sanitizing removes hidden elements before any block is scored, so no role model sees
+ * them, yet they are where a site's deeper sections are linked. Read from the tree before kiwame
+ * prunes it; they are listed under Site navigation.
+ */
+const hiddenNavLinks = (root: Hast): BlockLink[] => {
+	const links: BlockLink[] = [];
+	const visit = (node: Hast, inNav: boolean, hidden: boolean): void => {
+		if (!("children" in node)) {
+			return;
+		}
+		const nav = inNav || (isElement(node) && isNavContext(node));
+		const isHidden = hidden || (isElement(node) && looksHidden(node));
+		if (isElement(node) && node.tagName === "a" && nav && isHidden) {
+			const link = linkOf(node);
+			if (link) {
+				links.push(link);
+			}
+			return;
+		}
+		for (const child of node.children) {
+			visit(child as Hast, nav, isHidden);
+		}
+	};
+	visit(root, false, false);
+	return links;
+};
+
 /** Links of the kept content: agent output lists every other link once, and never these. */
 const keptLinks = ({ blocks, probabilities, threshold }: ScoredPage): Set<string> => {
 	const seen = new Set<string>();
@@ -70,9 +127,13 @@ const keptLinks = ({ blocks, probabilities, threshold }: ScoredPage): Set<string
 	return seen;
 };
 
+/** Share and "send to" endpoints: never a page to go to, whatever the role models say. */
+const SHARE_URL =
+	/^https?:\/\/(www\.)?(twitter\.com\/(intent|share)|x\.com\/intent|facebook\.com\/(sharer|share\.php|dialog\/share)|linkedin\.com\/(sharearticle|shareArticle|share)|reddit\.com\/submit|pinterest\.[a-z.]+\/pin\/create|tumblr\.com\/(share|widgets\/share)|wa\.me\/\?|api\.whatsapp\.com\/send|t\.me\/share|telegram\.me\/share|social-plugins\.line\.me|line\.me\/R\/msg|b\.hatena\.ne\.jp\/entry|getpocket\.com\/(save|edit)|news\.ycombinator\.com\/submitlink)/i;
+
 const addLinks = (sections: Sections, role: LinkRole, block: TextBlock, seen: Set<string>): void => {
 	for (const link of blockLinks(block)) {
-		if (seen.has(link.href)) {
+		if (seen.has(link.href) || SHARE_URL.test(link.href)) {
 			continue;
 		}
 		const list = sections.links.get(role) ?? [];
@@ -104,10 +165,14 @@ const collect = (
 	roleModels: RoleModels | null,
 	wanted: Set<LinkRole>,
 	comments: boolean,
+	hidden: BlockLink[],
+	keepScale: number,
 ): Sections => {
 	const { blocks, features, probabilities, threshold } = page;
 	const rows = roleFeatures(blocks, features, probabilities, threshold);
-	const roles = roleModels ? scoreRoles(rows, blocks.length, roleModels) : heuristicRoles(rows, blocks.length);
+	const roles = roleModels
+		? scoreRoles(rows, blocks.length, roleModels, keepScale)
+		: heuristicRoles(rows, blocks.length);
 	const seen = keptLinks(page);
 	const sections: Sections = { comments: [], links: new Map() };
 	for (const block of blocks) {
@@ -122,6 +187,11 @@ const collect = (
 		} else if (wanted.has(role)) {
 			addLinks(sections, role, block, seen);
 		}
+	}
+	if (wanted.has("site_nav")) {
+		const list = sections.links.get("site_nav") ?? [];
+		list.push(...hidden.filter((link) => !(seen.has(link.href) || SHARE_URL.test(link.href))));
+		sections.links.set("site_nav", list);
 	}
 	dedupe(sections);
 	return sections;
@@ -157,17 +227,21 @@ export const createAgentExtractor = (options: AgentExtractorOptions = {}): Extra
 	const comments = options.comments ?? true;
 	const shipped = isUsableRoleModels(ROLE_MODELS) ? ROLE_MODELS : null;
 	const roleModels = options.roleModels === undefined ? shipped : options.roleModels;
+	const keepScale = options.keepScale ?? DEFAULT_KEEP_SCALE;
 	// Sections are collected when kiwame has scored the page, before pruning empties the dropped blocks.
 	let sections: Sections | undefined;
+	let hidden: BlockLink[] = [];
 	const kiwame = createKiwameExtractor({
 		...options,
 		onScored: (page) => {
-			sections = collect(page, roleModels, wanted, comments);
+			sections = collect(page, roleModels, wanted, comments, hidden, keepScale);
 			options.onScored?.(page);
 		},
 	});
 	return (params: ExtractParams) => {
 		sections = undefined;
+		// Read before kiwame runs: it prunes hidden elements, in place when the tree is owned.
+		hidden = wanted.has("site_nav") ? hiddenNavLinks(params.hast) : [];
 		const tree = kiwame(params);
 		const found = sections as Sections | undefined;
 		if (found && "children" in tree) {

@@ -108,7 +108,8 @@ const textOf = (node: ElementContent): string => {
 
 const linkCache = new WeakMap<TextBlock, BlockLink[]>();
 
-const linkOf = (element: Element): BlockLink | undefined => {
+/** A followable link with text, or `undefined`. */
+export const linkOf = (element: Element): BlockLink | undefined => {
 	const href = stringProperty(element, "href")?.trim();
 	const text = textOf(element).replace(/\s+/g, " ").trim();
 	if (!href || !text || UNFOLLOWABLE.test(href)) {
@@ -218,16 +219,22 @@ export const isUsableRoleModels = (models: RoleModels | undefined): models is Ro
 	models !== undefined &&
 	ROLE_NAMES.every((role) => models.models[role] && isUsableModel(models.models[role], ROLE_FEATURE_COUNT));
 
-/** Each block's role (index into {@link ROLE_NAMES}), or -1 for boilerplate. */
-export const scoreRoles = (rows: Float32Array, count: number, roleModels: RoleModels): Int8Array => {
+/**
+ * Each block's role (index into {@link ROLE_NAMES}), or -1 for boilerplate: the role whose
+ * probability is the largest multiple of its threshold, among the roles that reach `scale` times
+ * their threshold. `scale` applies to the link roles only (comments keep their threshold): below 1
+ * it keeps more links without changing which role a block gets.
+ */
+export const scoreRoles = (rows: Float32Array, count: number, roleModels: RoleModels, scale = 1): Int8Array => {
 	const out = new Int8Array(count).fill(-1);
 	const best = new Float32Array(count);
 	ROLE_NAMES.forEach((role, roleIndex) => {
 		const p = scoreBlocks(rows, count, roleModels.models[role], ROLE_FEATURE_COUNT);
 		const threshold = roleModels.thresholds[role];
+		const needed = role === "comment" ? 1 : scale;
 		for (let index = 0; index < count; index++) {
 			const margin = p[index] / threshold;
-			if (p[index] >= threshold && margin > best[index]) {
+			if (margin >= needed && margin > best[index]) {
 				best[index] = margin;
 				out[index] = roleIndex;
 			}
