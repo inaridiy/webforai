@@ -13,7 +13,7 @@ export {
 } from "./presets/kiwame";
 export { type ExtractParams, type ExtractionReport, type Extractor } from "./types";
 export { minimalFilter } from "./presets/minimal-filter";
-export { autoExtractor, createAutoExtractor, readabilityExtractor, type AutoExtractorOptions } from "./presets/auto";
+export { autoExtractor, createAutoExtractor, readerExtractor, type AutoExtractorOptions } from "./presets/auto";
 export {
 	agentExtractor,
 	commentsExtractor,

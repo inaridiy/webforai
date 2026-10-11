@@ -4,7 +4,7 @@
  * without loading any model.
  *
  * - `auto` — the default: a site adapter when one applies, kiwame otherwise.
- * - `readability` — the same, under the name that pairs it with `agent`.
+ * - `reader` — the same, under the name that pairs it with `agent`: reader mode.
  * - `agent` — the main content, then reader comments and the page's other links grouped by role.
  * - `comments` — the main content, then reader comments (`agent` without the links).
  * - `kiwame` — the learned block classifier alone, without site adapters.
@@ -14,7 +14,7 @@
  */
 export const EXTRACTOR_PRESETS = [
 	"auto",
-	"readability",
+	"reader",
 	"agent",
 	"comments",
 	"kiwame",

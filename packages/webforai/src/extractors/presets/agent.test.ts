@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { htmlToMarkdown, htmlToMarkdownWithMetadata } from "../../html-to-markdown";
 import { parseHtml } from "../../utils/parse-html";
 import { agentExtractor, commentsExtractor, createAgentAutoExtractor, createAgentExtractor } from "./agent";
-import { readabilityExtractor } from "./auto";
+import { readerExtractor } from "./auto";
 
 const page = `<html><head><title>How to bake bread</title></head><body>
 <header><nav class="global-nav"><a href="/">Home</a> <a href="/recipes">Recipes</a> <a href="/about">About</a></nav></header>
@@ -23,10 +23,10 @@ const convert = (extractors: typeof agentExtractor) =>
 	htmlToMarkdown(page, { baseUrl: "https://example.com/recipes/bread/1", extractors });
 
 describe("agentExtractor", () => {
-	it("keeps the readability content and appends the page's other links", () => {
+	it("keeps the reader-mode content and appends the page's other links", () => {
 		const [body, links] = convert(agentExtractor).split("## Links");
 
-		expect(body.trim()).toBe(convert(readabilityExtractor).trim());
+		expect(body.trim()).toBe(convert(readerExtractor).trim());
 		expect(links).toContain("[Next recipe](https://example.com/recipes/bread/2)");
 		expect(links).not.toContain("Share on Twitter");
 	});
@@ -235,10 +235,10 @@ describe("agentExtractor keepScale", () => {
 });
 
 describe("commentsExtractor", () => {
-	it("keeps the readability content and lists no links", () => {
+	it("keeps the reader-mode content and lists no links", () => {
 		const markdown = convert(commentsExtractor);
 
-		expect(markdown.split("## Comments")[0].trim()).toBe(convert(readabilityExtractor).trim());
+		expect(markdown.split("## Comments")[0].trim()).toBe(convert(readerExtractor).trim());
 		expect(markdown).not.toContain("## Links");
 	});
 

@@ -13,7 +13,7 @@ export {
 	pipeExtractors,
 	autoExtractor,
 	createAutoExtractor,
-	readabilityExtractor,
+	readerExtractor,
 	agentExtractor,
 	commentsExtractor,
 	createAgentAutoExtractor,

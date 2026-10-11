@@ -56,3 +56,7 @@ findings and every library and evals finding are to be fixed.
   updated itself twice during the run; the 37 calls that failed then were asked again, and the
   model CLIs now run with `DISABLE_AUTOUPDATER=1`. `webwalker:choose` gained `--pipelines` and
   `--dry-run` so that only the rows the docs report were asked.
+- (2026-10-11) Owner decision: "Readability mode" becomes reader mode, and the `readability` preset
+  and `readabilityExtractor` are renamed `reader` / `readerExtractor` with no alias. The old name
+  suggested Mozilla's Readability, which the benchmarks list as a competitor. The worker example's
+  own `mode=readability` becomes `mode=default`, as in the CLI's `--mode`.

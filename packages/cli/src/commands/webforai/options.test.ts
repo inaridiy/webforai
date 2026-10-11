@@ -60,7 +60,7 @@ describe("resolveRunOptions", () => {
 	});
 
 	it("passes every extractor preset to the platform loader", () => {
-		for (const extractor of ["agent", "kiwame", "readability"]) {
+		for (const extractor of ["agent", "kiwame", "reader"]) {
 			const run = resolveRunOptions(URL_SOURCE, { loader: "platform", extractor }, { [API_KEY_ENV]: "k" });
 			expect(run).toMatchObject({ loader: "platform", extractor });
 		}

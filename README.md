@@ -12,7 +12,7 @@
 <h3 align="center">Any web page, as clean Markdown for LLMs.</h3>
 
 <p align="center">
-  <b>Readability mode</b> keeps the main content only — no navigation, ads or cookie banners.
+  <b>Reader mode</b> keeps the main content only — no navigation, ads or cookie banners.
   <b>Agent mode</b> adds the links an agent needs to go on, grouped by role. The highest score on
   the WCEB extraction benchmark of the converters we tested, and small enough to run in a
   Cloudflare Worker or a browser.
@@ -41,19 +41,19 @@ npx webforai-cli https://example.com/article
 ```ts
 import { htmlToMarkdown, presetExtractors } from "webforai";
 
-const markdown = htmlToMarkdown(html, { url }); // Readability mode
+const markdown = htmlToMarkdown(html, { url }); // Reader mode
 const forAgents = htmlToMarkdown(html, { url, extractors: presetExtractors("agent") }); // Agent mode
 ```
 
 ## Two modes
 
-| | **Readability mode** (default) | **Agent mode** |
+| | **Reader mode** (default) | **Agent mode** |
 | --- | --- | --- |
 | Output | The page's main content: the article, docs page or post | The same main content, then reader comments and the page's other links grouped by role: related, pagination, section and site navigation, breadcrumbs |
 | For | Reading, summarising, RAG and embeddings | Agents that browse and decide which link to open next |
 | Library | `htmlToMarkdown(html, { url })` | `htmlToMarkdown(html, { url, extractors: presetExtractors("agent") })` |
 | CLI | `npx webforai-cli <url>` | `npx webforai-cli <url> --extractor agent` |
-| Benchmark | [Main content →](#readability-mode-main-content) | [Following links →](#agent-mode-following-links) |
+| Benchmark | [Main content →](#reader-mode-main-content) | [Following links →](#agent-mode-following-links) |
 
 The `comments` preset sits between the two: the main content and reader comments, without the
 links. Every preset works in the library, the CLI and the hosted API.
@@ -61,7 +61,7 @@ links. Every preset works in the library, the CLI and the hosted API.
 
 ## Benchmarks
 
-### Readability mode: main content
+### Reader mode: main content
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="site/docs/public/images/benchmark-dark.svg">

@@ -12,7 +12,7 @@
 <h3 align="center">Any web page, as clean Markdown for LLMs.</h3>
 
 <p align="center">
-  <b>Readability mode</b> keeps the main content only — no navigation, ads or cookie banners.
+  <b>Reader mode</b> keeps the main content only — no navigation, ads or cookie banners.
   <b>Agent mode</b> adds the links an agent needs to go on, grouped by role. A dependency-light
   TypeScript library for Node.js, Cloudflare Workers and browsers.
 </p>
@@ -49,7 +49,7 @@ const forAgents = htmlToMarkdown(html, { url, baseUrl: url, extractors: presetEx
 
 Two modes:
 
-| | **Readability mode** (default) | **Agent mode** |
+| | **Reader mode** (default) | **Agent mode** |
 | --- | --- | --- |
 | Output | The page's main content | The main content, then reader comments and the page's other links grouped by role (related, pagination, section and site navigation, breadcrumbs) |
 | For | Reading, summarising, RAG and embeddings | Agents that browse and decide which link to open next |
@@ -68,7 +68,7 @@ Looking for the command line? That is [`webforai-cli`](https://www.npmjs.com/pac
   <img alt="WCEB F1: webforai 0.891 (0.923 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
-**Readability mode.** WCEB scores extracted text against reference text on 3,985 pages.
+**Reader mode.** WCEB scores extracted text against reference text on 3,985 pages.
 webforai's score is with the `comments` preset, which keeps reader comments as Trafilatura does;
 the default preset scores 0.891. Code blocks and time come from 60 cached real pages.
 

@@ -73,7 +73,7 @@ const BROWSER_KEYS = ["browser1", "browser2"];
 
 const schema = object({
   url: string([url()]),
-  mode: optional(union([literal("readability"), literal("ai")])),
+  mode: optional(union([literal("default"), literal("ai")])),
 });
 
 app.get(
@@ -92,10 +92,10 @@ app.get(
     }
 
     const aiModeOptions = { linkAsText: true, tableAsText: true, hideImage: true };
-    const readabilityModeOptions = { linkAsText: false, tableAsText: false, hideImage: false };
+    const defaultModeOptions = { linkAsText: false, tableAsText: false, hideImage: false };
     const markdown = htmlToMarkdown(result.html, {
       baseUrl: url,
-      ...(mode === "ai" ? aiModeOptions : readabilityModeOptions),
+      ...(mode === "ai" ? aiModeOptions : defaultModeOptions),
     });
     return c.text(markdown);
   },
@@ -191,14 +191,14 @@ npx wrangler deploy
 After deployment, you can call your Worker by making a GET request to its URL with a `url` query parameter:
 
 ```
-https://your-worker-url.workers.dev/?url=https://example.com&mode=readability
+https://your-worker-url.workers.dev/?url=https://example.com&mode=default
 ```
 
 This will return the Markdown version of the specified URL's content.
 
 ::::
 
-This Worker provides an API endpoint that converts HTML pages to Markdown using browser rendering. It supports two modes: "readability" (default) and "ai", which affect how links, tables, and images are processed in the output Markdown.
+This Worker provides an API endpoint that converts HTML pages to Markdown using browser rendering. It supports two modes: "default" and "ai", which affect how links, tables, and images are processed in the output Markdown.
 
 The Durable Object manages browser sessions, improving performance by reusing sessions and reducing the number of concurrent sessions needed.
 
