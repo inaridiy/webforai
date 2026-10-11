@@ -47,6 +47,18 @@ describe("agentExtractor", () => {
 		expect(links).not.toContain("few tips");
 	});
 
+	it("separates a pager link's label and title", () => {
+		const links = htmlToMarkdown(
+			page.replace(
+				'<a href="/recipes/bread/2" rel="next">Next recipe</a>',
+				'<a href="/recipes/bread/2" rel="next"><span class="desc">Next page</span><span class="title">Rye bread</span></a>',
+			),
+			{ baseUrl: "https://example.com/recipes/bread/1", extractors: agentExtractor },
+		).split("## Links")[1];
+
+		expect(links).toContain("[Next page Rye bread](https://example.com/recipes/bread/2)");
+	});
+
 	it("lists only the requested roles, in the requested order", () => {
 		const markdown = convert(createAgentExtractor({ roles: ["pagination"], roleModels: null }));
 

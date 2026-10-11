@@ -16,4 +16,6 @@
   1) scales that threshold: lower lists more links.
 - Each link is listed once, by its resolved URL. Share and "send to" links are always left out,
   and so are links to anything but a web page (`mailto:`, `sms:`, `javascript:`, …).
+- A link whose label and title sit in adjacent elements (`<span>Next page</span><span>Title</span>`)
+  is listed with a space between them.
 - The `comments` preset uses the same retrained models.

@@ -103,6 +103,11 @@ const isFollowable = (href: string): boolean => {
 	return !compact.startsWith("#") && (!SCHEME.test(compact) || /^https?:/i.test(compact));
 };
 
+/**
+ * A link's text. Adjacent child elements are separated by a space: pager links put the label
+ * and the title in two `<span>`s with no whitespace between them (`Next pageServer-Side
+ * Rendering`), and the CSS that sets them apart is gone.
+ */
 const textOf = (node: ElementContent): string => {
 	if (node.type === "text") {
 		return node.value;
@@ -110,7 +115,16 @@ const textOf = (node: ElementContent): string => {
 	if (node.type !== "element") {
 		return "";
 	}
-	return node.children.map((child) => textOf(child)).join("");
+	let value = "";
+	let afterElement = false;
+	for (const child of node.children) {
+		if (child.type === "element" && afterElement) {
+			value += " ";
+		}
+		value += textOf(child);
+		afterElement = child.type === "element";
+	}
+	return value;
 };
 
 const linkCache = new WeakMap<TextBlock, BlockLink[]>();
