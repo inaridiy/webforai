@@ -79,6 +79,89 @@ Site navigation 3, missing 35 (kept 66.3%). Agent output is 70% of the all-links
 and blog pages carry far more boilerplate links than WebWalkerQA's sites), but it drops a third of
 the previous/next-article links.
 
+## Status change (2026-10-10): this set is now dev for agent mode
+
+Measuring the E3 agent (role models retrained, keep model) once: hops kept 81.8%, unchanged from
+the pre-E3 baseline; Haiku ×2 agent 75.8 vs all links 91.1 (−15.3 [−20.3, −10.8]). Counting the
+misses by cause, then tracing them, showed 50 of the 52 on pages a site adapter claims (58 of 285
+pages, WordPress above all): agent mode returned the adapter's output with no link sections at
+all. The fix (agent mode keeps the adapter's content and still lists the page's links) was then
+confirmed on pages outside this set before shipping, but it came from inspecting this set, so **related-hops is a development set from here on**, like
+WebWalkerQA. A clean holdout needs a second batch on fresh hosts built with the same builder.
+
+## As a dev set (2026-10-10)
+
+After the adapter fix (agent mode lists links on site-adapter pages; `3cd99ad`):
+
+| Pipeline | Hops kept | Median tokens | Haiku ×3 | Sonnet ×3 |
+| --- | ---: | ---: | ---: | ---: |
+| agent | 99.3% | 2,567 | 92.0 | 93.6 |
+| agent, same-site links as paths | 99.3% | 2,228 | 91.2 | 92.9 |
+| all links | 100% | 3,167 | 91.3 | 93.8 |
+| Turndown (full page) | 99.6% | 4,831 | 92.6 | 93.9 |
+| node-html-markdown (full page) | 97.2% | 4,369 | 89.9 | 92.5 |
+| readability | 8.4% | 1,047 | 8.4 | 8.4 |
+
+Agent − all links +0.7 [−1.2, +2.6] / −0.2 [−1.9, +1.5]; agent − node-html-markdown +2.1 / +1.1
+(n.s.); paths − agent −0.8 / −0.7 (n.s.). Agent output is 19% smaller than all links and ~45%
+smaller than full-page conversion at the same accuracy. Same-site paths save another 13% of
+tokens but are not shipped: no gain in accuracy, and an agent must resolve them.
+
+Learning from this set: Sonnet's per-link labels of the 350 start pages with related or sequence
+links, added as related/pagination training rows for the role models, did not help on held-out
+pages; not used. Raising the keep threshold ×1.5–3 saves
+under 3% of tokens here and on WebWalkerQA while recall falls fast; the threshold stays.
+
+A clean holdout is being built as `related-hops-2` (fresh hosts: CC-NEWS 2026/08, other WARC
+files, every host of this batch and of the role models' training data excluded; Opus 5.5
+verifies instead of codex).
+
+## related-hops-2: the holdout (frozen 2026-10-10, before any measurement)
+
+295 tasks on 293 sites (related 204, previous/next article 86, read next 3, series 2), built with
+the same builder from CC-NEWS 2026/08 and other main-crawl WARC files (`--warc-offset=7`), with
+every host of related-hops' candidates and of the role models' training data excluded (10,710
+sites) and WebWalkerQA's sites excluded by the builder; checked: 0 hosts shared with related-hops,
+the training data or WebWalkerQA.
+Questions verified by Opus 5.5 (`--verifier=opus`; codex was at 44% of its weekly quota); 28 of
+344 questions had no verdict after two passes (CLI errors) and are not in the set. Dropped: 279 not
+English, 154 no same-site related or sequence link, 60 fetch failures, 46 too few links, 28 no
+checkable fact, 16 answerable from the start page, 19 target or freeze rules.
+
+It is measured once, with the agent of `feat/agent-recall` at `de4b772`+ (adapter fix included),
+and not inspected beyond the aggregate tables.
+
+### related-hops-2 results (measured once, 2026-10-10/11)
+
+| Pipeline | Hops kept | Median tokens | Haiku ×3 | Sonnet ×3 |
+| --- | ---: | ---: | ---: | ---: |
+| **webforai agent** | 99.7% | **2,440** | **93.0** | **95.0** |
+| agent, no role headings | 99.7% | 2,426 | 93.4 | 94.5 |
+| agent, same-site links as paths | 99.7% | 2,203 | 94.0 | 95.6 |
+| webforai + all links | 100% | 2,902 | 92.4 | 94.5 |
+| Turndown (full page) | 99.7% | 4,533 | 93.0 | 94.9 |
+| node-html-markdown (full page) | — | 4,350 | 92.8 | 94.6 |
+| Defuddle | — | 1,075 | 11.3 | 11.5 |
+| Readability + Turndown | — | 967 | 6.8 | 7.1 |
+| Trafilatura (include_links) | — | 893 | 5.6 | 5.4 |
+| webforai readability | 7.1% | 1,069 | 6.9 | 7.1 |
+
+Paired, 95% CI over sites (Haiku / Sonnet): agent − all links +0.6 [−1.1, +2.4] / +0.6 [−0.6, +1.8];
+agent − node-html-markdown +0.2 [−1.6, +2.1] / +0.5 [−0.9, +1.9]; role headings −0.5 / +0.6;
+same-site paths − agent +1.0 [−0.3, +2.4] / +0.6 [−0.3, +1.7] (all n.s.); agent − readability +86 / +88.
+
+On fresh hosts agent mode chooses the next related or sequence link as well as listing every link
+or converting the whole page, with 16% fewer tokens than all links and ~45% fewer than full-page
+conversion. Reader-mode converters (Readability, Defuddle, Trafilatura even with links) cannot do
+this task (5–12%).
+
+### Publication (2026-10-11)
+
+Both task lists are committed as `evals/benchmarks/related-hops{,-2}/tasks.jsonl`: URLs, the gold
+link, the question and the answer. Page HTML is not (third-party content, as for the rest of the
+evals); `--stage=fetch` renders the start pages again, so a rerun scores against today's pages.
+The host exclusion list is not published. README and `/benchmarks` report related-hops-2.
+
 ## Decision log
 
 - (2026-10-10) Gold links come from an LLM reading the anchor list with DOM context, not from any
@@ -86,3 +169,6 @@ the previous/next-article links.
 - (2026-10-10) Same-site gold links only: cross-site "related" rails are mostly advertising.
 - (2026-10-10) The question must not be answerable from P0's full text, teasers included; a model
   that could answer without following the link would make B measure reading, not navigation.
+- (2026-10-11) Publish the task lists, not the pages: the claim must be checkable, and the
+  holdout keeps its use (measured once per release) whether or not it is public — no model is
+  trained on it.
