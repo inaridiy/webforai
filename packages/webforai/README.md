@@ -45,17 +45,16 @@ npm i webforai
 ```ts
 import { htmlToMarkdown, presetExtractors } from "webforai";
 
-const markdown = htmlToMarkdown(html, { url }); // Reader mode
-const forAgents = htmlToMarkdown(html, { url, extractors: presetExtractors("agent") }); // Agent mode
+const url = "https://vite.dev/guide/env-and-mode";
+const html = await (await fetch(url)).text();
+
+const markdown = htmlToMarkdown(html, { url }); // Reader mode: the main content
+const forAgents = htmlToMarkdown(html, { url, extractors: presetExtractors("agent") }); // Agent mode: + the links
 ```
 
-From the shell: [`webforai-cli`](https://www.npmjs.com/package/webforai-cli), `npx webforai-cli <url>`,
-with `--extractor agent` for agent mode (up to v4 it shipped in this package as `npx webforai`).
-For pages that need a browser or a proxy, use the [hosted platform](#hosted-platform).
-
-## What you get
-
-Agent mode on [vite.dev/guide/env-and-mode](https://vite.dev/guide/env-and-mode) (abridged):
+<details>
+<summary><b>What you get</b> — <code>forAgents</code> for that page, abridged</summary>
+<br/>
 
 ````md
 # Env Variables and Modes
@@ -93,6 +92,8 @@ if (import.meta.env.DEV) {
 - …
 ````
 
+</details>
+
 - **Reader mode** (default) returns the article alone, up to `## Links`: for reading, summarising,
   RAG and embeddings.
 - **Agent mode** adds the `## Links` section — related, pagination, section and site navigation,
@@ -100,6 +101,10 @@ if (import.meta.env.DEV) {
 - Code blocks keep their language, tables stay GFM tables, KaTeX and MathJax become LaTeX, and
   lazy-loaded images come through. Page metadata (title, author, published, …) comes from
   `htmlToMarkdownWithMetadata` or as YAML front matter with `frontmatter: true`.
+
+From the shell: [`webforai-cli`](https://www.npmjs.com/package/webforai-cli), `npx webforai-cli <url>`,
+with `--extractor agent` for agent mode (up to v4 it shipped in this package as `npx webforai`).
+For pages that need a browser or a proxy, use the [hosted platform](#hosted-platform).
 
 ## Benchmarks
 

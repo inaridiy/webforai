@@ -44,7 +44,14 @@ make every other user-facing intro follow. Stacked on `release/v5` (PR #87).
   the owner's tagline asks for it, and it is stated with the comparison that makes it checkable.
   "Fastest in JS" is not claimed: full-page Turndown (no extraction) is faster.
 - (2026-10-11) The output sample is vite.dev/guide/env-and-mode in agent mode, abridged with
-  "…" and nothing else changed. Its Related section lists a ViteConf banner; the abridgement
+  "…" and nothing else changed; it sits in a `<details>` under the Quick start, whose code uses
+  the same URL. The owner suggested github.com/inaridiy/webforai instead: in agent mode that page
+  lists topic tags and "Report repository" under Related and the file tree under Pagination and
+  Section navigation, and its body is this README (from `main`, so always one release behind),
+  so it was not used.
+- (2026-10-11) The link-text space is added only between two words (letter or digit on both
+  sides): GitHub splits paths into `<span>packages/</span><span>webforai</span>`, which must
+  stay joined. Its Related section lists a ViteConf banner; the abridgement
   leaves that part out, as it leaves most of the article out.
 - (2026-10-11) The agent-mode table drops the "every link" row and the reader-mode extractors'
   5–12% row: the first is a harness variant, the second compares against tools that drop links
