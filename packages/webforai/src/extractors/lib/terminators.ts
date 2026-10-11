@@ -21,7 +21,7 @@ import { isElement, isParent, pruneInPlace } from "../../utils/hast-fast";
  * Anchored prefixes, matched against a whole block's text. Kept deliberately specific: every
  * entry is page furniture wording, not something an author writes mid-article.
  */
-const TERMINATOR_PATTERNS: RegExp[] = [
+const PAGE_END_PATTERNS: RegExp[] = [
 	/^was this (page|article|document) helpful/i,
 	/^thanks for the feedback/i,
 	// Site-generator credit closing the page ("Powered by Docsify.js", "Powered by GitBook").
@@ -31,12 +31,16 @@ const TERMINATOR_PATTERNS: RegExp[] = [
 	/^help (us )?improve\b/i,
 	// The stranded Yes/No pair of a feedback widget whose question was removed separately.
 	/^yes ?no$/i,
+	/^(この(ページ|記事)は(参考|役に立ち)ました?か)/,
+	/^最終更新日?[:：\s]/,
+];
+
+/** Headings that open the page's tail after the article, but also title boxes set inside it. */
+const SECTION_PATTERNS: RegExp[] = [
 	/^(related (articles?|posts?|stories|content)|you might also like|recommended for you|more from|read next)$/i,
 	/^(comments?|leave a (comment|reply)|join the (conversation|discussion))$/i,
-	/^(この(ページ|記事)は(参考|役に立ち)ました?か)/,
 	/^(関連記事|あわせて読みたい|こちらもおすすめ|おすすめ記事)$/,
 	/^(コメントを(残す|書く)|コメント一覧)$/,
-	/^最終更新日?[:：\s]/,
 ];
 
 /** A terminator only counts once this fraction of the document's text has passed. */
@@ -48,17 +52,25 @@ const MAX_TERMINATOR_BLOCK_LENGTH = 500;
 /** Block-level tags considered as potential terminators. */
 const BLOCK_TAGS = new Set(["p", "div", "section", "footer", "aside", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol"]);
 
-/** True when this block, at this position, marks the end of the article. */
-const isTerminatorBlock = (element: Element, start: number, tailStart: number): boolean => {
-	if (!BLOCK_TAGS.has(element.tagName) || start < tailStart) {
+/**
+ * True when a block with this tag and text would end the article, once it is in the tail.
+ * `pageEndOnly` leaves out the section headings, which also title boxes set inside an article.
+ */
+export const isTerminator = (tagName: string, text: string, pageEndOnly = false): boolean => {
+	if (!BLOCK_TAGS.has(tagName)) {
 		return false;
 	}
-	const text = textOf(element).replace(/\s+/g, " ").trim();
-	if (text.length === 0 || text.length > MAX_TERMINATOR_BLOCK_LENGTH) {
+	const collapsed = text.replace(/\s+/g, " ").trim();
+	if (collapsed.length === 0 || collapsed.length > MAX_TERMINATOR_BLOCK_LENGTH) {
 		return false;
 	}
-	return TERMINATOR_PATTERNS.some((pattern) => pattern.test(text));
+	const matches = (pattern: RegExp) => pattern.test(collapsed);
+	return PAGE_END_PATTERNS.some(matches) || (!pageEndOnly && SECTION_PATTERNS.some(matches));
 };
+
+/** True when this block, at this position, marks the end of the article. */
+const isTerminatorBlock = (element: Element, start: number, tailStart: number): boolean =>
+	start >= tailStart && BLOCK_TAGS.has(element.tagName) && isTerminator(element.tagName, textOf(element));
 
 const textOf = (node: Hast): string => {
 	if (node.type === "text") {

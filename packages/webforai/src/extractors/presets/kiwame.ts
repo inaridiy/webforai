@@ -25,7 +25,7 @@ import { type NeuralModel, isUsableNeuralModel, scoreBlocksNeural } from "../lib
 import { NEURAL_MODEL } from "../lib/neural-model.generated";
 import { REFERENCE_HEADING, cleanContent, stripNonContent } from "../lib/sanitize";
 import { takumiSelection } from "../lib/takumi-signal";
-import { truncateTrailingBoilerplate } from "../lib/terminators";
+import { TERMINATOR_TAIL_FRACTION, isTerminator, truncateTrailingBoilerplate } from "../lib/terminators";
 import { pageTitle } from "../lib/title-anchor";
 import type { ExtractParams, ExtractionReport, Extractor } from "../types";
 import { takumiExtractor } from "./takumi";
@@ -323,6 +323,38 @@ const applyKeepRules = (
 	completeTables(kept, blocks);
 };
 
+/**
+ * Page-end wording the models dropped ("Powered by …", "Was this page helpful?") still ends the
+ * content: kept blocks after the first one in the tail of the kept text are dropped too. The cut
+ * after pruning only sees terminators that survived it. Dropped "Related posts" or "Comments"
+ * headings do not count: inline boxes and sidebars carry them in the middle of an article.
+ */
+const cutAtDroppedTerminator = (kept: Set<Element>, blocks: TextBlock[], enabled: boolean): void => {
+	if (!enabled) {
+		return;
+	}
+	let total = 0;
+	for (const block of blocks) {
+		if (kept.has(block.owner)) {
+			total += block.text.length;
+		}
+	}
+	const tailStart = total * TERMINATOR_TAIL_FRACTION;
+	let passed = 0;
+	for (const block of blocks) {
+		if (kept.has(block.owner)) {
+			passed += block.text.length;
+		} else if (passed > 0 && passed >= tailStart && isTerminator(block.owner.tagName, block.text, true)) {
+			for (const later of blocks) {
+				if (later.index > block.index) {
+					kept.delete(later.owner);
+				}
+			}
+			return;
+		}
+	}
+};
+
 /** Elements holding a block the model is sure of: the widget clean-up leaves them alone. */
 const spareSet = (
 	blocks: TextBlock[],
@@ -401,6 +433,7 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 		}
 
 		applyKeepRules(kept, blocks, probabilities, postRules);
+		cutAtDroppedTerminator(kept, blocks, cleanup);
 		pruneToBlocks(body, kept, false);
 		unwrapLayoutTables(body);
 		if (!cleanup) {
