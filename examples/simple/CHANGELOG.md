@@ -1,5 +1,12 @@
 # simple
 
+## 1.1.9
+
+### Patch Changes
+
+- Updated dependencies [[`ab93e23`](https://github.com/inaridiy/webforai/commit/ab93e2368a67b42095f834664d9ffccff90930bb), [`ab93e23`](https://github.com/inaridiy/webforai/commit/ab93e2368a67b42095f834664d9ffccff90930bb), [`ab93e23`](https://github.com/inaridiy/webforai/commit/ab93e2368a67b42095f834664d9ffccff90930bb), [`ab93e23`](https://github.com/inaridiy/webforai/commit/ab93e2368a67b42095f834664d9ffccff90930bb), [`ab93e23`](https://github.com/inaridiy/webforai/commit/ab93e2368a67b42095f834664d9ffccff90930bb)]:
+  - webforai@5.0.0
+
 ## 1.1.8
 
 ### Patch Changes
