@@ -4,11 +4,15 @@
  *
  * Usage (needs `uv` for Trafilatura and the token count):
  *   pnpm --filter @webforai/evals webwalker:links [-- --set=related-hops]
+ *   pnpm --filter @webforai/evals webwalker:links -- --set=related-hops-2 --report
  *
  * Every page a golden path clicks on is converted once per pipeline, with the page's URL after
  * redirects as the base. A hop counts as kept when the output links (inline, reference or autolink)
  * to the hop's target, compared with `normalizeUrl`. Size is o200k_base tokens of the output
- * (`python/count_tokens.py`). Outputs go to `.reports/webwalker/`.
+ * (`python/count_tokens.py`). Outputs go to `.reports/<set>/`. `--report` converts nothing: it
+ * scores the saved outputs against the set's current hops (after tasks were dropped from a set,
+ * say). `--save-results` also writes the numbers to the `links` part of the committed
+ * `benchmarks/<set>/results.json`.
  *
  * Pipelines: webforai's readability and agent presets; agent output without its role headings
  * (same links, one flat list); `webforai + all links`, the readability
@@ -20,7 +24,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { agentExtractor, htmlToMarkdown } from "webforai";
@@ -37,11 +41,14 @@ import {
 	WEBWALKER_DIR,
 	htmlAnchors,
 	loadHops,
+	loadNavTasks,
 	markdownLinks,
 	readPage,
 } from "../webwalker.js";
 
 const OUT_DIR = LINK_REPORTS_DIR;
+const reportOnly = process.argv.includes("--report");
+const saveResults = process.argv.includes("--save-results");
 const TRAFILATURA_LINKS_CACHE = path.join(WEBWALKER_DIR, "trafilatura-links");
 
 type Convert = (html: string, url: string) => string | Promise<string>;
@@ -169,8 +176,31 @@ await mkdir(OUT_DIR, { recursive: true });
 const linksByPipeline = new Map<string, Map<string, Map<string, string>>>();
 const crashes = new Map<string, number>();
 
+/** Links of an output, by normalized URL → the section they are in (the first one when repeated). */
+const linkSections = (markdown: string, base: string): Map<string, string> => {
+	const links = new Map<string, string>();
+	for (const link of markdownLinks(markdown, base) as OutputLink[]) {
+		if (!links.has(link.url)) {
+			links.set(link.url, link.section);
+		}
+	}
+	return links;
+};
+
 for (const pipeline of PIPELINES) {
 	const byPage = new Map<string, Map<string, string>>();
+	const file = path.join(OUT_DIR, `${pipeline.id}.outputs.jsonl`);
+	if (reportOnly) {
+		for (const line of (await readFile(file, "utf8")).split("\n")) {
+			const row = line.trim() ? (JSON.parse(line) as { id: string; markdown: string }) : undefined;
+			const page = row ? pages.get(row.id) : undefined;
+			if (row && page) {
+				byPage.set(row.id, linkSections(row.markdown, page.finalUrl));
+			}
+		}
+		linksByPipeline.set(pipeline.id, byPage);
+		continue;
+	}
 	const outputs: string[] = [];
 	let crashed = 0;
 	for (const [url, page] of pages) {
@@ -180,35 +210,31 @@ for (const pipeline of PIPELINES) {
 		} catch {
 			crashed += 1;
 		}
-		const links = new Map<string, string>();
-		for (const link of markdownLinks(markdown, page.finalUrl) as OutputLink[]) {
-			if (!links.has(link.url)) {
-				links.set(link.url, link.section);
-			}
-		}
-		byPage.set(url, links);
+		byPage.set(url, linkSections(markdown, page.finalUrl));
 		outputs.push(JSON.stringify({ id: url, markdown }));
 	}
 	linksByPipeline.set(pipeline.id, byPage);
 	crashes.set(pipeline.id, crashed);
-	await writeFile(path.join(OUT_DIR, `${pipeline.id}.outputs.jsonl`), `${outputs.join("\n")}\n`);
+	await writeFile(file, `${outputs.join("\n")}\n`);
 	console.info(`  ${pipeline.label}: converted (${crashed} crashed)`);
 }
 trafilatura?.child.stdin?.end();
 
-const counted = spawnSync(
-	"uv",
-	[
-		"run",
-		"--quiet",
-		"--script",
-		path.join(EVALS_ROOT, "python", "count_tokens.py"),
-		...PIPELINES.map((pipeline) => path.join(OUT_DIR, `${pipeline.id}.outputs.jsonl`)),
-	],
-	{ stdio: "inherit" },
-);
-if (counted.status !== 0) {
-	throw new Error("count_tokens.py failed");
+if (!reportOnly) {
+	const counted = spawnSync(
+		"uv",
+		[
+			"run",
+			"--quiet",
+			"--script",
+			path.join(EVALS_ROOT, "python", "count_tokens.py"),
+			...PIPELINES.map((pipeline) => path.join(OUT_DIR, `${pipeline.id}.outputs.jsonl`)),
+		],
+		{ stdio: "inherit" },
+	);
+	if (counted.status !== 0) {
+		throw new Error("count_tokens.py failed");
+	}
 }
 
 const kept = (pipelineId: string, hop: Hop): string | undefined =>
@@ -227,6 +253,7 @@ const pct = (n: number, d: number): string => `${((100 * n) / Math.max(1, d)).to
 
 const rows: string[] = [];
 const sections: string[] = [];
+const results: Record<string, unknown> = {};
 for (const pipeline of PIPELINES) {
 	const tokens = JSON.parse(await readFile(path.join(OUT_DIR, `${pipeline.id}.tokens.json`), "utf8")) as Record<
 		string,
@@ -244,8 +271,16 @@ for (const pipeline of PIPELINES) {
 			pathKeys.length,
 		)} | ${median(pageTokens).toLocaleString("en-US")} | ${Math.round(
 			pageTokens.reduce((a, b) => a + b, 0) / pageTokens.length,
-		).toLocaleString("en-US")} | ${crashes.get(pipeline.id)} |`,
+		).toLocaleString("en-US")} | ${crashes.get(pipeline.id) ?? "—"} |`,
 	);
+	results[pipeline.id] = {
+		label: pipeline.label,
+		hopsKept,
+		hops: scored.length,
+		keptPercent: Math.round((1000 * hopsKept) / Math.max(1, scored.length)) / 10,
+		medianTokens: median(pageTokens),
+		meanTokens: Math.round(pageTokens.reduce((a, b) => a + b, 0) / pageTokens.length),
+	};
 	if (pipeline.id === "webforai-agent" || pipeline.id === "webforai-all-links") {
 		const where = new Map<string, number>();
 		for (const hop of navHops) {
@@ -276,3 +311,18 @@ ${sections.join("\n\n")}
 `;
 await writeFile(path.join(OUT_DIR, "summary.md"), report);
 console.info(`\n${report}`);
+
+const committed = path.join(EVALS_ROOT, "benchmarks", LINK_SET);
+if (saveResults && (await stat(committed).catch(() => undefined))) {
+	const navTasks = await loadNavTasks();
+	const file = path.join(committed, "results.json");
+	const saved = JSON.parse(await readFile(file, "utf8").catch(() => "{}")) as Record<string, unknown>;
+	saved.links = {
+		tasks: new Set(hops.map((hop) => hop.task)).size,
+		sites: new Set(hops.map((hop) => navTasks[hop.task]?.site)).size,
+		pages: pages.size,
+		pipelines: results,
+	};
+	await writeFile(file, `${JSON.stringify(saved, null, "\t")}\n`);
+	console.info(`Wrote ${path.relative(process.cwd(), file)}`);
+}

@@ -6,24 +6,34 @@
  *   pnpm --filter @webforai/evals webwalker:choose -- --models=haiku --reps=3 --concurrency=12 [--set=related-hops]
  *   pnpm --filter @webforai/evals webwalker:choose -- --models=haiku,sonnet,codex --report
  *
- * Models run through the local CLIs, so a subscription can pay for them: `claude -p` (Haiku 5.5,
- * Sonnet 5.5; no tools, a fixed system prompt, structured output) and `codex exec` (gpt-6.1-sol,
- * low reasoning effort). The API serves the same models. Each answer is cached in
- * `.cache/webwalker/choices/<model>-r<rep>/<pipeline>/`, so a run resumes where it stopped.
+ * Models run through the local CLIs: `claude -p` (Haiku 5.5, Sonnet 5.5; no tools, a fixed system
+ * prompt, structured output) and `codex exec` (gpt-6.1-sol, low reasoning effort). Log the CLIs in
+ * with an API key for runs of this size. Both run from an empty temporary directory without the
+ * user's MCP servers, hooks, plugins or skills; codex runs in its read-only sandbox, which has no
+ * network access.
  *
  * Every hop of every resolved golden path is one item: the page's output from `webwalker:links`
- * (`.reports/webwalker/<pipeline>.outputs.jsonl`) and the task's question. The model answers with
+ * (`.reports/<set>/<pipeline>.outputs.jsonl`) and the task's question. The model answers with
  * one URL copied from the page. It is correct when it is a next link of any of the task's golden
  * paths on that page, or one of the task's source pages; a URL that is not a link in the output
  * counts as wrong (the model may not navigate from memory). An output without links is wrong
- * without asking.
+ * without asking, and so is a call that failed twice.
+ *
+ * Each answer is cached in `.cache/<set>/choices/<model>-r<rep>/<pipeline>/<prompt hash>.json`,
+ * so a run resumes where it stopped and asks again only where an output (or the question)
+ * changed; failed calls are retried on the next run. `--migrate` moves answers cached under the
+ * earlier task-index names to prompt hashes, for the answers written after the current outputs.
+ * The summary goes to `.reports/<set>/choose.md`; `--save-results` also writes it to the `choose`
+ * part of the committed `benchmarks/<set>/results.json`.
  */
 
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { copyFile, mkdir, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { EVALS_ROOT } from "../config.js";
 import {
 	type Hop,
 	LINK_REPORTS_DIR,
@@ -43,6 +53,8 @@ const reps = Number(arg("reps", "1"));
 const concurrency = Number(arg("concurrency", "12"));
 const limit = Number(arg("limit", "100000"));
 const reportOnly = process.argv.includes("--report");
+const migrate = process.argv.includes("--migrate");
+const saveResults = process.argv.includes("--save-results");
 
 const OUT_DIR = LINK_REPORTS_DIR;
 const CHOICES_DIR = path.join(WEBWALKER_DIR, "choices");
@@ -83,6 +95,8 @@ const SCHEMA = {
 interface Answer {
 	url?: string;
 	error?: string;
+	/** The call failed twice: counted as wrong, and asked again on the next run. */
+	failed?: boolean;
 	/** What the call would have cost on the API, as the CLI reports it. */
 	costUsd?: number;
 	inputTokens?: number;
@@ -129,6 +143,10 @@ const askClaude = async (model: string, system: string, user: string): Promise<A
 			model,
 			"--tools",
 			"",
+			"--strict-mcp-config",
+			"--setting-sources",
+			"project",
+			"--disable-slash-commands",
 			"--no-session-persistence",
 			"--output-format",
 			"json",
@@ -168,6 +186,8 @@ const askCodex = async (system: string, user: string): Promise<Answer> => {
 			"model_reasoning_effort=low",
 			"--sandbox",
 			"read-only",
+			"--ignore-user-config",
+			"--ignore-rules",
 			"--ephemeral",
 			"--skip-git-repo-check",
 			"--output-schema",
@@ -189,15 +209,18 @@ const askCodex = async (system: string, user: string): Promise<Answer> => {
 const tasks = await loadNavTasks();
 const hops = await loadHops();
 const outputs = new Map<string, Map<string, string>>();
+const outputsWritten = new Map<string, number>();
 for (const [id] of PIPELINES) {
+	const file = path.join(OUT_DIR, `${id}.outputs.jsonl`);
 	const byPage = new Map<string, string>();
-	for (const line of (await readFile(path.join(OUT_DIR, `${id}.outputs.jsonl`), "utf8")).split("\n")) {
+	for (const line of (await readFile(file, "utf8")).split("\n")) {
 		if (line.trim()) {
 			const row = JSON.parse(line) as { id: string; markdown: string };
 			byPage.set(row.id, row.markdown);
 		}
 	}
 	outputs.set(id, byPage);
+	outputsWritten.set(id, (await stat(file)).mtimeMs);
 }
 const finalUrls = new Map<string, string>();
 for (const hop of hops) {
@@ -224,8 +247,25 @@ const accepted = (hop: Hop): Set<string> => {
 const items = [...new Map(hops.map((hop) => [`${hop.task} ${hop.pageUrl}`, hop])).values()].slice(0, limit);
 const itemKey = (hop: Hop): string => `${hop.task}-${hop.path}-${hop.step}`;
 
+const markdownOf = (pipeline: string, hop: Hop): string => outputs.get(pipeline)?.get(hop.pageUrl) ?? "";
+const finalUrlOf = (hop: Hop): string => finalUrls.get(hop.pageUrl) ?? hop.pageUrl;
+const userPrompt = (pipeline: string, hop: Hop): string =>
+	`Question: ${tasks[hop.task].question}\n\nCurrent page: ${finalUrlOf(hop)}\n\n<page>\n${markdownOf(
+		pipeline,
+		hop,
+	).slice(0, MAX_CHARS)}\n</page>`;
+
+/** Answers are keyed by what the model is shown, so a changed output or question is asked again. */
 const answerFile = (model: string, rep: number, pipeline: string, hop: Hop): string =>
-	path.join(CHOICES_DIR, `${model}-r${rep}`, pipeline, `${itemKey(hop)}.json`);
+	path.join(
+		CHOICES_DIR,
+		`${model}-r${rep}`,
+		pipeline,
+		`${createHash("sha1")
+			.update(`${SYSTEM}\n\n${userPrompt(pipeline, hop)}`)
+			.digest("hex")
+			.slice(0, 20)}.json`,
+	);
 
 const readAnswer = async (file: string): Promise<Answer | undefined> => {
 	try {
@@ -234,6 +274,37 @@ const readAnswer = async (file: string): Promise<Answer | undefined> => {
 		return undefined;
 	}
 };
+
+// ------------------------------------------------------------------------ migrate
+
+if (migrate) {
+	// Earlier runs named answers `<task>-<path>-<step>.json`. Such an answer belongs to the current
+	// output only if it was written after that output, so older ones are left to be asked again.
+	let moved = 0;
+	let stale = 0;
+	const byKey = new Map(items.map((hop) => [itemKey(hop), hop]));
+	for (const dir of await readdir(CHOICES_DIR).catch(() => [] as string[])) {
+		const [model, repText] = dir.split("-r");
+		for (const [pipeline] of PIPELINES) {
+			const legacyDir = path.join(CHOICES_DIR, dir, pipeline);
+			for (const file of await readdir(legacyDir).catch(() => [] as string[])) {
+				const hop = /^\d+-\d+-\d+\.json$/.test(file) ? byKey.get(file.slice(0, -5)) : undefined;
+				if (!hop) {
+					continue;
+				}
+				const legacy = path.join(legacyDir, file);
+				if ((await stat(legacy)).mtimeMs < (outputsWritten.get(pipeline) ?? Number.POSITIVE_INFINITY)) {
+					stale += 1;
+					continue;
+				}
+				await copyFile(legacy, answerFile(model, Number(repText), pipeline, hop));
+				moved += 1;
+			}
+		}
+	}
+	console.info(`${moved} answers moved to prompt-hash names; ${stale} written before the current outputs left out`);
+	process.exit(0);
+}
 
 // ------------------------------------------------------------------------ run
 
@@ -245,28 +316,24 @@ if (!reportOnly) {
 				for (const hop of items) {
 					jobs.push(async () => {
 						const file = answerFile(model, rep, pipeline, hop);
-						if (await readAnswer(file)) {
+						const cached = await readAnswer(file);
+						if (cached && !cached.failed) {
 							return;
 						}
-						const markdown = outputs.get(pipeline)?.get(hop.pageUrl) ?? "";
-						const finalUrl = finalUrls.get(hop.pageUrl) ?? hop.pageUrl;
-						if (markdownLinks(markdown, finalUrl).length === 0) {
-							await mkdir(path.dirname(file), { recursive: true });
+						await mkdir(path.dirname(file), { recursive: true });
+						if (markdownLinks(markdownOf(pipeline, hop), finalUrlOf(hop)).length === 0) {
 							await writeFile(file, JSON.stringify({ error: "no links in output" }));
 							return;
 						}
-						const user = `Question: ${
-							tasks[hop.task].question
-						}\n\nCurrent page: ${finalUrl}\n\n<page>\n${markdown.slice(0, MAX_CHARS)}\n</page>`;
+						const user = userPrompt(pipeline, hop);
 						let answer = await MODELS[model].ask(SYSTEM, user);
 						if (answer.error) {
 							answer = await MODELS[model].ask(SYSTEM, user);
 						}
 						if (answer.error) {
 							console.warn(`${model} r${rep} ${pipeline} ${itemKey(hop)}: ${answer.error}`);
-							return;
+							answer = { ...answer, failed: true };
 						}
-						await mkdir(path.dirname(file), { recursive: true });
 						await writeFile(file, JSON.stringify(answer));
 					});
 				}
@@ -297,9 +364,16 @@ for (const [id] of PIPELINES) {
 }
 const site = (hop: Hop): string => tasks[hop.task].site;
 
-/** Per model, pipeline and item: share of reps answered correctly (undefined when unanswered). */
-const correctness = async (model: string, pipeline: string): Promise<Map<string, number>> => {
-	const result = new Map<string, number>();
+/**
+ * Per model, pipeline and item: share of reps answered correctly. A failed call counts as wrong;
+ * an item with no answer yet is left out (the report's Answered column shows it).
+ */
+const correctness = async (
+	model: string,
+	pipeline: string,
+): Promise<{ scores: Map<string, number>; failed: number }> => {
+	const scores = new Map<string, number>();
+	let failed = 0;
 	for (const hop of items) {
 		let right = 0;
 		let answered = 0;
@@ -309,24 +383,30 @@ const correctness = async (model: string, pipeline: string): Promise<Map<string,
 				continue;
 			}
 			answered += 1;
-			const finalUrl = finalUrls.get(hop.pageUrl) ?? hop.pageUrl;
-			const chosen = answer.url ? normalizeUrl(answer.url, finalUrl) : undefined;
+			failed += answer.failed ? 1 : 0;
+			const chosen = answer.url ? normalizeUrl(answer.url, finalUrlOf(hop)) : undefined;
 			const inOutput =
 				chosen !== undefined &&
-				markdownLinks(outputs.get(pipeline)?.get(hop.pageUrl) ?? "", finalUrl).some((link) => link.url === chosen);
+				markdownLinks(markdownOf(pipeline, hop), finalUrlOf(hop)).some((link) => link.url === chosen);
 			if (inOutput && chosen && accepted(hop).has(chosen)) {
 				right += 1;
 			}
 		}
 		if (answered > 0) {
-			result.set(itemKey(hop), right / answered);
+			scores.set(itemKey(hop), right / answered);
 		}
 	}
-	return result;
+	return { scores, failed };
 };
 
-/** Paired difference a − b, bootstrapped over sites (items of one site resampled together). */
-const pairedBySite = (a: Map<string, number>, b: Map<string, number>): string => {
+interface Paired {
+	mean: number;
+	low: number;
+	high: number;
+}
+
+/** Paired difference a − b in points, bootstrapped over sites (items of one site resampled together). */
+const pairedBySite = (a: Map<string, number>, b: Map<string, number>): Paired => {
 	const bySite = new Map<string, number[]>();
 	for (const hop of items) {
 		const key = itemKey(hop);
@@ -358,58 +438,84 @@ const pairedBySite = (a: Map<string, number>, b: Map<string, number>): string =>
 		draws.push(sum / Math.max(1, count));
 	}
 	draws.sort((x, y) => x - y);
-	const f = (v: number): string => `${v >= 0 ? "+" : "−"}${Math.abs(100 * v).toFixed(1)}`;
-	return `${f(mean)} [${f(draws[50])}, ${f(draws[1949])}]`;
+	const points = (value: number): number => Math.round(1000 * value) / 10;
+	return { mean: points(mean), low: points(draws[50]), high: points(draws[1949]) };
 };
 
+const formatPaired = ({ mean, low, high }: Paired): string => {
+	const f = (v: number): string => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}`;
+	return `${f(mean)} [${f(low)}, ${f(high)}]`;
+};
+
+const COMPARISONS: [string, string, string][] = [
+	["agent − all links", "webforai-agent", "webforai-all-links"],
+	["agent − agent without role headings", "webforai-agent", "webforai-agent-flat"],
+	["agent with same-site links as paths − agent", "webforai-agent-compact", "webforai-agent"],
+	["agent − node-html-markdown", "webforai-agent", "node-html-markdown"],
+	["agent − readability", "webforai-agent", "webforai"],
+];
+
+const siteCount = new Set(items.map(site)).size;
 const lines: string[] = [
 	`# ${LINK_SET} next-link choice — ${new Date().toISOString().slice(0, 10)}`,
 	"",
-	`${items.length} items (task × page) from ${
-		new Set(items.map(site)).size
-	} sites. Accuracy in % (mean over ${reps} rep(s)); tokens: median o200k tokens of the page output.`,
+	`${items.length} items (task × page) from ${siteCount} sites. Accuracy in % (mean over ${reps} rep(s)); tokens: median o200k tokens of the page output.`,
 	"",
 ];
-const results = new Map<string, Map<string, Map<string, number>>>();
+const summary: Record<string, unknown> = {};
 for (const model of models) {
 	const perPipeline = new Map<string, Map<string, number>>();
+	const rows: Record<string, unknown> = {};
 	lines.push(
 		`## ${MODELS[model].label}`,
 		"",
-		"| Pipeline | Accuracy | Answered | Median tokens |",
-		"| --- | ---: | ---: | ---: |",
+		"| Pipeline | Accuracy | Answered | Failed calls | Median tokens |",
+		"| --- | ---: | ---: | ---: | ---: |",
 	);
 	for (const [id, label] of PIPELINES) {
-		const scores = await correctness(model, id);
+		const { scores, failed } = await correctness(model, id);
 		perPipeline.set(id, scores);
 		const values = [...scores.values()];
+		const accuracy = (100 * values.reduce((s, v) => s + v, 0)) / Math.max(1, values.length);
 		const pageTokens = items.map((hop) => tokens.get(id)?.[hop.pageUrl] ?? 0).sort((x, y) => x - y);
+		const medianTokens = pageTokens[Math.floor(pageTokens.length / 2)];
 		lines.push(
-			`| ${label} | ${((100 * values.reduce((s, v) => s + v, 0)) / Math.max(1, values.length)).toFixed(1)} | ${
-				values.length
-			}/${items.length} | ${pageTokens[Math.floor(pageTokens.length / 2)].toLocaleString("en-US")} |`,
+			`| ${label} | ${accuracy.toFixed(1)} | ${values.length}/${
+				items.length
+			} | ${failed} | ${medianTokens.toLocaleString("en-US")} |`,
 		);
+		rows[id] = {
+			label,
+			accuracy: Math.round(10 * accuracy) / 10,
+			answered: values.length,
+			failedCalls: failed,
+			medianTokens,
+		};
 	}
-	results.set(model, perPipeline);
-	const agent = perPipeline.get("webforai-agent") ?? new Map();
+	const paired = Object.fromEntries(
+		COMPARISONS.map(([name, a, b]) => [
+			name,
+			pairedBySite(perPipeline.get(a) ?? new Map(), perPipeline.get(b) ?? new Map()),
+		]),
+	);
 	lines.push(
 		"",
 		"Paired differences in points, 95% CI bootstrapped over sites:",
 		"",
-		`- agent − all links: ${pairedBySite(agent, perPipeline.get("webforai-all-links") ?? new Map())}`,
-		`- agent − agent without role headings: ${pairedBySite(
-			agent,
-			perPipeline.get("webforai-agent-flat") ?? new Map(),
-		)}`,
-		`- agent with same-site links as paths − agent: ${pairedBySite(
-			perPipeline.get("webforai-agent-compact") ?? new Map(),
-			agent,
-		)}`,
-		`- agent − node-html-markdown: ${pairedBySite(agent, perPipeline.get("node-html-markdown") ?? new Map())}`,
-		`- agent − readability: ${pairedBySite(agent, perPipeline.get("webforai") ?? new Map())}`,
+		...Object.entries(paired).map(([name, value]) => `- ${name}: ${formatPaired(value)}`),
 		"",
 	);
+	summary[model] = { label: MODELS[model].label, pipelines: rows, paired };
 }
 const report = lines.join("\n");
 await writeFile(path.join(OUT_DIR, "choose.md"), report);
 console.info(report);
+
+const committed = path.join(EVALS_ROOT, "benchmarks", LINK_SET);
+if (saveResults && (await stat(committed).catch(() => undefined))) {
+	const file = path.join(committed, "results.json");
+	const results = JSON.parse(await readFile(file, "utf8").catch(() => "{}")) as Record<string, unknown>;
+	results.choose = { items: items.length, sites: siteCount, reps, models: summary };
+	await writeFile(file, `${JSON.stringify(results, null, "\t")}\n`);
+	console.info(`Wrote ${path.relative(process.cwd(), file)}`);
+}
