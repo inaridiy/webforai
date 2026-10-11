@@ -71,6 +71,8 @@ mid / hard, token F1 unchanged (0.861; links as text 0.864):
 - (2026-10-09) The table change is justified by output size (tokens spent on spaces); the
   WebMainBench analysis found it, so WebMainBench is re-measured once for the release, not tuned
   against.
+- (2026-10-11) Revision: a change found by analysing WebMainBench's misses is development on it,
+  so WebMainBench is no longer a holdout (as WebWalkerQA lost that status); `wcxb-test` still is.
 - (2026-10-09) The README states the default score next to the starred one and says that with the
   default extraction Trafilatura is ahead on WCEB's page mean, and that Trafilatura (in Python) is
   faster.

@@ -43,10 +43,14 @@ WEBFORAI_PROXY_LIST_URL=https://<your-proxy-provider>/list/download/<token>/...
 
 # Or a single proxy.
 WEBFORAI_PROXY_URL=http://user:pass@198.51.100.7:6540
+
+# Where the downloaded list is kept (default evals/.cache/proxies.txt); a path outside the repository keeps the credentials out of it.
+WEBFORAI_PROXY_LIST_FILE=/path/outside/the/repo/proxies.txt
 ```
 
-Fetching always tries a direct connection first and only falls back to the pool, because for most
-sites the direct route is both faster and more reliable.
+`corpus:fetch` tries a direct connection first and only falls back to the pool, because for most
+sites the direct route is both faster and more reliable. The link benchmarks render their pages
+through the pool ([below](#link-benchmarks-agent-mode)).
 
 ## Commands
 
@@ -89,6 +93,7 @@ model or LLM is involved in scoring.
 | Command | What it does |
 | --- | --- |
 | `gold:eval` | Token precision/recall/F1 against a set's reference text. `--sets=`, `--pipelines=webforai,webforai-kiwame,readability-turndown`, `--impl=<path>` to measure another checkout, `--threshold=`, `--limit=`, `--name=` (report file prefix), `--save-outputs` (also write each page's Markdown) |
+| `gold:eval -- --compare=<a>,<b>` | Paired difference of two saved runs (`.reports/gold/<a>.jsonl`, e.g. `current-webforai-comments`): mean F1 over pages and over datasets, with 95% intervals from a bootstrap stratified by dataset |
 | `gold:rouge-webmainbench` | WebMainBench's published metric (ROUGE-5 F1 over jieba tokens, MD mode) for outputs saved with `--sets=webmainbench --save-outputs`; needs `uv` |
 
 The two WebMainBench numbers differ on purpose. The token F1 ignores formatting, like the WCEB
@@ -112,8 +117,8 @@ are the competitors in `src/competitors.ts`.
 
 The learned block classifier's weights (`packages/webforai/src/extractors/lib/block-model.generated.ts`)
 are generated outside this repository; WCEB, WCXB and WebMainBench are used to measure them,
-never to train them. Treat `wcxb-test` and `webmainbench` as held out: measure a release on them,
-do not iterate against them.
+never to train them. Treat `wcxb-test` as held out: measure a release on it, do not iterate
+against it. WebMainBench was held out too until its misses led to the unpadded tables of v5.
 
 ## Cross-tool comparison
 
@@ -183,6 +188,47 @@ pnpm --filter @webforai/evals trafilatura -- --sets=wceb,wcxb-test,webmainbench 
 
 Its time is measured in Python around the `extract` call (median of `--rounds` after a warm-up):
 in-process like webforai's, but in another runtime.
+
+## Link benchmarks (agent mode)
+
+Does a converter's output keep the link an agent has to follow next, and can a model pick it?
+Two kinds of task, scored the same way:
+
+- **WebWalkerQA** (Wu et al., arXiv:2501.07572; [Apache-2.0](https://huggingface.co/datasets/callanwu/WebWalkerQA)):
+  click paths through conference, society and organisation sites. Used during development.
+- **related-hops**: start pages from Common Crawl (under its [terms of use](https://commoncrawl.org/terms-of-use))
+  where the link to follow is a related or next article. `related-hops-2` is the holdout. What
+  the task lists hold and how they were built: [`benchmarks/README.md`](benchmarks/README.md).
+
+Pages are rendered live in headless Chromium through the proxy pool, one request at a time per
+host. A page that does not load is tried through up to two other proxies; a site that refuses a
+request (HTTP 403 or 429) drops the page.
+
+| Command | What it does |
+| --- | --- |
+| `webwalker:fetch` | Follow WebWalkerQA's paths on the live sites; cache the pages and the clicks (`hops.jsonl`). `--direct` fetches without a proxy |
+| `webwalker:links` | Convert each page with every pipeline: is the next link kept, and at how many tokens. `--set=`, `--report` (score the saved outputs, convert nothing), `--save-results` (write `benchmarks/<set>/results.json`) |
+| `webwalker:choose` | A model picks the next link from each output. `--set=`, `--models=haiku,sonnet,codex`, `--reps=`, `--report` (no model calls), `--save-results`, `--migrate` (move answers cached under task-index names) |
+| `related-hops:build` | Build a related-hops set in stages (the steps are in `src/cli/related-hops-build.ts`), or `--stage=fetch` to render the start pages of a committed set |
+
+Prerequisites: Chromium for playwright-core (`playwright-core install chromium`, or
+`WEBWALKER_CHROMIUM=<path to a binary>`); a proxy (see above) or `--direct`; `uv` for Trafilatura
+and the token count. `webwalker:choose` and the build's label, question and verify stages call
+the `claude` and `codex` CLIs, which must be logged in — with an API key for runs of this size.
+The build's candidate stage streams Common Crawl files with `curl` and `gzip`.
+
+To score the committed holdout:
+
+```bash
+pnpm --filter @webforai/evals related-hops:build -- --set=related-hops-2 --stage=fetch
+pnpm --filter @webforai/evals webwalker:links -- --set=related-hops-2 --save-results
+pnpm --filter @webforai/evals webwalker:choose -- --set=related-hops-2 --models=haiku,sonnet --reps=3 --save-results
+```
+
+The pages have changed since the set was frozen, so a fresh fetch scores close to, not exactly,
+the numbers in `benchmarks/related-hops-2/results.json`. Building a new set needs
+`--exclude-hosts`, the hosts agent mode's role models were trained on, which is not published:
+the task lists and the scoring can be reproduced, the selection of start pages cannot.
 
 ## Reading the numbers
 

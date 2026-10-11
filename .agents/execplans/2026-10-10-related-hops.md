@@ -37,8 +37,8 @@ holdout status that way).
 ## Progress
 
 - [x] (2026-10-10) `--set=` for the WebWalker scoring; rendered, proxied fetching moved to
-      `live-pages.ts` (`83da86e`).
-- [x] (2026-10-10) Builder `related-hops:build` (`5d19385`).
+      `live-pages.ts` (`fc2980d`).
+- [x] (2026-10-10) Builder `related-hops:build` (`34f50d3`).
 - [x] (2026-10-10) Built and frozen: **285 tasks on 283 sites** (phase 1: 900 start candidates,
       one per site; a second batch of 600 was started and stopped unverified, to spare the shared
       codex quota — its pages sit in `.cache/related-hops/unused/`).
@@ -172,3 +172,10 @@ The host exclusion list is not published. README and `/benchmarks` report relate
 - (2026-10-11) Publish the task lists, not the pages: the claim must be checkable, and the
   holdout keeps its use (measured once per release) whether or not it is public — no model is
   trained on it.
+- (2026-10-11) Review of PR #87: the host exclusions were applied before redirects, so three
+  related-hops-2 tasks came from a site of the first batch (six expired domains redirecting to one
+  site). They are dropped, and the builder now checks the site after redirects too. Tasks about
+  private people (victims, minors, wedding couples, a student) and one adult-content task are
+  dropped as well: related-hops-2 loses 5 tasks (290 left, on 290 sites), related-hops 6 (279).
+  related-hops-2 is scored again from the cached outputs and answers of the remaining tasks — a
+  subset, not a new measurement; the numbers are in `evals/benchmarks/related-hops-2/results.json`.

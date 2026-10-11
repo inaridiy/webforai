@@ -79,3 +79,5 @@ webforai 3.95 s in the 2367b42 `bench:compare` run (load ≈ 3): not measured to
   an LLM by default and their TEDS reduces to a near-constant (apted is given strings).
 - (2026-10-09) `wcxb-test` and `webmainbench` are holdouts: measured per release, never iterated
   against.
+- (2026-10-11) WebMainBench lost holdout status: the unpadded tables
+  (`2026-10-09-comments-preset-compact-tables.md`) came from analysing it.
