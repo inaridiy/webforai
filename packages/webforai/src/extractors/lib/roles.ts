@@ -103,10 +103,14 @@ const isFollowable = (href: string): boolean => {
 	return !compact.startsWith("#") && (!SCHEME.test(compact) || /^https?:/i.test(compact));
 };
 
+const WORD_END = /[\p{L}\p{N}]$/u;
+const WORD_START = /^[\p{L}\p{N}]/u;
+
 /**
- * A link's text. Adjacent child elements are separated by a space: pager links put the label
- * and the title in two `<span>`s with no whitespace between them (`Next pageServer-Side
- * Rendering`), and the CSS that sets them apart is gone.
+ * A link's text. Two words that adjacent child elements run together are separated by a space:
+ * pager links put the label and the title in two `<span>`s with no whitespace between them
+ * (`Next pageServer-Side Rendering`), and the CSS that set them apart is gone. Path segments
+ * (`<span>packages/</span><span>webforai</span>`) stay joined.
  */
 const textOf = (node: ElementContent): string => {
 	if (node.type === "text") {
@@ -118,10 +122,11 @@ const textOf = (node: ElementContent): string => {
 	let value = "";
 	let afterElement = false;
 	for (const child of node.children) {
-		if (child.type === "element" && afterElement) {
+		const text = textOf(child);
+		if (child.type === "element" && afterElement && WORD_END.test(value) && WORD_START.test(text)) {
 			value += " ";
 		}
-		value += textOf(child);
+		value += text;
 		afterElement = child.type === "element";
 	}
 	return value;
