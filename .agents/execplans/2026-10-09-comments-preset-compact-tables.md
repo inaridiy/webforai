@@ -30,6 +30,10 @@ Analysis of the Trafilatura results (2026-10-09):
 - [x] (2026-10-09) `gold:eval` pipeline `webforai-comments`.
 - [x] (2026-10-09) WCEB and `bench:compare` (Trafilatura included) at `297b7df`; README, landing
       page, `/benchmarks` and chart updated, the comments-preset score marked with `*`.
+- [x] (2026-10-11) Re-scored after the role models were retrained (`feat/agent-recall`):
+      `comments` WCEB 0.922 / 0.920 (P 0.914, R 0.955); − Trafilatura +0.022 [+0.017, +0.026] over
+      pages, +0.017 [+0.011, +0.023] over datasets; ahead on seven datasets, behind on Scrapinghub.
+      Default extraction identical on every page. Docs and chart updated.
 
 ## Results (297b7df, 2026-10-09)
 

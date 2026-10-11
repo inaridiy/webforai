@@ -21,7 +21,7 @@ const WCEB_F1 = {
 };
 // webforai with the `comments` preset, which keeps reader comments as Trafilatura does by default
 // (WCEB's Dragnet references include them). Shown next to the default score, marked with *.
-const WCEB_F1_COMMENTS = 0.918;
+const WCEB_F1_COMMENTS = 0.922;
 const PIPELINES = Object.keys(WCEB_F1);
 // Timed in Python around its `extract` call, not interleaved with the Node pipelines.
 const PYTHON = new Set(["trafilatura"]);

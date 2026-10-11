@@ -47,7 +47,7 @@ const markdown = htmlToMarkdown(html, { url });
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="site/docs/public/images/benchmark-dark.svg">
-  <img alt="WCEB F1: webforai 0.892 (0.918 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="site/docs/public/images/benchmark-light.svg" width="100%">
+  <img alt="WCEB F1: webforai 0.892 (0.922 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
 [WCEB](https://github.com/chatnoir-eu/web-content-extraction-benchmark) (Bevendorff et al., SIGIR 2023)
@@ -66,8 +66,8 @@ reproducible from [`evals/`](evals).
 
 |  | webforai | Readability + Turndown | Defuddle | Trafilatura | Firecrawl OSS | Cloudflare toMarkdown |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| **WCEB F1** — 3,985 pages, reference text | 0.892 (**0.918**\*) | 0.880 | 0.820 | 0.900 | 0.743 | 0.713 |
-| Precision / recall | **0.922** / 0.909 (0.912 / 0.950\*) | 0.917 / 0.892 | 0.869 / 0.856 | 0.916 / 0.915 | 0.668 / 0.939 | 0.604 / **0.985** |
+| **WCEB F1** — 3,985 pages, reference text | 0.892 (**0.922**\*) | 0.880 | 0.820 | 0.900 | 0.743 | 0.713 |
+| Precision / recall | **0.922** / 0.909 (0.914 / 0.955\*) | 0.917 / 0.892 | 0.869 / 0.856 | 0.916 / 0.915 | 0.668 / 0.939 | 0.604 / **0.985** |
 | Code blocks kept as code — 748 blocks | **98.0%** | 45.9% | 89.2% | 40.6% | 51.9% | 53.6% |
 | Data tables kept — 64 tables | 39.1% | 29.7% | 54.7% | 40.6% | **95.3%** | 57.8% |
 | Quality checks passed | **75 / 75** | 64 / 75 | 73 / 75 | 64 / 75 | 53 / 75 | 62 / 75 |
@@ -79,6 +79,29 @@ extraction, webforai's 0.892 is below Trafilatura's 0.900. † Timed in Python a
 `extract` call, not interleaved with the Node pipelines.
 
 </details>
+
+### Following links
+
+For agents that browse, the `agent` preset adds the page's other links, grouped by role. On 295
+tasks from 293 sites it was not developed on — follow a related or next article to answer a
+question — a model picks the right link from its output as often as from every link of the page
+or from the whole page converted, with fewer tokens:
+
+| Output given to the model | Right link chosen (Haiku 5.5 / Sonnet 5.5) | Median tokens |
+| --- | ---: | ---: |
+| webforai, `agent` preset | 93.0% / 95.0% | **2,440** |
+| webforai + every link of the page | 92.4% / 94.5% | 2,902 |
+| Turndown (full page) | 93.0% / 94.9% | 4,533 |
+| node-html-markdown (full page) | 92.8% / 94.6% | 4,350 |
+| Defuddle | 11.3% / 11.5% | 1,075 |
+| Readability + Turndown | 6.8% / 7.1% | 967 |
+| Trafilatura, with links | 5.6% / 5.4% | 893 |
+
+The accuracy differences between the first four rows are within noise; the role headings do not
+make the choice easier, so the gain is size. Reader-mode extractors keep the article and drop the
+links around it, as they are designed to. The tasks and their links were written and checked by
+models; the method and the task list are on the
+[benchmarks page](https://webforai.dev/benchmarks#following-links-agent-mode).
 
 ## Why webforai
 
@@ -93,7 +116,8 @@ extraction, webforai's 0.892 is below Trafilatura's 0.900. † Timed in Python a
   Twoslash-annotated code. Tables stay GFM tables, KaTeX and MathJax become LaTeX, and
   lazy-loaded images, definition lists and sub/superscripts come through.
 - **Built for agents.** `agentExtractor` appends the page's other links, grouped by role
-  (related, pagination, section navigation, breadcrumbs), so an agent knows where to go next.
+  (related, pagination, section navigation, breadcrumbs), so an agent knows where to go next —
+  [as well as from the whole page, in about half the tokens](#following-links).
   Metadata comes back as data or YAML front matter.
 - **Easy to embed.** ~300 KB gzipped in a Worker, with no browser driver and no Node.js
   built-ins. It runs in Node.js (ESM and CommonJS), Cloudflare Workers (no `nodejs_compat`)

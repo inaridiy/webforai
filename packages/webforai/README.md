@@ -52,14 +52,20 @@ Looking for the command line? That is [`webforai-cli`](https://www.npmjs.com/pac
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-dark.svg">
-  <img alt="WCEB F1: webforai 0.892 (0.918 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
+  <img alt="WCEB F1: webforai 0.892 (0.922 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
 WCEB scores extracted text against reference text on 3,985 pages and is never used for tuning.
 Code blocks and time come from 60 real pages that webforai is developed against, so they likely
-favour it. Against Trafilatura, webforai's WCEB lead needs the `comments` preset (0.918 against
+favour it. Against Trafilatura, webforai's WCEB lead needs the `comments` preset (0.922 against
 0.900), because Trafilatura keeps reader comments by default and so do many WCEB references; with
-the default extraction webforai scores 0.892. Trafilatura, timed in Python, is also faster. Firecrawl OSS and Cloudflare toMarkdown run as services and are not timed. Method and
+the default extraction webforai scores 0.892. Trafilatura, timed in Python, is also faster. Firecrawl OSS and Cloudflare toMarkdown run as services and are not timed.
+
+For agents, the `agent` preset keeps the links a model needs to go on: on 295 related- and
+next-article tasks from sites webforai was not developed on, Haiku 5.5 and Sonnet 5.5 picked the
+right link from its output 93.0% and 95.0% of the time, level with every link of the page (92.4%,
+94.5%) and with the whole page converted by node-html-markdown (92.8%, 94.6%), at 2,440 median
+tokens against 2,902 and 4,350. Reader-mode extractors score 5–12% on these tasks. Method and
 limitations: [webforai.dev/benchmarks](https://webforai.dev/benchmarks).
 
 ## Entry points

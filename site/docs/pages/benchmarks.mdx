@@ -1,6 +1,6 @@
 ---
 title: Benchmarks
-description: A reproducible comparison of webforai with Readability + Turndown, Defuddle, Trafilatura, plain Turndown, node-html-markdown, Firecrawl OSS and Cloudflare's toMarkdown on cached real pages — method, results and limitations.
+description: A reproducible comparison of webforai with Readability + Turndown, Defuddle, Trafilatura, plain Turndown, node-html-markdown, Firecrawl OSS and Cloudflare's toMarkdown on cached real pages, plus a link-following benchmark for agent mode — method, results and limitations.
 ---
 
 # Benchmarks
@@ -18,7 +18,7 @@ while developing webforai. Its quality assertions were written against webforai'
 failures. The results are therefore likely to favour webforai, and they are not a general measure
 of extraction quality.
 
-<img src="/images/benchmark-light.svg" alt="WCEB F1: webforai 0.892 (0.918 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
+<img src="/images/benchmark-light.svg" alt="WCEB F1: webforai 0.892 (0.922 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
 
 The chart summarises three columns of the tables below. After a new run, regenerate it (for the
 README and this page) with `pnpm --filter site benchmark-chart`; the WCEB scores are constants in
@@ -62,7 +62,14 @@ lines inside code as headings, and credited tables whose rows a Markdown parser 
 (Turndown's output for Sphinx tables). Every pipeline is measured with the new definitions; the
 Python-docs heading floor was corrected from 20 to its 19 real content headings.
 
-Revision note (2026-10-09, latest): Trafilatura was added as a pipeline (corpus and WCEB), the
+Revision note (2026-10-11, latest): the agent extractor's role models were retrained on more
+pages (none from WCEB) and gained a model that decides which links to keep. The `comments` preset
+takes its comments from these models, so its WCEB scores moved from 0.918 to 0.922 (over pages)
+and from 0.916 to 0.920 (over datasets); the default extraction is unchanged on every page. The
+corpus comparison was not re-run. [Following links](#following-links-agent-mode), a benchmark for
+agent mode, was added.
+
+Revision note (2026-10-09): Trafilatura was added as a pipeline (corpus and WCEB), the
 corpus comparison was re-run for all pipelines, and webforai at `297b7df` writes tables without
 alignment padding (median output 8,461 → 8,207 characters; no check, code or table figure changed).
 The WCEB table gains webforai's `comments` preset, which keeps reader comments as Trafilatura does
@@ -203,7 +210,7 @@ used only for measurement, never for tuning.
 | Pipeline | WCEB F1 (mean over pages / over the 8 datasets) | Precision / recall (pages) |
 | --- | ---: | ---: |
 | webforai | 0.892 / 0.909 | 0.922 / 0.909 |
-| webforai, `comments` preset (reader comments kept) | 0.918 / 0.916 | 0.912 / 0.950 |
+| webforai, `comments` preset (reader comments kept) | 0.922 / 0.920 | 0.914 / 0.955 |
 | webforai with the heuristic extractor (`takumiExtractor`) | 0.874 / 0.892 | 0.911 / 0.890 |
 | Readability + Turndown | 0.880 / 0.901 | 0.917 / 0.892 |
 | Defuddle | 0.820 / 0.850 | 0.869 / 0.856 |
@@ -232,11 +239,11 @@ Dragnet, the largest dataset (1,379 pages), whose references include reader comm
 keeps comments by default, webforai's default does not. On the 222 Dragnet pages where Trafilatura
 scores more than 0.2 higher, webforai's recall is 0.33 against Trafilatura's 0.88, and 213 of their
 references contain comment text. With the `comments` preset webforai keeps them too and leads on
-both means: 0.918 against 0.900 over pages (+0.018 [+0.013, +0.022]) and 0.916 against 0.902 over
-datasets (+0.014 [+0.008, +0.020]). It also gains on CETD (0.919 → 0.951), whose references keep
-comments too, and gives up a little where they do not (L3S-GN1 0.920 → 0.914, Readability's set
-0.946 → 0.935). With the preset webforai is ahead of Trafilatura on six datasets, level on
-Readability's (0.935) and behind on Scrapinghub (0.912 against 0.948).
+both means: 0.922 against 0.900 over pages (+0.022 [+0.017, +0.026]) and 0.920 against 0.902 over
+datasets (+0.017 [+0.011, +0.023]). It also gains on CETD (0.919 → 0.951), whose references keep
+comments too, and gives up a little where they do not (L3S-GN1 0.920 → 0.915, Readability's set
+0.946 → 0.941). With the preset webforai is ahead of Trafilatura on seven datasets and behind on
+Scrapinghub (0.912 against 0.948).
 
 Cloudflare toMarkdown converts nearly all of the page, so it has the highest recall in the table
 (0.985) and, after full-page Turndown, the lowest precision (0.604). It removes the header and footer, which puts it above
@@ -244,6 +251,79 @@ full-page Turndown on every dataset, but below Firecrawl OSS on every dataset an
 all eight; it scores more than 0.2 above webforai on 226 pages and more than 0.2 below on 1,754.
 Its output also starts with the page metadata as front matter and ends with any JSON-LD, which the
 reference text does not contain. Full-page Turndown threw on 84 WCEB pages, scored as empty.
+
+## Following links (agent mode)
+
+The comparisons above score what a pipeline keeps of an article. An agent that browses also
+needs the page's links: the related article, the next part, the menu entry that leads to the
+answer. The `agent` preset (`agentExtractor`) writes the default output and then the page's
+other links grouped by role (related, pagination, section and site navigation, breadcrumbs),
+leaving out the links its role models classify as boilerplate. This section measures whether a
+model can still find the link it needs in that output, on sites webforai was not developed on,
+and at what size.
+
+**Set.** `related-hops-2`, built on 2026-10-10 and measured once: 295 tasks on 293 English
+sites. Each task is a start page from Common Crawl (CC-NEWS for August 2026, and blog, news and
+documentation paths of `CC-MAIN-2026-34`), one same-site link on it — a related article (204),
+the previous or next article (86), a "read next" (3) or a part of a series (2) — and a question
+answered by a fact on the linked page. The link was picked by Sonnet 5.5 from the page's list of
+anchors with each anchor's enclosing elements, not from any pipeline's output. Sonnet 5.5 wrote
+the question; Opus 5.5 then checked, independently, that the linked page supports the answer
+and that the start page, teasers and link texts included, does not answer it. The set shares no
+host with the pages agent mode's role models were trained on, with WebWalkerQA (below), or with a
+first batch built the same way (`related-hops`, 285 tasks), which became a development set when a bug
+was traced on it. Pages were rendered in headless Chromium, and every pipeline converts the same
+rendered HTML. The task list — URLs, the link, the question and the answer — is committed as
+[`evals/benchmarks/related-hops-2/tasks.jsonl`](https://github.com/inaridiy/webforai/blob/main/evals/benchmarks/related-hops-2/tasks.jsonl);
+the pages are not.
+
+**Measures.**
+
+- **Link kept** — the output links to the target page (inline, reference or autolink; URLs
+  normalised).
+- **Link chosen** — a model gets the question, the page's URL and one pipeline's output, and
+  answers with the one URL it would open next (structured output, no tools). The answer is
+  correct when it is the target and is a link in the output: a model may not navigate from
+  memory. Haiku 5.5 and Sonnet 5.5 through `claude -p` with a fixed system prompt, three
+  repetitions each; the table gives the mean.
+- **Size** — median o200k_base tokens of the output, per page.
+
+webforai's agent output was produced at commit `de4b772`. "webforai + every link" is webforai's
+default output followed by every other link of the page in document order: the simplest way to
+give an agent all the links, and the baseline the role models have to beat.
+
+| Pipeline | Link kept | Chosen, Haiku 5.5 | Chosen, Sonnet 5.5 | Median tokens |
+| --- | ---: | ---: | ---: | ---: |
+| webforai, `agent` preset | 99.7% | 93.0% | 95.0% | 2,440 |
+| webforai + every link | 100% | 92.4% | 94.5% | 2,902 |
+| Turndown (full page) | 99.7% | 93.0% | 94.9% | 4,533 |
+| node-html-markdown (full page) | 99.0% | 92.8% | 94.6% | 4,350 |
+| Defuddle | 11.5% | 11.3% | 11.5% | 1,075 |
+| Readability + Turndown | 7.1% | 6.8% | 7.1% | 967 |
+| Trafilatura (`include_links=True`) | 5.8% | 5.6% | 5.4% | 893 |
+| webforai, default preset | 7.1% | 6.9% | 7.1% | 1,069 |
+
+- **The same choices in fewer tokens.** With the agent output, models choose the right link as
+  often as with every link or the whole page converted: agent − every link +0.6 points
+  [−1.1, +2.4] (Haiku) and +0.6 [−0.6, +1.8] (Sonnet); agent − node-html-markdown +0.2 and +0.5,
+  intervals across zero (paired, 95%, bootstrapped over sites). The output is 16% smaller than
+  listing every link and about 45% smaller than converting the whole page.
+- **Grouping does not make the choice easier.** The same links without the role headings score
+  the same (−0.5 [−1.6, +0.6] and +0.6 [−0.3, +1.5]). What agent mode adds is size, not accuracy.
+- **Reader-mode extraction cannot do this task.** Readability, Defuddle, Trafilatura and
+  webforai's default preset keep the article and drop the rails around it, so the link is
+  usually gone — as they are designed to. An agent that browses needs links on top of the
+  article; the question is only how many.
+
+**WebWalkerQA (development set).** [WebWalkerQA](https://huggingface.co/datasets/callanwu/WebWalkerQA)
+(Wu et al., 2025) gives click paths through conference, society and organisation sites. Followed
+on the live sites, 249 clicks of its English tasks resolve, mostly through site and section
+menus. The agent output keeps 98.8% of the clicked links (every link 100%, node-html-markdown
+94.0%) at 2,871 median tokens against 3,071 for every link — 7% fewer: these sites carry few
+boilerplate links. This set and the first `related-hops` batch were used to find agent mode's
+missing links and to choose its operating point, so they flatter it. The model choice on
+WebWalkerQA, measured at `3e9e429` before the last two changes, was 0.5–2.9 points below every link,
+with intervals reaching zero.
 
 ## Limitations
 
@@ -264,6 +344,12 @@ reference text does not contain. Full-page Turndown threw on 84 WCEB pages, scor
 - **Stale captures.** Captures are cached snapshots and may differ from the live sites. Page
   HTML is not committed (third-party content), so reproducing the exact numbers requires the same
   captures; the corpus fingerprint in the summary identifies them.
+- **Link tasks.** The link and the question of each `related-hops-2` task are written and
+  checked by models, not people; the tasks are English and one click deep; and start pages were
+  kept only if they have a same-site related or sequence link, so pages without one are not
+  represented. Link choice measures one decision, not a whole browsing session. The pages are
+  live sites: re-rendering them later gives slightly different pages, and the "every link" row
+  shows how many targets are still linked.
 - **Timing scope.** Warmed, single-process, local conversion only. Trafilatura's time is measured
   in Python, in a separate run, so it is comparable as an order of magnitude, not as a ratio. No network, browser rendering,
   cold start or memory measurement. The host was not isolated.
@@ -283,6 +369,17 @@ self-hosted Firecrawl (`firecrawl-oss`, see `evals/README.md`); Cloudflare toMar
 ```bash
 pnpm --filter platform exec wrangler dev --config ../../evals/workers/cf-tomarkdown/wrangler.jsonc --port 8799
 CF_TOMARKDOWN_URL=http://localhost:8799 pnpm --filter @webforai/evals cf-tomarkdown -- --sets=corpus,wceb
+```
+
+The link benchmark renders the task list's start pages again (through the proxy pool configured
+in `.env`; `--direct` fetches without one), lists the links each pipeline keeps, then asks the
+models through the local `claude` CLI:
+
+```bash
+pnpm --filter @webforai/evals exec tsx src/cli/related-hops-build.ts --set=related-hops-2 --stage=fetch
+pnpm --filter @webforai/evals webwalker:links -- --set=related-hops-2
+pnpm --filter @webforai/evals webwalker:choose -- --set=related-hops-2 --models=haiku,sonnet --reps=3
+pnpm --filter @webforai/evals webwalker:choose -- --set=related-hops-2 --models=haiku,sonnet --reps=3 --report
 ```
 
 The run writes the full per-capture results, a Markdown report and every pipeline's output to
