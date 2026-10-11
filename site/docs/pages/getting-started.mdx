@@ -23,14 +23,14 @@ The CLI needs no install. Convert any URL (or local HTML file) to Markdown in on
 stdout, so it can be piped, redirected, or captured:
 
 ```bash
-npx webforai-cli@latest https://www.npmjs.com/package/webforai
+npx webforai-cli https://www.npmjs.com/package/webforai
 
 # write to a file / emit machine-readable JSON instead
-npx webforai-cli@latest https://www.npmjs.com/package/webforai -o webforai.md
-npx webforai-cli@latest https://example.com --json | jq -r .markdown
+npx webforai-cli https://www.npmjs.com/package/webforai -o webforai.md
+npx webforai-cli https://example.com --json | jq -r .markdown
 ```
 
-Prefer prompts? `npx webforai-cli@latest -i` starts a guided interactive flow. The full flag
+Prefer prompts? `npx webforai-cli -i` starts a guided interactive flow. The full flag
 reference — including JavaScript rendering via Playwright or the
 [hosted platform](/platform), and the Agent Skill for AI agents — lives on the
 [CLI page](/cli).

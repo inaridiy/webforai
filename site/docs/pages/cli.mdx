@@ -28,16 +28,16 @@ Skill, reinstall it ([below](#for-ai-agents)) so it calls the new package.
 
 ```bash
 # Markdown to stdout
-npx webforai-cli@latest https://example.com/article
+npx webforai-cli https://example.com/article
 
 # write to a file instead
-npx webforai-cli@latest https://example.com/article -o article.md
+npx webforai-cli https://example.com/article -o article.md
 
 # convert a local HTML file
-npx webforai-cli@latest ./page.html
+npx webforai-cli ./page.html
 
 # machine-readable output
-npx webforai-cli@latest https://example.com --json | jq -r .markdown
+npx webforai-cli https://example.com --json | jq -r .markdown
 ```
 
 ## Flags
@@ -80,8 +80,8 @@ making a request. Interactive mode applies the same flag validation and environm
 
 ```bash
 export WEBFORAI_API_KEY=wfa_...   # from https://platform.webforai.dev/dashboard
-npx webforai-cli@latest https://spa.example.com --engine auto
-npx webforai-cli@latest https://blocked.example.com --engine proxy-fetch --region jp   # subscription
+npx webforai-cli https://spa.example.com --engine auto
+npx webforai-cli https://blocked.example.com --engine proxy-fetch --region jp   # subscription
 ```
 
 ## Batch and crawl
@@ -94,11 +94,11 @@ results and write **one Markdown file per page** into a directory.
 export WEBFORAI_API_KEY=wfa_...
 
 # crawl a docs site (same-origin), plus llms.txt and llms-full.txt
-npx webforai-cli@latest crawl https://docs.example.com -o docs --limit 100 --include '^/docs' --llms-txt
+npx webforai-cli crawl https://docs.example.com -o docs --limit 100 --include '^/docs' --llms-txt
 
 # convert a list of URLs (arguments, or one per line with --file; "-" reads stdin)
-npx webforai-cli@latest batch https://a.example/post https://b.example/news -o pages
-cat urls.txt | npx webforai-cli@latest batch --file - -o pages --json
+npx webforai-cli batch https://a.example/post https://b.example/news -o pages
+cat urls.txt | npx webforai-cli batch --file - -o pages --json
 ```
 
 | flag | meaning |
@@ -151,10 +151,10 @@ agents when and how to use it:
 
 ```bash
 # print the SKILL.md
-npx webforai-cli@latest skill
+npx webforai-cli skill
 
 # install it via Vercel's skills CLI (agent picker, symlinks, lockfile)
-npx webforai-cli@latest skill --install
+npx webforai-cli skill --install
 
 # or install straight from the repository
 npx skills add inaridiy/webforai
