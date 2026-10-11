@@ -29,11 +29,13 @@ make every other user-facing intro follow. Stacked on `release/v5` (PR #87).
 - [x] (2026-10-11) Library: link labels separate adjacent child elements with a space
       (`textOf` in `roles.ts`), so VitePress pager links read "Next page Server-Side Rendering"
       instead of "Next pageServer-Side Rendering". Needed before quoting real output in the README.
-- [ ] `README.md`, `packages/webforai/README.md`, `packages/cli/README.md`; `cli.mdx` still named
-      the `readability` preset and left out `reader`.
-- [ ] `site/docs/pages/index.mdx` (hero, benchmarks copy, section order), `getting-started.mdx`
-      intro, `DemoScrape.tsx` idle copy, platform `landing.tsx` hero.
-- [ ] Checks: biome, typecheck, webforai tests, site build, platform typecheck + tests + build.
+- [x] (2026-10-11) `README.md`, `packages/webforai/README.md`, `packages/cli/README.md`;
+      `cli.mdx` still named the `readability` preset and left out `reader`.
+- [x] (2026-10-11) `site/docs/pages/index.mdx` (hero, benchmarks copy), `getting-started.mdx`
+      intro, `DemoScrape.tsx` idle copy, platform `landing.tsx` hero (and the prerender gate's
+      marker, which keys on the hero text).
+- [x] (2026-10-11) Checks: biome, typecheck, webforai extractor tests (105), site build,
+      platform typecheck + tests (505) + build.
 
 ## Decision log
 

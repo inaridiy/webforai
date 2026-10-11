@@ -43,7 +43,7 @@ type Page = {
 
 /** Keep in sync with OWN_DOCUMENT in public/sw.js. */
 const PAGES: Page[] = [
-	{ path: "/", file: "index.html", marker: "Turn any web page into Markdown", minBodyChars: 500 },
+	{ path: "/", file: "index.html", marker: "Any web page, as the cleanest Markdown", minBodyChars: 500 },
 	{ path: "/terms", file: "terms.html", marker: "Limitation of liability", minBodyChars: 2000 },
 	{ path: "/privacy", file: "privacy.html", marker: "Information we collect", minBodyChars: 2000 },
 	{ path: "/commerce", file: "commerce.html", marker: "販売事業者", minBodyChars: 300 },

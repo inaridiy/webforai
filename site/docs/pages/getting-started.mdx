@@ -7,8 +7,11 @@ description: "Get started with webforai: convert HTML or a URL to clean, LLM-rea
 
 ## Overview
 
-Welcome to webforai, a library designed to convert **HTML to Markdown** with simple utilities.
-Whether you're working in a browser, Node.js, or even on Cloudflare Workers, webforai is your go-to tool for bridging between web and LLMs.
+webforai turns any HTML into the cleanest Markdown, for humans and AI agents, in Node.js,
+Cloudflare Workers and browsers. It has two modes: **reader mode** (the default, preset `reader`)
+extracts the main content of a page, like Mozilla Readability; **agent mode** (preset `agent`)
+adds only the links an AI agent needs to explore the site, for about half the tokens of the whole
+page. Both are measured against other converters on the [benchmarks](/benchmarks) page.
 
 :::tip
 webforai comes in three forms: this library, the [CLI](/cli) (`npx webforai-cli <url>`, a separate package), and a

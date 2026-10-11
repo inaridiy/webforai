@@ -17,11 +17,12 @@ const Hero = () => (
 		<div className="dot-grid pointer-events-none absolute inset-0 opacity-50 [mask-image:linear-gradient(to_bottom,black,transparent_70%)]" />
 		<div className="relative mx-auto w-full max-w-6xl px-5 pt-16 pb-14 sm:pt-24 sm:pb-20">
 			<h1 className="max-w-4xl text-balance font-semibold text-[2.5rem] leading-[1.04] tracking-[-0.035em] sm:text-6xl">
-				Turn any web page into Markdown your model can read.
+				Any web page, as the cleanest Markdown for your model.
 			</h1>
 			<p className="mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-				Send a URL, get back the article as clean Markdown with its title, author and date. Navigation, ads and cookie
-				banners are removed, and pages that only exist after JavaScript runs are rendered in a real browser first.
+				Send a URL, get back the main content as clean Markdown with its title, author and date — the webforai library,
+				with the best quality of the converters it is benchmarked against, plus the browsers, proxies and crawl queues
+				it needs on the web. Pages that only exist after JavaScript runs are rendered first.
 			</p>
 			<DemoConsole className="mt-10" />
 			<p className="mt-4 text-muted-foreground text-sm">
