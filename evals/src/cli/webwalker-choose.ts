@@ -5,6 +5,7 @@
  * Usage (after `webwalker:fetch` and `webwalker:links`):
  *   pnpm --filter @webforai/evals webwalker:choose -- --models=haiku --reps=3 --concurrency=12 [--set=related-hops]
  *   pnpm --filter @webforai/evals webwalker:choose -- --models=haiku,sonnet,codex --report
+ *   pnpm --filter @webforai/evals webwalker:choose -- --models=haiku,sonnet --reps=3 --pipelines=webforai-agent --dry-run
  *
  * Models run through the local CLIs: `claude -p` (Haiku 5.5, Sonnet 5.5; no tools, a fixed system
  * prompt, structured output) and `codex exec` (gpt-6.1-sol, low reasoning effort). Log the CLIs in
@@ -23,8 +24,11 @@
  * so a run resumes where it stopped and asks again only where an output (or the question)
  * changed; failed calls are retried on the next run. `--migrate` moves answers cached under the
  * earlier task-index names to prompt hashes, for the answers written after the current outputs.
- * The summary goes to `.reports/<set>/choose.md`; `--save-results` also writes it to the `choose`
- * part of the committed `benchmarks/<set>/results.json`.
+ * `--pipelines=a,b` asks only those pipelines (the report still lists every pipeline, with how many
+ * items each has answers for), and `--dry-run` prints how many calls a run would make, per model
+ * and pipeline, without making them. The summary goes to `.reports/<set>/choose.md`;
+ * `--save-results` also writes it to the `choose` part of the committed
+ * `benchmarks/<set>/results.json`.
  */
 
 import { spawn } from "node:child_process";
@@ -55,6 +59,8 @@ const limit = Number(arg("limit", "100000"));
 const reportOnly = process.argv.includes("--report");
 const migrate = process.argv.includes("--migrate");
 const saveResults = process.argv.includes("--save-results");
+const dryRun = process.argv.includes("--dry-run");
+const onlyPipelines = arg("pipelines", "").split(",").filter(Boolean);
 
 const OUT_DIR = LINK_REPORTS_DIR;
 const CHOICES_DIR = path.join(WEBWALKER_DIR, "choices");
@@ -112,7 +118,9 @@ const run = (
 	input: string,
 ): Promise<{ code: number; stdout: string; stderr: string }> =>
 	new Promise((resolve) => {
-		const child = spawn(command, args, { cwd: workdir, stdio: ["pipe", "pipe", "pipe"] });
+		// A CLI that updates itself mid-run replaces its binary under the calls still starting.
+		const env = { ...process.env, DISABLE_AUTOUPDATER: "1" };
+		const child = spawn(command, args, { cwd: workdir, env, stdio: ["pipe", "pipe", "pipe"] });
 		let stdout = "";
 		let stderr = "";
 		const timer = setTimeout(() => child.kill("SIGKILL"), TIMEOUT_MS);
@@ -309,19 +317,32 @@ if (migrate) {
 // ------------------------------------------------------------------------ run
 
 if (!reportOnly) {
+	const unknown = onlyPipelines.filter((id) => !PIPELINES.some(([known]) => known === id));
+	if (unknown.length > 0) {
+		throw new Error(`Unknown pipeline ${unknown.join(", ")}`);
+	}
+	const asked = PIPELINES.filter(([id]) => onlyPipelines.length === 0 || onlyPipelines.includes(id));
 	const jobs: (() => Promise<void>)[] = [];
+	const calls = new Map<string, number>();
 	for (const model of models) {
 		for (let rep = 0; rep < reps; rep++) {
-			for (const [pipeline] of PIPELINES) {
+			for (const [pipeline] of asked) {
 				for (const hop of items) {
+					const file = answerFile(model, rep, pipeline, hop);
+					const cached = await readAnswer(file);
+					if (cached && !cached.failed) {
+						continue;
+					}
+					const hasLinks = markdownLinks(markdownOf(pipeline, hop), finalUrlOf(hop)).length > 0;
+					if (hasLinks) {
+						calls.set(`${model} ${pipeline}`, (calls.get(`${model} ${pipeline}`) ?? 0) + 1);
+					}
+					if (dryRun) {
+						continue;
+					}
 					jobs.push(async () => {
-						const file = answerFile(model, rep, pipeline, hop);
-						const cached = await readAnswer(file);
-						if (cached && !cached.failed) {
-							return;
-						}
 						await mkdir(path.dirname(file), { recursive: true });
-						if (markdownLinks(markdownOf(pipeline, hop), finalUrlOf(hop)).length === 0) {
+						if (!hasLinks) {
 							await writeFile(file, JSON.stringify({ error: "no links in output" }));
 							return;
 						}
@@ -340,9 +361,16 @@ if (!reportOnly) {
 			}
 		}
 	}
+	const total = [...calls.values()].reduce((sum, count) => sum + count, 0);
 	console.info(
-		`${items.length} items × ${PIPELINES.length} pipelines × ${models.join("+")} × ${reps} rep(s): ${jobs.length} jobs`,
+		`${items.length} items × ${asked.length} pipelines × ${models.join("+")} × ${reps} rep(s): ${total} calls to make`,
 	);
+	if (dryRun) {
+		for (const [key, count] of calls) {
+			console.info(`  ${key}: ${count}`);
+		}
+		process.exit(0);
+	}
 	let done = 0;
 	const worker = async (): Promise<void> => {
 		for (let job = jobs.shift(); job; job = jobs.shift()) {

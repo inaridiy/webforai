@@ -175,7 +175,9 @@ const streamGzipLines = (url: string, onLine: (line: string) => boolean): Promis
 
 const run = (command: string, args: string[], input: string, cwd: string): Promise<{ code: number; out: string }> =>
 	new Promise((resolve) => {
-		const child = spawn(command, args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
+		// A CLI that updates itself mid-run replaces its binary under the calls still starting.
+		const env = { ...process.env, DISABLE_AUTOUPDATER: "1" };
+		const child = spawn(command, args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
 		let out = "";
 		let err = "";
 		const timer = setTimeout(() => child.kill("SIGKILL"), 600_000);
