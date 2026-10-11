@@ -80,6 +80,28 @@ const agentFlat = (html: string, url: string): string => {
 	return `${markdown.slice(0, at)}${links.replace("## Links\n", "## Links\n\n")}`;
 };
 
+/**
+ * Agent output with the Links section's same-site URLs written as paths, under a line naming the
+ * site: a candidate output format that spends fewer tokens on URLs.
+ */
+const agentCompact = (html: string, url: string): string => {
+	const markdown = htmlToMarkdown(html, { baseUrl: url, url, extractors: agentExtractor });
+	const at = markdown.lastIndexOf("\n## Links\n");
+	if (at < 0) {
+		return markdown;
+	}
+	const origin = new URL(url).origin;
+	const links = markdown.slice(at).replace(/\]\(<?([^)\s>]+)>?\)/g, (match, href: string) => {
+		try {
+			const target = new URL(href, url);
+			return target.origin === origin ? `](${target.pathname}${target.search}${target.hash})` : match;
+		} catch {
+			return match;
+		}
+	});
+	return `${markdown.slice(0, at)}${links.replace("## Links\n", `## Links\n\nPaths are on ${origin}.\n`)}`;
+};
+
 let trafilatura: Awaited<ReturnType<typeof startTrafilaturaWorker>> | undefined;
 const trafilaturaWithLinks: Convert = async (html, url) => {
 	const file = path.join(TRAFILATURA_LINKS_CACHE, `${htmlKey(html)}.json`);
@@ -117,6 +139,7 @@ const PIPELINES: { id: string; label: string; convert: Convert }[] = [
 		convert: (html, url) => htmlToMarkdown(html, { baseUrl: url, url, extractors: agentExtractor }),
 	},
 	{ id: "webforai-agent-flat", label: "webforai (agent, no role headings)", convert: agentFlat },
+	{ id: "webforai-agent-compact", label: "webforai (agent, same-site links as paths)", convert: agentCompact },
 	{ id: "webforai-all-links", label: "webforai + all links", convert: withAllLinks },
 	{ id: "readability-turndown", label: "Readability + Turndown", convert: competitor("readability-turndown") },
 	{ id: "defuddle", label: "Defuddle", convert: competitor("defuddle") },

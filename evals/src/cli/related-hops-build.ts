@@ -25,12 +25,24 @@
  * 4. target: the drawn link's page (P1) rendered the same way.
  * 5. question: Sonnet 5.5 writes a question answered by one specific fact of P1, that names P1's
  *    subject (not its exact title or URL) so that a reader of P0 knows to follow a link.
- * 6. verify: gpt-6.1-sol (`codex exec`, low effort), independently, reads the question, the answer,
+ * 6. verify: gpt-6.1-sol (`codex exec`, low effort; `--verifier=opus` for Opus 5.5), independently, reads the question, the answer,
  *    P0's full text and P1's text: P1 must support the answer and P0 must not answer the question.
  * 7. freeze: `tasks.jsonl` and `hops.jsonl` in `.cache/related-hops/` (≤3 tasks per site), and a
  *    summary of what was dropped and why.
  *
  * Scoring is `webwalker:links -- --set=related-hops` and `webwalker:choose -- --set=related-hops`.
+ *
+ * Another batch on fresh hosts: `tsx src/cli/related-hops-build.ts --set=related-hops-2` with
+ * `--news-month=`, `--main-crawl=` or `--warc-offset=` for other source files, and the earlier
+ * batches' hosts added to `--exclude-hosts`.
+ *
+ * The frozen task lists are committed as `benchmarks/<set>/tasks.jsonl` (URLs, questions and
+ * answers; no page HTML). To score a set without building it, render its start pages again:
+ *
+ *   tsx src/cli/related-hops-build.ts --set=related-hops-2 --stage=fetch
+ *
+ * Pages change, so a fresh fetch scores close to, not exactly, the published numbers; `webwalker:links`
+ * shows how many gold links are still on their pages (the all-links row).
  */
 
 import { spawn } from "node:child_process";
@@ -43,11 +55,13 @@ import { createInterface } from "node:readline";
 import { parseHTML } from "linkedom";
 
 import { COMPETITORS } from "../competitors.js";
+import { EVALS_ROOT } from "../config.js";
 import { createPageFetcher } from "../live-pages.js";
 import { type Hop, LINK_SET, type RelatedTask, WEBWALKER_DIR, normalizeUrl, readPage } from "../webwalker.js";
 
-if (LINK_SET !== "related-hops") {
-	throw new Error("Run with --set=related-hops (the package script passes it)");
+// Further batches (`--set=related-hops-2`, …) are built the same way on fresh hosts.
+if (!LINK_SET.startsWith("related-hops")) {
+	throw new Error("Run with --set=related-hops or --set=related-hops-<n>");
 }
 
 const arg = (name: string): string | undefined =>
@@ -60,8 +74,12 @@ const DIR = WEBWALKER_DIR;
 const CANDIDATES = path.join(DIR, "candidates.jsonl");
 const STEP_DIR = (name: string) => path.join(DIR, "steps", name);
 const CC = "https://data.commoncrawl.org";
-const NEWS_MONTH = "2026/09";
-const MAIN_CRAWL = "CC-MAIN-2026-34";
+const NEWS_MONTH = arg("news-month") ?? "2026/09";
+const MAIN_CRAWL = arg("main-crawl") ?? "CC-MAIN-2026-34";
+/** Shifts which WARC files of each list are read, so another batch draws other pages. */
+const WARC_OFFSET = Number(arg("warc-offset") ?? "0");
+/** `opus` checks questions with Opus 5.5 (`claude -p`) instead of gpt-6.1-sol. */
+const VERIFIER = arg("verifier") ?? "codex";
 const PER_SITE_CANDIDATES = 4;
 const MAX_TASKS_PER_SITE = 3;
 const MIN_LINKS = 15;
@@ -372,7 +390,7 @@ const candidates = async (): Promise<void> => {
 		});
 		const chosen: string[] = [];
 		for (let i = 0; i < count && paths.length > 0; i++) {
-			chosen.push(paths.splice(Math.floor((i * 7919) % paths.length), 1)[0]);
+			chosen.push(paths.splice(Math.floor(((i + WARC_OFFSET) * 7919) % paths.length), 1)[0]);
 		}
 		return chosen;
 	};
@@ -747,10 +765,16 @@ ${pageText(start.html).slice(0, 40_000)}
 <target>
 ${pageText(page.html).slice(0, 40_000)}
 </target>`;
-			const answer = await askCodex<{ target_supports_answer: boolean; start_answers_question: boolean; note: string }>(
-				prompt,
-				VERIFY_SCHEMA,
-			);
+			type Verdict = { target_supports_answer: boolean; start_answers_question: boolean; note: string };
+			const answer =
+				VERIFIER === "opus"
+					? await askClaude<Verdict>(
+							"claude-opus-5-5",
+							"Answer only with the JSON the schema asks for.",
+							prompt,
+							VERIFY_SCHEMA,
+						)
+					: await askCodex<Verdict>(prompt, VERIFY_SCHEMA);
 			if (answer) {
 				await writeStep("verify", key, { ...item, ...answer });
 			}
@@ -862,7 +886,51 @@ const freeze = async (): Promise<void> => {
 	console.info(JSON.stringify(summary, null, 2));
 };
 
-const STAGES: Record<string, () => Promise<void>> = { candidates, start, label, target, question, verify, freeze };
+/** Renders the start pages of a committed task list and writes the set's `tasks.jsonl` and `hops.jsonl`. */
+const fetchCommitted = async (): Promise<void> => {
+	const tasks = await readJsonl<RelatedTask>(path.join(EVALS_ROOT, "benchmarks", LINK_SET, "tasks.jsonl"));
+	const fetcher = await createPageFetcher({ direct: process.argv.includes("--direct") });
+	let failed = 0;
+	await pool(
+		tasks,
+		async (task) => {
+			const page = await fetcher.get(task.pageUrl);
+			if (!page.html || page.status >= 400) {
+				failed++;
+			}
+		},
+		12,
+	);
+	await fetcher.close();
+	const hops: Hop[] = [];
+	for (const [index, task] of tasks.entries()) {
+		hops.push({
+			task: index,
+			path: 0,
+			step: 0,
+			pageUrl: task.pageUrl,
+			finalUrl: (await readPage(task.pageUrl))?.finalUrl ?? task.pageUrl,
+			label: task.label,
+			targetHref: task.targetHref,
+			target: task.target,
+		});
+	}
+	await mkdir(DIR, { recursive: true });
+	await writeFile(path.join(DIR, "tasks.jsonl"), `${tasks.map((task) => JSON.stringify(task)).join("\n")}\n`);
+	await writeFile(path.join(DIR, "hops.jsonl"), `${hops.map((hop) => JSON.stringify(hop)).join("\n")}\n`);
+	console.info(`${tasks.length} tasks, ${failed} start pages failed to load`);
+};
+
+const STAGES: Record<string, () => Promise<void>> = {
+	candidates,
+	start,
+	label,
+	target,
+	question,
+	verify,
+	freeze,
+	fetch: fetchCommitted,
+};
 if (!STAGES[stage]) {
 	throw new Error(`--stage= one of ${Object.keys(STAGES).join(", ")}`);
 }

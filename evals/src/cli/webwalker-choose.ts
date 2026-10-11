@@ -54,6 +54,7 @@ export const PIPELINES = [
 	["webforai", "webforai (readability)"],
 	["webforai-agent", "webforai (agent)"],
 	["webforai-agent-flat", "webforai (agent, no role headings)"],
+	["webforai-agent-compact", "webforai (agent, same-site links as paths)"],
 	["webforai-all-links", "webforai + all links"],
 	["readability-turndown", "Readability + Turndown"],
 	["defuddle", "Defuddle"],
@@ -399,6 +400,10 @@ for (const model of models) {
 		`- agent − agent without role headings: ${pairedBySite(
 			agent,
 			perPipeline.get("webforai-agent-flat") ?? new Map(),
+		)}`,
+		`- agent with same-site links as paths − agent: ${pairedBySite(
+			perPipeline.get("webforai-agent-compact") ?? new Map(),
+			agent,
 		)}`,
 		`- agent − node-html-markdown: ${pairedBySite(agent, perPipeline.get("node-html-markdown") ?? new Map())}`,
 		`- agent − readability: ${pairedBySite(agent, perPipeline.get("webforai") ?? new Map())}`,
