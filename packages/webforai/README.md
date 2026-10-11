@@ -37,13 +37,14 @@ npm i webforai
 ```
 
 ```ts
-import { htmlToMarkdown } from "webforai";
+import { htmlToMarkdown, presetExtractors } from "webforai";
 
 const url = "https://example.com/article";
 const html = await (await fetch(url)).text();
 
-// url selects a site adapter (GitHub, MDN, …) and fills metadata; baseUrl resolves relative links
+// url picks a site adapter and fills metadata; baseUrl makes relative links absolute
 const markdown = htmlToMarkdown(html, { url, baseUrl: url });
+const forAgents = htmlToMarkdown(html, { url, baseUrl: url, extractors: presetExtractors("agent") });
 ```
 
 Two modes:
@@ -67,20 +68,15 @@ Looking for the command line? That is [`webforai-cli`](https://www.npmjs.com/pac
   <img alt="WCEB F1: webforai 0.892 (0.922 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
-**Readability mode.** WCEB scores extracted text against reference text on 3,985 pages and is
-never used for tuning; the F1 axis starts at 0.5. With the `comments` preset webforai scores
-highest (0.922 against Trafilatura's 0.900); with the default preset Trafilatura is slightly ahead
-(0.900 against 0.892), because it keeps reader comments by default and many WCEB references count
-them as content. Code blocks and time come from 60 real pages that webforai is developed against,
-so they likely favour it. Trafilatura, timed in Python, is faster. Firecrawl OSS and Cloudflare
-toMarkdown run as services and are not timed.
+**Readability mode.** WCEB scores extracted text against reference text on 3,985 pages.
+webforai's score is with the `comments` preset, which keeps reader comments as Trafilatura does;
+the default preset scores 0.892. Code blocks and time come from 60 cached real pages.
 
-**Agent mode** keeps the links a model needs to go on: on 295 related- and
-next-article tasks from sites webforai was not developed on, Haiku 5.5 and Sonnet 5.5 picked the
-right link from its output 93.0% and 95.0% of the time, level with every link of the page (92.4%,
-94.5%) and with the whole page converted by node-html-markdown (92.8%, 94.6%), at 2,440 median
-tokens against 2,902 and 4,350. Reader-mode extractors score 5–12% on these tasks. Method and
-limitations: [webforai.dev/benchmarks](https://webforai.dev/benchmarks).
+**Agent mode** keeps the links a model needs to go on. On 295 tasks that follow a related or next
+article, Haiku 5.5 and Sonnet 5.5 picked the right link from its output 93.0% and 95.0% of the
+time, as often as from the whole page converted by node-html-markdown (92.8%, 94.6%), at 2,440
+median tokens against 4,350. Method and limitations:
+[webforai.dev/benchmarks](https://webforai.dev/benchmarks).
 
 ## Entry points
 
@@ -100,17 +96,17 @@ details and bundle sizes.
 
 ## What you get
 
-- **Main content, found by a model.** Site adapters first, then **kiwame**, a small learned block
-  classifier in plain TypeScript (no WASM, no network calls).
+- **Main content, found by a small model.** Site adapters first, then **kiwame**, a learned block
+  classifier in plain TypeScript (no LLM calls, no WASM, no network calls).
   [How it works →](https://webforai.dev/how-it-works)
-- **Twenty site adapters**: GitHub, Stack Overflow, npm, MDN, Wikipedia, Reddit, YouTube,
-  Hacker News, Medium, Substack, Zenn, Qiita, note, Hatena, WordPress, Docusaurus, VitePress,
-  MkDocs, Read the Docs and GitBook. Matched by hostname or platform fingerprint, with generic
+- **Site adapters** for GitHub, Stack Overflow, npm, Wikipedia, Reddit, YouTube, Hacker News,
+  Medium, Substack, Zenn, Qiita, note, Hatena, WordPress, Docusaurus, VitePress, MkDocs, Read the
+  Docs and GitBook. Matched by hostname or platform fingerprint, with generic
   extraction as the fallback when a site changes.
 - **Markup that survives**: code blocks with their language (tabs and Twoslash included), GFM
   tables, KaTeX/MathJax as LaTeX, lazy-loaded images, definition lists, sub/superscripts.
 - **Agent mode**: `agentExtractor` appends the page's other links grouped by role (related,
-  pagination, section navigation, breadcrumbs).
+  pagination, section and site navigation, breadcrumbs).
 - **Metadata** as data or YAML front matter:
 
   ```ts

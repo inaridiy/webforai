@@ -196,7 +196,7 @@ const render = (theme) => {
 			height - 38,
 			11.5,
 			t.muted,
-			`WCEB: an independent benchmark, never used for tuning. Code and time: ${corpus.captures} of webforai's own test pages.`,
+			`WCEB: an independent benchmark. Code and time: ${corpus.captures} of webforai's own test pages.`,
 		),
 		text(
 			0,

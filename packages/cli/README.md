@@ -15,13 +15,14 @@ npx webforai-cli https://example.com --json              # machine-readable enve
 Install it once to keep a `webforai` command on your `PATH`:
 
 ```bash
+npm uninstall -g webforai   # only if webforai v4 is installed globally: it owns the same command
 npm i -g webforai-cli
 webforai https://example.com/article
 ```
 
 Up to v4 the CLI shipped inside the `webforai` package (`npx webforai`). Since v5 that package
 is the library only, and `npx webforai` prints the `webforai-cli` command to run instead.
-Flags, output and exit codes are unchanged.
+Flags and exit codes are unchanged.
 
 ## Hosted platform
 

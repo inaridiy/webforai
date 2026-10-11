@@ -13,10 +13,9 @@
 
 <p align="center">
   <b>Readability mode</b> keeps the main content only — no navigation, ads or cookie banners.
-  <b>Agent mode</b> adds the links an agent needs to go on, grouped by role. The highest WCEB score
-  of every converter we tested (Readability, Defuddle, Firecrawl OSS, Cloudflare toMarkdown;
-  Trafilatura when both keep reader comments), about 3× faster than Readability + Turndown, and
-  small enough to run in a Cloudflare Worker or a browser.
+  <b>Agent mode</b> adds the links an agent needs to go on, grouped by role. The highest score on
+  the WCEB extraction benchmark of the converters we tested, and small enough to run in a
+  Cloudflare Worker or a browser.
 </p>
 
 <p align="center">
@@ -40,9 +39,10 @@ npx webforai-cli https://example.com/article
 ```
 
 ```ts
-import { htmlToMarkdown } from "webforai";
+import { htmlToMarkdown, presetExtractors } from "webforai";
 
-const markdown = htmlToMarkdown(html, { url });
+const markdown = htmlToMarkdown(html, { url }); // Readability mode
+const forAgents = htmlToMarkdown(html, { url, extractors: presetExtractors("agent") }); // Agent mode
 ```
 
 ## Two modes
@@ -55,8 +55,8 @@ const markdown = htmlToMarkdown(html, { url });
 | CLI | `npx webforai-cli <url>` | `npx webforai-cli <url> --extractor agent` |
 | Benchmark | [Main content →](#readability-mode-main-content) | [Following links →](#agent-mode-following-links) |
 
-Between the two, the `comments` preset keeps the main content and reader comments, without the
-links. Every preset works with every loader, in the CLI and in the hosted API.
+The `comments` preset sits between the two: the main content and reader comments, without the
+links. Every preset works in the library, the CLI and the hosted API.
 [All presets →](https://webforai.dev/docs/html-to-markdown#optionsextractors)
 
 ## Benchmarks
@@ -69,43 +69,17 @@ links. Every preset works with every loader, in the CLI and in the hosted API.
 </picture>
 
 [WCEB](https://github.com/chatnoir-eu/web-content-extraction-benchmark) (Bevendorff et al., SIGIR 2023)
-scores extracted text against reference text on 3,985 pages; webforai is never tuned on it. With the
-`comments` preset webforai scores highest (0.922 against Trafilatura's 0.900); with the default
-preset Trafilatura is slightly ahead (0.900 against 0.892), because it keeps reader comments by
-default and WCEB's largest dataset counts them as content. The F1 axis starts at 0.5. Code
-blocks and time come from 60 cached real pages that webforai is developed against, so those
-likely favour it. Firecrawl OSS is the self-hosted open-source Firecrawl and Cloudflare toMarkdown
-is Workers AI's converter; both run as services, so they are not timed against local conversion.
-Not everything goes webforai's way: the others keep more data tables, mostly Wikipedia navigation
-boxes that webforai drops on purpose, and Trafilatura (timed in Python) is faster. The method, each pipeline's configuration and the
-limitations are on the [benchmarks page](https://webforai.dev/benchmarks); everything is
-reproducible from [`evals/`](evals).
-
-<details>
-<summary>All numbers</summary>
-
-|  | webforai | Readability + Turndown | Defuddle | Trafilatura | Firecrawl OSS | Cloudflare toMarkdown |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| **WCEB F1** — 3,985 pages, reference text | 0.892 (**0.922**\*) | 0.880 | 0.820 | 0.900 | 0.743 | 0.713 |
-| Precision / recall | **0.922** / 0.909 (0.914 / 0.955\*) | 0.917 / 0.892 | 0.869 / 0.856 | 0.916 / 0.915 | 0.668 / 0.939 | 0.604 / **0.985** |
-| Code blocks kept as code — 748 blocks | **98.0%** | 45.9% | 89.2% | 40.6% | 51.9% | 53.6% |
-| Data tables kept — 64 tables | 39.1% | 29.7% | 54.7% | 40.6% | **95.3%** | 57.8% |
-| Quality checks passed | **75 / 75** | 64 / 75 | 73 / 75 | 64 / 75 | 53 / 75 | 62 / 75 |
-| Time to convert 60 pages (24 MiB) | 4.0 s | 13.7 s | 13.8 s | **2.9 s**† | service | service |
-
-\* With the `comments` preset, which also keeps reader comments — as Trafilatura does by default,
-and as the references of WCEB's largest dataset (Dragnet, 1,379 pages) do. With the default
-extraction, webforai's 0.892 is below Trafilatura's 0.900. † Timed in Python around Trafilatura's
-`extract` call, not interleaved with the Node pipelines.
-
-</details>
+scores extracted text against reference text on 3,985 pages. webforai's score is with the
+`comments` preset, which keeps reader comments as Trafilatura does; the default preset scores
+0.892. Code blocks and time come from 60 cached real pages. Method, configurations and limitations
+are on the [benchmarks page](https://webforai.dev/benchmarks), and everything is reproducible from
+[`evals/`](evals).
 
 ### Agent mode: following links
 
-For agents that browse, agent mode adds the page's other links, grouped by role. On 295
-tasks from 293 sites it was not developed on — follow a related or next article to answer a
-question — a model picks the right link from its output as often as from every link of the page
-or from the whole page converted, with fewer tokens:
+On 295 tasks that ask a model to follow a related or next article to answer a question, the
+model picks the right link from agent mode's output as often as from the whole page, with about
+half the tokens:
 
 | Output given to the model | Right link chosen (Haiku 5.5 / Sonnet 5.5) | Median tokens |
 | --- | ---: | ---: |
@@ -113,32 +87,28 @@ or from the whole page converted, with fewer tokens:
 | webforai + every link of the page | 92.4% / 94.5% | 2,902 |
 | Turndown (full page) | 93.0% / 94.9% | 4,533 |
 | node-html-markdown (full page) | 92.8% / 94.6% | 4,350 |
-| Defuddle | 11.3% / 11.5% | 1,075 |
-| Readability + Turndown | 6.8% / 7.1% | 967 |
-| Trafilatura, with links | 5.6% / 5.4% | 893 |
+| Readability + Turndown, Defuddle, Trafilatura | 5–11% | 900–1,100 |
 
-The accuracy differences between the first four rows are within noise; the role headings do not
-make the choice easier, so the gain is size. Reader-mode extractors keep the article and drop the
-links around it, as they are designed to. The tasks and their links were written and checked by
-models; the method and the task list are on the
-[benchmarks page](https://webforai.dev/benchmarks#following-links-agent-mode).
+Reader-mode extractors drop the links around the article, as they are designed to.
+[Method and task list →](https://webforai.dev/benchmarks#following-links-agent-mode)
 
 ## Why webforai
 
-- **Main content, found by a model.** Pages go through site adapters first, then **kiwame**, a
-  small learned block classifier written in plain TypeScript: no WASM, no native code, no network
-  calls. [How it works →](https://webforai.dev/how-it-works)
-- **Twenty site adapters.** GitHub, Stack Overflow, npm, MDN, Wikipedia, Reddit, YouTube,
-  Hacker News, Medium, Substack, Zenn, Qiita, note, Hatena, WordPress, Docusaurus, VitePress,
-  MkDocs, Read the Docs and GitBook. They match by hostname or by platform fingerprint, so
-  self-hosted instances are covered, and fall back to generic extraction when a site changes.
+- **Main content, found by a small model.** Pages go through site adapters first, then
+  **kiwame**, a learned block classifier written in plain TypeScript: no LLM calls, no WASM, no
+  native code, no network calls. [How it works →](https://webforai.dev/how-it-works)
+- **Site adapters** for GitHub, Stack Overflow, npm, Wikipedia, Reddit, YouTube, Hacker News,
+  Medium, Substack, Zenn, Qiita, note, Hatena, WordPress, Docusaurus, VitePress, MkDocs, Read the
+  Docs and GitBook. They match by hostname or by platform fingerprint, so self-hosted instances
+  are covered, and fall back to generic extraction when a site changes.
 - **Markup that survives.** Code blocks keep their language, including tabbed and
   Twoslash-annotated code. Tables stay GFM tables, KaTeX and MathJax become LaTeX, and
-  lazy-loaded images, definition lists and sub/superscripts come through.
-- **Built for agents.** `agentExtractor` appends the page's other links, grouped by role
-  (related, pagination, section navigation, breadcrumbs), so an agent knows where to go next —
-  [as well as from the whole page, in about half the tokens](#agent-mode-following-links).
-  Metadata comes back as data or YAML front matter.
+  lazy-loaded images, definition lists and sub/superscripts come through. Metadata comes back as
+  data or YAML front matter.
+- **Built for agents.** Agent mode appends the page's other links, grouped by role (related,
+  pagination, section and site navigation, breadcrumbs). A model finds the next page in it as
+  reliably as in the whole page, from
+  [about half the tokens](#agent-mode-following-links).
 - **Easy to embed.** ~300 KB gzipped in a Worker, with no browser driver and no Node.js
   built-ins. It runs in Node.js (ESM and CommonJS), Cloudflare Workers (no `nodejs_compat`)
   and browsers. [Embedding in your project →](https://webforai.dev/embedding)
@@ -148,7 +118,7 @@ models; the method and the task list are on the
 | | Install | Use it for |
 | --- | --- | --- |
 | **Library** — [`webforai`](https://www.npmjs.com/package/webforai) | `npm i webforai` | HTML you already have, in your own code. [Getting started →](https://webforai.dev/getting-started) |
-| **CLI** — [`webforai-cli`](https://www.npmjs.com/package/webforai-cli) | `npx webforai-cli <url>` | The shell, scripts and AI agents (it ships an Agent Skill). [CLI →](https://webforai.dev/cli) |
+| **CLI** — [`webforai-cli`](https://www.npmjs.com/package/webforai-cli) | `npx webforai-cli <url>` | The shell, scripts and AI agents (it ships an Agent Skill). Up to v4 this was `npx webforai`. [CLI →](https://webforai.dev/cli) |
 | **Hosted API** — [webforai platform](https://platform.webforai.dev) | API key | JavaScript rendering, proxies, and crawling whole sites to Markdown and `llms.txt`. 1,000 free credits a month. [Platform docs →](https://webforai.dev/platform) |
 
 The library fetches nothing by itself. Pass it HTML, or load pages with
@@ -160,20 +130,20 @@ import { htmlToMarkdownWithMetadata } from "webforai";
 import { loadHtml } from "webforai/loaders/fetch";
 
 const url = "https://example.com/article";
+// url picks a site adapter and fills metadata; baseUrl makes relative links absolute
 const { markdown, metadata } = htmlToMarkdownWithMetadata(await loadHtml(url), { url, baseUrl: url });
 // metadata: { title, author, published, siteName, canonicalUrl, lang, ... }
 ```
 
 Everything lives in this repository: the library in [`packages/webforai`](packages/webforai), the
-CLI in [`packages/cli`](packages/cli) (up to v4 it shipped inside `webforai` as `npx webforai`),
-and the hosted platform in [`apps/platform`](apps/platform), which you can
+CLI in [`packages/cli`](packages/cli) and the hosted platform in [`apps/platform`](apps/platform), which you can
 [run yourself](https://github.com/inaridiy/webforai/tree/main/apps/platform#deploying-your-own-instance).
 Release notes are in the [CHANGELOG](packages/webforai/CHANGELOG.md).
 
 ## Contributing
 
-See [AGENTS.md](AGENTS.md) for the toolchain (`pnpm install`, `pnpm test --run`, `pnpm build`)
-and for where things live.
+Issues and pull requests are welcome. `pnpm install`, then `pnpm run test --run` and
+`pnpm build`; [AGENTS.md](AGENTS.md) describes the layout of the repository and its conventions.
 
 ## Support
 

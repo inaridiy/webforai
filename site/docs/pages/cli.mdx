@@ -21,8 +21,9 @@ webforai https://example.com/article
 :::info
 Up to v4 the CLI shipped inside the `webforai` package as `npx webforai`. Since v5, `webforai`
 is the library only, and `npx webforai` just prints the `webforai-cli` command to run instead.
-Flags, output and exit codes did not change. If you installed the Agent Skill, reinstall it
-([below](#for-ai-agents)) so it calls the new package.
+Flags and exit codes did not change. If v4 is installed globally, run `npm uninstall -g webforai`
+before installing `webforai-cli`: both own the `webforai` command. If you installed the Agent
+Skill, reinstall it ([below](#for-ai-agents)) so it calls the new package.
 :::
 
 ```bash

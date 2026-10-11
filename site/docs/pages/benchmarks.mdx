@@ -8,9 +8,10 @@ description: A reproducible comparison of webforai with Readability + Turndown, 
 This page compares webforai with common open-source HTML→Markdown pipelines, including
 [Defuddle](https://github.com/kepano/defuddle) and [Trafilatura](https://github.com/adbar/trafilatura), with a self-hosted Firecrawl and with Cloudflare's
 [toMarkdown](https://developers.cloudflare.com/workers-ai/features/markdown-conversion/), on the same
-cached pages. Everything runs locally from the repository's
-evaluation harness, with no network access and no API keys at measure time. The corpus and WCEB numbers below are from the runs on 2026-10-09 at commit
-`297b7df`; the raw summary is
+cached pages. The main-content comparison runs locally from the repository's
+evaluation harness, with no network access and no API keys at measure time; the link-following
+benchmark for agent mode renders live pages and asks models, as described in its section. The
+corpus numbers below are from the run on 2026-10-09 at commit `297b7df`; the raw summary is
 [`evals/benchmarks/compare-summary.json`](https://github.com/inaridiy/webforai/blob/main/evals/benchmarks/compare-summary.json).
 
 **Read the limitations first.** The corpus is small (60 captures of 46 sites) and was assembled
@@ -139,7 +140,7 @@ Cloudflare; like Firecrawl's, it is a service latency.
 ### What the numbers show
 
 - **Where webforai is behind.** Full-page Turndown is about 2.5× faster, because it does no
-  extraction, and Trafilatura, in Python, about 1.4× faster. Firecrawl and node-html-markdown keep the most tables: they remove little or nothing,
+  extraction, and Trafilatura, timed in Python in a separate run, is faster too. Firecrawl and node-html-markdown keep the most tables: they remove little or nothing,
   so Wikipedia's navboxes and sidebars (navigation tables built from `<th>` cells; 30 on the Japanese
   capture) count as kept. Most of the tables webforai drops are those, plus a PostgreSQL navigation
   header, GitHub's repository file list and a two-row table on the Amazon product page; it keeps
@@ -204,8 +205,8 @@ Cloudflare; like Firecrawl's, it is a service latency.
 
 The checks above are proxies. The evaluation harness also scores extraction against reference
 main-content text — token precision, recall and F1 per page, averaged — on **WCEB** (Bevendorff
-et al., SIGIR 2023): 3,985 pages from eight published datasets, mostly news from 2007–2017. WCEB is
-used only for measurement, never for tuning.
+et al., SIGIR 2023): 3,985 pages from eight published datasets, mostly news from 2007–2017. No model in webforai is
+trained on WCEB.
 
 | Pipeline | WCEB F1 (mean over pages / over the 8 datasets) | Precision / recall (pages) |
 | --- | ---: | ---: |

@@ -53,7 +53,7 @@
 <text x="0" y="187" font-size="14" fill="#424a53">Trafilatura</text>
 <text x="0" y="225" font-size="14" fill="#424a53">Firecrawl OSS</text>
 <text x="0" y="263" font-size="14" fill="#424a53">Cloudflare toMarkdown</text>
-<text x="0" y="312" font-size="11.5" fill="#59636e">WCEB: an independent benchmark, never used for tuning. Code and time: 60 of webforai's own test pages.</text>
+<text x="0" y="312" font-size="11.5" fill="#59636e">WCEB: an independent benchmark. Code and time: 60 of webforai's own test pages.</text>
 <text x="0" y="328" font-size="11.5" fill="#59636e">* webforai's comments preset, which keeps reader comments as Trafilatura does by default; the default preset in brackets.</text>
 <text x="0" y="344" font-size="11.5" fill="#59636e">Node 24.15.0, 2026-10-09. Method and limitations: webforai.dev/benchmarks</text>
 </g>

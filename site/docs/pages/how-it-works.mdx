@@ -41,7 +41,7 @@ type Extractor = (params: ExtractParams) => Hast;
 
 ### Default Extractor
 
-The default, `autoExtractor`, first tries the **site adapters** (GitHub, MDN, Wikipedia, YouTube,
+The default, `autoExtractor`, first tries the **site adapters** (GitHub, Wikipedia, YouTube,
 Hacker News, documentation generators, …). For every other page it runs `kiwameExtractor` — kiwame (極め, an appraiser's verdict), a learned
 block classifier:
 
