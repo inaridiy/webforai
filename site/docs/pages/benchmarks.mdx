@@ -20,7 +20,7 @@ of extraction quality.
 
 <img src="/images/benchmark-light.svg" alt="WCEB F1: webforai 0.892 (0.922 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
 
-The chart summarises three columns of the tables below. After a new run, regenerate it (for the
+The chart summarises three columns of the tables below; its F1 axis starts at 0.5, and webforai's bar runs on in a lighter shade from the default preset's score to the `comments` preset's. After a new run, regenerate it (for the
 README and this page) with `pnpm --filter site benchmark-chart`; the WCEB scores are constants in
 `site/scripts/benchmark-chart.mjs`, the rest is read from the committed summary.
 

@@ -3,8 +3,8 @@
 <p align="center">
   <a href="https://webforai.dev">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://webforai.dev/images/logo-full-dark.svg">
-      <img alt="webforai" src="https://webforai.dev/images/logo-full-light.svg" width="auto" height="44">
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/readme-logo-dark.svg">
+      <img alt="webforai" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/readme-logo-light.svg" width="auto" height="60">
     </picture>
   </a>
 </p>
@@ -12,8 +12,9 @@
 <h3 align="center">Any web page, as clean Markdown for LLMs.</h3>
 
 <p align="center">
-  Main content only — no navigation, ads or cookie banners. A dependency-light TypeScript library
-  for Node.js, Cloudflare Workers and browsers.
+  <b>Readability mode</b> keeps the main content only — no navigation, ads or cookie banners.
+  <b>Agent mode</b> adds the links an agent needs to go on, grouped by role. A dependency-light
+  TypeScript library for Node.js, Cloudflare Workers and browsers.
 </p>
 
 <p align="center">
@@ -45,6 +46,17 @@ const html = await (await fetch(url)).text();
 const markdown = htmlToMarkdown(html, { url, baseUrl: url });
 ```
 
+Two modes:
+
+| | **Readability mode** (default) | **Agent mode** |
+| --- | --- | --- |
+| Output | The page's main content | The main content, then reader comments and the page's other links grouped by role (related, pagination, section and site navigation, breadcrumbs) |
+| For | Reading, summarising, RAG and embeddings | Agents that browse and decide which link to open next |
+| Call | `htmlToMarkdown(html, { url })` | `htmlToMarkdown(html, { url, extractors: presetExtractors("agent") })` |
+
+The `comments` preset sits between them: main content and reader comments, without the links.
+[All presets →](https://webforai.dev/docs/html-to-markdown#optionsextractors)
+
 Looking for the command line? That is [`webforai-cli`](https://www.npmjs.com/package/webforai-cli):
 `npx webforai-cli <url>`. Up to v4 it shipped inside this package as `npx webforai`.
 
@@ -55,13 +67,15 @@ Looking for the command line? That is [`webforai-cli`](https://www.npmjs.com/pac
   <img alt="WCEB F1: webforai 0.892 (0.922 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
-WCEB scores extracted text against reference text on 3,985 pages and is never used for tuning.
-Code blocks and time come from 60 real pages that webforai is developed against, so they likely
-favour it. Against Trafilatura, webforai's WCEB lead needs the `comments` preset (0.922 against
-0.900), because Trafilatura keeps reader comments by default and so do many WCEB references; with
-the default extraction webforai scores 0.892. Trafilatura, timed in Python, is also faster. Firecrawl OSS and Cloudflare toMarkdown run as services and are not timed.
+**Readability mode.** WCEB scores extracted text against reference text on 3,985 pages and is
+never used for tuning; the F1 axis starts at 0.5. With the `comments` preset webforai scores
+highest (0.922 against Trafilatura's 0.900); with the default preset Trafilatura is slightly ahead
+(0.900 against 0.892), because it keeps reader comments by default and many WCEB references count
+them as content. Code blocks and time come from 60 real pages that webforai is developed against,
+so they likely favour it. Trafilatura, timed in Python, is faster. Firecrawl OSS and Cloudflare
+toMarkdown run as services and are not timed.
 
-For agents, the `agent` preset keeps the links a model needs to go on: on 295 related- and
+**Agent mode** keeps the links a model needs to go on: on 295 related- and
 next-article tasks from sites webforai was not developed on, Haiku 5.5 and Sonnet 5.5 picked the
 right link from its output 93.0% and 95.0% of the time, level with every link of the page (92.4%,
 94.5%) and with the whole page converted by node-html-markdown (92.8%, 94.6%), at 2,440 median

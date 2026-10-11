@@ -3,8 +3,8 @@
 <p align="center">
   <a href="https://webforai.dev">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://webforai.dev/images/logo-full-dark.svg">
-      <img alt="webforai" src="https://webforai.dev/images/logo-full-light.svg" width="auto" height="44">
+      <source media="(prefers-color-scheme: dark)" srcset="site/docs/public/images/readme-logo-dark.svg">
+      <img alt="webforai" src="site/docs/public/images/readme-logo-light.svg" width="auto" height="60">
     </picture>
   </a>
 </p>
@@ -12,9 +12,11 @@
 <h3 align="center">Any web page, as clean Markdown for LLMs.</h3>
 
 <p align="center">
-  Main content only — no navigation, ads or cookie banners. The highest WCEB score of every
-  converter we tested (Readability, Defuddle, Firecrawl OSS, Cloudflare toMarkdown; Trafilatura when
-  both keep reader comments), about 3× faster than Readability + Turndown, and small enough to run in a Cloudflare Worker or a browser.
+  <b>Readability mode</b> keeps the main content only — no navigation, ads or cookie banners.
+  <b>Agent mode</b> adds the links an agent needs to go on, grouped by role. The highest WCEB score
+  of every converter we tested (Readability, Defuddle, Firecrawl OSS, Cloudflare toMarkdown;
+  Trafilatura when both keep reader comments), about 3× faster than Readability + Turndown, and
+  small enough to run in a Cloudflare Worker or a browser.
 </p>
 
 <p align="center">
@@ -43,7 +45,23 @@ import { htmlToMarkdown } from "webforai";
 const markdown = htmlToMarkdown(html, { url });
 ```
 
+## Two modes
+
+| | **Readability mode** (default) | **Agent mode** |
+| --- | --- | --- |
+| Output | The page's main content: the article, docs page or post | The same main content, then reader comments and the page's other links grouped by role: related, pagination, section and site navigation, breadcrumbs |
+| For | Reading, summarising, RAG and embeddings | Agents that browse and decide which link to open next |
+| Library | `htmlToMarkdown(html, { url })` | `htmlToMarkdown(html, { url, extractors: presetExtractors("agent") })` |
+| CLI | `npx webforai-cli <url>` | `npx webforai-cli <url> --extractor agent` |
+| Benchmark | [Main content →](#readability-mode-main-content) | [Following links →](#agent-mode-following-links) |
+
+Between the two, the `comments` preset keeps the main content and reader comments, without the
+links. Every preset works with every loader, in the CLI and in the hosted API.
+[All presets →](https://webforai.dev/docs/html-to-markdown#optionsextractors)
+
 ## Benchmarks
+
+### Readability mode: main content
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="site/docs/public/images/benchmark-dark.svg">
@@ -51,13 +69,15 @@ const markdown = htmlToMarkdown(html, { url });
 </picture>
 
 [WCEB](https://github.com/chatnoir-eu/web-content-extraction-benchmark) (Bevendorff et al., SIGIR 2023)
-scores extracted text against reference text on 3,985 pages; webforai is never tuned on it. Code
+scores extracted text against reference text on 3,985 pages; webforai is never tuned on it. With the
+`comments` preset webforai scores highest (0.922 against Trafilatura's 0.900); with the default
+preset Trafilatura is slightly ahead (0.900 against 0.892), because it keeps reader comments by
+default and WCEB's largest dataset counts them as content. The F1 axis starts at 0.5. Code
 blocks and time come from 60 cached real pages that webforai is developed against, so those
 likely favour it. Firecrawl OSS is the self-hosted open-source Firecrawl and Cloudflare toMarkdown
 is Workers AI's converter; both run as services, so they are not timed against local conversion.
 Not everything goes webforai's way: the others keep more data tables, mostly Wikipedia navigation
-boxes that webforai drops on purpose, and Trafilatura (timed in Python) is faster and scores higher
-on WCEB unless webforai keeps reader comments too, as Trafilatura does by default. The method, each pipeline's configuration and the
+boxes that webforai drops on purpose, and Trafilatura (timed in Python) is faster. The method, each pipeline's configuration and the
 limitations are on the [benchmarks page](https://webforai.dev/benchmarks); everything is
 reproducible from [`evals/`](evals).
 
@@ -80,16 +100,16 @@ extraction, webforai's 0.892 is below Trafilatura's 0.900. † Timed in Python a
 
 </details>
 
-### Following links
+### Agent mode: following links
 
-For agents that browse, the `agent` preset adds the page's other links, grouped by role. On 295
+For agents that browse, agent mode adds the page's other links, grouped by role. On 295
 tasks from 293 sites it was not developed on — follow a related or next article to answer a
 question — a model picks the right link from its output as often as from every link of the page
 or from the whole page converted, with fewer tokens:
 
 | Output given to the model | Right link chosen (Haiku 5.5 / Sonnet 5.5) | Median tokens |
 | --- | ---: | ---: |
-| webforai, `agent` preset | 93.0% / 95.0% | **2,440** |
+| webforai, agent mode | 93.0% / 95.0% | **2,440** |
 | webforai + every link of the page | 92.4% / 94.5% | 2,902 |
 | Turndown (full page) | 93.0% / 94.9% | 4,533 |
 | node-html-markdown (full page) | 92.8% / 94.6% | 4,350 |
@@ -117,7 +137,7 @@ models; the method and the task list are on the
   lazy-loaded images, definition lists and sub/superscripts come through.
 - **Built for agents.** `agentExtractor` appends the page's other links, grouped by role
   (related, pagination, section navigation, breadcrumbs), so an agent knows where to go next —
-  [as well as from the whole page, in about half the tokens](#following-links).
+  [as well as from the whole page, in about half the tokens](#agent-mode-following-links).
   Metadata comes back as data or YAML front matter.
 - **Easy to embed.** ~300 KB gzipped in a Worker, with no browser driver and no Node.js
   built-ins. It runs in Node.js (ESM and CommonJS), Cloudflare Workers (no `nodejs_compat`)

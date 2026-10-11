@@ -49,10 +49,13 @@ const columns = [
 	{
 		title: "Accuracy",
 		better: "higher is better",
-		note: `WCEB F1 · ${(3985).toLocaleString("en-US")} pages`,
+		note: `WCEB F1 · ${(3985).toLocaleString("en-US")} pages · axis from 0.5`,
 		value: (r) => r.f1,
+		// webforai's bar runs on to its comments-preset score, in a lighter shade.
+		extend: (r) => (r.id === "webforai" ? WCEB_F1_COMMENTS : undefined),
+		min: 0.5,
 		max: 1,
-		format: (v, r) => (r.id === "webforai" ? `${v.toFixed(3)} (${WCEB_F1_COMMENTS.toFixed(3)}*)` : v.toFixed(3)),
+		format: (v, r) => (r.id === "webforai" ? `${WCEB_F1_COMMENTS.toFixed(3)}* (${v.toFixed(3)})` : v.toFixed(3)),
 	},
 	{
 		title: "Code blocks kept",
@@ -72,10 +75,34 @@ const columns = [
 	},
 ];
 
+// Each theme paints its own opaque card: GitHub picks a <picture> source by the OS colour scheme,
+// not by GitHub's theme, so either variant may land on either background.
 const THEMES = {
-	light: { accent: "#1f8fff", rest: "#a9a8a2", ink: "#1f2328", ink2: "#59636e", muted: "#818b98", rule: "#d1d9e0" },
-	dark: { accent: "#2f8ff0", rest: "#5c5b55", ink: "#f0f6fc", ink2: "#9198a1", muted: "#848d97", rule: "#3d444d" },
+	light: {
+		bg: "#ffffff",
+		border: "#d1d9e0",
+		accent: "#1f8fff",
+		accent2: "#9ccbff",
+		rest: "#8c8b85",
+		ink: "#1f2328",
+		ink2: "#424a53",
+		muted: "#59636e",
+		rule: "#d1d9e0",
+	},
+	dark: {
+		bg: "#0d1117",
+		border: "#3d444d",
+		accent: "#2f8ff0",
+		accent2: "#8cc4ff",
+		rest: "#6e6d66",
+		ink: "#f0f6fc",
+		ink2: "#c9d1d9",
+		muted: "#9198a1",
+		rule: "#3d444d",
+	},
 };
+const PAD_X = 24;
+const PAD_Y = 22;
 
 const WIDTH = 880;
 const LABEL_W = 196;
@@ -100,6 +127,38 @@ const bar = (x, y, w, h, fill) => {
 const text = (x, y, size, fill, content, extra = "") =>
 	`<text x="${x}" y="${y}" font-size="${size}" fill="${fill}"${extra}>${content}</text>`;
 
+/** One bar and its value label; a column's `extend` draws the bar on, in a lighter shade. */
+const cell = (col, row, x0, y, t) => {
+	const v = col.value(row);
+	if (v === undefined) {
+		return [text(x0 + 8, y + 15, 12, t.muted, "runs as a service")];
+	}
+	const min = col.min ?? 0;
+	const scale = (value) => Math.max(2, ((value - min) / (col.max - min)) * BAR_MAX);
+	const w = scale(v);
+	const extended = col.extend?.(row);
+	const end = extended === undefined ? w : scale(extended);
+	const isUs = row.id === "webforai";
+	const bars =
+		extended === undefined
+			? [bar(x0, y, w, BAR_H, isUs ? t.accent : t.rest)]
+			: [
+					bar(x0, y, end, BAR_H, t.accent2),
+					`<rect x="${x0}" y="${y}" width="${w.toFixed(2)}" height="${BAR_H}" fill="${t.accent}"/>`,
+				];
+	return [
+		...bars,
+		text(
+			(x0 + end + 8).toFixed(2),
+			y + 15,
+			13,
+			isUs ? t.ink : t.ink2,
+			esc(col.format(v, row)),
+			`${isUs ? ' font-weight="600"' : ""} style="font-variant-numeric:tabular-nums"`,
+		),
+	];
+};
+
 const render = (theme) => {
 	const t = THEMES[theme];
 	const plotBottom = TOP + ROW_PITCH * rows.length - 12;
@@ -122,25 +181,7 @@ const render = (theme) => {
 			}" stroke-width="1"/>`,
 		);
 		rows.forEach((row, i) => {
-			const v = col.value(row);
-			const y = TOP + i * ROW_PITCH;
-			if (v === undefined) {
-				parts.push(text(x0 + 8, y + 15, 12, t.muted, "runs as a service"));
-				return;
-			}
-			const w = Math.max(2, (v / col.max) * BAR_MAX);
-			const isUs = row.id === "webforai";
-			parts.push(
-				bar(x0, y, w, BAR_H, isUs ? t.accent : t.rest),
-				text(
-					(x0 + w + 8).toFixed(2),
-					y + 15,
-					13,
-					isUs ? t.ink : t.ink2,
-					esc(col.format(v, row)),
-					`${isUs ? ' font-weight="600"' : ""} style="font-variant-numeric:tabular-nums"`,
-				),
-			);
+			parts.push(...cell(col, row, x0, TOP + i * ROW_PITCH, t));
 		});
 	});
 	rows.forEach((row, i) => {
@@ -162,7 +203,7 @@ const render = (theme) => {
 			height - 22,
 			11.5,
 			t.muted,
-			"* With the comments preset, which keeps reader comments as Trafilatura does by default.",
+			"* webforai's comments preset, which keeps reader comments as Trafilatura does by default; the default preset in brackets.",
 		),
 		text(
 			0,
@@ -183,10 +224,15 @@ const render = (theme) => {
 			return `${r.label}: WCEB F1 ${f1}, code blocks kept ${(r.code * 100).toFixed(1)}%${time}`;
 		})
 		.join("; ");
-	return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${height}" viewBox="0 0 ${WIDTH} ${height}" role="img" aria-labelledby="t d" font-family='${FONT}'>
+	const w = WIDTH + 2 * PAD_X;
+	const h = height + 2 * PAD_Y;
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-labelledby="t d" font-family='${FONT}'>
 <title id="t">webforai compared with other HTML-to-Markdown pipelines</title>
 <desc id="d">${esc(desc)}</desc>
+<rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="10" fill="${t.bg}" stroke="${t.border}"/>
+<g transform="translate(${PAD_X} ${PAD_Y})">
 ${parts.join("\n")}
+</g>
 </svg>
 `;
 };
