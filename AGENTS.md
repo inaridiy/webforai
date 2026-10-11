@@ -11,7 +11,7 @@ When writing complex features or significant refactors, use an ExecPlan (as desc
 - `pnpm test` — vitest at repo root; use `pnpm run test --run` for a one-shot run
   (includes library, corpus, and platform unit tests). Platform tests:
   `pnpm --filter platform test`.
-- `pnpm build` — builds `packages/**`. Platform: `pnpm --filter platform build`.
+- `pnpm build` — builds `packages/**` (library, then CLI). Platform: `pnpm --filter platform build`.
 - Platform local dev: `pnpm --filter platform dev` (wrangler/vite; containers need Docker).
 
 When touching `apps/platform`, run its typecheck + tests + build before calling work done.
@@ -21,9 +21,13 @@ README.md, update that README in the same commit.
 ## Where things live
 
 - `packages/webforai` — the published library (html→markdown). Do not couple it to the
-  platform; the platform consumes it via `workspace:*`. The block classifier's weights
+  platform; the platform consumes it via `workspace:*`. Keep it embeddable: no CLI code or
+  deps, only optional peers, no Node built-ins outside Node-only loaders
+  (`docs/specs/packages.md`). The block classifier's weights
   (`src/extractors/lib/block-model.generated.ts`) are generated elsewhere — never edit by hand;
   measure changes with `evals` (`gold:eval` on WCEB, the corpus, `stress`).
+- `packages/cli` — `webforai-cli`, the `webforai` command. Imports only the library's public
+  entry points; the Agent Skill (`skills/webforai/SKILL.md`) is generated from it.
 - `apps/platform` — the Cloudflare SaaS platform. Design ledger: `docs/specs/platform/`.
 - Enduring decisions go to `docs/specs/**` with a dated `Revision note (YYYY-MM-DD): ...`;
   workflow rules live here; task history lives in `.agents/execplans/`.

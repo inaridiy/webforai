@@ -1,5 +1,8 @@
 # Platform API
 
+Revision note (2026-10-11, reader preset): the `readability` preset is renamed `reader` (reader
+mode, paired with `agent`), with no alias: `convert.extractor: "readability"` is now rejected like
+any unknown preset. The `comments` preset joins the list.
 Revision note (2026-10-05, extractor presets): `convert.extractor` accepts every library preset
 (`auto | readability | agent | kiwame | takumi | minimal | none`; the list is the library's
 `EXTRACTOR_PRESETS`). Scrape results (sync, job pages, playground) carry `extraction`
@@ -109,7 +112,7 @@ Runs on the plain Worker (fast, not durable). With `"async": true` it instead en
   "respectRobotsTxt": false,     // opt-in robots.txt check (see below)
   "async": false,
   "convert": {                   // passthrough to webforai (all optional)
-    "extractor": "auto",        // auto | readability | agent | kiwame | takumi | minimal | none
+    "extractor": "auto",        // auto | reader | agent | comments | kiwame | takumi | minimal | none
     "frontmatter": true,
     "baseUrl": "..."
   }

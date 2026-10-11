@@ -406,10 +406,10 @@ export const DemoScrape = () => {
 			<div className="border-border border-t">
 				{run.status === "idle" ? (
 					<div className="flex flex-col items-center gap-1.5 bg-muted/40 px-6 py-14 text-center">
-						<div className="font-medium text-[15px]">Any URL in, clean Markdown out</div>
+						<div className="font-medium text-[15px]">Any URL in, the cleanest Markdown out</div>
 						<p className="max-w-md text-[14px] text-muted-foreground">
-							Press Convert or pick an example — the Markdown and its rendered preview appear side by side. Navigation,
-							ads and cookie banners are stripped; pages that need JavaScript are rendered first.
+							Press Convert or pick an example — the Markdown and its rendered preview appear side by side. This is
+							reader mode: the main content only; pages that need JavaScript are rendered first.
 						</p>
 					</div>
 				) : null}

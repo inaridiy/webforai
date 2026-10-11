@@ -149,7 +149,7 @@ instead enqueues a 1-URL job (the same shape as [batch](#post-v1batch)) and retu
   "respectRobotsTxt": false,    // opt-in; see robots.txt above
   "async": false,
   "convert": {                   // passthrough to webforai (all optional)
-    "extractor": "auto",         // auto | readability | agent | kiwame | takumi | minimal | none — see below
+    "extractor": "auto",         // auto | reader | agent | comments | kiwame | takumi | minimal | none — see below
     "frontmatter": true,
     "baseUrl": "..."
   }
@@ -179,8 +179,9 @@ library and the CLI (see [How it works](/how-it-works)):
 
 | Preset | Output |
 | --- | --- |
-| `auto` (default), `readability` | A site adapter when one applies, otherwise the learned `kiwame` classifier: the main content, as a reader view shows it. |
+| `auto` (default), `reader` | A site adapter when one applies, otherwise the learned `kiwame` classifier: the main content, as a reader view shows it. |
 | `agent` | The same main content, then the reader comments and the page's other links grouped by role (Related, Pagination, Section navigation, Breadcrumb, Site navigation) — for AI agents that decide where to go next. |
+| `comments` | The same main content, then the reader comments, without the links. |
 | `kiwame` | The learned classifier alone, without site adapters. |
 | `takumi` | The heuristic, Readability-style extractor. |
 | `minimal` | Removes only what is clearly not content (metadata, hidden nodes, page chrome). |
@@ -229,7 +230,7 @@ curl -X POST https://platform.webforai.dev/v1/scrape \
 ## POST /v1/batch
 
 Asynchronous, a list of URLs. Limit: **100 URLs per job**. Counts towards your
-[concurrent job limit](#rate-limits). From a shell, [`npx webforai batch`](/cli#batch-and-crawl)
+[concurrent job limit](#rate-limits). From a shell, [`npx webforai-cli batch`](/cli#batch-and-crawl)
 submits, waits and writes one Markdown file per page.
 
 ```jsonc
@@ -260,7 +261,7 @@ curl -X POST https://platform.webforai.dev/v1/batch \
 ## POST /v1/crawl
 
 Asynchronous, recursive same-origin crawl from a seed URL. Counts towards your
-[concurrent job limit](#rate-limits). From a shell, [`npx webforai crawl`](/cli#batch-and-crawl)
+[concurrent job limit](#rate-limits). From a shell, [`npx webforai-cli crawl`](/cli#batch-and-crawl)
 does the whole round trip and can also write `llms.txt` / `llms-full.txt`.
 
 ```jsonc

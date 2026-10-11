@@ -21,7 +21,9 @@ export interface MdastToMarkdownOptions extends ToMarkdownOptions {
  * Default options for the `mdastToMarkdown` function.
  */
 export const DEFAULT_MDAST_TO_MARKDOWN_OPTIONS: MdastToMarkdownOptions = {
-	extensions: [gfmToMarkdown(), mathToMarkdown()],
+	// Unaligned table cells: padding every cell to its column's widest one repeats a long cell's
+	// width on every row, which spends tokens on nothing but spaces.
+	extensions: [gfmToMarkdown({ tablePipeAlign: false }), mathToMarkdown()],
 	bullet: "-",
 };
 

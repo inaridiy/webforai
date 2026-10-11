@@ -57,7 +57,7 @@ export const createAutoExtractor = (options: AutoExtractorOptions = {}): Extract
 export const autoExtractor: Extractor = createAutoExtractor();
 
 /**
- * The page's main content for a reader (site adapters, then kiwame): the default extractor under
- * the name that pairs it with `agentExtractor`.
+ * Reader mode: the page's main content for a reader (site adapters, then kiwame). The default
+ * extractor, under the name that pairs it with `agentExtractor`.
  */
-export const readabilityExtractor: Extractor = autoExtractor;
+export const readerExtractor: Extractor = autoExtractor;

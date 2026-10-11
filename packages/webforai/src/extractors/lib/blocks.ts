@@ -75,6 +75,8 @@ export interface BlockFrame {
 	parent: BlockFrame | undefined;
 	/** Number of block-level elements from the root to this one, inclusive. */
 	depth: number;
+	/** The `<a href>` this element sits inside, if any (card links). */
+	link?: Element;
 }
 
 export interface TextBlock {
@@ -92,6 +94,11 @@ export interface TextBlock {
 	links: number;
 	/** Number of images. */
 	images: number;
+	/**
+	 * The `<a href>` the whole block sits inside, for card links (`<a href><div>Title</div></a>`):
+	 * the link is an ancestor of the owner, so the owner's own inline content never contains it.
+	 */
+	link?: Element;
 }
 
 const collapse = (value: string): string => value.replace(/\s+/g, " ");
@@ -105,8 +112,10 @@ const collapse = (value: string): string => value.replace(/\s+/g, " ");
 export const segmentBlocks = (root: Hast, maxBlocks = 20000): TextBlock[] => {
 	const blocks: TextBlock[] = [];
 	let frame: BlockFrame | undefined;
+	/** The `<a href>` enclosing the current position, if any. */
+	let link: Element | undefined;
 	const enter = (element: Element) => {
-		frame = { element, parent: frame, depth: (frame?.depth ?? 0) + 1 };
+		frame = { element, parent: frame, depth: (frame?.depth ?? 0) + 1, link };
 	};
 	const leave = () => {
 		frame = frame?.parent;
@@ -128,6 +137,7 @@ export const segmentBlocks = (root: Hast, maxBlocks = 20000): TextBlock[] => {
 				linkChars: Math.min(linkChars, trimmed.length),
 				links,
 				images,
+				link: frame.link,
 			});
 		}
 		text = "";
@@ -149,6 +159,16 @@ export const segmentBlocks = (root: Hast, maxBlocks = 20000): TextBlock[] => {
 			return;
 		}
 		visit(node, inLink);
+	};
+
+	const visitLink = (element: Element): void => {
+		links += 1;
+		const outer = link;
+		link = element;
+		for (const child of element.children) {
+			visitInline(child as Hast, true);
+		}
+		link = outer;
 	};
 
 	const visit = (element: Element, inLink: boolean): void => {
@@ -185,12 +205,12 @@ export const segmentBlocks = (root: Hast, maxBlocks = 20000): TextBlock[] => {
 			return;
 		}
 
-		const isLink = tag === "a" && stringProperty(element, "href") !== undefined;
-		if (isLink) {
-			links += 1;
+		if (tag === "a" && stringProperty(element, "href") !== undefined) {
+			visitLink(element);
+			return;
 		}
 		for (const child of element.children) {
-			visitInline(child as Hast, inLink || isLink);
+			visitInline(child as Hast, inLink);
 		}
 	};
 

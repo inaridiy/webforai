@@ -42,11 +42,12 @@ fetch HTML from websites that need JavaScript execution, like SPAs (Single Page 
 
 ### Usage
 
-The loader imports `playwright-core`, a peer dependency of webforai (npm 7+ and pnpm install it
-with webforai; otherwise run `npm i playwright-core`). Download a browser once:
+The loader imports `playwright-core`, an optional peer dependency of webforai: installing
+webforai does not install it, so add it to your project and download a browser once:
 
 ```bash
-npx playwright install chromium
+npm i playwright-core
+npx playwright-core install chromium
 ```
 
 And then you can use the Playwright Loader as follows:

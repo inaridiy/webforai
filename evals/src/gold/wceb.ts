@@ -32,6 +32,8 @@ export interface GoldPage {
 	url?: string;
 	gold: string;
 	readHtml: () => Promise<string>;
+	/** The set's own tokenizer, when its published scorer differs from `text-metrics.ts`. */
+	tokenize?: (text: string) => string[];
 }
 
 export const loadWceb = async (datasets: readonly string[] = WCEB_DATASETS): Promise<GoldPage[]> => {

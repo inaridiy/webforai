@@ -6,7 +6,7 @@ through a Durable Object, `BrowserDO`), converts the HTML with webforai inside t
 returns Markdown. Responses are cached for an hour.
 
 ```txt
-GET /?url=https://example.com/article             # readability mode (links, tables, images kept)
+GET /?url=https://example.com/article             # default mode (links, tables, images kept)
 GET /?url=https://example.com/article&mode=ai     # ai mode (links/tables as text, no images)
 ```
 

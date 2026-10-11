@@ -14,7 +14,7 @@ const BROWSER_KEYS = ["browser1", "browser2"];
 
 const schema = object({
 	url: string([url()]),
-	mode: optional(union([literal("readability"), literal("ai")])),
+	mode: optional(union([literal("default"), literal("ai")])),
 });
 
 app.get(
@@ -33,10 +33,10 @@ app.get(
 		}
 
 		const aiModeOptions = { linkAsText: true, tableAsText: true, hideImage: true };
-		const readabilityModeOptions = { linkAsText: false, tableAsText: false, hideImage: false };
+		const defaultModeOptions = { linkAsText: false, tableAsText: false, hideImage: false };
 		const markdown = htmlToMarkdown(result.html, {
 			baseUrl: url,
-			...(mode === "ai" ? aiModeOptions : readabilityModeOptions),
+			...(mode === "ai" ? aiModeOptions : defaultModeOptions),
 		});
 		return c.text(markdown);
 	},

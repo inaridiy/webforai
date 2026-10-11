@@ -41,7 +41,7 @@ type Extractor = (params: ExtractParams) => Hast;
 
 ### Default Extractor
 
-The default, `autoExtractor`, first tries the **site adapters** (GitHub, MDN, Wikipedia, YouTube,
+The default, `autoExtractor`, first tries the **site adapters** (GitHub, Wikipedia, YouTube,
 Hacker News, documentation generators, …). For every other page it runs `kiwameExtractor` — kiwame (極め, an appraiser's verdict), a learned
 block classifier:
 
@@ -88,8 +88,8 @@ and custom extractors. Lower-level callers can receive the same report through
 
 ### Agent Output
 
-`readabilityExtractor` (the default, also exported as `autoExtractor`) keeps only the main content —
-what a reader-mode view shows. An AI agent browsing a site also needs the links it might follow
+`readerExtractor` (reader mode, the default; also exported as `autoExtractor`) keeps only the main
+content — what a browser's reader view shows. An AI agent browsing a site also needs the links it might follow
 next. `agentExtractor` keeps exactly the same main content, then appends the reader comments and the
 page's other links, grouped by what they are for:
 
@@ -115,8 +115,10 @@ page's other links, grouped by what they are for:
 Share buttons, ads, sign-up boxes and legal links are left out, each link is listed once (under its
 most specific role), and empty groups are omitted. The roles come from small per-role models over
 kiwame's block features plus class, `aria-label` and `rel` hints and where each block sits relative
-to the main content (about 100 KB of weights, loaded only when you import `agentExtractor`).
-Site-adapter pages get the adapter's content without the link sections.
+to the main content (about 130 KB of weights, loaded only when you import `agentExtractor`).
+On a page a site adapter claims (WordPress, for one), the adapter's output is the content and the
+link sections are still built from the whole page. `commentsExtractor`
+(preset `comments`) is the same without the links: the main content, then the reader comments.
 
 ```ts
 import { htmlToMarkdown, agentExtractor, createAgentExtractor } from "webforai";
@@ -129,7 +131,7 @@ const nextSteps = createAgentExtractor({ roles: ["related", "pagination", "local
 
 CLI: `webforai <url> --extractor agent`; on the hosted platform, `convert: { extractor: "agent" }`.
 `presetExtractors(name)` returns the `extractors` option for any preset name (`"agent"`,
-`"readability"`, `"kiwame"`, …), for code that takes the preset from configuration.
+`"reader"`, `"kiwame"`, …), for code that takes the preset from configuration.
 
 ### Customizing the Extraction
 

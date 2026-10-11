@@ -1,7 +1,7 @@
 import type { ExtractorSelectors } from "../pipeExtractors";
 import type { ExtractorPreset } from "../preset-names";
-import { agentExtractor } from "./agent";
-import { readabilityExtractor } from "./auto";
+import { agentExtractor, commentsExtractor } from "./agent";
+import { readerExtractor } from "./auto";
 import { kiwameExtractor } from "./kiwame";
 import { minimalFilter } from "./minimal-filter";
 import { takumiExtractor } from "./takumi";
@@ -22,10 +22,12 @@ import { takumiExtractor } from "./takumi";
  */
 export const presetExtractors = (preset: ExtractorPreset | undefined): ExtractorSelectors | undefined => {
 	switch (preset) {
-		case "readability":
-			return readabilityExtractor;
+		case "reader":
+			return readerExtractor;
 		case "agent":
 			return agentExtractor;
+		case "comments":
+			return commentsExtractor;
 		case "kiwame":
 			return kiwameExtractor;
 		case "takumi":

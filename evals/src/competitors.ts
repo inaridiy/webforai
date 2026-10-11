@@ -16,7 +16,9 @@ import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import { htmlToMarkdown } from "webforai";
 
+import { cfToMarkdown, readCfToMarkdownRecord } from "./cf-tomarkdown.js";
 import { firecrawlMarkdown, readFirecrawlRecord } from "./firecrawl.js";
+import { readTrafilaturaRecord, trafilaturaMarkdown } from "./trafilatura.js";
 
 export interface Competitor {
 	id: string;
@@ -31,7 +33,7 @@ export interface Competitor {
 	 * For a pipeline that runs as a service and is read from a cache: the time the service took for
 	 * this page, reported instead of the (meaningless) time to read the cache.
 	 */
-	serviceMs?: (html: string) => number;
+	serviceMs?: (html: string) => number | undefined;
 }
 
 /** Turndown configured the way its README and most integrations do for GFM output. */
@@ -113,6 +115,16 @@ export const COMPETITORS: Competitor[] = [
 		convert: defuddleToMarkdown,
 	},
 	{
+		id: "trafilatura",
+		label: "Trafilatura",
+		pipeline:
+			'Python trafilatura 2.3.1 extract(html, url=url, output_format="markdown"), its defaults otherwise; output cached by `trafilatura`',
+		extracts: true,
+		convert: (html) => trafilaturaMarkdown(html),
+		// Measured in Python around `extract`: in-process, but another runtime.
+		serviceMs: (html) => readTrafilaturaRecord(html).ms,
+	},
+	{
 		id: "turndown",
 		label: "Turndown (full page)",
 		pipeline: "turndown (atx, fenced, gfm plugin) on the whole document; head/script/style/noscript/template removed",
@@ -134,5 +146,15 @@ export const COMPETITORS: Competitor[] = [
 		extracts: true,
 		convert: (html) => firecrawlMarkdown(html),
 		serviceMs: (html) => readFirecrawlRecord(html).ms,
+	},
+	{
+		id: "cf-tomarkdown",
+		label: "Cloudflare toMarkdown",
+		pipeline:
+			"Cloudflare Workers AI env.AI.toMarkdown([{ name: page.html, blob }]) with default options (drops script/style/header/footer, appends JSON-LD); output cached by `cf-tomarkdown`",
+		// It removes <header>/<footer> but does not look for the main content.
+		extracts: false,
+		convert: (html) => cfToMarkdown(html),
+		serviceMs: (html) => readCfToMarkdownRecord(html).ms,
 	},
 ];

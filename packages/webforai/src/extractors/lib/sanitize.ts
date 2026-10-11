@@ -108,7 +108,8 @@ const isHidden = (element: Element, parent: Parent, siblingCode: SiblingCodeCach
 	return !isHiddenCodePanel(element, parent, siblingCode);
 };
 
-const looksHidden = (element: Element): boolean => {
+/** True for an element the browser does not display (attribute, inline style, class, geometry). */
+export const looksHidden = (element: Element): boolean => {
 	if (isTruthyAttribute(element, "hidden")) {
 		return true;
 	}

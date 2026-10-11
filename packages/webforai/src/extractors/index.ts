@@ -13,12 +13,15 @@ export {
 } from "./presets/kiwame";
 export { type ExtractParams, type ExtractionReport, type Extractor } from "./types";
 export { minimalFilter } from "./presets/minimal-filter";
-export { autoExtractor, createAutoExtractor, readabilityExtractor, type AutoExtractorOptions } from "./presets/auto";
+export { autoExtractor, createAutoExtractor, readerExtractor, type AutoExtractorOptions } from "./presets/auto";
 export {
 	agentExtractor,
+	commentsExtractor,
+	createAgentAutoExtractor,
 	createAgentExtractor,
 	LINK_ROLE_TITLES,
 	type AgentExtractorOptions,
+	type AgentAutoExtractorOptions,
 } from "./presets/agent";
 export { LINK_ROLES, type LinkRole, type RoleModels } from "./lib/roles";
 export { EXTRACTOR_PRESETS, type ExtractorPreset } from "./preset-names";
