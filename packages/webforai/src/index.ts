@@ -28,6 +28,7 @@ export {
 	minimalFilter,
 	type AutoExtractorOptions,
 	type AgentExtractorOptions,
+	type AgentAutoExtractorOptions,
 	type LinkRole,
 	type RoleModels,
 	type ExtractorPreset,

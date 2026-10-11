@@ -21,6 +21,7 @@ export {
 	createAgentExtractor,
 	LINK_ROLE_TITLES,
 	type AgentExtractorOptions,
+	type AgentAutoExtractorOptions,
 } from "./presets/agent";
 export { LINK_ROLES, type LinkRole, type RoleModels } from "./lib/roles";
 export { EXTRACTOR_PRESETS, type ExtractorPreset } from "./preset-names";

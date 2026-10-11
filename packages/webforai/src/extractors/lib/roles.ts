@@ -94,7 +94,14 @@ export interface BlockLink {
 	rel: string;
 }
 
-const UNFOLLOWABLE = /^(#|javascript:|mailto:|tel:|data:)/i;
+/** A URL scheme; only `http:` and `https:` lead to a page (not `mailto:`, `javascript:`, `sms:`, …). */
+const SCHEME = /^[a-z][a-z\d+.-]*:/i;
+
+/** True for a relative, protocol-relative or http(s) `href` that is not a bare fragment. */
+const isFollowable = (href: string): boolean => {
+	const compact = href.replace(/[\t\n\r]/g, "");
+	return !compact.startsWith("#") && (!SCHEME.test(compact) || /^https?:/i.test(compact));
+};
 
 const textOf = (node: ElementContent): string => {
 	if (node.type === "text") {
@@ -112,7 +119,7 @@ const linkCache = new WeakMap<TextBlock, BlockLink[]>();
 export const linkOf = (element: Element): BlockLink | undefined => {
 	const href = stringProperty(element, "href")?.trim();
 	const text = textOf(element).replace(/\s+/g, " ").trim();
-	if (!href || !text || UNFOLLOWABLE.test(href)) {
+	if (!(href && text && isFollowable(href))) {
 		return undefined;
 	}
 	const rel = element.properties?.rel;

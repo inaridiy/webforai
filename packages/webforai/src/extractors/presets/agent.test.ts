@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { htmlToMarkdown } from "../../html-to-markdown";
+import { htmlToMarkdown, htmlToMarkdownWithMetadata } from "../../html-to-markdown";
+import { parseHtml } from "../../utils/parse-html";
 import { agentExtractor, commentsExtractor, createAgentAutoExtractor, createAgentExtractor } from "./agent";
 import { readabilityExtractor } from "./auto";
 
@@ -93,6 +94,143 @@ describe("agent mode on pages a site adapter claims", () => {
 		expect(body).not.toContain("Rye bread");
 		expect(links).toContain("(https://bakery.example/brioche/)");
 		expect(links).toContain("(https://bakery.example/rye-bread/)");
+	});
+
+	it("reports the adapter, and leaves comments to it", () => {
+		const html = wordpress.replace(
+			"</article>",
+			`</article><section id="comments" class="comments"><ol class="comment-list"><li class="comment"><div class="comment-body"><p>I fed mine twice a day in summer and it doubled in four hours, much faster than in winter.</p></div></li></ol></section>`,
+		);
+		const { markdown, extraction } = htmlToMarkdownWithMetadata(html, {
+			url: "https://bakery.example/sourdough/",
+			extractors: createAgentAutoExtractor({ roleModels: null }),
+		});
+
+		expect(extraction?.extractor).toBe("adapter");
+		expect(markdown).not.toContain("## Comments");
+	});
+
+	it("skips the adapters with adapters: false", () => {
+		const { extraction } = htmlToMarkdownWithMetadata(wordpress, {
+			url: "https://bakery.example/sourdough/",
+			extractors: createAgentAutoExtractor({ roleModels: null, adapters: false }),
+		});
+
+		expect(extraction?.extractor).not.toBe("adapter");
+	});
+});
+
+describe("agentExtractor on a tree the caller owns", () => {
+	it("leaves the tree unchanged", () => {
+		const tree = parseHtml(page, { fragment: true });
+		const before = JSON.stringify(tree);
+		htmlToMarkdown(tree, { baseUrl: "https://example.com/recipes/bread/1", extractors: agentExtractor });
+
+		expect(JSON.stringify(tree)).toBe(before);
+	});
+});
+
+describe("agentExtractor hidden menus", () => {
+	const article = `<article><h1>Rye bread</h1>
+<p>Rye flour holds water differently from wheat, so the dough stays sticky and is shaped with wet hands rather than kneaded.</p>
+<p>Bake it in a tin for an hour and let it rest a full day before slicing, or the crumb will be gummy in the middle.</p></article>`;
+	const pageWith = (extra: string, wrapper = "") =>
+		`<html><head><title>Rye bread</title></head><body>${wrapper ? `<div class="${wrapper}">` : ""}
+<header><nav class="main-nav"><ul><li><a href="/">Home</a></li><li><a href="/products">Products</a>
+<ul class="sub-menu" hidden><li><a href="/products/rye-flour">Rye flour</a></li><li><a href="/products/tins">Baking tins</a></li></ul></li></ul></nav>${extra}</header>
+${article}${wrapper ? "</div>" : ""}</body></html>`;
+	const linksOf = (html: string) =>
+		htmlToMarkdown(html, {
+			url: "https://bakery.example/rye/",
+			baseUrl: "https://bakery.example/rye/",
+			extractors: createAgentExtractor({ roleModels: null }),
+		}).split("## Links")[1] ?? "";
+
+	it("lists the links of a collapsed dropdown", () => {
+		expect(linksOf(pageWith(""))).toContain("[Rye flour](https://bakery.example/products/rye-flour)");
+	});
+
+	it("leaves out account, sign-in and legal links", () => {
+		const links = linksOf(
+			pageWith(`<div class="account-menu" style="display:none"><a href="/account">My account</a> <a href="/logout">Sign out</a> <a href="/account/delete">Delete account</a> <a href="/privacy-policy">Privacy</a></div>
+<div class="modal search-menu" hidden><a href="/login">Log in</a></div>`),
+		);
+
+		expect(links).toContain("Rye flour");
+		for (const text of ["My account", "Sign out", "Delete account", "Privacy", "Log in"]) {
+			expect(links).not.toContain(`[${text}]`);
+		}
+	});
+
+	it("leaves out consent banners", () => {
+		const links = linksOf(
+			pageWith(
+				`<div id="cookie-banner" hidden><a href="/how-we-use-data">Learn more</a> <a href="/partners">Our partners</a></div>`,
+			),
+		);
+
+		expect(links).not.toContain("Learn more");
+		expect(links).not.toContain("Our partners");
+	});
+
+	it("does not take a page-wide wrapper for a menu", () => {
+		const html = pageWith("", "site has-main-navigation").replace(
+			"</article>",
+			`<div class="tab-panel" hidden><a href="/rye/second-tab">Second tab</a></div></article>`,
+		);
+
+		expect(linksOf(html)).not.toContain("Second tab");
+	});
+
+	it("lists at most 200 links of a hidden mega menu", () => {
+		const items = Array.from({ length: 3000 }, (_, i) => `<li><a href="/c/${i}">Category ${i}</a></li>`).join("");
+		const links = linksOf(pageWith(`<div class="mega-menu" hidden><ul>${items}</ul></div>`));
+
+		// The dropdown's two links come first and count towards the 200.
+		expect(links.match(/\[Category \d+\]/g)?.length).toBe(198);
+	});
+
+	it("leaves out share links and links that lead to no page", () => {
+		const links = linksOf(
+			pageWith(`<ul class="dropdown-menu" hidden>
+<li><a href="https://www.linkedin.com/sharing/share-offsite/?url=x">LinkedIn</a></li>
+<li><a href="//www.facebook.com/sharer/sharer.php?u=x">Facebook</a></li>
+<li><a href="https://m.facebook.com/sharer.php?u=x">Facebook mobile</a></li>
+<li><a href="https://x.com/share?url=x">X</a></li>
+<li><a href="https://bsky.app/intent/compose?text=x">Bluesky</a></li>
+<li><a href="vbscript:msgbox">VB</a></li><li><a href="sms:+15550100">Text us</a></li>
+<li><a href="/recipes/rye">Rye recipes</a></li></ul>`),
+		);
+
+		expect(links).toContain("Rye recipes");
+		for (const text of ["LinkedIn", "Facebook", "Facebook mobile", "X", "Bluesky", "VB", "Text us"]) {
+			expect(links).not.toContain(`[${text}]`);
+		}
+	});
+
+	it("lists a link once, however its href is written", () => {
+		const links = linksOf(
+			pageWith(
+				`<ul class="dropdown-menu" hidden><li><a href="https://bakery.example/products/rye-flour">Rye flour again</a></li></ul>`,
+			),
+		);
+
+		expect(links.match(/\(https:\/\/bakery\.example\/products\/rye-flour\)/g)?.length).toBe(1);
+	});
+});
+
+describe("agentExtractor keepScale", () => {
+	it("rejects a scale that is not a finite number above 0", () => {
+		for (const keepScale of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+			expect(() => createAgentExtractor({ keepScale })).toThrow(RangeError);
+		}
+		expect(() => createAgentExtractor({ keepScale: 0.5 })).not.toThrow();
+	});
+
+	it("has no effect without role models", () => {
+		expect(convert(createAgentExtractor({ roleModels: null, keepScale: 0.1 }))).toBe(
+			convert(createAgentExtractor({ roleModels: null })),
+		);
 	});
 });
 

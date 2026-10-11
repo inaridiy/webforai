@@ -38,22 +38,12 @@ export interface AgentExtractorOptions extends KiwameExtractorOptions {
 	/** Role models; `null` uses class/aria hints only. Defaults to the shipped models. */
 	roleModels?: RoleModels | null;
 	/**
-	 * How sure the models must be before a link is listed, as a multiple of the tuned threshold:
-	 * the keep model's when the role models have one (default 1), else each link role's (default
-	 * {@link DEFAULT_KEEP_SCALE}). Lower lists more links.
+	 * Scales how sure the models must be before a block's links are listed: the keep model's
+	 * threshold, or each link role's when the role models have no keep model. Default 1; lower
+	 * lists more links. A finite number above 0; no effect with `roleModels: null`.
 	 */
 	keepScale?: number;
 }
-
-/**
- * For role models without a keep model. The role thresholds maximise each role's F1, which drops
- * a link whenever its role is unsure.
- * For an agent a missing link costs more than an extra one: on WebWalkerQA's navigation tasks a
- * model picks the right next link as often from agent output as from a list of every link, as
- * long as the link is there. At 0.4 agent mode keeps about 12 points more of those next links
- * for 4% more tokens.
- */
-export const DEFAULT_KEEP_SCALE = 0.4;
 
 const element = (tagName: string, children: ElementContent[], properties: Element["properties"] = {}): Element => ({
 	type: "element",
@@ -76,71 +66,170 @@ interface Sections {
 	links: Map<LinkRole, BlockLink[]>;
 }
 
-const NAV_TAGS = new Set(["nav", "header"]);
+/** The page's URL, to resolve links against, when it has a valid one. */
+const baseOf = (url: string | undefined): URL | undefined => {
+	if (!url) {
+		return undefined;
+	}
+	try {
+		return new URL(url);
+	} catch {
+		return undefined;
+	}
+};
+
+/**
+ * A link's identity: its URL resolved against the page's, so `/recipes` and
+ * `https://example.com/recipes` are one link. A protocol-relative `//host/…` reads as https when
+ * there is no page URL; any other relative `href` without one stays as written.
+ */
+const linkKey = (href: string, base: URL | undefined): string => {
+	try {
+		return new URL(href.startsWith("//") && !base ? `https:${href}` : href, base).href;
+	} catch {
+		return href;
+	}
+};
+
+/** Share and "send to" endpoints: never a page to go to, whatever the role models say. */
+const SHARE_URL =
+	/^https?:\/\/([\w-]+\.)*(twitter\.com\/(intent|share)|x\.com\/(intent|share)|facebook\.com\/(sharer|share\.php|dialog\/(share|feed|send))|linkedin\.com\/(sharing\/share-offsite|sharearticle|share|cws\/share)|reddit\.com\/submit|pinterest\.[a-z.]+\/pin\/create|tumblr\.com\/(share|widgets\/share)|wa\.me\/\?|api\.whatsapp\.com\/send|t\.me\/share|telegram\.me\/share|social-plugins\.line\.me|line\.me\/R\/msg|b\.hatena\.ne\.jp\/entry|getpocket\.com\/(save|edit)|news\.ycombinator\.com\/submitlink|bsky\.app\/intent|threads\.(net|com)\/intent|vk\.com\/share\.php|service\.weibo\.com\/share)/i;
+
+const MENU_TAGS = new Set(["nav", "header"]);
 const NAV_ROLES = new Set(["navigation", "menu", "menubar"]);
 /** Class or id words of menus: `main-nav`, `mainmenu`, `dropdown-menu`, `greedy-nav`, … */
 const NAV_HINT = /nav|menu|dropdown/i;
-
-const isNavContext = (element: Element): boolean =>
-	NAV_TAGS.has(element.tagName) ||
-	NAV_ROLES.has(stringProperty(element, "role") ?? "") ||
-	NAV_HINT.test(stringProperty(element, "id") ?? "") ||
-	classList(element).some((name) => NAV_HINT.test(name));
-
+/** Class or id words of consent banners: nothing in them is the site's navigation. */
+const CONSENT_HINT = /cookie|consent|gdpr/i;
 /**
- * Links in hidden parts of the page's navigation: collapsed dropdowns, overflow menus, the mobile
- * menu. Sanitizing removes hidden elements before any block is scored, so no role model sees
- * them, yet they are where a site's deeper sections are linked. Read from the tree before kiwame
- * prunes it; they are listed under Site navigation.
+ * Least share of a menu's text that is link text. A wrapper whose class only mentions navigation
+ * (`site has-main-navigation`) holds the article too, and is not a menu.
  */
-const hiddenNavLinks = (root: Hast): BlockLink[] => {
-	const links: BlockLink[] = [];
-	const visit = (node: Hast, inNav: boolean, hidden: boolean): void => {
-		if (!("children" in node)) {
+const MIN_MENU_LINK_DENSITY = 0.5;
+/** Most hidden-menu links listed for a page; a mega menu can hold thousands. */
+const MAX_HIDDEN_LINKS = 200;
+
+/** Sign-in, account, shop and legal pages: in a hidden menu, never the next page to read. */
+const ACCOUNT_OR_LEGAL_PATH =
+	/\/(log-?in|log-?out|sign-?in|sign-?out|sign-?up|register|registration|my-?account|account\/(delete|settings)|password|cart|checkout|basket|wishlist|privacy|privacy-policy|privacy-notice|terms|terms-of-use|terms-of-service|terms-and-conditions|tos|cookies?|cookie-policy|cookie-settings|legal|imprint|impressum)\/?([?#.]|$)/i;
+const ACCOUNT_OR_LEGAL_TEXT =
+	/^(log ?in|log ?out|sign ?in|sign ?out|sign ?up|register|create (an )?account|(my|your) account|delete (my |your )?account|account settings|privacy( policy| settings)?|terms( of (use|service))?|cookie (settings|preferences|policy)|manage cookies|cart|basket|checkout)$/i;
+
+const hintWords = (element: Element): string =>
+	`${stringProperty(element, "id") ?? ""} ${classList(element).join(" ")}`;
+
+/** `<nav>`, `<header>`, a menu role, or a menu class or id word. */
+const isMenuLike = (element: Element, words: string): boolean =>
+	MENU_TAGS.has(element.tagName) || NAV_ROLES.has(stringProperty(element, "role") ?? "") || NAV_HINT.test(words);
+
+const NO_TEXT_TAGS = new Set(["script", "style", "noscript", "template", "svg"]);
+
+/** Share of an element's visible-text characters (whitespace aside) that sit inside links. */
+const linkDensity = (element: Element): number => {
+	let total = 0;
+	let linked = 0;
+	const visit = (node: Hast, inLink: boolean): void => {
+		if (node.type === "text") {
+			const length = node.value.replace(/\s+/g, "").length;
+			total += length;
+			linked += inLink ? length : 0;
 			return;
 		}
-		const nav = inNav || (isElement(node) && isNavContext(node));
-		const isHidden = hidden || (isElement(node) && looksHidden(node));
-		if (isElement(node) && node.tagName === "a" && nav && isHidden) {
-			const link = linkOf(node);
-			if (link) {
-				links.push(link);
-			}
+		if (!isElement(node) || NO_TEXT_TAGS.has(node.tagName)) {
 			return;
 		}
 		for (const child of node.children) {
-			visit(child as Hast, nav, isHidden);
+			visit(child as Hast, inLink || node.tagName === "a");
+		}
+	};
+	visit(element, false);
+	return total === 0 ? 1 : linked / total;
+};
+
+/**
+ * Links in hidden parts of the page's menus: collapsed dropdowns, overflow menus, the mobile
+ * menu. Sanitizing removes hidden elements before any block is scored, so no role model sees
+ * them, yet they are where a site's deeper sections are linked. Read from the tree before kiwame
+ * prunes it; they are listed under Site navigation.
+ *
+ * With no model to judge them, they are held to a stricter rule than visible links: they must sit
+ * in a link-dense menu outside any consent banner; sign-in, account, shop and legal links are left
+ * out; and at most {@link MAX_HIDDEN_LINKS} are listed.
+ */
+export const hiddenNavLinks = (root: Hast, base: URL | undefined, limit = MAX_HIDDEN_LINKS): BlockLink[] => {
+	const links: BlockLink[] = [];
+	const take = (anchor: Element): void => {
+		const link = linkOf(anchor);
+		if (link && !isAccountOrLegal(link, base)) {
+			links.push(link);
+		}
+	};
+	const visit = (node: Hast, inMenu: boolean, hidden: boolean): void => {
+		if (!("children" in node) || links.length >= limit) {
+			return;
+		}
+		const element = isElement(node) ? node : undefined;
+		const isHidden = hidden || (element !== undefined && looksHidden(element));
+		if (element?.tagName === "a") {
+			if (inMenu && isHidden) {
+				take(element);
+			}
+			return;
+		}
+		const menu = element ? menuState(element, inMenu) : inMenu;
+		if (menu === "skip") {
+			return;
+		}
+		for (const child of node.children) {
+			visit(child as Hast, menu, isHidden);
 		}
 	};
 	visit(root, false, false);
 	return links;
 };
 
+/** Whether an element's links are menu links: `"skip"` for a consent banner, which has none. */
+const menuState = (element: Element, inMenu: boolean): boolean | "skip" => {
+	const words = hintWords(element);
+	if (CONSENT_HINT.test(words)) {
+		return "skip";
+	}
+	return inMenu || (isMenuLike(element, words) && linkDensity(element) >= MIN_MENU_LINK_DENSITY);
+};
+
+const isAccountOrLegal = (link: BlockLink, base: URL | undefined): boolean => {
+	if (ACCOUNT_OR_LEGAL_TEXT.test(link.text)) {
+		return true;
+	}
+	try {
+		return ACCOUNT_OR_LEGAL_PATH.test(new URL(linkKey(link.href, base)).pathname);
+	} catch {
+		return ACCOUNT_OR_LEGAL_PATH.test(link.href.split(/[?#]/)[0]);
+	}
+};
+
 /** Links of the kept content: agent output lists every other link once, and never these. */
-const keptLinks = ({ blocks, probabilities, threshold }: ScoredPage): Set<string> => {
+const keptLinks = ({ blocks, probabilities, threshold }: ScoredPage, base: URL | undefined): Set<string> => {
 	const seen = new Set<string>();
 	for (const block of blocks) {
 		if (probabilities[block.index] >= threshold) {
 			for (const link of blockLinks(block)) {
-				seen.add(link.href);
+				seen.add(linkKey(link.href, base));
 			}
 		}
 	}
 	return seen;
 };
 
-/** Share and "send to" endpoints: never a page to go to, whatever the role models say. */
-const SHARE_URL =
-	/^https?:\/\/(www\.)?(twitter\.com\/(intent|share)|x\.com\/intent|facebook\.com\/(sharer|share\.php|dialog\/share)|linkedin\.com\/(sharearticle|shareArticle|share)|reddit\.com\/submit|pinterest\.[a-z.]+\/pin\/create|tumblr\.com\/(share|widgets\/share)|wa\.me\/\?|api\.whatsapp\.com\/send|t\.me\/share|telegram\.me\/share|social-plugins\.line\.me|line\.me\/R\/msg|b\.hatena\.ne\.jp\/entry|getpocket\.com\/(save|edit)|news\.ycombinator\.com\/submitlink)/i;
+const listable = (link: BlockLink, seen: Set<string>, base: URL | undefined): boolean => {
+	const key = linkKey(link.href, base);
+	return !(seen.has(key) || SHARE_URL.test(key));
+};
 
-const addLinks = (sections: Sections, role: LinkRole, block: TextBlock, seen: Set<string>): void => {
-	for (const link of blockLinks(block)) {
-		if (seen.has(link.href) || SHARE_URL.test(link.href)) {
-			continue;
-		}
-		const list = sections.links.get(role) ?? [];
-		list.push(link);
-		sections.links.set(role, list);
+const addLinks = (sections: Sections, role: LinkRole, links: BlockLink[], seen: Set<string>, base: URL | undefined) => {
+	const listed = links.filter((link) => listable(link, seen, base));
+	if (listed.length > 0) {
+		sections.links.set(role, [...(sections.links.get(role) ?? []), ...listed]);
 	}
 };
 
@@ -148,13 +237,14 @@ const addLinks = (sections: Sections, role: LinkRole, block: TextBlock, seen: Se
  * Lists each link once: a URL found under several roles (a post in both the header menu and the
  * related rail) goes to the most specific one, in {@link LINK_ROLES} order.
  */
-const dedupe = (sections: Sections): void => {
+const dedupe = (sections: Sections, base: URL | undefined): void => {
 	const taken = new Set<string>();
 	for (const role of LINK_ROLES) {
 		const unique: BlockLink[] = [];
 		for (const link of sections.links.get(role) ?? []) {
-			if (!taken.has(link.href)) {
-				taken.add(link.href);
+			const key = linkKey(link.href, base);
+			if (!taken.has(key)) {
+				taken.add(key);
 				unique.push(link);
 			}
 		}
@@ -169,23 +259,28 @@ interface CollectOptions {
 	/** Links of hidden navigation, read before sanitizing. */
 	hidden: BlockLink[];
 	keepScale: number;
+	/** The page's URL, to resolve links against. */
+	base?: URL;
 	/** Links the content already has, when it is not kiwame's (a site adapter's output). */
 	content?: Set<string>;
 }
 
 const collect = (
 	page: ScoredPage,
-	{ roleModels, wanted, comments, hidden, keepScale, content }: CollectOptions,
+	{ roleModels, wanted, comments, hidden, keepScale, base, content }: CollectOptions,
 ): Sections => {
 	const { blocks, features, probabilities, threshold } = page;
 	const rows = roleFeatures(blocks, features, probabilities, threshold);
 	const roles = roleModels
 		? scoreRoles(rows, blocks.length, roleModels, keepScale)
 		: heuristicRoles(rows, blocks.length);
-	const seen = content ?? keptLinks(page);
+	const seen = content ?? keptLinks(page, base);
 	const sections: Sections = { comments: [], links: new Map() };
 	for (const block of blocks) {
 		const role = roles[block.index] < 0 ? undefined : ROLE_NAMES[roles[block.index]];
+		// Blocks kiwame keeps are skipped even when an adapter's content replaces kiwame's: what an
+		// adapter drops from them is mostly post metadata (author, date and comment-count links), and
+		// listing it on the link benchmarks' dev sets added such links and no next link.
 		if (!role || probabilities[block.index] >= threshold) {
 			continue;
 		}
@@ -194,15 +289,13 @@ const collect = (
 				sections.comments.push(inlineCopy(block));
 			}
 		} else if (wanted.has(role)) {
-			addLinks(sections, role, block, seen);
+			addLinks(sections, role, blockLinks(block), seen, base);
 		}
 	}
 	if (wanted.has("site_nav")) {
-		const list = sections.links.get("site_nav") ?? [];
-		list.push(...hidden.filter((link) => !(seen.has(link.href) || SHARE_URL.test(link.href))));
-		sections.links.set("site_nav", list);
+		addLinks(sections, "site_nav", hidden, seen, base);
 	}
-	dedupe(sections);
+	dedupe(sections, base);
 	return sections;
 };
 
@@ -224,14 +317,14 @@ const append = (tree: Root | Element, sections: Sections, order: readonly LinkRo
 	(tree.children as ElementContent[]).push(...extra);
 };
 
-/** Every `href` in a tree, as written. */
-const hrefsIn = (tree: Hast): Set<string> => {
-	const hrefs = new Set<string>();
+/** Every link in a tree, by {@link linkKey}. */
+const linksIn = (tree: Hast, base: URL | undefined): Set<string> => {
+	const keys = new Set<string>();
 	const visit = (node: Hast): void => {
 		if (isElement(node) && node.tagName === "a") {
 			const href = stringProperty(node, "href")?.trim();
 			if (href) {
-				hrefs.add(href);
+				keys.add(linkKey(href, base));
 			}
 		}
 		if ("children" in node) {
@@ -241,7 +334,7 @@ const hrefsIn = (tree: Hast): Set<string> => {
 		}
 	};
 	visit(tree);
-	return hrefs;
+	return keys;
 };
 
 /**
@@ -257,7 +350,10 @@ const createAgentRun = (options: AgentExtractorOptions): AgentRun => {
 	const comments = options.comments ?? true;
 	const shipped = isUsableRoleModels(ROLE_MODELS) ? ROLE_MODELS : null;
 	const roleModels = options.roleModels === undefined ? shipped : options.roleModels;
-	const keepScale = options.keepScale ?? (roleModels?.keep ? 1 : DEFAULT_KEEP_SCALE);
+	if (options.keepScale !== undefined && !(Number.isFinite(options.keepScale) && options.keepScale > 0)) {
+		throw new RangeError("keepScale must be a finite number greater than 0");
+	}
+	const keepScale = options.keepScale ?? 1;
 	// Sections are collected when kiwame has scored the page, before pruning empties the dropped blocks.
 	let sections: Sections | undefined;
 	let collecting: CollectOptions = { roleModels, wanted, comments, hidden: [], keepScale };
@@ -270,14 +366,16 @@ const createAgentRun = (options: AgentExtractorOptions): AgentRun => {
 	});
 	return (params, adapted) => {
 		sections = undefined;
+		const base = baseOf(params.url);
 		collecting = {
 			roleModels,
 			wanted,
 			comments: comments && !adapted,
 			// Read before kiwame runs: it prunes hidden elements, in place when the tree is owned.
-			hidden: wanted.has("site_nav") ? hiddenNavLinks(params.hast) : [],
+			hidden: wanted.has("site_nav") ? hiddenNavLinks(params.hast, base) : [],
 			keepScale,
-			content: adapted ? hrefsIn(adapted) : undefined,
+			base,
+			content: adapted ? linksIn(adapted, base) : undefined,
 		};
 		const tree = kiwame(adapted ? { ...params, report: undefined } : params);
 		const target = adapted ?? tree;
@@ -300,14 +398,15 @@ export const createAgentExtractor = (options: AgentExtractorOptions = {}): Extra
 	return (params) => run(params);
 };
 
+/** {@link AgentExtractorOptions}, plus the site adapters to try first (`false` for none). */
+export type AgentAutoExtractorOptions = AgentExtractorOptions & Pick<AutoExtractorOptions, "adapters">;
+
 /**
  * Agent extraction behind the site adapters: when an adapter claims the page, its output is the
  * content and the page's other links follow it, scored on the original document; otherwise
  * {@link createAgentExtractor}.
  */
-export const createAgentAutoExtractor = (
-	options: AgentExtractorOptions & Pick<AutoExtractorOptions, "adapters"> = {},
-): Extractor => {
+export const createAgentAutoExtractor = (options: AgentAutoExtractorOptions = {}): Extractor => {
 	const run = createAgentRun(options);
 	return (params) => {
 		if (options.adapters !== false) {
