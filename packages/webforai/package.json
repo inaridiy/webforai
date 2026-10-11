@@ -32,14 +32,13 @@
 		"copy:package.cjs.json": "pnpm ncp ./package.cjs.json ./dist/cjs/package.json && pnpm ncp ./package.cjs.json ./dist/types/package.json ",
 		"clean": "rimraf dist",
 		"build": "pnpm clean && tsx build.ts && pnpm copy:package.cjs.json",
-		"typecheck": "tsc --noEmit",
-		"prerelease": "pnpm build",
-		"release": "np"
+		"typecheck": "tsc --noEmit"
 	},
 	"files": [
 		"dist",
 		"bin",
 		"!dist/types/**/*.js",
+		"!dist/types/**/*.js.map",
 		"THIRD_PARTY_NOTICES.md"
 	],
 	"main": "dist/cjs/index.js",

@@ -31,6 +31,9 @@
 	"files": [
 		"dist"
 	],
+	"engines": {
+		"node": ">=18"
+	},
 	"scripts": {
 		"clean": "rimraf dist",
 		"build": "pnpm clean && tsx build.ts",

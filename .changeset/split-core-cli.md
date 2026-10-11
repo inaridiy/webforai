@@ -13,8 +13,9 @@ pulls in a 14 MB browser driver.
 Migrating:
 
 - **CLI:** run `npx webforai-cli <url>` (or `npm i -g webforai-cli`; the command is still
-  `webforai`). Flags, output and exit codes are unchanged. `npx webforai` now only prints this
-  migration hint and exits with code 1.
+  `webforai`, so run `npm uninstall -g webforai` first if v4 is installed globally). Flags and
+  exit codes are unchanged. `npx webforai` now only prints this migration hint and exits with
+  code 1.
 - **Agent Skill:** reinstall it with `npx webforai-cli skill --install` so it calls the new package.
 - **Library:** no code changes. If you import `webforai/loaders/playwright`, add `playwright-core`
   to your own dependencies (`npm i playwright-core`); the Puppeteer loaders already needed this.

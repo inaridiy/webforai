@@ -4,7 +4,11 @@
 // the CLI went instead of failing with npm's "could not determine executable to run".
 // No imports: it must run without installing anything else.
 
-const quote = (arg) => (/^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", `'\\''`)}'`);
+// Quoted for the shell the user is in: double quotes on Windows, single quotes elsewhere.
+const quote =
+	process.platform === "win32"
+		? (arg) => (/^[\w@%+=:,./\\-]+$/.test(arg) ? arg : `"${arg.replaceAll('"', '\\"')}"`)
+		: (arg) => (/^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", `'\\''`)}'`);
 const args = process.argv.slice(2).map(quote).join(" ");
 
 process.stderr.write(
@@ -13,7 +17,8 @@ process.stderr.write(
 		"",
 		`  npx webforai-cli${args ? ` ${args}` : ""}`,
 		"",
-		"or install it once: npm i -g webforai-cli  (the command is still `webforai`).",
+		"or install it once: npm i -g webforai-cli  (the command is still `webforai`;",
+		"if webforai 4 is installed globally, run npm uninstall -g webforai first).",
 		'The webforai package is now the library only: import { htmlToMarkdown } from "webforai".',
 		"Details: https://webforai.dev/cli",
 		"",
