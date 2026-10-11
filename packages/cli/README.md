@@ -1,15 +1,18 @@
 # webforai-cli
 
-The webforai command line: convert a URL or a local HTML file to clean, LLM-ready Markdown.
-The Markdown goes to stdout and every log to stderr, so it composes with pipes, scripts and
-AI agents. Conversion is done by the [`webforai`](https://www.npmjs.com/package/webforai)
-library; this package adds the command.
+Any HTML to the cleanest Markdown, from the shell. **Reader mode** (default) extracts the main
+content of a page, like Mozilla Readability; **agent mode** (`--extractor agent`) adds only the
+links an AI agent needs to explore the site, for about half the tokens of the whole page. The
+Markdown goes to stdout and every log to stderr, so it composes with pipes, scripts and AI agents.
+Conversion is done by the [`webforai`](https://www.npmjs.com/package/webforai) library, which
+has the [benchmarks](https://webforai.dev/benchmarks); this package adds the command.
 
 ```bash
-npx webforai-cli https://example.com/article             # Markdown to stdout
-npx webforai-cli https://example.com/article -o out.md   # write a file
-npx webforai-cli ./page.html                             # convert a local HTML file
-npx webforai-cli https://example.com --json              # machine-readable envelope
+npx webforai-cli https://example.com/article                    # Markdown to stdout
+npx webforai-cli https://example.com/article --extractor agent  # with the links an agent needs
+npx webforai-cli https://example.com/article -o out.md          # write a file
+npx webforai-cli ./page.html                                    # convert a local HTML file
+npx webforai-cli https://example.com --json                     # machine-readable envelope
 ```
 
 Install it once to keep a `webforai` command on your `PATH`:
