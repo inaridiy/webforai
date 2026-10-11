@@ -12,7 +12,7 @@ const outDir = path.join(repoRoot, "site/docs/public/images");
 // Mean page F1 on WCEB (3,985 pages) from `gold:eval`, 2026-10-09. Not part of
 // compare-summary.json; the same figures are in site/docs/pages/benchmarks.mdx.
 const WCEB_F1 = {
-	webforai: 0.892,
+	webforai: 0.891,
 	"readability-turndown": 0.88,
 	defuddle: 0.82,
 	trafilatura: 0.9,
@@ -21,7 +21,7 @@ const WCEB_F1 = {
 };
 // webforai with the `comments` preset, which keeps reader comments as Trafilatura does by default
 // (WCEB's Dragnet references include them). Shown next to the default score, marked with *.
-const WCEB_F1_COMMENTS = 0.922;
+const WCEB_F1_COMMENTS = 0.923;
 const PIPELINES = Object.keys(WCEB_F1);
 // Timed in Python around its `extract` call, not interleaved with the Node pipelines.
 const PYTHON = new Set(["trafilatura"]);

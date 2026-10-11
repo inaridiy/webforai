@@ -65,29 +65,29 @@ links. Every preset works in the library, the CLI and the hosted API.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="site/docs/public/images/benchmark-dark.svg">
-  <img alt="WCEB F1: webforai 0.892 (0.922 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="site/docs/public/images/benchmark-light.svg" width="100%">
+  <img alt="WCEB F1: webforai 0.891 (0.923 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
 [WCEB](https://github.com/chatnoir-eu/web-content-extraction-benchmark) (Bevendorff et al., SIGIR 2023)
 scores extracted text against reference text on 3,985 pages. webforai's score is with the
 `comments` preset, which keeps reader comments as Trafilatura does; the default preset scores
-0.892. Code blocks and time come from 60 cached real pages. Method, configurations and limitations
+0.891. Code blocks and time come from 60 cached real pages. Method, configurations and limitations
 are on the [benchmarks page](https://webforai.dev/benchmarks), and everything is reproducible from
 [`evals/`](evals).
 
 ### Agent mode: following links
 
-On 295 tasks that ask a model to follow a related or next article to answer a question, the
+On 290 tasks that ask a model to follow a related or next article to answer a question, the
 model picks the right link from agent mode's output as often as from the whole page, with about
 half the tokens:
 
 | Output given to the model | Right link chosen (Haiku 5.5 / Sonnet 5.5) | Median tokens |
 | --- | ---: | ---: |
-| webforai, agent mode | 93.0% / 95.0% | **2,440** |
-| webforai + every link of the page | 92.4% / 94.5% | 2,902 |
-| Turndown (full page) | 93.0% / 94.9% | 4,533 |
-| node-html-markdown (full page) | 92.8% / 94.6% | 4,350 |
-| Readability + Turndown, Defuddle, Trafilatura | 5–11% | 900–1,100 |
+| webforai, agent mode | 93.8% / 94.1% | **2,426** |
+| webforai + every link of the page | 92.5% / 94.5% | 2,902 |
+| Turndown (full page) | 92.9% / 94.8% | 4,533 |
+| node-html-markdown (full page) | 92.6% / 94.5% | 4,350 |
+| Readability + Turndown, Defuddle, Trafilatura | 5–12% | 900–1,100 |
 
 Reader-mode extractors drop the links around the article, as they are designed to.
 [Method and task list →](https://webforai.dev/benchmarks#following-links-agent-mode)
@@ -144,6 +144,8 @@ Release notes are in the [CHANGELOG](packages/webforai/CHANGELOG.md).
 
 Issues and pull requests are welcome. `pnpm install`, then `pnpm run test --run` and
 `pnpm build`; [AGENTS.md](AGENTS.md) describes the layout of the repository and its conventions.
+
+webforai is developed with Claude Code, and its models are trained on labels made with Codex.
 
 ## Support
 

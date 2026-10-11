@@ -65,16 +65,16 @@ Looking for the command line? That is [`webforai-cli`](https://www.npmjs.com/pac
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-dark.svg">
-  <img alt="WCEB F1: webforai 0.892 (0.922 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
+  <img alt="WCEB F1: webforai 0.891 (0.923 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
 **Readability mode.** WCEB scores extracted text against reference text on 3,985 pages.
 webforai's score is with the `comments` preset, which keeps reader comments as Trafilatura does;
-the default preset scores 0.892. Code blocks and time come from 60 cached real pages.
+the default preset scores 0.891. Code blocks and time come from 60 cached real pages.
 
-**Agent mode** keeps the links a model needs to go on. On 295 tasks that follow a related or next
-article, Haiku 5.5 and Sonnet 5.5 picked the right link from its output 93.0% and 95.0% of the
-time, as often as from the whole page converted by node-html-markdown (92.8%, 94.6%), at 2,440
+**Agent mode** keeps the links a model needs to go on. On 290 tasks that follow a related or next
+article, Haiku 5.5 and Sonnet 5.5 picked the right link from its output 93.8% and 94.1% of the
+time, as often as from the whole page converted by node-html-markdown (92.6%, 94.5%), at 2,426
 median tokens against 4,350. Method and limitations:
 [webforai.dev/benchmarks](https://webforai.dev/benchmarks).
 

@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="928" height="394" viewBox="0 0 928 394" role="img" aria-labelledby="t d" font-family='-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif'>
 <title id="t">webforai compared with other HTML-to-Markdown pipelines</title>
-<desc id="d">webforai: WCEB F1 0.892 (0.922 with comments), code blocks kept 98.0%, 4.04 s; Readability + Turndown: WCEB F1 0.880, code blocks kept 45.9%, 13.69 s; Defuddle: WCEB F1 0.820, code blocks kept 89.2%, 13.76 s; Trafilatura: WCEB F1 0.900, code blocks kept 40.6%, 2.94 s; Firecrawl OSS: WCEB F1 0.743, code blocks kept 51.9%; Cloudflare toMarkdown: WCEB F1 0.713, code blocks kept 53.6%</desc>
+<desc id="d">webforai: WCEB F1 0.891 (0.923 with comments), code blocks kept 98.0%, 4.04 s; Readability + Turndown: WCEB F1 0.880, code blocks kept 45.9%, 13.69 s; Defuddle: WCEB F1 0.820, code blocks kept 89.2%, 13.76 s; Trafilatura: WCEB F1 0.900, code blocks kept 40.6%, 2.94 s; Firecrawl OSS: WCEB F1 0.743, code blocks kept 51.9%; Cloudflare toMarkdown: WCEB F1 0.713, code blocks kept 53.6%</desc>
 <rect x="0.5" y="0.5" width="927" height="393" rx="10" fill="#0d1117" stroke="#3d444d"/>
 <g transform="translate(24 22)">
 <text x="196" y="20" font-size="14" fill="#f0f6fc" font-weight="600">Accuracy<tspan font-size="11.5" font-weight="400" fill="#9198a1">  higher is better</tspan></text>
 <text x="196" y="38" font-size="11.5" fill="#9198a1">WCEB F1 · 3,985 pages · axis from 0.5</text>
 <line x1="195.5" y1="50" x2="195.5" y2="274" stroke="#3d444d" stroke-width="1"/>
-<path d="M196 58h114.16a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-114.16z" fill="#8cc4ff"/>
-<rect x="196" y="58" width="109.76" height="20" fill="#2f8ff0"/>
-<text x="322.16" y="73" font-size="13" fill="#f0f6fc" font-weight="600" style="font-variant-numeric:tabular-nums">0.922* (0.892)</text>
+<path d="M196 58h114.44a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-114.44z" fill="#8cc4ff"/>
+<rect x="196" y="58" width="109.48" height="20" fill="#2f8ff0"/>
+<text x="322.44" y="73" font-size="13" fill="#f0f6fc" font-weight="600" style="font-variant-numeric:tabular-nums">0.923* (0.891)</text>
 <path d="M196 96h102.40a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-102.40z" fill="#6e6d66"/>
 <text x="310.40" y="111" font-size="13" fill="#c9d1d9" style="font-variant-numeric:tabular-nums">0.880</text>
 <path d="M196 134h85.60a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-85.60z" fill="#6e6d66"/>

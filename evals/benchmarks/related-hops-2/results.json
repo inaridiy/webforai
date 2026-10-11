@@ -6,35 +6,35 @@
 		"pipelines": {
 			"webforai": {
 				"label": "webforai (readability)",
-				"hopsKept": 21,
+				"hopsKept": 20,
 				"hops": 290,
-				"keptPercent": 7.2,
-				"medianTokens": 1079,
-				"meanTokens": 1435
+				"keptPercent": 6.9,
+				"medianTokens": 1051,
+				"meanTokens": 1426
 			},
 			"webforai-agent": {
 				"label": "webforai (agent)",
 				"hopsKept": 289,
 				"hops": 290,
 				"keptPercent": 99.7,
-				"medianTokens": 2440,
-				"meanTokens": 2993
+				"medianTokens": 2426,
+				"meanTokens": 2966
 			},
 			"webforai-agent-flat": {
 				"label": "webforai (agent, no role headings)",
 				"hopsKept": 289,
 				"hops": 290,
 				"keptPercent": 99.7,
-				"medianTokens": 2426,
-				"meanTokens": 2983
+				"medianTokens": 2414,
+				"meanTokens": 2956
 			},
 			"webforai-agent-compact": {
 				"label": "webforai (agent, same-site links as paths)",
 				"hopsKept": 289,
 				"hops": 290,
 				"keptPercent": 99.7,
-				"medianTokens": 2203,
-				"meanTokens": 2658
+				"medianTokens": 2139,
+				"meanTokens": 2636
 			},
 			"webforai-all-links": {
 				"label": "webforai + all links",
@@ -42,7 +42,7 @@
 				"hops": 290,
 				"keptPercent": 100,
 				"medianTokens": 2902,
-				"meanTokens": 3451
+				"meanTokens": 3444
 			},
 			"readability-turndown": {
 				"label": "Readability + Turndown",
@@ -96,35 +96,35 @@
 				"pipelines": {
 					"webforai": {
 						"label": "webforai (readability)",
-						"accuracy": 7,
+						"accuracy": 6.7,
 						"answered": 290,
 						"failedCalls": 0,
-						"medianTokens": 1079
+						"medianTokens": 1051
 					},
 					"webforai-agent": {
 						"label": "webforai (agent)",
-						"accuracy": 92.9,
-						"answered": 290,
-						"failedCalls": 0,
-						"medianTokens": 2440
-					},
-					"webforai-agent-flat": {
-						"label": "webforai (agent, no role headings)",
-						"accuracy": 93.3,
+						"accuracy": 93.8,
 						"answered": 290,
 						"failedCalls": 0,
 						"medianTokens": 2426
 					},
-					"webforai-agent-compact": {
-						"label": "webforai (agent, same-site links as paths)",
-						"accuracy": 93.9,
+					"webforai-agent-flat": {
+						"label": "webforai (agent, no role headings)",
+						"accuracy": 93.8,
 						"answered": 290,
 						"failedCalls": 0,
-						"medianTokens": 2203
+						"medianTokens": 2414
+					},
+					"webforai-agent-compact": {
+						"label": "webforai (agent, same-site links as paths)",
+						"accuracy": 94.5,
+						"answered": 67,
+						"failedCalls": 0,
+						"medianTokens": 2139
 					},
 					"webforai-all-links": {
 						"label": "webforai + all links",
-						"accuracy": 92.3,
+						"accuracy": 92.5,
 						"answered": 290,
 						"failedCalls": 0,
 						"medianTokens": 2902
@@ -167,29 +167,29 @@
 				},
 				"paired": {
 					"agent − all links": {
-						"mean": 0.6,
-						"low": -1.3,
-						"high": 2.6
+						"mean": 1.3,
+						"low": -0.2,
+						"high": 3
 					},
 					"agent − agent without role headings": {
-						"mean": -0.5,
-						"low": -1.6,
-						"high": 0.6
+						"mean": 0,
+						"low": -0.9,
+						"high": 0.8
 					},
 					"agent with same-site links as paths − agent": {
-						"mean": 1,
-						"low": -0.3,
-						"high": 2.6
+						"mean": 0,
+						"low": -1.5,
+						"high": 1.5
 					},
 					"agent − node-html-markdown": {
-						"mean": 0.2,
-						"low": -1.7,
-						"high": 2.2
+						"mean": 1.1,
+						"low": -0.7,
+						"high": 3
 					},
 					"agent − readability": {
-						"mean": 85.9,
-						"low": 81.8,
-						"high": 89.7
+						"mean": 87.1,
+						"low": 83.3,
+						"high": 90.7
 					}
 				}
 			},
@@ -198,35 +198,35 @@
 				"pipelines": {
 					"webforai": {
 						"label": "webforai (readability)",
-						"accuracy": 7.2,
+						"accuracy": 6.9,
 						"answered": 290,
 						"failedCalls": 0,
-						"medianTokens": 1079
+						"medianTokens": 1051
 					},
 					"webforai-agent": {
 						"label": "webforai (agent)",
-						"accuracy": 94.9,
-						"answered": 290,
-						"failedCalls": 0,
-						"medianTokens": 2440
-					},
-					"webforai-agent-flat": {
-						"label": "webforai (agent, no role headings)",
-						"accuracy": 94.5,
+						"accuracy": 94.1,
 						"answered": 290,
 						"failedCalls": 0,
 						"medianTokens": 2426
 					},
-					"webforai-agent-compact": {
-						"label": "webforai (agent, same-site links as paths)",
-						"accuracy": 95.5,
+					"webforai-agent-flat": {
+						"label": "webforai (agent, no role headings)",
+						"accuracy": 95.3,
 						"answered": 290,
 						"failedCalls": 0,
-						"medianTokens": 2203
+						"medianTokens": 2414
+					},
+					"webforai-agent-compact": {
+						"label": "webforai (agent, same-site links as paths)",
+						"accuracy": 96,
+						"answered": 67,
+						"failedCalls": 0,
+						"medianTokens": 2139
 					},
 					"webforai-all-links": {
 						"label": "webforai + all links",
-						"accuracy": 94.4,
+						"accuracy": 94.5,
 						"answered": 290,
 						"failedCalls": 0,
 						"medianTokens": 2902
@@ -269,29 +269,29 @@
 				},
 				"paired": {
 					"agent − all links": {
-						"mean": 0.6,
-						"low": -0.6,
-						"high": 2.1
+						"mean": -0.3,
+						"low": -1.7,
+						"high": 1.1
 					},
 					"agent − agent without role headings": {
-						"mean": 0.5,
-						"low": -0.5,
-						"high": 1.4
+						"mean": -1.1,
+						"low": -2.9,
+						"high": 0.3
 					},
 					"agent with same-site links as paths − agent": {
-						"mean": 0.6,
-						"low": -0.5,
-						"high": 1.8
+						"mean": 1.5,
+						"low": -1,
+						"high": 5
 					},
 					"agent − node-html-markdown": {
-						"mean": 0.5,
-						"low": -0.9,
-						"high": 2
+						"mean": -0.3,
+						"low": -2.3,
+						"high": 1.5
 					},
 					"agent − readability": {
-						"mean": 87.7,
-						"low": 83.9,
-						"high": 91.3
+						"mean": 87.2,
+						"low": 83.3,
+						"high": 91
 					}
 				}
 			}
