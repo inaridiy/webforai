@@ -12,7 +12,11 @@ export interface Proxy {
 	label: string;
 }
 
-const PROXY_LIST_PATH = path.join(CACHE_DIR, "proxies.txt");
+/**
+ * Where the downloaded list is kept: `WEBFORAI_PROXY_LIST_FILE`, else `.cache/proxies.txt`. Point it
+ * outside the repository to keep the proxy credentials out of the working tree.
+ */
+const PROXY_LIST_PATH = process.env.WEBFORAI_PROXY_LIST_FILE ?? path.join(CACHE_DIR, "proxies.txt");
 
 /**
  * Parses the common `ip:port:username:password` proxy-list download format.
@@ -75,7 +79,7 @@ export const loadProxies = async (): Promise<Proxy[]> => {
 	}
 
 	const contents = await response.text();
-	await mkdir(CACHE_DIR, { recursive: true });
+	await mkdir(path.dirname(PROXY_LIST_PATH), { recursive: true });
 	await writeFile(PROXY_LIST_PATH, contents);
 
 	return parseProxyList(contents);

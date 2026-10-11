@@ -7,12 +7,12 @@
  *
  * Downloads the dataset to `.cache/gold/webwalkerqa/` on first use. Pages are rendered in headless
  * Chromium (many of these sites build their menus in JavaScript), one at a time per host, and the
- * rendered DOM is cached in `.cache/webwalker/html/`, failures included. `WEBWALKER_CHROMIUM`
- * points at a Chromium binary when playwright-core's own is not installed.
+ * rendered DOM is cached in `.cache/webwalker/html/`. `WEBWALKER_CHROMIUM` points at a Chromium
+ * binary when playwright-core's own is not installed.
  *
  * Requests go through the proxy pool (`WEBFORAI_PROXY_LIST_URL` / `WEBFORAI_PROXY_URL`, see
- * `config.ts`): up to three proxies per page, a failed or blocked (HTTP 403/429) answer moving on to
- * the next. `--direct` fetches from this machine instead; without a configured proxy the run stops.
+ * `config.ts` and `live-pages.ts`); a site that refuses a request (HTTP 403/429) drops the path.
+ * `--direct` fetches from this machine instead; without a configured proxy the run stops.
  *
  * For each label the page's anchors are matched by text (`textKey`): exact matches first, else
  * anchors whose text contains the label or is contained in it. When several distinct URLs match,
@@ -27,7 +27,7 @@ import path from "node:path";
 
 import { fetch as undiciFetch } from "undici";
 
-import { createPageFetcher } from "../live-pages.js";
+import { createPageFetcher, refused } from "../live-pages.js";
 import {
 	HOPS_FILE,
 	type Hop,
@@ -60,6 +60,9 @@ type Resolution = { hops: Omit<Hop, "task" | "path">[] } | { failure: string };
 
 const resolve = async (url: string, labels: string[], target: string, step: number): Promise<Resolution> => {
 	const page = await getPage(url);
+	if (refused(page)) {
+		return { failure: "refused by the site (HTTP 403/429)" };
+	}
 	if (!page.html || page.status >= 400) {
 		return { failure: `fetch: ${page.error ?? `HTTP ${page.status} ${page.contentType}`}` };
 	}

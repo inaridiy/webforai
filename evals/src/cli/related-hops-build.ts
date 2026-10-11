@@ -15,9 +15,11 @@
  *
  * 1. candidates: English-looking article and listing URLs from Common Crawl (CC-NEWS, and blog and
  *    documentation paths of a main crawl), at most 4 per site, minus the hosts in
- *    `--exclude-hosts` (one per line: hosts any model was trained on) and WebWalkerQA's sites.
+ *    `--exclude-hosts` (one per line: hosts any model was trained on, earlier batches' hosts) and
+ *    WebWalkerQA's sites (main and silver splits, in `.cache/gold/webwalkerqa/`). The excluded
+ *    sites are kept in `.cache/<set>/excluded-sites.txt` for the later stages.
  * 2. start: each candidate page (P0) rendered through the proxy pool (`live-pages.ts`); English
- *    pages with at least 15 links are kept.
+ *    pages with at least 15 links are kept, unless they redirected to an excluded site.
  * 3. label: Sonnet 5.5 (`claude -p`) marks, from P0's anchor list with each anchor's DOM context,
  *    the links in a related / read-next / next-previous / series / pagination area. No converter
  *    is involved, so the gold link does not depend on any pipeline under test. One same-site link
@@ -108,6 +110,17 @@ const readJsonl = async <T>(file: string): Promise<T[]> =>
 		.filter((line) => line.trim())
 		.map((line) => JSON.parse(line) as T);
 
+const EXCLUDED_SITES = path.join(DIR, "excluded-sites.txt");
+
+/** Sites no task may come from, as `candidates` wrote them; checked again after redirects. */
+const loadExcludedSites = async (): Promise<Set<string>> => {
+	const text = await readFile(EXCLUDED_SITES, "utf8").catch(() => undefined);
+	if (text === undefined) {
+		throw new Error(`${EXCLUDED_SITES} is missing: run --stage=candidates first`);
+	}
+	return new Set(text.split("\n").filter(Boolean));
+};
+
 const keyOf = (url: string): string => createHash("sha1").update(url).digest("hex").slice(0, 16);
 
 const readStep = async <T>(step: string, key: string): Promise<T | undefined> => {
@@ -138,21 +151,26 @@ const pool = async <T>(items: T[], run: (item: T) => Promise<void>, width = conc
 	);
 };
 
-/** Lines of a gzipped remote file, streamed; stop by returning false. */
+/** Lines of a gzipped remote file, streamed (`curl` into `gzip -dc`); stop by returning false. */
 const streamGzipLines = (url: string, onLine: (line: string) => boolean): Promise<void> =>
 	new Promise((resolve) => {
-		const child = spawn("sh", ["-c", `curl -s --fail ${JSON.stringify(url)} | gzip -dc 2>/dev/null`], {
-			stdio: ["ignore", "pipe", "ignore"],
-		});
-		const lines = createInterface({ input: child.stdout });
+		const download = spawn("curl", ["-s", "--fail", url], { stdio: ["ignore", "pipe", "ignore"] });
+		const gunzip = spawn("gzip", ["-dc"], { stdio: ["pipe", "pipe", "ignore"] });
+		download.stdout.pipe(gunzip.stdin);
+		gunzip.stdin.on("error", () => undefined);
+		const lines = createInterface({ input: gunzip.stdout });
+		const stop = (): void => {
+			download.kill("SIGKILL");
+			gunzip.kill("SIGKILL");
+		};
 		lines.on("line", (line) => {
 			if (!onLine(line)) {
 				lines.close();
-				child.kill("SIGKILL");
+				stop();
 			}
 		});
 		lines.on("close", () => resolve());
-		child.on("close", () => resolve());
+		gunzip.on("close", () => resolve());
 	});
 
 const run = (command: string, args: string[], input: string, cwd: string): Promise<{ code: number; out: string }> =>
@@ -181,7 +199,10 @@ const run = (command: string, args: string[], input: string, cwd: string): Promi
 
 const workdir = await mkdtemp(path.join(os.tmpdir(), "related-hops-"));
 
-/** Structured output from `claude -p` (no tools, fixed system prompt); one retry. */
+/**
+ * Structured output from `claude -p` (no tools, fixed system prompt; run from an empty temporary
+ * directory without the user's MCP servers, hooks, plugins or skills); one retry.
+ */
 const askClaude = async <T>(model: string, system: string, user: string, schema: object): Promise<T | undefined> => {
 	for (let attempt = 0; attempt < 2; attempt++) {
 		const result = await run(
@@ -192,6 +213,10 @@ const askClaude = async <T>(model: string, system: string, user: string, schema:
 				model,
 				"--tools",
 				"",
+				"--strict-mcp-config",
+				"--setting-sources",
+				"project",
+				"--disable-slash-commands",
 				"--no-session-persistence",
 				"--output-format",
 				"json",
@@ -214,7 +239,7 @@ const askClaude = async <T>(model: string, system: string, user: string, schema:
 	return undefined;
 };
 
-/** Structured output from `codex exec` (gpt-6.1-sol, low effort, read-only); one retry. */
+/** Structured output from `codex exec` (gpt-6.1-sol, low effort, read-only sandbox without network, no user config); one retry. */
 const askCodex = async <T>(prompt: string, schema: object): Promise<T | undefined> => {
 	const schemaPath = path.join(workdir, `schema-${keyOf(JSON.stringify(schema))}.json`);
 	await writeFile(schemaPath, JSON.stringify(schema));
@@ -230,6 +255,8 @@ const askCodex = async <T>(prompt: string, schema: object): Promise<T | undefine
 				"model_reasoning_effort=low",
 				"--sandbox",
 				"read-only",
+				"--ignore-user-config",
+				"--ignore-rules",
 				"--ephemeral",
 				"--skip-git-repo-check",
 				"--output-schema",
@@ -356,13 +383,20 @@ const candidates = async (): Promise<void> => {
 			.map(siteOf),
 	);
 	for (const split of ["main", "silver"]) {
-		for (const task of await readJsonl<{ root_url: string }>(
-			path.join(DIR, "..", "gold", "webwalkerqa", `${split}.jsonl`),
-		)) {
+		const file = path.join(DIR, "..", "gold", "webwalkerqa", `${split}.jsonl`);
+		const tasks = await readJsonl<{ root_url: string }>(file);
+		if (tasks.length === 0) {
+			throw new Error(
+				`${file} is missing: download WebWalkerQA's ${split} split from https://huggingface.co/datasets/callanwu/WebWalkerQA (\`webwalker:fetch\` fetches main)`,
+			);
+		}
+		for (const task of tasks) {
 			excluded.add(siteOf(new URL(task.root_url).hostname));
 		}
 	}
 	console.info(`${excluded.size} excluded sites`);
+	await mkdir(DIR, { recursive: true });
+	await writeFile(EXCLUDED_SITES, `${[...excluded].sort().join("\n")}\n`);
 
 	const bySite = new Map<string, Candidate[]>();
 	const add = (url: string, source: string): void => {
@@ -461,6 +495,7 @@ const start = async (): Promise<void> => {
 		.sort((a, b) => a.round - b.round || a.order.localeCompare(b.order))
 		.map(({ candidate }) => candidate)
 		.slice(0, limit);
+	const excluded = await loadExcludedSites();
 	const fetcher = await createPageFetcher();
 	await pool(
 		list,
@@ -473,6 +508,8 @@ const start = async (): Promise<void> => {
 			let record: StartRecord;
 			if (!page.html || page.status >= 400) {
 				record = { url: candidate.url, ok: false, reason: `fetch: ${page.error ?? `HTTP ${page.status}`}` };
+			} else if (excluded.has(siteOf(new URL(page.finalUrl).hostname))) {
+				record = { url: candidate.url, ok: false, reason: "redirected to an excluded site" };
 			} else if (isEnglish(page.html)) {
 				const links = anchorsOf(page.html, page.finalUrl).length;
 				record =
@@ -589,6 +626,7 @@ interface DrawRecord {
 
 /** One gold link per start page: same site, not the page itself, steering the category mix. */
 const draw = async (): Promise<DrawRecord[]> => {
+	const excluded = await loadExcludedSites();
 	const draws: DrawRecord[] = [];
 	let sequence = 0;
 	const files = (await readdir(STEP_DIR("label")).catch(() => [] as string[])).sort();
@@ -603,6 +641,9 @@ const draw = async (): Promise<DrawRecord[]> => {
 		}
 		const self = normalizeUrl(page.finalUrl, page.finalUrl);
 		const site = siteOf(new URL(page.finalUrl).hostname);
+		if (excluded.has(site)) {
+			continue;
+		}
 		const usable = [...new Map(record.links.map((link) => [link.url, link])).values()].filter(
 			(link) => link.url !== self && siteOf(new URL(link.href).hostname) === site,
 		);
@@ -886,22 +927,33 @@ const freeze = async (): Promise<void> => {
 	console.info(JSON.stringify(summary, null, 2));
 };
 
-/** Renders the start pages of a committed task list and writes the set's `tasks.jsonl` and `hops.jsonl`. */
+/**
+ * Renders the start pages of a committed task list that are not cached yet, and writes the set's
+ * `tasks.jsonl` and `hops.jsonl`. With every page cached it works offline.
+ */
 const fetchCommitted = async (): Promise<void> => {
 	const tasks = await readJsonl<RelatedTask>(path.join(EVALS_ROOT, "benchmarks", LINK_SET, "tasks.jsonl"));
-	const fetcher = await createPageFetcher({ direct: process.argv.includes("--direct") });
+	const missing: RelatedTask[] = [];
+	for (const task of tasks) {
+		if (!(await readPage(task.pageUrl))) {
+			missing.push(task);
+		}
+	}
 	let failed = 0;
-	await pool(
-		tasks,
-		async (task) => {
-			const page = await fetcher.get(task.pageUrl);
-			if (!page.html || page.status >= 400) {
-				failed++;
-			}
-		},
-		12,
-	);
-	await fetcher.close();
+	if (missing.length > 0) {
+		const fetcher = await createPageFetcher({ direct: process.argv.includes("--direct") });
+		await pool(
+			missing,
+			async (task) => {
+				const page = await fetcher.get(task.pageUrl);
+				if (!page.html || page.status >= 400) {
+					failed++;
+				}
+			},
+			12,
+		);
+		await fetcher.close();
+	}
 	const hops: Hop[] = [];
 	for (const [index, task] of tasks.entries()) {
 		hops.push({
@@ -918,7 +970,7 @@ const fetchCommitted = async (): Promise<void> => {
 	await mkdir(DIR, { recursive: true });
 	await writeFile(path.join(DIR, "tasks.jsonl"), `${tasks.map((task) => JSON.stringify(task)).join("\n")}\n`);
 	await writeFile(path.join(DIR, "hops.jsonl"), `${hops.map((hop) => JSON.stringify(hop)).join("\n")}\n`);
-	console.info(`${tasks.length} tasks, ${failed} start pages failed to load`);
+	console.info(`${tasks.length} tasks, ${missing.length} start pages rendered now, ${failed} failed to load`);
 };
 
 const STAGES: Record<string, () => Promise<void>> = {

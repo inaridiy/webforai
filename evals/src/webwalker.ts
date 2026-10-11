@@ -30,8 +30,12 @@ import { gfm } from "micromark-extension-gfm";
 
 import { CACHE_DIR, REPORTS_DIR } from "./config.js";
 
-/** The link set the CLIs work on: `--set=`, default `webwalker`. */
-export const LINK_SET = process.argv.find((value) => value.startsWith("--set="))?.slice(6) ?? "webwalker";
+/** The link set the CLIs work on: the last `--set=` (a script's default comes first), else `webwalker`. */
+export const LINK_SET =
+	process.argv
+		.filter((value) => value.startsWith("--set="))
+		.at(-1)
+		?.slice(6) ?? "webwalker";
 export const WEBWALKER_DIR = path.join(CACHE_DIR, LINK_SET);
 export const LINK_REPORTS_DIR = path.join(REPORTS_DIR, LINK_SET);
 export const WEBWALKER_DATA = path.join(CACHE_DIR, "gold", "webwalkerqa", "main.jsonl");
