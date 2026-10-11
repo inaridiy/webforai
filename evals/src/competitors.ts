@@ -33,7 +33,7 @@ export interface Competitor {
 	 * For a pipeline that runs as a service and is read from a cache: the time the service took for
 	 * this page, reported instead of the (meaningless) time to read the cache.
 	 */
-	serviceMs?: (html: string) => number;
+	serviceMs?: (html: string) => number | undefined;
 }
 
 /** Turndown configured the way its README and most integrations do for GFM output. */

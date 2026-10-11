@@ -15,8 +15,8 @@ export const CF_TOMARKDOWN_CACHE = path.join(CACHE_DIR, "cf-tomarkdown");
 
 export interface CfToMarkdownRecord {
 	markdown: string;
-	/** Time of the `env.AI.toMarkdown` call inside the Worker (Cloudflare round trip included). */
-	ms: number;
+	/** Time of the `env.AI.toMarkdown` call inside the Worker (Cloudflare round trip included); absent when it failed. */
+	ms?: number;
 	ok: boolean;
 	error?: string;
 	/** Date of the run: the service is versioned by Cloudflare, not by us. */

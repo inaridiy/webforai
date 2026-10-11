@@ -5,7 +5,7 @@
 """Converts HTML with Trafilatura for the evals harness (`src/cli/trafilatura.ts` starts it).
 
 Reads one JSON object per line on stdin, {"html", "url", "rounds", "options"?}, and writes one per line on
-stdout, {"ok", "markdown", "error", "ms"}. Trafilatura runs with its defaults and Markdown output,
+stdout, {"ok", "markdown", "error", "ms"} (`ms` null when the call failed). Trafilatura runs with its defaults and Markdown output,
 as its documentation shows: `extract(html, url=url, output_format="markdown")`; `options`, when
 given, are passed on as keyword arguments (`{"include_links": true}` for the link benchmark). `ms` is the median
 of `rounds` timed calls after one untimed warm-up call when `rounds` > 1, else the single call.
@@ -54,7 +54,7 @@ def main() -> None:
                 times.append((time.perf_counter() - start) * 1000)
             reply = {"ok": True, "markdown": markdown, "ms": statistics.median(times)}
         except Exception as error:  # a crash is a result, not a harness failure
-            reply = {"ok": False, "markdown": "", "error": f"{type(error).__name__}: {error}", "ms": 0}
+            reply = {"ok": False, "markdown": "", "error": f"{type(error).__name__}: {error}", "ms": None}
         finally:
             signal.alarm(0)
         print(json.dumps(reply), flush=True)

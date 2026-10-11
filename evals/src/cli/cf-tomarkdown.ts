@@ -54,10 +54,10 @@ let failed = 0;
 const convert = async (html: string): Promise<Omit<CfToMarkdownRecord, "date">> => {
 	const response = await fetch(endpoint, { method: "POST", body: html, signal: AbortSignal.timeout(120_000) });
 	if (!response.ok) {
-		return { markdown: "", ok: false, error: `HTTP ${response.status}`, ms: 0 };
+		return { markdown: "", ok: false, error: `HTTP ${response.status}` };
 	}
 	const body = (await response.json()) as { ok: boolean; markdown: string; error?: string; ms: number };
-	return { markdown: body.markdown, ok: body.ok, error: body.error, ms: body.ms };
+	return { markdown: body.markdown, ok: body.ok, error: body.error, ...(body.ok ? { ms: body.ms } : {}) };
 };
 
 const worker = async (): Promise<void> => {
@@ -75,7 +75,7 @@ const worker = async (): Promise<void> => {
 				try {
 					record = { ...(await convert(html)), date };
 				} catch (error) {
-					record = { markdown: "", ok: false, error: (error as Error).message, ms: 0, date };
+					record = { markdown: "", ok: false, error: (error as Error).message, date };
 				}
 			}
 			await writeFile(file, JSON.stringify(record));

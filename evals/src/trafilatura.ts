@@ -18,8 +18,10 @@ export const TRAFILATURA_CACHE = path.join(CACHE_DIR, "trafilatura");
 
 export interface TrafilaturaRecord {
 	markdown: string;
-	/** Time of `trafilatura.extract` in Python (median of the requested rounds). */
-	ms: number;
+	/** Time of `trafilatura.extract` in Python (median of `rounds` calls); absent when it failed. */
+	ms?: number;
+	/** Timed calls behind `ms`; records written before this field count as one. */
+	rounds?: number;
 	ok: boolean;
 	error?: string;
 	/** Trafilatura version the output came from. */
@@ -49,7 +51,8 @@ export interface TrafilaturaReply {
 	ok: boolean;
 	markdown: string;
 	error?: string;
-	ms: number;
+	/** Null when the call failed. */
+	ms: number | null;
 }
 
 /**

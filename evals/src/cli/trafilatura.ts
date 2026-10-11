@@ -10,11 +10,11 @@
  * Each page goes to a Python worker that calls `trafilatura.extract(html, url=url,
  * output_format="markdown")` with Trafilatura's defaults. Time the corpus with `--rounds=5
  * --concurrency=1` (median after a warm-up, like `bench:compare`); larger sets only need the
- * output. Pages already cached are skipped. Output is cached in
+ * output. Pages already cached with at least as many rounds are skipped. Output is cached in
  * `.cache/trafilatura/<sha256 of the HTML>.json`.
  */
 
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { CORPUS } from "../corpus.js";
@@ -68,9 +68,14 @@ const worker = async (): Promise<void> => {
 			}
 			const html = await page.readHtml();
 			const file = path.join(TRAFILATURA_CACHE, `${htmlKey(html)}.json`);
-			if (html && !(await stat(file).catch(() => undefined))) {
-				const reply = await python.ask({ html, url: page.url ?? null, rounds });
-				const record: TrafilaturaRecord = { ...reply, version: python.version };
+			const cached = JSON.parse(await readFile(file, "utf8").catch(() => "null")) as TrafilaturaRecord | null;
+			if (html && (!cached || (cached.rounds ?? 1) < rounds)) {
+				const { ms, ...reply } = await python.ask({ html, url: page.url ?? null, rounds });
+				const record: TrafilaturaRecord = {
+					...reply,
+					...(reply.ok && ms !== null ? { ms, rounds } : {}),
+					version: python.version,
+				};
 				await writeFile(file, JSON.stringify(record));
 				failed += record.ok ? 0 : 1;
 			}
