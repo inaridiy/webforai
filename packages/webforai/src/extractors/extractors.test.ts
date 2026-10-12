@@ -256,6 +256,43 @@ describe("document boundary climbing", () => {
 		expect(markdown).toContain("Lead description");
 	});
 
+	it("looks through a section wrapper to its sibling sections", () => {
+		// Asciidoctor's shape (Gradle's compatibility matrix): each `div.sect1` holds a heading and
+		// a `div.sectionbody`, so the densest section body's parent adds only its heading.
+		const section = (title: string, prose: string, rows: number) =>
+			`<div class="sect1"><h2>${title}</h2><div class="sectionbody"><p>${prose}</p><table><tr><th>Version</th><th>Minimum</th></tr>${Array.from(
+				{ length: rows },
+				(_, index) => `<tr><td>${title} 1.${index}</td><td>${index}.0</td></tr>`,
+			).join("")}</table></div></div>`;
+		const html = `<html lang="en"><body><div id="content">${section(
+			"Java",
+			"Gradle runs on the JVM, which is provided by a JDK or JRE, and supports several versions. ".repeat(10),
+			20,
+		)}${section("Kotlin", "Gradle is tested with Kotlin, from early releases to the latest ones.", 30)}${section(
+			"Groovy",
+			"Gradle is tested with Groovy, and plugins must use a compatible version.",
+			30,
+		)}</div></body></html>`;
+
+		const markdown = htmlToMarkdown(html, { extractors: [takumiExtractor] });
+		expect(markdown).toContain("## Kotlin");
+		expect(markdown).toContain("Groovy 1.29");
+	});
+
+	it("does not look through a wrapper whose siblings are built differently", () => {
+		const comments = `<div id="comments"><h3>Comments</h3><ul>${"<li><p>A long reader comment, with commas, opinions and more words to score well. </p></li>".repeat(
+			30,
+		)}</ul></div>`;
+		const aside = `<div class="promo"><p>${"Unrelated promotional copy with plenty of words in it. ".repeat(
+			20,
+		)}</p></div>`;
+		const html = `<html lang="en"><body><div id="main">${aside}${comments}</div></body></html>`;
+
+		const markdown = htmlToMarkdown(html, { extractors: [takumiExtractor] });
+		expect(markdown).toContain("A long reader comment");
+		expect(markdown).not.toContain("Unrelated promotional copy");
+	});
+
 	it("does not climb into link-heavy chrome", () => {
 		const nav = `<div>${'<a href="/x">Navigation entry</a>'.repeat(40)}</div>`;
 		const body = `<div class="doc"><p>${"Article prose, with commas, long enough to win the scoring. ".repeat(
