@@ -115,7 +115,7 @@ describe("lazily-loaded images via data-srcset", () => {
 	});
 });
 
-describe("noscript image fallbacks", () => {
+describe("noscript fallbacks", () => {
 	// The standard lazy-loading pattern is a placeholder followed by the real image in
 	// <noscript>. Removing <noscript> as non-content discards the real one.
 	const lazyFigure =
@@ -127,6 +127,19 @@ describe("noscript image fallbacks", () => {
 
 	it("drops the placeholder the noscript was compensating for", () => {
 		expect(htmlToMarkdown(article(lazyFigure))).not.toContain("![Ph]");
+	});
+
+	it("converts the noscript fallback that holds the whole page", () => {
+		// Discourse and Flarum ship the thread inside <noscript> next to an empty app shell.
+		const posts = Array.from(
+			{ length: 8 },
+			(_, index) =>
+				`<div class="crawler-post"><p>Reply ${index} in the thread, with enough words to read as a post.</p></div>`,
+		).join("");
+		const html = `<html lang="en"><body><header><a href="/">Docker Community Forums</a></header><noscript><div id="main-outlet"><h1>Confusing resolver structure</h1>${posts}</div></noscript><section id="main"></section></body></html>`;
+		const markdown = htmlToMarkdown(html);
+		expect(markdown).toContain("Reply 0 in the thread");
+		expect(markdown).toContain("Reply 7 in the thread");
 	});
 
 	it("leaves noscript without images alone", () => {
