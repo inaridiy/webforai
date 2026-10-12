@@ -14,7 +14,13 @@
 import type { Element, ElementContent, Nodes as Hast, Root, RootContent } from "hast";
 
 import { MetricsCollector, cloneHast, findElement, isElement, walk } from "../../utils/hast-fast";
-import { FEATURE_COUNT, STACKED_FEATURE_COUNT, blockFeatures, stackedFeatures } from "../lib/block-features";
+import {
+	FEATURE_COUNT,
+	FEATURE_NAMES,
+	STACKED_FEATURE_COUNT,
+	blockFeatures,
+	stackedFeatures,
+} from "../lib/block-features";
 import { type BlockModel, isUsableModel, scoreBlocks } from "../lib/block-model";
 import { BLOCK_MODEL, BLOCK_STACK_MODEL } from "../lib/block-model.generated";
 import { BLOCK_TAGS, type BlockFrame, type TextBlock, segmentBlocks } from "../lib/blocks";
@@ -278,6 +284,68 @@ const pruneToBlocks = (element: Element | Root, kept: Set<Element>, ownerKept: b
 	return selfKept || keepChildren;
 };
 
+/** The kept content has collapsed when the uncertain blocks hold this many times its text... */
+const COLLAPSE_RATIO = 5;
+
+/** ...and at least this share of the page's block text. */
+const RESCUE_SHARE = 0.3;
+
+/** Lowest probability a block can be rescued at. */
+const RESCUE_FLOOR = 0.2;
+
+/** Feature columns marking a block inside page chrome (`nav`, `aside`, `header`, `footer`). */
+const CHROME_FEATURES = ["in_nav", "in_aside", "in_header", "in_footer"].map((name) =>
+	FEATURE_NAMES.indexOf(name as (typeof FEATURE_NAMES)[number]),
+);
+
+/**
+ * Lifts the blocks the models were unsure of to the threshold when the kept content has collapsed
+ * to a title.
+ *
+ * On listings and collections (a news tag page, a shop category) every item looks like a teaser
+ * of content elsewhere, so the models score each one 0.2–0.45 and keep only the page heading,
+ * although the items are the page. When the uncertain blocks (at least {@link RESCUE_FLOOR}, not
+ * in page chrome) hold several times the kept text and a large share of the page, they are kept
+ * too. Lifting the probabilities, rather than adding to the kept set, keeps every later reader of
+ * the scores — the keep rules, the agent's link sections — in agreement about what was kept.
+ */
+const liftCollapsed = (
+	blocks: TextBlock[],
+	features: Float32Array,
+	probabilities: Float32Array,
+	threshold: number,
+	enabled: boolean,
+): Float32Array => {
+	if (!enabled) {
+		return probabilities;
+	}
+	const inChrome = (block: TextBlock): boolean =>
+		CHROME_FEATURES.some((feature) => features[block.index * FEATURE_COUNT + feature] > 0);
+	const uncertainBlocks: TextBlock[] = [];
+	let total = 0;
+	let kept = 0;
+	let uncertain = 0;
+	for (const block of blocks) {
+		const length = block.text.length;
+		total += length;
+		const probability = probabilities[block.index];
+		if (probability >= threshold) {
+			kept += length;
+		} else if (probability >= RESCUE_FLOOR && !inChrome(block)) {
+			uncertain += length;
+			uncertainBlocks.push(block);
+		}
+	}
+	if (kept === 0 || uncertain < kept * COLLAPSE_RATIO || uncertain < total * RESCUE_SHARE) {
+		return probabilities;
+	}
+	const lifted = probabilities.slice();
+	for (const block of uncertainBlocks) {
+		lifted[block.index] = threshold;
+	}
+	return lifted;
+};
+
 /** Weight of the sequence model when averaged with the GBDT, chosen with the threshold. */
 export const NEURAL_WEIGHT = 0.6;
 
@@ -430,9 +498,10 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 		const collector = new MetricsCollector();
 		const takumiKept = takumiSelection(body, lang, params.url);
 		const features = blockFeatures({ root: body, blocks, collector, lang, takumiKept, title });
-		const probabilities =
+		const scored =
 			options.probabilities?.(blocks) ??
 			blend(blocks, features, scoreTwoStage(blocks, features, model, stage2), neural, neuralWeight);
+		const probabilities = liftCollapsed(blocks, features, scored, threshold, postRules);
 
 		const kept = new Set<Element>();
 		for (const block of blocks) {
@@ -442,7 +511,7 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 		}
 		options.onScored?.({ blocks, features, probabilities, threshold });
 		const fellBack = kept.size === 0;
-		params.report?.(report({ blocks, probabilities, threshold, takumiKept, fellBack }, confidenceModel));
+		params.report?.(report({ blocks, probabilities: scored, threshold, takumiKept, fellBack }, confidenceModel));
 		if (fellBack) {
 			return takumiExtractor({ hast: body, lang, url: params.url, owned: true });
 		}

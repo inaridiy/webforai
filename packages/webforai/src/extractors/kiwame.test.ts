@@ -106,3 +106,31 @@ describe("code inside the content", () => {
 		expect(markdown).toContain('import * as React from "react"');
 	});
 });
+
+describe("collapsed listings", () => {
+	const items = Array.from(
+		{ length: 10 },
+		(_, index) =>
+			`<div class="card"><h2>Story ${index} about rental cars</h2><p>A teaser for story ${index}, with a sentence of summary text.</p></div>`,
+	).join("");
+	const html = `<html><body><nav><a href="/">Home</a><a href="/news">News</a><a href="/sport">Sport</a></nav><main><h1>Vehicle rental news</h1>${items}</main></body></html>`;
+	/** The page heading is sure, every other block uncertain (as the models score teasers). */
+	const scoreTeasers = (sure: number, teaser: number) =>
+		createKiwameExtractor({
+			probabilities: (blocks) =>
+				Float32Array.from(blocks, (block) => (block.owner.tagName === "h1" ? sure : block.text ? teaser : 0)),
+		});
+
+	it("keeps the uncertain items when only the title was kept", () => {
+		const markdown = htmlToMarkdown(html, { extractors: scoreTeasers(0.9, 0.35) });
+		expect(markdown).toContain("Story 0 about rental cars");
+		expect(markdown).toContain("A teaser for story 9");
+		expect(markdown).not.toContain("[Sport]");
+	});
+
+	it("leaves blocks below the rescue floor dropped", () => {
+		const markdown = htmlToMarkdown(html, { extractors: scoreTeasers(0.9, 0.1) });
+		expect(markdown).toContain("Vehicle rental news");
+		expect(markdown).not.toContain("Story 0 about rental cars");
+	});
+});
