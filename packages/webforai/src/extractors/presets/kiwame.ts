@@ -101,6 +101,21 @@ const completeTables = (kept: Set<Element>, blocks: TextBlock[]): void => {
 			kept.add(block.owner);
 		}
 	}
+	keepAllCells(kept, rows);
+};
+
+/**
+ * Empty cells hold no block, so pruning would drop them and shift the rest of the row one column
+ * left; a kept row keeps every one of its cells.
+ */
+const keepAllCells = (kept: Set<Element>, rows: Set<Element>): void => {
+	for (const row of rows) {
+		for (const cell of row.children) {
+			if (cell.type === "element" && (cell.tagName === "td" || cell.tagName === "th")) {
+				kept.add(cell);
+			}
+		}
+	}
 };
 
 /** The nearest `tr` and `table` above a block, stopping at the table. */
