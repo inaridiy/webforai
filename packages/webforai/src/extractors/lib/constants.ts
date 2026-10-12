@@ -150,7 +150,13 @@ export const EMBEDDED_CONTENT_TAGS = new Set([
 	"canvas",
 ]);
 
-/** Tags whose emptiness means they should be dropped. */
+/**
+ * Tags whose emptiness means they should be dropped.
+ *
+ * Table cells are not among them: an empty `<td>` holds its column's place, and removing it shifts
+ * every later cell of the row one column left (a platform table's notes landed under "host"). The
+ * table handler drops columns that are empty in every row, which is what spacer cells need.
+ */
 export const DROP_WHEN_EMPTY_TAGS = new Set([
 	"p",
 	"h1",
@@ -160,8 +166,6 @@ export const DROP_WHEN_EMPTY_TAGS = new Set([
 	"h5",
 	"h6",
 	"li",
-	"td",
-	"th",
 	"blockquote",
 	"figcaption",
 	"dd",
