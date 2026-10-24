@@ -61,7 +61,23 @@ export const opsAlertDeps = (env: Env): OpsAlertDeps => {
 	};
 };
 
-const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+/** Bounds a `cause` chain (it can be cyclic). */
+const MAX_CAUSE_DEPTH = 5;
+
+/**
+ * The error's message followed by its `cause` chain. Wrappers such as drizzle's
+ * `DrizzleQueryError` put only the failed SQL in `message`; the driver's error (e.g. D1's
+ * `D1_ERROR: ...`) is the `cause`.
+ */
+const messageOf = (error: unknown): string => {
+	const parts: string[] = [];
+	let current: unknown = error;
+	for (let depth = 0; depth < MAX_CAUSE_DEPTH && current !== undefined; depth += 1) {
+		parts.push(current instanceof Error ? current.message : String(current));
+		current = current instanceof Error ? current.cause : undefined;
+	}
+	return parts.join("\nCaused by: ");
+};
 
 export const sendOpsAlert = async (deps: OpsAlertDeps, alert: OpsAlert): Promise<OpsAlertOutcome> => {
 	if (!deps.to || !deps.email) {
@@ -136,6 +152,8 @@ export const alertProxyBandwidth = (
 /** The scheduled() pass threw. At most one email per UTC hour; every failure is still logged. */
 export const alertCronFailure = (deps: OpsAlertDeps, error: unknown): Promise<OpsAlertOutcome> => {
 	const now = deps.now();
+	// The runtime's exception log carries only the top-level message, not its `cause`.
+	deps.log.error("cron_pass_failed", { message: messageOf(error) });
 	return sendOpsAlert(deps, {
 		subject: "Scheduled cron pass failed",
 		text: [
