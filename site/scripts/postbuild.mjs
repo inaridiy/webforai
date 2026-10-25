@@ -195,7 +195,9 @@ const byReadingOrder = (a, b) => {
 const renderLlmsTxt = (pages) => {
 	const lines = [`# ${SITE_TITLE}`, "", `> ${SITE_SUMMARY}`, ""];
 	lines.push(
-		"Every page below is also served as Markdown at its URL plus `.md`; `/llms-full.txt` has all of them in one file.",
+		"Every page below is also served as Markdown at its URL plus `.md` (or at its own URL with `Accept: text/markdown`); `/llms-full.txt` has all of them in one file.",
+		"",
+		"To read any web page as Markdown: `npx webforai-cli <url>`, or with nothing installed `GET https://platform.webforai.dev/<url>` (a rate-limited demo without an API key). Agent Skill for the CLI: `npx skills add inaridiy/webforai`.",
 		"",
 	);
 	for (const section of SECTIONS) {

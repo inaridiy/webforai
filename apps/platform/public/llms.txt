@@ -1,0 +1,17 @@
+# webforai platform
+
+> Hosted API that turns web pages into clean Markdown: JavaScript rendering, proxies, and crawling whole sites into Markdown files and llms.txt. Accounts get 1,000 free credits a month.
+
+Read a page as Markdown with nothing installed: put its URL after this host. `GET https://platform.webforai.dev/https://example.com/article` returns `text/markdown`. Without a key it is a rate-limited demo (5 requests per 10 minutes, cut at 40,000 characters); with `Authorization: Bearer wfa_...` it is a normal billed scrape, full length. API keys come from https://platform.webforai.dev/dashboard.
+
+## Docs
+
+- [Platform overview](https://webforai.dev/platform.md): what the hosted API does, quickstart and the Markdown permalink.
+- [API reference](https://webforai.dev/platform/api-reference.md): `POST /v1/scrape`, batch and crawl jobs, permalinks, errors and rate limits.
+- [TypeScript client](https://webforai.dev/platform/client.md): the typed `webforai/platform` client.
+- [Billing](https://webforai.dev/platform/billing.md): credits per engine, plans and the monthly spend cap.
+- [CLI](https://webforai.dev/cli.md): `npx webforai-cli <url>` locally, `crawl` and `batch` through this API.
+
+## Optional
+
+- [webforai docs index](https://webforai.dev/llms.txt): the library, CLI and benchmarks.

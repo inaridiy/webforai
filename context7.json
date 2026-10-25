@@ -1,0 +1,16 @@
+{
+	"$schema": "https://context7.com/schema/context7.json",
+	"projectTitle": "webforai",
+	"description": "Convert any HTML or web page to clean, LLM-ready Markdown: a TypeScript library (Node.js, Cloudflare Workers, browsers), the webforai-cli CLI with an Agent Skill, and a hosted crawl/scrape API.",
+	"folders": ["site/docs/pages", "packages/webforai", "packages/cli", "examples"],
+	"excludeFolders": ["apps", "evals", ".agents", "docs", "site/docs/dist", "packages/webforai/src", "packages/cli/src"],
+	"excludeFiles": ["CHANGELOG.md"],
+	"rules": [
+		"Pass the page URL: htmlToMarkdown(html, { url }) resolves relative links and images and enables site adapters.",
+		"The library fetches nothing and uses no Node.js built-ins: in Cloudflare Workers, fetch the HTML yourself or use webforai/loaders/fetch; Playwright and Puppeteer loaders are Node-only.",
+		"Reader mode (default) returns the main content; presetExtractors(\"agent\") adds a ## Links section an agent can follow, for about half the tokens of the whole page.",
+		"Use htmlToMarkdownWithMetadata, or frontmatter: true, to get the title, author and published date.",
+		"From a shell or a coding agent, use npx webforai-cli <url> (Markdown on stdout, --json for an envelope) rather than writing a script.",
+		"For JavaScript-rendered or bot-protected pages, use the hosted platform: npx webforai-cli <url> --engine auto with WEBFORAI_API_KEY, or GET https://platform.webforai.dev/<url>."
+	]
+}

@@ -43,7 +43,10 @@ npx webforai-cli batch --file urls.txt -o pages                      # many URLs
 ## For AI agents
 
 `npx webforai-cli skill --install` installs an [Agent Skill](https://github.com/vercel-labs/skills)
-that teaches Claude Code, Cursor and other coding agents when and how to call the CLI.
+that teaches Claude Code, Cursor and other coding agents when and how to call the CLI. The same
+skill installs natively as a Claude Code plugin
+(`claude plugin install webforai --marketplace inaridiy/webforai`), a Codex plugin
+(`codex plugin marketplace add inaridiy/webforai`) or a pi package (`pi install npm:webforai-cli`).
 
 ## Documentation
 

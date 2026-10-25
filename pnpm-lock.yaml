@@ -119,7 +119,7 @@ importers:
         version: 1.3.0(@types/node@20.14.10)(jsdom@30.0.1)(lightningcss@1.32.0)
       wrangler:
         specifier: ^4.120.0
-        version: 4.120.0
+        version: 4.120.0(@cloudflare/workers-types@4.20241018.0)
 
   evals:
     dependencies:
@@ -601,8 +601,8 @@ importers:
         specifier: workspace:*
         version: link:../packages/webforai
       wrangler:
-        specifier: ^3.81.0
-        version: 3.81.0(@cloudflare/workers-types@4.20241018.0)
+        specifier: ^4.120.0
+        version: 4.120.0(@cloudflare/workers-types@4.20241018.0)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -9846,7 +9846,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       vite: 7.3.6(@types/node@20.14.10)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.19.1)(yaml@2.5.1)
       workerd: 1.20260801.1
-      wrangler: 4.120.0
+      wrangler: 4.120.0(@cloudflare/workers-types@4.20241018.0)
       ws: 8.21.0
     transitivePeerDependencies:
       - bufferutil
@@ -17890,7 +17890,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  wrangler@4.120.0:
+  wrangler@4.120.0(@cloudflare/workers-types@4.20241018.0):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.5.0
       '@cloudflare/unenv-preset': 2.16.1(unenv@2.0.0-rc.24)(workerd@1.20260801.1)
@@ -17901,6 +17901,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       workerd: 1.20260801.1
     optionalDependencies:
+      '@cloudflare/workers-types': 4.20241018.0
       fsevents: 2.3.3
     transitivePeerDependencies:
       - bufferutil

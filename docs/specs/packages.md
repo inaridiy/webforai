@@ -30,6 +30,14 @@ History: `.agents/execplans/2026-10-09-split-core-cli.md`.
 - Flags, stdout/stderr contract and exit codes are documented on webforai.dev/cli and in the
   Agent Skill (`skills/webforai/SKILL.md`, generated from `packages/cli/src/commands/skill`).
 - Keeps `playwright-core` as a regular dependency so `-l playwright` works under `npx`.
+- Ships the rendered skill at `dist/skills/webforai/SKILL.md` and declares it under `pi.skills`
+  (keyword `pi-package`), so `pi install npm:webforai-cli` installs it.
+
+Revision note (2026-10-25): the skill also reaches agents as a plugin. `.claude-plugin/marketplace.json`
+(Claude Code; Codex and Copilot CLI read it too) and the root `plugin.json` (Agent Plugins format:
+Codex, Cursor, Copilot) point at `skills/webforai`; `plugin.json` carries the `webforai-cli`
+version, synced by `ci:version` (`packages/cli/scripts/sync-plugin-version.mjs`) and checked by
+`packages/cli/src/plugin-manifest.test.ts`. `context7.json` scopes the Context7 docs index.
 
 ## Versioning
 
