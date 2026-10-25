@@ -1,6 +1,6 @@
 {
 	"name": "webforai",
-	"version": "5.0.0",
+	"version": "5.0.1",
 	"description": "Convert web pages and local HTML to clean, LLM-ready Markdown. A dependency-light TypeScript library that runs in Node.js, Cloudflare Workers and browsers; the CLI is webforai-cli.",
 	"author": "inaridiy",
 	"license": "Apache-2.0",

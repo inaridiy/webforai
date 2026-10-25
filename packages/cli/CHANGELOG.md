@@ -1,5 +1,23 @@
 # webforai-cli
 
+## 5.0.1
+
+### Patch Changes
+
+- [#90](https://github.com/inaridiy/webforai/pull/90) [`10d6e70`](https://github.com/inaridiy/webforai/commit/10d6e701a9b842c2002ce5ce7cd92b012d7ee404) Thanks [@inaridiy](https://github.com/inaridiy)! - Docs: the Agent Skill (`webforai skill`) and both READMEs show the no-install way to read a page,
+  `https://platform.webforai.dev/<url>` (a rate-limited demo without an API key), and the library
+  README states up front that the quick-start snippet runs as-is in Node.js, Cloudflare Workers and
+  browsers.
+
+  webforai-cli ships its Agent Skill in the package (`dist/skills/webforai/SKILL.md`) as a pi package:
+  `pi install npm:webforai-cli`.
+
+- [#92](https://github.com/inaridiy/webforai/pull/92) [`503511a`](https://github.com/inaridiy/webforai/commit/503511ac99cba2adf37045866f3f8c996d1b7611) Thanks [@inaridiy](https://github.com/inaridiy)! - For client-rendered pages the client-shell warning and the Agent Skill now suggest the local
+  `--loader playwright` first and `--engine auto` (hosted platform) only when `WEBFORAI_API_KEY` is
+  set, so an agent without a key no longer fails with `invalid_api_key` before trying the free path.
+- Updated dependencies [[`10d6e70`](https://github.com/inaridiy/webforai/commit/10d6e701a9b842c2002ce5ce7cd92b012d7ee404)]:
+  - webforai@5.0.1
+
 ## 5.0.0
 
 ### Major Changes
