@@ -5,7 +5,8 @@ hosts: the docs site answers `Accept: text/markdown` (what Claude Code's WebFetc
 page's `.md` twin, and `platform.webforai.dev/llms.txt` (static, `public/`) points to the
 Markdown permalink and the platform docs. README, SKILL.md and the docs `llms.txt` show the
 permalink as the no-install way to read a page. Agent integration is still the CLI + Agent Skill,
-not an MCP server.
+not an MCP server; the skill is also packaged as a Claude Code / Codex plugin and a pi package
+(`docs/specs/packages.md`).
 Revision note (2026-10-09, package split): the CLI is its own npm package, `webforai-cli`
 (`packages/cli`, command `webforai`); the `webforai` package is the library and the
 `webforai/platform` client only. Snippets and docs say `npx webforai-cli`. See

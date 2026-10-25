@@ -25,7 +25,7 @@
 		"lint:repo": "sherif -p ./site -p ./evals -p \"./examples/*\"",
 		"typecheck": "pnpm run --filter \"./packages/**\" typecheck",
 		"ci:prepublish": "pnpm run build",
-		"ci:version": "changeset version",
+		"ci:version": "changeset version && node packages/cli/scripts/sync-plugin-version.mjs",
 		"ci:publish": "pnpm ci:prepublish && changeset publish",
 		"preinstall": "npx only-allow pnpm",
 		"prepare": "pnpm simple-git-hooks",

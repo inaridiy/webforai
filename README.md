@@ -111,7 +111,9 @@ From the shell: `npx webforai-cli <url>`, with `--extractor agent` for agent mod
 need a browser or a proxy, use the [hosted API](#ways-to-use). With nothing installed,
 `https://platform.webforai.dev/https://example.com/article` returns that page as Markdown (a
 rate-limited demo without a key). Coding agents learn the CLI from its Agent Skill:
-`npx skills add inaridiy/webforai`.
+`npx skills add inaridiy/webforai`, or as a plugin in Claude Code
+(`/plugin install webforai --marketplace inaridiy/webforai`), Codex
+(`codex plugin marketplace add inaridiy/webforai`) and pi (`pi install npm:webforai-cli`).
 
 ## Benchmarks
 

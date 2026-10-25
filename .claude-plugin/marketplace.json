@@ -1,0 +1,22 @@
+{
+	"name": "webforai",
+	"owner": { "name": "inaridiy", "url": "https://github.com/inaridiy" },
+	"metadata": {
+		"description": "The webforai Agent Skill: read web pages and HTML files as clean, LLM-ready Markdown from coding agents."
+	},
+	"plugins": [
+		{
+			"name": "webforai",
+			"source": "./",
+			"description": "Teaches the agent the webforai CLI: read any URL or HTML file as clean Markdown, batch-convert URLs, crawl a docs site into Markdown files and llms.txt, and handle JavaScript-heavy or bot-protected pages through the hosted API.",
+			"author": { "name": "inaridiy", "url": "https://github.com/inaridiy" },
+			"homepage": "https://webforai.dev/cli",
+			"repository": "https://github.com/inaridiy/webforai",
+			"license": "Apache-2.0",
+			"keywords": ["markdown", "html-to-markdown", "web-scraping", "crawler", "llms-txt", "agent-skill"],
+			"category": "productivity",
+			"strict": false,
+			"skills": ["./skills/webforai"]
+		}
+	]
+}

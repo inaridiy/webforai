@@ -166,6 +166,15 @@ npx skills add inaridiy/webforai
 `skill --install` forwards `--global`, `--agent <agents>`, `-y`, `--copy` and `--all` to
 `npx skills add`; `--dir <path>` writes the file directly without the skills CLI.
 
+The repository is also a plugin marketplace, and the npm package is a pi package, so agents
+with their own plugin systems install the same skill natively:
+
+```bash
+claude plugin install webforai --marketplace inaridiy/webforai   # Claude Code
+codex plugin marketplace add inaridiy/webforai                   # Codex, then: codex plugin add webforai@webforai
+pi install npm:webforai-cli                                      # pi
+```
+
 ## Interactive mode
 
 `npx webforai-cli -i` walks through source, loader (including the platform), mode and output
