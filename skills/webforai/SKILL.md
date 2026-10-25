@@ -19,8 +19,10 @@ npx webforai-cli https://example.com --json             # machine-readable envel
 
 ## Which command
 
-- One page, or a handful you will read right away → `npx webforai-cli <url>` (free, local;
-  add `--engine auto` when the page needs JavaScript or blocks plain fetches).
+- One page, or a handful you will read right away → `npx webforai-cli <url>` (free, local).
+  When the page needs JavaScript, add `-l playwright` (a local Chromium, still free). With
+  `WEBFORAI_API_KEY` set, `--engine auto` (hosted platform) also gets past sites that block
+  plain fetches.
 - A known list of URLs (2–100) to keep as files → `npx webforai-cli batch` (hosted platform).
 - A whole site or docs section → `npx webforai-cli crawl` (hosted platform); add `--llms-txt`
   for a single `llms-full.txt` you can read in one go.
@@ -78,7 +80,7 @@ npx webforai-cli https://example.com --json             # machine-readable envel
 `engine`/`region`/`credits`/`screenshotUrl` appear only for the platform loader; `output`
 only when `-o` also wrote a file. A `warning` field appears when the result is probably
 degraded — most commonly a client-rendered shell fetched without JavaScript; rerun with
-`--engine auto` (or `-l playwright`) when you see one.
+`-l playwright` when you see one (or `--engine auto` when `WEBFORAI_API_KEY` is set).
 
 ## Hosted platform
 

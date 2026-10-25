@@ -61,7 +61,7 @@ const convertLocally = async (run: ResolvedRun): Promise<RunEnvelope> => {
 	// shell, say so instead of silently printing an empty body.
 	const shell = run.loader === "fetch" ? detectClientShell(html) : undefined;
 	const warning = shell?.isShell
-		? "This page looks like it renders client-side; the fetched HTML has no readable content. Try --engine auto (hosted platform, renders JavaScript) or --loader playwright."
+		? "This page looks like it renders client-side; the fetched HTML has no readable content. Try --loader playwright (renders JavaScript in a local Chromium) or, with WEBFORAI_API_KEY set, --engine auto (hosted platform)."
 		: undefined;
 
 	return {
