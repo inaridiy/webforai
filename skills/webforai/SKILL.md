@@ -24,6 +24,11 @@ npx webforai-cli https://example.com --json             # machine-readable envel
 - A known list of URLs (2–100) to keep as files → `npx webforai-cli batch` (hosted platform).
 - A whole site or docs section → `npx webforai-cli crawl` (hosted platform); add `--llms-txt`
   for a single `llms-full.txt` you can read in one go.
+- No Node.js, or only an HTTP fetch tool → `GET https://platform.webforai.dev/<url>` (for
+  example `https://platform.webforai.dev/https://example.com/article`) returns the page as
+  Markdown, no key needed: a demo limited to 5 requests per 10 minutes and cut at 40,000
+  characters. With `Authorization: Bearer $WEBFORAI_API_KEY` it is a normal billed scrape,
+  full length.
 
 ## Flags
 

@@ -121,7 +121,7 @@ The repo ships with the hosted instance's identity. Replace it before going live
   `src/auth/sign-in-email.ts` (`SIGN_IN_SENDER`).
 - Host `platform.webforai.dev`: `wrangler.jsonc` (`routes`, `BASE_URL`),
   `src/client/lib/links.ts` (`CANONICAL_ORIGIN`), `index.html` (canonical, `og:url`,
-  `og:image`), `public/robots.txt`, `public/sitemap.xml`.
+  `og:image`), `public/robots.txt`, `public/sitemap.xml`, `public/llms.txt`.
 - Turnstile site key: `wrangler.jsonc` (`TURNSTILE_SITE_KEY`).
 - Contact address `support@webforai.dev`: `src/client/components/site-shell.tsx` (footer).
 - Legal pages (terms, privacy policy, and the Japanese commercial-transactions disclosure
