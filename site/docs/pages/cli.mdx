@@ -145,7 +145,7 @@ concurrent jobs on the free tier, 20 with a subscription) is reported instead.
 `engine`, `region` and `credits` appear only when the platform loader ran (`screenshotUrl` also with `--screenshot`, which adds 1 credit);
 `output` only when `-o` also wrote a file. A `warning` appears when the result is probably
 degraded — most commonly a client-rendered page fetched without JavaScript; rerun with
-`--engine auto` or `-l playwright` when you see one.
+`-l playwright` when you see one (or `--engine auto` when `WEBFORAI_API_KEY` is set).
 
 ## For AI agents
 
