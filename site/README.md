@@ -1,8 +1,8 @@
 # site — webforai.dev
 
 The documentation site for everything in this repository, built with [Vocs](https://vocs.dev)
-and served by a Cloudflare Worker (`workers/index.tsx` adds the `/api/ogp` image route; the
-static build is bound as `ASSETS`).
+and served by a Cloudflare Worker (`workers/index.tsx` adds the `/api/ogp` image route and
+Markdown content negotiation; the static build is bound as `ASSETS`).
 
 Run locally: `pnpm --filter site dev` (no library build needed; `build` does need one).
 
@@ -37,11 +37,13 @@ pnpm --filter site worker:deploy  # deploy webforai.dev (run build first)
 prerendered page **with webforai itself** and writes, next to the HTML in `docs/dist`:
 
 - `/<path>.md` — each page as Markdown (`/cli.md`, `/platform/api-reference.md`, `/index.md`),
-  linked from the page head as `rel="alternate" type="text/markdown"`;
+  linked from the page head as `rel="alternate" type="text/markdown"` and served at the page's
+  own URL to clients that prefer it (`Accept: text/markdown`, as agents such as Claude Code's
+  WebFetch send; try `curl -H 'Accept: text/markdown' localhost:8787/cli` under `worker:dev`);
 - `/llms.txt` (an [llmstxt.org](https://llmstxt.org) index of those files) and `/llms-full.txt`
   (all of them concatenated);
-- `/sitemap.xml`, `/robots.txt` (with its `Sitemap:` line) and `/404.html`, which the Worker
-  serves with status 404 for unknown paths.
+- `/sitemap.xml`, `/robots.txt` (with its `Sitemap:` line) and `/404.html`, served with status
+  404 for unknown paths.
 
 It also gives each page a canonical link and its own `og:url`, and URL-encodes the OG image
 query. The build fails when a page converts to (near-)empty Markdown, so extraction regressions

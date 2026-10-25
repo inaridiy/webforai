@@ -3,7 +3,10 @@ name = "webforai-site"
 main = "workers/index.tsx"
 compatibility_date = "2024-10-18"
 compatibility_flags = ["nodejs_compat"]
-assets = { directory = "./docs/dist", binding = "ASSETS" }
+# Paths without a dot are pages: they reach the Worker first, which answers agents that ask for
+# `text/markdown` with the page's `.md` twin (workers/index.tsx). Files (`.js`, `.md`, `llms.txt`,
+# images) are served straight from the assets, and a missing file gets the static 404 page.
+assets = { directory = "./docs/dist", binding = "ASSETS", run_worker_first = ["/*", "!/*.*"], not_found_handling = "404-page" }
 
 # Workers Logs
 # Docs: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
