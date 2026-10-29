@@ -460,3 +460,17 @@ describe("parsing limits", () => {
 		expect(htmlToMarkdown(html, { extractors: false })).toMatch(/First\.\s+Second\./);
 	});
 });
+
+describe("empty table cells", () => {
+	it("keep their column, so later cells do not shift left", () => {
+		const table = `<table><thead><tr><th>target</th><th>std</th><th>host</th><th>notes</th></tr></thead>
+<tbody><tr><td>x86_64-a</td><td>yes</td><td></td><td>first note</td></tr>
+<tr><td>arm-b</td><td></td><td>yes</td><td>second note</td></tr></tbody></table>`;
+		const html = `<html><body><main><h1>Platforms</h1><p>${"Intro text for the table. ".repeat(
+			20,
+		)}</p>${table}</main></body></html>`;
+		const markdown = htmlToMarkdown(html, { url: "https://example.com/" });
+		expect(markdown).toContain("| x86\\_64-a | yes | | first note |");
+		expect(markdown).toContain("| arm-b | | yes | second note |");
+	});
+});
