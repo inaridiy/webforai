@@ -10,5 +10,5 @@
 	"repository": "https://github.com/inaridiy/webforai",
 	"license": "Apache-2.0",
 	"keywords": ["markdown", "html-to-markdown", "web-scraping", "crawler", "llms-txt", "agent-skill"],
-	"version": "5.0.1"
+	"version": "5.0.2"
 }

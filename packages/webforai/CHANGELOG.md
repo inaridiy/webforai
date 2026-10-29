@@ -1,5 +1,14 @@
 # webforai
 
+## 5.0.2
+
+### Patch Changes
+
+- [#89](https://github.com/inaridiy/webforai/pull/89) [`e471730`](https://github.com/inaridiy/webforai/commit/e4717304a33bfcbbc1dcb69f792d4982b7ad9832) Thanks [@inaridiy](https://github.com/inaridiy)! - Tables keep their empty cells. Extraction dropped empty `<td>`s, so every later cell of the row
+  moved one column left (a platform-support table's notes ended up under "host"). Cells of a kept
+  row are now kept even when empty, and the clean-up no longer removes empty cells; columns empty
+  in every row are still dropped by the table handler.
+
 ## 5.0.1
 
 ### Patch Changes
