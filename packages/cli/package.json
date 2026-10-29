@@ -1,6 +1,6 @@
 {
 	"name": "webforai-cli",
-	"version": "5.0.1",
+	"version": "5.0.2",
 	"description": "The webforai CLI: convert web pages and local HTML to clean, LLM-ready Markdown from the shell or an AI agent (npx webforai-cli <url>).",
 	"author": "inaridiy",
 	"license": "Apache-2.0",
