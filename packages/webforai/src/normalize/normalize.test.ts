@@ -269,3 +269,22 @@ describe("heading sign anchors", () => {
 		expect(convert('<h2>Usage <a href="#details">details</a></h2>')).toBe("## Usage [details](#details)\n");
 	});
 });
+
+describe("code language on a wrapper", () => {
+	it("reads Sphinx's highlight-<language> wrapper", () => {
+		expect(
+			convert(
+				'<div class="highlight-python notranslate"><div class="highlight"><pre><span class="kn">import</span> flask</pre></div></div>',
+			),
+		).toBe("```python\nimport flask\n```\n");
+	});
+
+	it("leaves the default lexer and a block that names its own language alone", () => {
+		expect(
+			convert('<div class="highlight-default notranslate"><div class="highlight"><pre>$ flask run</pre></div></div>'),
+		).toBe("```\n$ flask run\n```\n");
+		expect(convert('<div class="highlight-text"><pre><code class="language-toml">a = 1</code></pre></div>')).toBe(
+			"```toml\na = 1\n```\n",
+		);
+	});
+});

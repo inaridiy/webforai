@@ -374,6 +374,40 @@ const LABEL_LANGUAGES = new Set([
 	"diff",
 ]);
 
+/** Sphinx names a block's language on a wrapper: `<div class="highlight-python notranslate">`. */
+const WRAPPER_LANGUAGE = /^highlight-([\w+#.-]+)$/;
+
+/** `highlight-default` is the project's default lexer, `highlight-source-*` GitHub's class on the `pre` itself. */
+const isWrapperLanguage = (name: string): boolean =>
+	!(name === "default" || name === "text" || name === "none" || name.startsWith("source-"));
+
+/**
+ * Copies the language a wrapper declares onto the code block inside it.
+ *
+ * Sphinx (Python, Flask, Django and most Read the Docs sites) writes
+ * `<div class="highlight-python notranslate"><div class="highlight"><pre>…`: the `pre` and its
+ * tokens carry no language, so the fence came out bare. The name is set as `data-language`, which
+ * the code handler reads after a `language-*` class of the block's own.
+ */
+export const readWrapperLanguages = (tree: Hast): void => {
+	walk(tree, (node) => {
+		if (!isElement(node) || node.tagName !== "div") {
+			return;
+		}
+		const language = classList(node)
+			.map((name) => name.match(WRAPPER_LANGUAGE)?.[1])
+			.find((name) => name !== undefined && isWrapperLanguage(name));
+		if (!language) {
+			return;
+		}
+		const pre = findElement(node, (element) => element.tagName === "pre");
+		if (pre && pre.properties.dataLanguage === undefined) {
+			pre.properties.dataLanguage = language;
+		}
+		return false;
+	});
+};
+
 /** Labels that name no language: the label goes, the fence stays without an info string. */
 const LABEL_NO_LANGUAGE = new Set(["plain", "plaintext", "text"]);
 
@@ -486,7 +520,7 @@ export interface NormalizeOptions {
 	iconFonts?: boolean;
 	/** Unwrap in-page permalink anchors that cover a heading's whole text. Default `true`. */
 	headingAnchors?: boolean;
-	/** Fold a language label printed beside a code block into the block. Default `true`. */
+	/** Fold a language label printed beside a code block, or named on its wrapper, into the block. Default `true`. */
 	codeLabels?: boolean;
 	/** Separate adjacent inline elements laid out side by side. Default `true`. */
 	inlineSpacing?: boolean;
@@ -527,6 +561,7 @@ export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast 
 	}
 	if (codeLabels) {
 		foldCodeLabels(tree);
+		readWrapperLanguages(tree);
 	}
 	if (inlineSpacing) {
 		separateAdjacentInlines(tree);
