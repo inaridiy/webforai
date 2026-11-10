@@ -60,6 +60,12 @@ block classifier:
    cards, a list of results) survive the final clean-up; a trailing "Related articles" rail or
    feedback widget still ends the content.
 
+Some pages keep their content away from a reader of the raw HTML, and it is put back before
+blocks are scored. Content that a React server streamed after the page's shell (Next.js, GitBook)
+sits in hidden segments at the end of the document; it is moved to the placeholders it belongs to,
+as the page's own script would do in a browser. A forum thread shipped only inside `<noscript>`
+for crawlers (Discourse, Flarum) is read as the page's content.
+
 Both models ship as plain TypeScript (no WASM, no runtime dependency; about 220 KB of weights,
 the sequence model as int8), so they run anywhere the library does. See [Benchmarks](/benchmarks) for how the output compares with other tools. The heuristic extractor is still available
 as `takumiExtractor` (CLI: `--extractor takumi`), and it is what `kiwameExtractor` falls back to

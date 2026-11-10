@@ -54,25 +54,37 @@ const markdown = htmlToMarkdown("<h1>Hello, world!</h1>");
 // => "# Hello, world!"
 ```
 
-### options.baseUrl
-
-type: `string`
-
-The base URL to use for replacing relative links.
-
-```ts 
-const markdown = htmlToMarkdown("<a href='/foo'>bar</a>", {
-	baseUrl: "https://example.com",
-});
-// => "[bar](https://example.com/foo)"
-```
-
 ### options.url
 
 type: `string`
 
-The page's URL. Selects a site adapter (GitHub, Wikipedia, …) and anchors the page title; read from
-the canonical link when absent.
+The page's URL. Selects a site adapter (GitHub, Wikipedia, …), anchors the page title and resolves
+relative links and image sources. The adapter and the title fall back to the canonical link when it
+is absent; links stay as the page wrote them.
+
+```ts
+const markdown = htmlToMarkdown("<a href='/foo'>bar</a>", {
+	url: "https://example.com/docs/",
+});
+// => "[bar](https://example.com/foo)"
+```
+
+### options.baseUrl
+
+type: `string`
+
+default: `options.url`
+
+The URL relative links and image sources are resolved against, when it is not the page's own
+address. An empty string keeps them as written.
+
+```ts
+const markdown = htmlToMarkdown("<a href='/foo'>bar</a>", {
+	url: "https://example.com/docs/",
+	baseUrl: "",
+});
+// => "[bar](/foo)"
+```
 
 ### options.frontmatter
 

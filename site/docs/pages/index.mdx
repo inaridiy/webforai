@@ -148,7 +148,7 @@ const url = "https://www.npmjs.com/package/webforai";
 const html = await loadHtml(url); // [!code hl]
 
 // Convert html to markdown
-const markdown = htmlToMarkdown(html, { baseUrl: url }); // [!code hl]
+const markdown = htmlToMarkdown(html, { url }); // [!code hl]
 ```
 
 #
