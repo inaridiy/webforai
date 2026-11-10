@@ -18,28 +18,60 @@ export interface MdastToMarkdownOptions extends ToMarkdownOptions {
 }
 
 /**
- * A backslash before `&` that no parser needs: `&` starts a character reference only when a name
- * or a number and then `;` follow (`&amp;`, `&#38;`, `&#x26;`).
+ * What makes `&` the start of a character reference: a name or a number, then `;` (`&amp;`,
+ * `&#38;`, `&#x26;`). Sticky, so it is tried at one position and never scans ahead.
  */
-const NEEDLESS_AMPERSAND_ESCAPE = /(\\+)&(?!(?:[A-Za-z][A-Za-z\d]*|#\d+|#[Xx][\dA-Fa-f]+);)/g;
+const CHARACTER_REFERENCE = /(?:[A-Za-z][A-Za-z\d]{0,31}|#\d{1,7}|#[Xx][\dA-Fa-f]{1,6});/y;
 
 /**
  * Removes the escapes mdast-util-to-markdown puts before every `&` that a letter or `#` follows.
  *
  * It cannot look further ahead, so each `&` of a query string became `\&`: correct Markdown, but
  * a reader of the source — a person, or a model copying the URL — sees a backslash in the
- * address. Only an odd run of backslashes ends in an escape; an even run is literal backslashes
- * and stays.
+ * address. A backslash stays where a character reference would start, and where the run of
+ * backslashes before the `&` is even (those are literal backslashes, not an escape). One pass
+ * from `&` to `&`: each run of backslashes is counted once.
  */
-const plainAmpersands = (value: string): string =>
-	value.replace(NEEDLESS_AMPERSAND_ESCAPE, (match, slashes: string) =>
-		slashes.length % 2 === 1 ? `${slashes.slice(1)}&` : match,
-	);
+const plainAmpersands = (value: string): string => {
+	if (!value.includes("\\&")) {
+		return value;
+	}
+	const parts: string[] = [];
+	let copied = 0;
+	for (let at = value.indexOf("&"); at >= 0; at = value.indexOf("&", at + 1)) {
+		let slashes = 0;
+		while (at - slashes > copied && value.charCodeAt(at - slashes - 1) === 92) {
+			slashes += 1;
+		}
+		CHARACTER_REFERENCE.lastIndex = at + 1;
+		if (slashes % 2 === 1 && !CHARACTER_REFERENCE.test(value)) {
+			parts.push(value.slice(copied, at - 1));
+			copied = at;
+		}
+	}
+	parts.push(value.slice(copied));
+	return parts.join("");
+};
 
+const plainText: Handle = (node, parent, state, info) =>
+	plainAmpersands(defaultHandlers.text(node, parent, state, info));
+
+/**
+ * Runs a default handler with `state.safe` — which escapes link text, destinations and titles —
+ * followed by {@link plainAmpersands}. Inline code inside the link is written without `safe`
+ * and so is left exactly as it is.
+ */
 const withPlainAmpersands =
 	(handle: Handle): Handle =>
-	(node, parent, state, info) =>
-		plainAmpersands(handle(node, parent, state, info));
+	(node, parent, state, info) => {
+		const safe = state.safe;
+		state.safe = (input, config) => plainAmpersands(safe.call(state, input, config));
+		try {
+			return handle(node, parent, state, info);
+		} finally {
+			state.safe = safe;
+		}
+	};
 
 /**
  * Default options for the `mdastToMarkdown` function.
@@ -49,9 +81,9 @@ export const DEFAULT_MDAST_TO_MARKDOWN_OPTIONS: MdastToMarkdownOptions = {
 	// width on every row, which spends tokens on nothing but spaces.
 	extensions: [gfmToMarkdown({ tablePipeAlign: false }), mathToMarkdown()],
 	bullet: "-",
-	// Text and destinations only: code is written verbatim and never passes through here.
+	// Text, destinations and titles only: code is written verbatim and never passes through `safe`.
 	handlers: {
-		text: withPlainAmpersands(defaultHandlers.text),
+		text: plainText,
 		link: withPlainAmpersands(defaultHandlers.link),
 		image: withPlainAmpersands(defaultHandlers.image),
 		definition: withPlainAmpersands(defaultHandlers.definition),

@@ -134,40 +134,62 @@ export const resolveImageSources = (tree: Hast): void => {
 /** Alt text long enough to describe one picture, rather than name the product or person in several. */
 const DESCRIPTIVE_ALT_LENGTH = 20;
 
+/** Where a run of images ends even without text: the next cell of a table is another value. */
+const IMAGE_RUN_BREAKS = new Set(["td", "th"]);
+
 /**
- * Drops an image that repeats the one before it with no text in between: the same source, or the
- * same descriptive alt text.
+ * Drops an image that repeats the one before it with no text in between: the same descriptive
+ * alt text, or the same source shown exactly twice.
  *
  * Pages ship one picture several times — a light and a dark variant (react.dev), two crops for
  * two layouts (news front pages), a copy for no-script readers — and show one of them. Converted,
  * each is a line of its own saying the same thing. Only the first is kept. A short alt text does
- * not count, since a gallery names every shot after the product.
+ * not count, since a gallery names every shot after the product. The same source three times or
+ * more is a pattern the page draws on purpose (rating stars), and a table cell starts over (a
+ * check mark in each column), so those are left alone.
  */
 export const dropRepeatedImages = (tree: Hast): void => {
 	let previous: { src: string | undefined; alt: string } | undefined;
+	let sameSource: Element[] = [];
 	const repeats = new Set<Hast>();
+	const endRun = (): void => {
+		if (sameSource.length === 2) {
+			repeats.add(sameSource[1]);
+		}
+		sameSource = [];
+	};
 	walk(tree, (node) => {
 		if (node.type === "text") {
 			if (node.value.trim() !== "") {
+				endRun();
 				previous = undefined;
 			}
 			return;
 		}
-		if (!isElement(node) || node.tagName !== "img") {
+		if (!isElement(node)) {
+			return;
+		}
+		if (IMAGE_RUN_BREAKS.has(node.tagName)) {
+			endRun();
+			previous = undefined;
+			return;
+		}
+		if (node.tagName !== "img") {
 			return;
 		}
 		const src = stringProperty(node, "src");
 		const alt = (stringProperty(node, "alt") ?? "").trim();
-		const repeated =
-			previous !== undefined &&
-			((src !== undefined && src !== "" && src === previous.src) ||
-				(alt.length >= DESCRIPTIVE_ALT_LENGTH && alt === previous.alt));
-		if (repeated) {
+		if (previous && src !== previous.src && alt.length >= DESCRIPTIVE_ALT_LENGTH && alt === previous.alt) {
 			repeats.add(node);
+		} else if (previous && src !== undefined && src !== "" && src === previous.src) {
+			sameSource.push(node);
 		} else {
+			endRun();
 			previous = { src, alt };
+			sameSource = [node];
 		}
 	});
+	endRun();
 	if (repeats.size > 0) {
 		pruneInPlace(tree, (node) => !repeats.has(node));
 	}
@@ -375,11 +397,12 @@ const LABEL_LANGUAGES = new Set([
 ]);
 
 /** Sphinx names a block's language on a wrapper: `<div class="highlight-python notranslate">`. */
-const WRAPPER_LANGUAGE = /^highlight-([\w+#.-]+)$/;
+const WRAPPER_LANGUAGE = /^highlight-([A-Za-z][\w+#.-]*)$/;
 
-/** `highlight-default` is the project's default lexer, `highlight-source-*` GitHub's class on the `pre` itself. */
-const isWrapperLanguage = (name: string): boolean =>
-	!(name === "default" || name === "text" || name === "none" || name.startsWith("source-"));
+/** `highlight-default` is the project's default lexer; these name no language. */
+const NOT_A_LANGUAGE = new Set(["default", "text", "none"]);
+
+const hasClass = (node: Hast, name: string): boolean => isElement(node) && classList(node).includes(name);
 
 /**
  * Copies the language a wrapper declares onto the code block inside it.
@@ -387,20 +410,26 @@ const isWrapperLanguage = (name: string): boolean =>
  * Sphinx (Python, Flask, Django and most Read the Docs sites) writes
  * `<div class="highlight-python notranslate"><div class="highlight"><pre>…`: the `pre` and its
  * tokens carry no language, so the fence came out bare. The name is set as `data-language`, which
- * the code handler reads after a `language-*` class of the block's own.
+ * the code handler reads after a `language-*` class of the block's own. Only that shape counts —
+ * a wrapper that is not itself `.highlight` and holds a `div.highlight` — because other sites use
+ * `highlight-*` classes for other things (GitHub's `highlight highlight-text-html-basic`).
  */
 export const readWrapperLanguages = (tree: Hast): void => {
 	walk(tree, (node) => {
 		if (!isElement(node) || node.tagName !== "div") {
 			return;
 		}
-		const language = classList(node)
+		const classes = classList(node);
+		const language = classes
 			.map((name) => name.match(WRAPPER_LANGUAGE)?.[1])
-			.find((name) => name !== undefined && isWrapperLanguage(name));
-		if (!language) {
+			.find((name) => name !== undefined && !NOT_A_LANGUAGE.has(name));
+		const inner = node.children.find(
+			(child) => isElement(child) && child.tagName === "div" && hasClass(child, "highlight"),
+		);
+		if (!(language && inner && !classes.includes("highlight"))) {
 			return;
 		}
-		const pre = findElement(node, (element) => element.tagName === "pre");
+		const pre = findElement(inner, (element) => element.tagName === "pre");
 		if (pre && pre.properties.dataLanguage === undefined) {
 			pre.properties.dataLanguage = language;
 		}

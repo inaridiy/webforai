@@ -256,6 +256,19 @@ describe("repeated images", () => {
 	});
 });
 
+describe("images repeated on purpose", () => {
+	it("keeps the same mark in each cell of a table row", () => {
+		const row =
+			'<table><tr><th>Plan</th><th>Free</th><th>Pro</th></tr><tr><td>Sync</td><td><img src="/check.png" alt="yes"></td><td><img src="/check.png" alt="yes"></td></tr></table>';
+		expect(convert(row).match(/check\.png/g)).toHaveLength(2);
+	});
+
+	it("keeps a row of three or more of the same image", () => {
+		const stars = '<p><img src="/star.png" alt=""><img src="/star.png" alt=""><img src="/star.png" alt=""></p>';
+		expect(convert(stars).match(/star\.png/g)).toHaveLength(3);
+	});
+});
+
 describe("heading sign anchors", () => {
 	it("removes an in-page anchor that shows only a sign or an icon", () => {
 		expect(
@@ -277,6 +290,13 @@ describe("code language on a wrapper", () => {
 				'<div class="highlight-python notranslate"><div class="highlight"><pre><span class="kn">import</span> flask</pre></div></div>',
 			),
 		).toBe("```python\nimport flask\n```\n");
+	});
+
+	it("does not read other sites' highlight-* classes as a language", () => {
+		expect(
+			convert('<div class="highlight highlight-text-html-basic notranslate"><pre>&lt;p&gt;hi&lt;/p&gt;</pre></div>'),
+		).toBe("```\n<p>hi</p>\n```\n");
+		expect(convert('<div class="highlight-wrapper"><pre>plain text</pre></div>')).toBe("```\nplain text\n```\n");
 	});
 
 	it("leaves the default lexer and a block that names its own language alone", () => {

@@ -239,11 +239,14 @@ const dropRepeatedHeadings = (node: Mdast): void => {
 	for (let index = parent.children.length - 1; index > 0; index--) {
 		const child = parent.children[index] as Mdast;
 		const previous = parent.children[index - 1] as Mdast;
+		const title = child.type === "heading" ? plainText(child).trim() : "";
+		// A heading without text (an image, an icon) repeats nothing that can be compared.
 		if (
+			title !== "" &&
 			child.type === "heading" &&
 			previous.type === "heading" &&
 			child.depth === previous.depth &&
-			plainText(child).trim() === plainText(previous).trim()
+			title === plainText(previous).trim()
 		) {
 			parent.children.splice(index, 1);
 		}

@@ -154,6 +154,15 @@ describe("structure inside the content", () => {
 		expect(markdown).toContain("`init`");
 	});
 
+	it("stays linear on a list of thousands of terms", () => {
+		const html = `<html><body><main>${prose}</main><nav><dl>${"<dt>x</dt>".repeat(8000)}</dl></nav></body></html>`;
+		const extractors = scoreByTag({ dt: 0.4 });
+		htmlToMarkdown(html, { extractors });
+		const started = performance.now();
+		htmlToMarkdown(html, { extractors });
+		expect(performance.now() - started).toBeLessThan(3000);
+	});
+
 	it("does not keep a term whose description was dropped", () => {
 		const html = `<html><body><main>${prose}<dl><dt>Sponsor</dt><dd>Buy our product today.</dd></dl>${prose}</main></body></html>`;
 		const markdown = htmlToMarkdown(html, { extractors: scoreByTag({ dt: 0.4, dd: 0.1 }) });

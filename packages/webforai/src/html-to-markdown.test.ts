@@ -354,6 +354,19 @@ describe("links and image sources", () => {
 		expect(convert("<p>tex \\&amp; cell</p>")).toBe("tex \\\\& cell\n");
 		expect(convert("<p><code>a &amp;b</code></p>")).toBe("`a &b`\n");
 	});
+
+	it("leaves code inside a link exactly as written", () => {
+		const convert = (source: string) => htmlToMarkdown(source, { extractors: false });
+		expect(convert('<p><a href="/ref?a=1&amp;b=2"><code>\\&amp;mut T</code> &amp;more</a></p>')).toBe(
+			"[`\\&mut T` &more](/ref?a=1&b=2)\n",
+		);
+	});
+
+	it("handles a long run of backslashes in linear time", () => {
+		const started = performance.now();
+		htmlToMarkdown(`<p>${"\\".repeat(100_000)} end</p>`, { extractors: false });
+		expect(performance.now() - started).toBeLessThan(2000);
+	});
 });
 
 describe("a heading printed twice", () => {
@@ -362,6 +375,10 @@ describe("a heading printed twice", () => {
 		expect(convert('<h1 class="print">Pods</h1><h1>Pods</h1><p>Text</p>')).toBe("# Pods\n\nText\n");
 		expect(convert("<h2>Usage</h2><p>a</p><h2>Usage</h2><p>b</p>")).toBe("## Usage\n\na\n\n## Usage\n\nb\n");
 		expect(convert("<h1>Pods</h1><h2>Pods</h2>")).toBe("# Pods\n\n## Pods\n");
+		// Headings without text repeat nothing.
+		expect(convert('<h2><img src="/a.png" alt="A"></h2><h2><img src="/b.png" alt="B"></h2>')).toBe(
+			"## ![A](/a.png)\n\n## ![B](/b.png)\n",
+		);
 	});
 });
 

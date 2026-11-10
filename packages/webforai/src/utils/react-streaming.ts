@@ -8,6 +8,9 @@ const INSTRUCTION = /\$R([CS])\("([^"]+)","([^"]+)"/g;
 /** True for the scripts {@link resolveStreamedContent} reads, so that script stripping keeps them. */
 export const isStreamingInstruction = (script: string): boolean => /\$R[CS]\("/.test(script);
 
+/** Segments put back per page; the rest stay hidden, as all of them were before. */
+const MAX_STREAMED_SEGMENTS = 1000;
+
 /** Comments that open a Suspense boundary; `/$` closes one. */
 const BOUNDARY_OPEN = new Set(["$", "$?", "$!", "$~"]);
 
@@ -115,7 +118,9 @@ const fill = ({ templates, segments, parents }: Streamed, [targetId, segmentId]:
 		}
 	}
 	const content = segment.children as ElementContent[];
-	(parent.children as ElementContent[]).splice(start, end - start, ...content);
+	// Not `splice(start, n, ...content)`: a segment can hold more children than a call has arguments.
+	const siblings = parent.children as ElementContent[];
+	parent.children = siblings.slice(0, start).concat(content, siblings.slice(end)) as typeof parent.children;
 	for (const child of content) {
 		if (parents.has(child)) {
 			parents.set(child, parent);
@@ -150,7 +155,9 @@ export const resolveStreamedContent = (tree: Hast): boolean => {
 	}
 	pairByNumber(found);
 	let moved = false;
-	for (const pair of found.pairs) {
+	// Each fill rebuilds one parent's child list, so a page made of placeholders would cost the
+	// square of their number; a real page streams a handful of boundaries, at most a few hundred.
+	for (const pair of found.pairs.slice(0, MAX_STREAMED_SEGMENTS)) {
 		moved = fill(found, pair) || moved;
 	}
 	return moved;

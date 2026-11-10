@@ -42,6 +42,25 @@ describe("content streamed after the shell (React Suspense)", () => {
 		expect(convert(html)).toBe("Content\n\nAfter\n");
 	});
 
+	it("moves a segment with more children than a call can take as arguments", () => {
+		const html = `<main><!--$?--><template id="B:0"></template>Loading<!--/$--></main><div hidden id="S:0">${"a<br>".repeat(
+			150_000,
+		)}</div><script>$RC("B:0","S:0")</script>`;
+		const tree = parseHtml(html, { fragment: true });
+		expect(resolveStreamedContent(tree)).toBe(true);
+	});
+
+	it("stays bounded on a page made of placeholders", () => {
+		const count = 20_000;
+		const html = `<main>${Array.from({ length: count }, (_, i) => `<div hidden id="S:${i}"></div>`).join(
+			"",
+		)}${Array.from({ length: count }, (_, i) => `<template id="P:${i}"></template>`).join("")}</main>`;
+		const tree = parseHtml(html, { fragment: true });
+		const started = performance.now();
+		resolveStreamedContent(tree);
+		expect(performance.now() - started).toBeLessThan(2000);
+	});
+
 	it("leaves pages without streamed segments untouched", () => {
 		const tree = parseHtml('<template id="B:0"></template><div hidden id="other">x</div>', { fragment: true });
 		expect(resolveStreamedContent(tree)).toBe(false);

@@ -226,42 +226,29 @@ const keepCodeInContent = (kept: Set<Element>, blocks: TextBlock[], probabilitie
 	}
 };
 
-/** The nearest `dl` a block sits in, if any. */
-const definitionListOf = (block: TextBlock): Element | undefined => {
-	for (let frame: BlockFrame | undefined = block.frame; frame; frame = frame.parent) {
-		if (frame.element.tagName === "dl") {
-			return frame.element;
-		}
-	}
-	return undefined;
-};
-
-const isInside = (block: TextBlock, tagName: string, within: Element): boolean => {
-	for (let frame: BlockFrame | undefined = block.frame; frame && frame.element !== within; frame = frame.parent) {
-		if (frame.element.tagName === tagName) {
-			return true;
-		}
-	}
-	return false;
-};
-
-/** Whether a kept block follows the term at `termIndex` inside its own description. */
-const hasKeptDescription = (kept: Set<Element>, blocks: TextBlock[], termIndex: number, list: Element): boolean => {
-	for (let next = termIndex + 1; next < blocks.length; next++) {
-		const block = blocks[next];
-		if (definitionListOf(block) !== list && !isInside(block, "dd", list)) {
-			return false;
-		}
-		if (block.owner.tagName !== "dt") {
-			if (kept.has(block.owner)) {
-				return true;
+/** The nearest `dl` above each frame, looked up once per frame however many blocks share it. */
+const definitionLists = (): ((block: TextBlock) => Element | undefined) => {
+	const known = new Map<BlockFrame, Element | undefined>();
+	return (block) => {
+		const path: BlockFrame[] = [];
+		let list: Element | undefined;
+		for (let frame: BlockFrame | undefined = block.frame; frame; frame = frame.parent) {
+			if (known.has(frame)) {
+				list = known.get(frame);
+				break;
 			}
-		} else if (blocks[next - 1].owner.tagName !== "dt") {
-			// A term after a description opens the next entry; one right after a term shares its description.
-			return false;
+			if (frame.element.tagName === "dl") {
+				list = frame.element;
+				known.set(frame, list);
+				break;
+			}
+			path.push(frame);
 		}
-	}
-	return false;
+		for (const frame of path) {
+			known.set(frame, list);
+		}
+		return list;
+	};
 };
 
 /**
@@ -270,19 +257,50 @@ const hasKeptDescription = (kept: Set<Element>, blocks: TextBlock[], termIndex: 
  * A reference page lists parameters as `<dt><code>resource</code></dt><dd>This defines…</dd>`. The
  * term is one word, which the models score below a sentence (0.36–0.45 on MDN's `fetch()`), and
  * without it the description says "this" about nothing. A term goes with the description that
- * follows it; several terms may share one.
+ * follows it; several terms in a row share one. One pass: a run of terms, then the blocks of the
+ * same list up to its next term.
  */
 const keepDefinitionTerms = (kept: Set<Element>, blocks: TextBlock[]): void => {
-	for (let index = 0; index < blocks.length; index++) {
-		const term = blocks[index];
-		if (term.owner.tagName !== "dt" || kept.has(term.owner)) {
+	const listOf = definitionLists();
+	let index = 0;
+	while (index < blocks.length) {
+		const list = blocks[index].owner.tagName === "dt" ? listOf(blocks[index]) : undefined;
+		if (!list) {
+			index += 1;
 			continue;
 		}
-		const list = definitionListOf(term);
-		if (list && hasKeptDescription(kept, blocks, index, list)) {
-			kept.add(term.owner);
+		let termsEnd = index;
+		while (termsEnd < blocks.length && blocks[termsEnd].owner.tagName === "dt" && listOf(blocks[termsEnd]) === list) {
+			termsEnd += 1;
+		}
+		let described = false;
+		let end = termsEnd;
+		// The description: blocks under the same list — or under a list nested in it — up to its next term.
+		while (
+			end < blocks.length &&
+			isWithin(blocks[end], list) &&
+			!(blocks[end].owner.tagName === "dt" && listOf(blocks[end]) === list)
+		) {
+			described ||= kept.has(blocks[end].owner);
+			end += 1;
+		}
+		if (described) {
+			for (let term = index; term < termsEnd; term++) {
+				kept.add(blocks[term].owner);
+			}
+		}
+		index = Math.max(end, termsEnd);
+	}
+};
+
+/** Whether `element` is on the block's path to the root. */
+const isWithin = (block: TextBlock, element: Element): boolean => {
+	for (let frame: BlockFrame | undefined = block.frame; frame; frame = frame.parent) {
+		if (frame.element === element) {
+			return true;
 		}
 	}
+	return false;
 };
 
 /** The `ul`/`ol` a list-item block belongs to, if any. */
