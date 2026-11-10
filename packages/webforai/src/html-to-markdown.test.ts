@@ -356,6 +356,15 @@ describe("links and image sources", () => {
 	});
 });
 
+describe("a heading printed twice", () => {
+	it("keeps one of two identical headings in a row", () => {
+		const convert = (html: string) => htmlToMarkdown(html, { extractors: false, title: false });
+		expect(convert('<h1 class="print">Pods</h1><h1>Pods</h1><p>Text</p>')).toBe("# Pods\n\nText\n");
+		expect(convert("<h2>Usage</h2><p>a</p><h2>Usage</h2><p>b</p>")).toBe("## Usage\n\na\n\n## Usage\n\nb\n");
+		expect(convert("<h1>Pods</h1><h2>Pods</h2>")).toBe("# Pods\n\n## Pods\n");
+	});
+});
+
 describe("tables with block content", () => {
 	const convert = (html: string) => htmlToMarkdown(html, { extractors: false });
 

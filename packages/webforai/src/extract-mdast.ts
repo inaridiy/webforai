@@ -224,6 +224,35 @@ const hoistAttentionWhitespace = (node: Mdast): void => {
 	}
 };
 
+const plainText = (node: Mdast): string =>
+	"value" in node ? node.value : "children" in node ? (node.children as Mdast[]).map(plainText).join("") : "";
+
+/**
+ * Drops a heading that repeats the heading right before it. Themes print the page title twice —
+ * once for the screen and once for print or for small screens (kubernetes.io) — and show one.
+ */
+const dropRepeatedHeadings = (node: Mdast): void => {
+	if (!("children" in node)) {
+		return;
+	}
+	const parent = node as Parent;
+	for (let index = parent.children.length - 1; index > 0; index--) {
+		const child = parent.children[index] as Mdast;
+		const previous = parent.children[index - 1] as Mdast;
+		if (
+			child.type === "heading" &&
+			previous.type === "heading" &&
+			child.depth === previous.depth &&
+			plainText(child).trim() === plainText(previous).trim()
+		) {
+			parent.children.splice(index, 1);
+		}
+	}
+	for (const child of parent.children) {
+		dropRepeatedHeadings(child as Mdast);
+	}
+};
+
 export const extractMdast = (node: Mdast) => {
 	const extracted = filter(node, (node) => {
 		if (!emptyDeclarationFilter(node as Mdast)) {
@@ -235,6 +264,7 @@ export const extractMdast = (node: Mdast) => {
 		liftDisplayMathIn(extracted as Mdast);
 		tidyBreaks(extracted as Mdast);
 		hoistAttentionWhitespace(extracted as Mdast);
+		dropRepeatedHeadings(extracted as Mdast);
 	}
 	return extracted as Mdast;
 };

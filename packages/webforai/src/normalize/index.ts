@@ -509,6 +509,50 @@ export const separateAdjacentInlines = (tree: Hast): void => {
 	visit(tree);
 };
 
+/** The class a documentation theme gives the title line of a note, tip or warning box. */
+const ADMONITION_TITLE =
+	/admonition-?title|admonitionheading|alert-heading|markdown-alert-title|custom-block-title|aside__title|callout-title/i;
+
+const ADMONITION_CONTAINERS = new Set(["div", "aside", "section"]);
+
+/**
+ * Turns a note, tip or warning box into a block quote that opens with its title in bold.
+ *
+ * Sphinx and MkDocs (`.admonition-title`), Docusaurus, Docsy (`.alert-heading`), GitHub
+ * (`.markdown-alert-title`), VitePress and Starlight all mark the box's title line with a class
+ * and draw the box with CSS. Converted as plain elements the title became a paragraph or a
+ * heading of its own ("#### Note:") and the box's text ran on as body text. A box is recognised
+ * by its title's class only, so banners and alerts without one are left alone.
+ */
+export const quoteAdmonitions = (tree: Hast): void => {
+	walk(tree, (node) => {
+		if (!(isElement(node) && ADMONITION_CONTAINERS.has(node.tagName))) {
+			return;
+		}
+		const titleAt = node.children.findIndex(
+			(child) => isElement(child) && classList(child).some((name) => ADMONITION_TITLE.test(name)),
+		);
+		if (titleAt < 0) {
+			return;
+		}
+		const text = textOfNode(node.children[titleAt]).trim();
+		const title: Element[] = text
+			? [
+					{
+						type: "element",
+						tagName: "p",
+						properties: {},
+						children: [
+							{ type: "element", tagName: "strong", properties: {}, children: [{ type: "text", value: text }] },
+						],
+					},
+				]
+			: [];
+		node.tagName = "blockquote";
+		node.children.splice(titleAt, 1, ...title);
+	});
+};
+
 export interface NormalizeOptions {
 	/** Resolve lazily-loaded image URLs and drop an image that repeats the one before it. Default `true`. */
 	images?: boolean;
@@ -524,6 +568,8 @@ export interface NormalizeOptions {
 	codeLabels?: boolean;
 	/** Separate adjacent inline elements laid out side by side. Default `true`. */
 	inlineSpacing?: boolean;
+	/** Convert note, tip and warning boxes to block quotes with a bold title. Default `true`. */
+	admonitions?: boolean;
 }
 
 /**
@@ -541,6 +587,7 @@ export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast 
 		headingAnchors = true,
 		codeLabels = true,
 		inlineSpacing = true,
+		admonitions = true,
 	} = options;
 
 	if (images) {
@@ -562,6 +609,9 @@ export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast 
 	if (codeLabels) {
 		foldCodeLabels(tree);
 		readWrapperLanguages(tree);
+	}
+	if (admonitions) {
+		quoteAdmonitions(tree);
 	}
 	if (inlineSpacing) {
 		separateAdjacentInlines(tree);

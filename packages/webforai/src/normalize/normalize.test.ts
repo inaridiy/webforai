@@ -288,3 +288,25 @@ describe("code language on a wrapper", () => {
 		);
 	});
 });
+
+describe("note, tip and warning boxes", () => {
+	it("quotes a Sphinx admonition under its title", () => {
+		expect(
+			convert(
+				'<div class="admonition warning"><p class="admonition-title">Warning</p><p>Do not expose the debugger.</p></div>',
+			),
+		).toBe("> **Warning**\n>\n> Do not expose the debugger.\n");
+	});
+
+	it("quotes a Docsy alert instead of making its title a heading", () => {
+		expect(
+			convert(
+				'<div class="alert alert-info" role="note"><h4 class="alert-heading">Note:</h4>You need a container runtime.</div>',
+			),
+		).toBe("> **Note:**\n>\n> You need a container runtime.\n");
+	});
+
+	it("leaves a box without a title class alone", () => {
+		expect(convert('<div class="alert alert-info"><p>We use cookies.</p></div>')).toBe("We use cookies.\n");
+	});
+});
