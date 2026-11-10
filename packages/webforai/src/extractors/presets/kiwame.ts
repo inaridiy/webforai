@@ -178,6 +178,12 @@ const CODE_IN_CONTENT_THRESHOLD = 0.2;
 /** How far (in blocks) kept content must be on both sides of a code block. */
 const CODE_CONTEXT = 6;
 
+/** Below this probability a block is furniture for certain and is not counted in that distance... */
+const SURE_FURNITURE = 0.05;
+
+/** ...up to this many blocks away in all. */
+const CODE_CONTEXT_SPAN = 24;
+
 /**
  * Keeps code blocks that sit inside the kept content.
  *
@@ -187,14 +193,22 @@ const CODE_CONTEXT = 6;
  */
 const keepCodeInContent = (kept: Set<Element>, blocks: TextBlock[], probabilities: Float32Array): void => {
 	const keptIndex = blocks.map((block) => kept.has(block.owner));
+	// Blocks the models are sure are furniture do not count towards the distance: MDN puts its
+	// "In this article" list between the introduction and the Syntax block in document order.
 	const near = (from: number, step: number): boolean => {
-		for (let distance = 1; distance <= CODE_CONTEXT; distance++) {
-			const index = from + step * distance;
-			if (index < 0 || index >= blocks.length) {
-				return false;
-			}
+		let distance = 0;
+		for (let index = from + step; index >= 0 && index < blocks.length; index += step) {
 			if (keptIndex[index]) {
 				return true;
+			}
+			if (Math.abs(index - from) > CODE_CONTEXT_SPAN) {
+				return false;
+			}
+			if (probabilities[index] >= SURE_FURNITURE) {
+				distance += 1;
+				if (distance >= CODE_CONTEXT) {
+					return false;
+				}
 			}
 		}
 		return false;
@@ -208,6 +222,65 @@ const keepCodeInContent = (kept: Set<Element>, blocks: TextBlock[], probabilitie
 			near(block.index, 1)
 		) {
 			kept.add(block.owner);
+		}
+	}
+};
+
+/** The nearest `dl` a block sits in, if any. */
+const definitionListOf = (block: TextBlock): Element | undefined => {
+	for (let frame: BlockFrame | undefined = block.frame; frame; frame = frame.parent) {
+		if (frame.element.tagName === "dl") {
+			return frame.element;
+		}
+	}
+	return undefined;
+};
+
+const isInside = (block: TextBlock, tagName: string, within: Element): boolean => {
+	for (let frame: BlockFrame | undefined = block.frame; frame && frame.element !== within; frame = frame.parent) {
+		if (frame.element.tagName === tagName) {
+			return true;
+		}
+	}
+	return false;
+};
+
+/** Whether a kept block follows the term at `termIndex` inside its own description. */
+const hasKeptDescription = (kept: Set<Element>, blocks: TextBlock[], termIndex: number, list: Element): boolean => {
+	for (let next = termIndex + 1; next < blocks.length; next++) {
+		const block = blocks[next];
+		if (definitionListOf(block) !== list && !isInside(block, "dd", list)) {
+			return false;
+		}
+		if (block.owner.tagName !== "dt") {
+			if (kept.has(block.owner)) {
+				return true;
+			}
+		} else if (blocks[next - 1].owner.tagName !== "dt") {
+			// A term after a description opens the next entry; one right after a term shares its description.
+			return false;
+		}
+	}
+	return false;
+};
+
+/**
+ * Keeps the term of a definition whose description is kept.
+ *
+ * A reference page lists parameters as `<dt><code>resource</code></dt><dd>This defines…</dd>`. The
+ * term is one word, which the models score below a sentence (0.36–0.45 on MDN's `fetch()`), and
+ * without it the description says "this" about nothing. A term goes with the description that
+ * follows it; several terms may share one.
+ */
+const keepDefinitionTerms = (kept: Set<Element>, blocks: TextBlock[]): void => {
+	for (let index = 0; index < blocks.length; index++) {
+		const term = blocks[index];
+		if (term.owner.tagName !== "dt" || kept.has(term.owner)) {
+			continue;
+		}
+		const list = definitionListOf(term);
+		if (list && hasKeptDescription(kept, blocks, index, list)) {
+			kept.add(term.owner);
 		}
 	}
 };
@@ -401,6 +474,7 @@ const applyKeepRules = (
 		return;
 	}
 	keepCodeInContent(kept, blocks, probabilities);
+	keepDefinitionTerms(kept, blocks);
 	keepSectionHeadings(kept, blocks);
 	keepAuthoredLists(kept, blocks);
 	completeTables(kept, blocks);

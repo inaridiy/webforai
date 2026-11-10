@@ -134,3 +134,37 @@ describe("collapsed listings", () => {
 		expect(markdown).not.toContain("Story 0 about rental cars");
 	});
 });
+
+describe("structure inside the content", () => {
+	const prose = "<p>A paragraph of reference prose, with commas, that the model keeps as content.</p>";
+	/** Scores every block by its element: prose is kept, the rest is as unsure as on a reference page. */
+	const scoreByTag = (scores: Record<string, number>) =>
+		createKiwameExtractor({
+			probabilities: (blocks) => Float32Array.from(blocks, (block) => scores[block.owner.tagName] ?? 0.9),
+		});
+
+	it("keeps the term of a definition whose description is kept", () => {
+		const html = `<html><body><main>${prose}<dl>
+			<dt><code>resource</code></dt><dd><p>This defines the resource that you wish to fetch.</p></dd>
+			<dt><code>options</code></dt><dt><code>init</code></dt><dd><p>An object holding the settings of the request.</p></dd>
+		</dl>${prose}</main></body></html>`;
+		const markdown = htmlToMarkdown(html, { extractors: scoreByTag({ dt: 0.4 }) });
+		expect(markdown).toContain("`resource`");
+		expect(markdown).toContain("`options`");
+		expect(markdown).toContain("`init`");
+	});
+
+	it("does not keep a term whose description was dropped", () => {
+		const html = `<html><body><main>${prose}<dl><dt>Sponsor</dt><dd>Buy our product today.</dd></dl>${prose}</main></body></html>`;
+		const markdown = htmlToMarkdown(html, { extractors: scoreByTag({ dt: 0.4, dd: 0.1 }) });
+		expect(markdown).not.toContain("Sponsor");
+	});
+
+	it("keeps a code block separated from the content by a list the models are sure is furniture", () => {
+		const toc = `<aside><ul>${"<li>Section</li>".repeat(9)}</ul></aside>`;
+		const html = `<html><body><main>${prose}${toc}<h2>Syntax</h2><pre>fetch(resource)</pre><h3>Parameters</h3>${prose}</main></body></html>`;
+		const markdown = htmlToMarkdown(html, { extractors: scoreByTag({ li: 0, h2: 0.3, h3: 0.3, pre: 0.45 }) });
+		expect(markdown).toContain("## Syntax\n\n```\nfetch(resource)\n```");
+		expect(markdown).not.toContain("Section");
+	});
+});
