@@ -8,7 +8,10 @@ import { type PageMetadata, extractMetadata, toFrontmatter } from "./metadata";
 import { getLangFromStr } from "./utils/hast-utils";
 
 export interface HtmlToMarkdownOptions extends HtmlToMdastOptions {
-	/** The base URL to use for replacing relative links. */
+	/**
+	 * The URL relative links and image sources are resolved against. Defaults to `url`, the
+	 * page's own address; pass an empty string to keep them as the page wrote them.
+	 */
 	baseUrl?: string;
 	/**
 	 * Prepend a YAML front-matter block describing the page.
@@ -89,7 +92,7 @@ export const htmlToMarkdownWithMetadata = (
 		url: toMdastOptions.url ?? metadata.canonicalUrl,
 	});
 
-	const body = mdastToMarkdown(mdast, { baseUrl, ...toMarkdownOptions });
+	const body = mdastToMarkdown(mdast, { baseUrl: baseUrl ?? toMdastOptions.url, ...toMarkdownOptions });
 	const pageUrl = toMdastOptions.url ?? metadata.canonicalUrl;
 	const titled = title === false ? body : withTitle(body, headingTitle(metadata.title, metadata.siteName, pageUrl));
 	const markdown = frontmatter ? `${toFrontmatter(metadata)}${titled}` : titled;
