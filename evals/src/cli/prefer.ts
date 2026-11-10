@@ -24,11 +24,12 @@
  * each of WCXB's seven page types in its held-out split.
  *
  * Verdicts are cached in `.cache/prefer/<judge>/` under a hash of the prompt, so a run resumes
- * where it stopped and asks again only where an output changed. `--report` asks nothing.
+ * where it stopped and asks again only where an output changed. `--report` asks nothing;
+ * `--issues` also lists, for every verdict webforai lost, the defects the judge saw in its output.
  * `--save-results` writes the summary to the committed `benchmarks/preference/results.json`.
  */
 
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -124,6 +125,13 @@ const run = (
 		child.stdin.end(input);
 	});
 
+/** Why the last failed call failed, printed with the count of failures. */
+let lastError = "";
+const failure = (result: { code: number; stdout: string; stderr: string }): undefined => {
+	lastError = `exit ${result.code}: ${(result.stderr || result.stdout).trim().slice(-300)}`;
+	return undefined;
+};
+
 const isVerdict = (value: unknown): value is Verdict =>
 	typeof value === "object" &&
 	value !== null &&
@@ -155,7 +163,7 @@ const askClaude = async (user: string): Promise<Verdict | undefined> => {
 		user,
 	);
 	if (result.code !== 0) {
-		return undefined;
+		return failure(result);
 	}
 	const verdict = (JSON.parse(result.stdout) as { structured_output?: unknown }).structured_output;
 	return isVerdict(verdict) ? verdict : undefined;
@@ -186,7 +194,7 @@ const askCodex = async (user: string): Promise<Verdict | undefined> => {
 		`${RUBRIC}\n\n---\n\n${user}`,
 	);
 	if (result.code !== 0) {
-		return undefined;
+		return failure(result);
 	}
 	const verdict: unknown = JSON.parse(await readFile(output, "utf8"));
 	return isVerdict(verdict) ? verdict : undefined;
@@ -350,7 +358,7 @@ if (!reportOnly) {
 			}
 		};
 		await Promise.all(Array.from({ length: concurrency }, worker));
-		console.info(`${pending.length - failed} answered, ${failed} failed`);
+		console.info(`${pending.length - failed} answered, ${failed} failed${failed ? ` (last error: ${lastError})` : ""}`);
 	}
 }
 
@@ -365,6 +373,8 @@ interface Row {
 	outcome: "win" | "loss" | "tie";
 	scoreWebforai: number;
 	scoreOpponent: number;
+	/** The defects the judge listed for webforai's side. */
+	issues: string[];
 }
 
 const rows: Row[] = [];
@@ -383,6 +393,7 @@ for (const item of items) {
 		outcome: verdict.winner === "tie" ? "tie" : verdict.winner === oursSlot ? "win" : "loss",
 		scoreWebforai: oursSlot === "A" ? verdict.scoreA : verdict.scoreB,
 		scoreOpponent: oursSlot === "A" ? verdict.scoreB : verdict.scoreA,
+		issues: (oursSlot === "A" ? verdict.aIssues : verdict.bIssues) ?? [],
 	});
 }
 
@@ -465,6 +476,16 @@ for (const judge of judges) {
 	}
 }
 
+if (process.argv.includes("--issues")) {
+	console.info("\nVerdicts webforai lost, with the defects the judge saw in its output:");
+	for (const row of rows.filter((candidate) => candidate.outcome === "loss")) {
+		console.info(`\n${row.page} · vs ${row.opponent} · ${row.judge} · ${row.scoreWebforai} vs ${row.scoreOpponent}`);
+		for (const issue of row.issues) {
+			console.info(`  - ${issue}`);
+		}
+	}
+}
+
 if (saveResults) {
 	await mkdir(path.dirname(RESULTS_PATH), { recursive: true });
 	await writeFile(
@@ -481,5 +502,14 @@ if (saveResults) {
 			"\t",
 		)}\n`,
 	);
+	// The summary is committed, so leave it in the repository's formatter style (the pre-commit
+	// hook runs biome over it).
+	try {
+		execFileSync(path.join(EVALS_ROOT, "..", "node_modules", ".bin", "biome"), ["format", "--write", RESULTS_PATH], {
+			stdio: "ignore",
+		});
+	} catch {
+		console.warn("Could not run biome on the summary; run `pnpm format:fix` before committing it.");
+	}
 	console.info(`\nwrote ${path.relative(EVALS_ROOT, RESULTS_PATH)}`);
 }

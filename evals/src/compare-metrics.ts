@@ -218,6 +218,14 @@ const normalizeLine = (line: string): string => line.replace(/\s+/g, " ").trim()
 
 const LINE_BLOCK_TAGS = new Set(["div", "p", "li", "tr", "table"]);
 
+const isLineSpan = (node: Element): boolean => {
+	if (node.tagName !== "span") {
+		return false;
+	}
+	const className = node.properties?.className;
+	return node.properties?.dataLine !== undefined || (Array.isArray(className) && className.includes("line"));
+};
+
 const collectText = (node: Hast, out: string[]): void => {
 	if (node.type === "text") {
 		out.push(node.value);
@@ -228,8 +236,10 @@ const collectText = (node: Hast, out: string[]): void => {
 		return;
 	}
 	// Highlighters often render each code line as a block element with no newline text between
-	// them (e.g. `<div class="line">`); a block boundary is a line boundary.
-	const isBlock = node.type === "element" && LINE_BLOCK_TAGS.has(node.tagName);
+	// them (e.g. `<div class="line">`); a block boundary is a line boundary. Shiki's
+	// `<span class="line">` and rehype-pretty-code's `<span data-line>` are lines too: sites that
+	// style them as blocks drop the newline between them (tailwindcss.com).
+	const isBlock = node.type === "element" && (LINE_BLOCK_TAGS.has(node.tagName) || isLineSpan(node));
 	if (isBlock) {
 		out.push("\n");
 	}
