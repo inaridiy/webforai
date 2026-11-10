@@ -1,5 +1,25 @@
 # webforai
 
+## 5.1.0
+
+### Minor Changes
+
+- [#95](https://github.com/inaridiy/webforai/pull/95) [`26cd2c3`](https://github.com/inaridiy/webforai/commit/26cd2c34ce3d84229c16824d394bbc4307e3c9a7) Thanks [@inaridiy](https://github.com/inaridiy)! - Fewer pages come out empty or cut short: a forum thread that Discourse or Flarum ships only inside `<noscript>` is converted (and `detectClientShell` no longer flags such pages), a listing whose items the models score just under the threshold keeps them instead of collapsing to its title, and the heuristic extractor climbs through section wrappers to their sibling sections (the Gradle compatibility page lost four of its five). On WCXB's development split the share of forum pages scoring under F1 0.2 falls from 23.9% to 7.1%.
+
+- [#95](https://github.com/inaridiy/webforai/pull/95) [`26cd2c3`](https://github.com/inaridiy/webforai/commit/26cd2c34ce3d84229c16824d394bbc4307e3c9a7) Thanks [@inaridiy](https://github.com/inaridiy)! - Content that a React server streams after the page's shell (Next.js App Router, GitBook) is put back where the browser would put it. Fetched without JavaScript, these pages carry the late parts as hidden `<div id="S:…">` segments at the end of the document, and extraction dropped them: every code block of a GitBook page, for one.
+
+- [#95](https://github.com/inaridiy/webforai/pull/95) [`26cd2c3`](https://github.com/inaridiy/webforai/commit/26cd2c34ce3d84229c16824d394bbc4307e3c9a7) Thanks [@inaridiy](https://github.com/inaridiy)! - Markdown that reads as written: code blocks keep their lines when a highlighter wraps each one in a `span.line` without a newline (tailwindcss.com collapsed `npm create …` and `cd …` into one line), relative links and image sources resolve against `url` when no `baseUrl` is given (pass `baseUrl: ""` to keep them as written), and `&` is escaped only where it would start a character reference, so query strings no longer read `?a=1\&b=2`.
+
+### Patch Changes
+
+- [#95](https://github.com/inaridiy/webforai/pull/95) [`26cd2c3`](https://github.com/inaridiy/webforai/commit/26cd2c34ce3d84229c16824d394bbc4307e3c9a7) Thanks [@inaridiy](https://github.com/inaridiy)! - Note, tip and warning boxes (Sphinx, MkDocs, Docusaurus, Docsy, GitHub, VitePress, Starlight) become block quotes that open with the box's title in bold instead of a stray heading or paragraph, and a heading that repeats the one right before it is dropped.
+
+- [#95](https://github.com/inaridiy/webforai/pull/95) [`26cd2c3`](https://github.com/inaridiy/webforai/commit/26cd2c34ce3d84229c16824d394bbc4307e3c9a7) Thanks [@inaridiy](https://github.com/inaridiy)! - Reference pages keep their structure: the term of a definition list is kept with its description (MDN's parameter and exception names), and a code block is kept when only furniture the models are sure of — an in-page table of contents — separates it from the content (MDN's Syntax section).
+
+- [#95](https://github.com/inaridiy/webforai/pull/95) [`26cd2c3`](https://github.com/inaridiy/webforai/commit/26cd2c34ce3d84229c16824d394bbc4307e3c9a7) Thanks [@inaridiy](https://github.com/inaridiy)! - Drop an image that repeats the one before it (a light and a dark variant, two crops, a no-script copy) and the sign-only permalink beside a heading (Sphinx's `¶`, VitePress' zero-width anchor, icon anchors).
+
+- [#95](https://github.com/inaridiy/webforai/pull/95) [`26cd2c3`](https://github.com/inaridiy/webforai/commit/26cd2c34ce3d84229c16824d394bbc4307e3c9a7) Thanks [@inaridiy](https://github.com/inaridiy)! - Code blocks on Sphinx sites (Python, Flask, Django, Read the Docs) keep their language: it is read from the `highlight-<language>` wrapper around the block.
+
 ## 5.0.2
 
 ### Patch Changes
