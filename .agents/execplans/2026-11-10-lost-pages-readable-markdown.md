@@ -48,10 +48,10 @@ Conversion (what a reader of the Markdown sees):
       WCEB 0.896 (comments 0.924), WebMainBench 0.860, WCXB-dev 0.844, WCXB-test 0.877 — ahead of
       Defuddle 0.19.6 (+0.022 [+0.007, +0.038]), Trafilatura (+0.018 [+0.001, +0.035]) and
       Readability + Turndown (+0.046 [+0.026, +0.067]) on the held-out split. Pages with recall
-      under 0.5 on WebMainBench: 5.1% against 10.2–12.6%. `bench:compare`: checks 75/75, code
-      736/750, empty outputs 4 → 2; the machine was busy (load average 31), so times are read as
-      ratios, and an interleaved run against the previous release measured 0.96×. `stress`: every
-      case within the 128 MB heap.
+      under 0.5 on WebMainBench: 5.1% against 10.2–12.6%. `bench:compare` (at `5d76f8d`): checks
+      75/75, code 736/750, empty outputs 4 → 2, 4.12 s for the corpus against 13.02 s for
+      Readability + Turndown; an interleaved run against the previous release measured 0.96×.
+      `stress`: every case within the 128 MB heap.
 - [x] 2026-11-10 `prefer`, WCXB-test, 105 pages, both orders: against Readability + Turndown
       Sonnet 5.5 72% / 20% and gpt-6.1-sol 71% / 22%; against Defuddle 51% / 38% and 51% / 41%
       (net +13 [−4, +29] and +10 [−8, +28]: no clear preference). Corpus (46 sites, Sonnet):
@@ -63,6 +63,14 @@ Conversion (what a reader of the Markdown sees):
       re-measured), READMEs and docs home rebuilt around three questions — is the page kept, is
       the Markdown good to read, what does agent mode cost — and the chart redrawn to match
       (held-out F1, pages lost, code blocks kept).
+
+- [x] 2026-11-10 Review before release (`5d76f8d`): eight defects reproduced and fixed — a
+      backtracking regex in the ampersand un-escaping (160 KB of backslashes: 56 s → 36 ms), a
+      quadratic definition-term rule (40 s → 0.6 s), a RangeError and a quadratic path in the
+      streamed-content step (segments are concatenated; at most 1,000 per page), inline code in a
+      link losing a backslash, check marks in table cells and rating stars taken for repeated
+      images, GitHub's `highlight-*` classes read as a language, image-only headings taken for a
+      repeated heading. Corpus outputs unchanged (0 of 120); the four reference sets re-scored.
 
 ## Decision log
 

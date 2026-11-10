@@ -12,7 +12,7 @@ cached pages. The main-content comparison runs locally from the repository's
 evaluation harness, with no network access and no API keys at measure time; the preference
 comparison asks models to judge the outputs, and the link-following benchmark for agent mode
 renders live pages and asks models, as described in their sections. The
-corpus numbers below are from the run on 2026-11-10 at commit `a5831e6`; the raw summary is
+corpus numbers below are from the run on 2026-11-10 at commit `5d76f8d`; the raw summary is
 [`evals/benchmarks/compare-summary.json`](https://github.com/inaridiy/webforai/blob/main/evals/benchmarks/compare-summary.json).
 
 **Read the limitations first.** The corpus is small (60 captures of 46 sites) and was assembled
@@ -137,21 +137,19 @@ from the 2026-10-01 run. The other pipelines' versions and the captures are unch
 
 | Pipeline | Checks passed | Crashes | Empty | Nav leak | Boilerplate | Code fenced | Tables | Median output (chars) | Total time |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| webforai | 75/75 | 0 | 2 | 5 | 1 | 98.1% (736/750) | 39.1% (25/64) | 8,207 | 8.22 s |
-| Readability + Turndown | 64/75 | 0 | 2 | 8 | 3 | 45.2% (339/750) | 29.7% (19/64) | 9,139 | 25.33 s |
-| Defuddle | 73/75 | 0 | 3 | 8 | 2 | 89.7% (673/750) | 54.7% (35/64) | 7,874 | 28.80 s |
+| webforai | 75/75 | 0 | 2 | 5 | 1 | 98.1% (736/750) | 39.1% (25/64) | 8,207 | 4.12 s |
+| Readability + Turndown | 64/75 | 0 | 2 | 8 | 3 | 45.2% (339/750) | 29.7% (19/64) | 9,139 | 13.02 s |
+| Defuddle | 73/75 | 0 | 3 | 8 | 2 | 89.7% (673/750) | 54.7% (35/64) | 7,874 | 13.87 s |
 | Trafilatura | 64/75 | 0 | 2 | 0 | 2 | 40.5% (304/750) | 40.6% (26/64) | 5,630 | 2.94 s (Python) |
-| Turndown (full page) | 51/75 | 1 | 1 | 30 | 31 | 52.1% (391/750) | 31.3% (20/64) | 16,956 | 2.82 s |
-| node-html-markdown (full page) | 51/75 | 0 | 1 | 37 | 32 | 51.9% (389/750) | 57.8% (37/64) | 18,140 | 26.13 s |
+| Turndown (full page) | 51/75 | 1 | 1 | 30 | 31 | 52.1% (391/750) | 31.3% (20/64) | 16,956 | 1.62 s |
+| node-html-markdown (full page) | 51/75 | 0 | 1 | 37 | 32 | 51.9% (389/750) | 57.8% (37/64) | 18,140 | 18.29 s |
 | Firecrawl OSS | 53/75 | 1 | 0 | 15 | 22 | 51.2% (384/750) | 95.3% (61/64) | 11,975 | 16.55 s (service) |
 | Cloudflare toMarkdown | 62/75 | 0 | 1 | 13 | 22 | 52.9% (397/750) | 57.8% (37/64) | 10,611 | 50.80 s (service) |
 
-60 captures, 24.17 MiB of HTML. Nav leak, boilerplate and empty count captures out of 60. The
-machine was busy during this run (load average 31 on 16 logical CPUs, recorded in the summary),
-so every in-process time is about twice what the 2026-10-09 run measured on a quiet machine
-(webforai 4.04 s, Readability + Turndown 13.69 s, Defuddle 13.76 s, full-page Turndown 1.63 s);
-the ratios between pipelines are what to read. Interleaved with the previous release over the
-same captures, this release takes 0.96 times as long — no change within the noise. Trafilatura's is the sum of
+60 captures, 24.17 MiB of HTML. Nav leak, boilerplate and empty count captures out of 60. Times
+were measured with a load average of about 5 (recorded in the summary); interleaved with the
+previous release over the same captures, this release takes 0.96 times as long — no change
+within the noise. Trafilatura's is the sum of
 each page's median over 5 timed `extract` calls in Python, run alone, one page at a time; pipelines are interleaved
 per capture, so compare them as ratios. Firecrawl's figure is unchanged from the 2026-10-01 run,
 because its outputs are read from the cache that run produced. Cloudflare toMarkdown's is the sum
@@ -160,7 +158,7 @@ Cloudflare; like Firecrawl's, it is a service latency.
 
 ### What the numbers show
 
-- **Where webforai is behind.** Full-page Turndown is 2.5–3× faster, because it does no
+- **Where webforai is behind.** Full-page Turndown is about 2.5× faster, because it does no
   extraction, and Trafilatura, timed in Python in a separate run, is faster too. Firecrawl and node-html-markdown keep the most tables: they remove little or nothing,
   so Wikipedia's navboxes and sidebars (navigation tables built from `<th>` cells; 30 on the Japanese
   capture) count as kept. Most of the tables webforai drops are those, plus a PostgreSQL navigation
