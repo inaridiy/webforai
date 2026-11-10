@@ -1,0 +1,437 @@
+{
+	"generated": "2026-11-10",
+	"rubric": "You are evaluating two Markdown conversions (A and B) of the same web page. The Markdown will be given to a reader — a person, or an LLM that must answer questions about the page or summarize it. Decide which conversion serves that reader better.\n\nJudge, in this order of importance:\n1. Main content: is the page's primary content complete and faithful? Missing paragraphs, dropped or broken code blocks, tables flattened into unreadable text, garbled formulas or lost list structure are serious defects.\n2. Noise: navigation menus, link farms, cookie or consent text, ads, \"related articles\", footers and other boilerplate that is not the page's content make the reader's job harder.\n3. Structure: headings, lists, code fences and tables that make the content easy to navigate.\nDo not prefer a conversion merely because it is longer or shorter. Long inputs were cut identically on both sides (a marker shows where); do not penalise the cut itself.",
+	"sample": {
+		"headChars": 12000,
+		"tailChars": 3000
+	},
+	"perType": 15,
+	"results": [
+		{
+			"judge": "Sonnet 5.5",
+			"opponent": "readability-turndown",
+			"set": "corpus",
+			"verdicts": 92,
+			"pages": 46,
+			"win": 0.902,
+			"loss": 0.065,
+			"tie": 0.033,
+			"net": 0.837,
+			"netInterval": [0.674, 0.946],
+			"scoreWebforai": 81.4,
+			"scoreOpponent": 54.6,
+			"byGroup": {
+				"corpus": {
+					"verdicts": 92,
+					"pages": 46,
+					"win": 0.902,
+					"loss": 0.065,
+					"tie": 0.033,
+					"net": 0.837,
+					"netInterval": [0.674, 0.946],
+					"scoreWebforai": 81.4,
+					"scoreOpponent": 54.6
+				}
+			}
+		},
+		{
+			"judge": "Sonnet 5.5",
+			"opponent": "readability-turndown",
+			"set": "wcxb-test",
+			"verdicts": 210,
+			"pages": 105,
+			"win": 0.719,
+			"loss": 0.195,
+			"tie": 0.086,
+			"net": 0.524,
+			"netInterval": [0.376, 0.657],
+			"scoreWebforai": 71,
+			"scoreOpponent": 50.9,
+			"byGroup": {
+				"article": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.733,
+					"loss": 0.167,
+					"tie": 0.1,
+					"net": 0.567,
+					"netInterval": [0.233, 0.867],
+					"scoreWebforai": 78.5,
+					"scoreOpponent": 64.1
+				},
+				"collection": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.533,
+					"loss": 0.433,
+					"tie": 0.033,
+					"net": 0.1,
+					"netInterval": [-0.367, 0.567],
+					"scoreWebforai": 59.9,
+					"scoreOpponent": 51.2
+				},
+				"documentation": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.867,
+					"loss": 0.133,
+					"tie": 0,
+					"net": 0.733,
+					"netInterval": [0.4, 1],
+					"scoreWebforai": 81,
+					"scoreOpponent": 58.8
+				},
+				"forum": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.867,
+					"loss": 0.133,
+					"tie": 0,
+					"net": 0.733,
+					"netInterval": [0.4, 1],
+					"scoreWebforai": 74.8,
+					"scoreOpponent": 38.6
+				},
+				"listing": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.733,
+					"loss": 0.1,
+					"tie": 0.167,
+					"net": 0.633,
+					"netInterval": [0.3, 0.9],
+					"scoreWebforai": 69.8,
+					"scoreOpponent": 37.8
+				},
+				"product": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.8,
+					"loss": 0.1,
+					"tie": 0.1,
+					"net": 0.7,
+					"netInterval": [0.4, 0.933],
+					"scoreWebforai": 66.7,
+					"scoreOpponent": 43.3
+				},
+				"service": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.5,
+					"loss": 0.3,
+					"tie": 0.2,
+					"net": 0.2,
+					"netInterval": [-0.233, 0.633],
+					"scoreWebforai": 66.2,
+					"scoreOpponent": 62.3
+				}
+			}
+		},
+		{
+			"judge": "Sonnet 5.5",
+			"opponent": "defuddle",
+			"set": "corpus",
+			"verdicts": 92,
+			"pages": 46,
+			"win": 0.674,
+			"loss": 0.25,
+			"tie": 0.076,
+			"net": 0.424,
+			"netInterval": [0.196, 0.641],
+			"scoreWebforai": 76.6,
+			"scoreOpponent": 65.1,
+			"byGroup": {
+				"corpus": {
+					"verdicts": 92,
+					"pages": 46,
+					"win": 0.674,
+					"loss": 0.25,
+					"tie": 0.076,
+					"net": 0.424,
+					"netInterval": [0.196, 0.641],
+					"scoreWebforai": 76.6,
+					"scoreOpponent": 65.1
+				}
+			}
+		},
+		{
+			"judge": "Sonnet 5.5",
+			"opponent": "defuddle",
+			"set": "wcxb-test",
+			"verdicts": 210,
+			"pages": 105,
+			"win": 0.505,
+			"loss": 0.376,
+			"tie": 0.119,
+			"net": 0.129,
+			"netInterval": [-0.038, 0.286],
+			"scoreWebforai": 65.5,
+			"scoreOpponent": 63.4,
+			"byGroup": {
+				"article": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.533,
+					"loss": 0.4,
+					"tie": 0.067,
+					"net": 0.133,
+					"netInterval": [-0.267, 0.533],
+					"scoreWebforai": 77,
+					"scoreOpponent": 73.5
+				},
+				"collection": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.4,
+					"loss": 0.467,
+					"tie": 0.133,
+					"net": -0.067,
+					"netInterval": [-0.467, 0.4],
+					"scoreWebforai": 58.2,
+					"scoreOpponent": 61
+				},
+				"documentation": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.6,
+					"loss": 0.3,
+					"tie": 0.1,
+					"net": 0.3,
+					"netInterval": [-0.133, 0.733],
+					"scoreWebforai": 69.7,
+					"scoreOpponent": 71.3
+				},
+				"forum": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.467,
+					"loss": 0.467,
+					"tie": 0.067,
+					"net": 0,
+					"netInterval": [-0.467, 0.467],
+					"scoreWebforai": 63.4,
+					"scoreOpponent": 64.6
+				},
+				"listing": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.533,
+					"loss": 0.4,
+					"tie": 0.067,
+					"net": 0.133,
+					"netInterval": [-0.333, 0.533],
+					"scoreWebforai": 59.2,
+					"scoreOpponent": 52.8
+				},
+				"product": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.667,
+					"loss": 0.2,
+					"tie": 0.133,
+					"net": 0.467,
+					"netInterval": [0.067, 0.8],
+					"scoreWebforai": 67.4,
+					"scoreOpponent": 57.8
+				},
+				"service": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.333,
+					"loss": 0.4,
+					"tie": 0.267,
+					"net": -0.067,
+					"netInterval": [-0.467, 0.3],
+					"scoreWebforai": 63.7,
+					"scoreOpponent": 62.6
+				}
+			}
+		},
+		{
+			"judge": "gpt-6.1-sol (low)",
+			"opponent": "readability-turndown",
+			"set": "wcxb-test",
+			"verdicts": 210,
+			"pages": 105,
+			"win": 0.714,
+			"loss": 0.224,
+			"tie": 0.062,
+			"net": 0.49,
+			"netInterval": [0.329, 0.643],
+			"scoreWebforai": 82.1,
+			"scoreOpponent": 64.8,
+			"byGroup": {
+				"article": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.767,
+					"loss": 0.133,
+					"tie": 0.1,
+					"net": 0.633,
+					"netInterval": [0.3, 0.933],
+					"scoreWebforai": 92.7,
+					"scoreOpponent": 81.2
+				},
+				"collection": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.5,
+					"loss": 0.5,
+					"tie": 0,
+					"net": 0,
+					"netInterval": [-0.467, 0.467],
+					"scoreWebforai": 71.3,
+					"scoreOpponent": 59.6
+				},
+				"documentation": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.8,
+					"loss": 0.2,
+					"tie": 0,
+					"net": 0.6,
+					"netInterval": [0.2, 1],
+					"scoreWebforai": 91.6,
+					"scoreOpponent": 72.9
+				},
+				"forum": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.8,
+					"loss": 0.2,
+					"tie": 0,
+					"net": 0.6,
+					"netInterval": [0.2, 1],
+					"scoreWebforai": 82,
+					"scoreOpponent": 57.5
+				},
+				"listing": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.8,
+					"loss": 0.067,
+					"tie": 0.133,
+					"net": 0.733,
+					"netInterval": [0.4, 1],
+					"scoreWebforai": 81.4,
+					"scoreOpponent": 49.5
+				},
+				"product": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.867,
+					"loss": 0.067,
+					"tie": 0.067,
+					"net": 0.8,
+					"netInterval": [0.467, 1],
+					"scoreWebforai": 78,
+					"scoreOpponent": 57.9
+				},
+				"service": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.467,
+					"loss": 0.4,
+					"tie": 0.133,
+					"net": 0.067,
+					"netInterval": [-0.4, 0.533],
+					"scoreWebforai": 77.4,
+					"scoreOpponent": 75
+				}
+			}
+		},
+		{
+			"judge": "gpt-6.1-sol (low)",
+			"opponent": "defuddle",
+			"set": "wcxb-test",
+			"verdicts": 210,
+			"pages": 105,
+			"win": 0.51,
+			"loss": 0.41,
+			"tie": 0.081,
+			"net": 0.1,
+			"netInterval": [-0.076, 0.276],
+			"scoreWebforai": 78.3,
+			"scoreOpponent": 77.3,
+			"byGroup": {
+				"article": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.567,
+					"loss": 0.367,
+					"tie": 0.067,
+					"net": 0.2,
+					"netInterval": [-0.267, 0.667],
+					"scoreWebforai": 91.2,
+					"scoreOpponent": 90.6
+				},
+				"collection": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.467,
+					"loss": 0.433,
+					"tie": 0.1,
+					"net": 0.033,
+					"netInterval": [-0.433, 0.467],
+					"scoreWebforai": 71.5,
+					"scoreOpponent": 71.4
+				},
+				"documentation": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.667,
+					"loss": 0.267,
+					"tie": 0.067,
+					"net": 0.4,
+					"netInterval": [-0.067, 0.8],
+					"scoreWebforai": 86.3,
+					"scoreOpponent": 89.4
+				},
+				"forum": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.433,
+					"loss": 0.5,
+					"tie": 0.067,
+					"net": -0.067,
+					"netInterval": [-0.533, 0.4],
+					"scoreWebforai": 73.6,
+					"scoreOpponent": 73.5
+				},
+				"listing": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.433,
+					"loss": 0.5,
+					"tie": 0.067,
+					"net": -0.067,
+					"netInterval": [-0.533, 0.4],
+					"scoreWebforai": 70.3,
+					"scoreOpponent": 66.3
+				},
+				"product": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.533,
+					"loss": 0.4,
+					"tie": 0.067,
+					"net": 0.133,
+					"netInterval": [-0.333, 0.6],
+					"scoreWebforai": 77.4,
+					"scoreOpponent": 74.7
+				},
+				"service": {
+					"verdicts": 30,
+					"pages": 15,
+					"win": 0.467,
+					"loss": 0.4,
+					"tie": 0.133,
+					"net": 0.067,
+					"netInterval": [-0.333, 0.467],
+					"scoreWebforai": 77.9,
+					"scoreOpponent": 75.2
+				}
+			}
+		}
+	]
+}

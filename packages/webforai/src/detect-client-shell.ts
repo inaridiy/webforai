@@ -16,7 +16,10 @@ export type ClientShellReason = "empty-body" | "spa-shell" | "noscript-only" | "
 export interface ClientShellVerdict {
 	isShell: boolean;
 	reason?: ClientShellReason;
-	/** Characters of visible body text after stripping markup — what a conversion could use. */
+	/**
+	 * Characters of visible body text after stripping markup — what a conversion could use; for a
+	 * page whose content is its `<noscript>` fallback, the fallback's text.
+	 */
 	visibleTextLength: number;
 }
 
@@ -61,6 +64,21 @@ const visibleTextOf = (markup: string): string =>
 		.replace(/\s+/g, " ")
 		.trim();
 
+/**
+ * A `<noscript>` fallback at least this long, and at least twice the visible text, is the page:
+ * forum engines (Discourse, Flarum) ship the whole thread there for crawlers, and extraction
+ * converts it (see `stripNonContent`).
+ */
+const NOSCRIPT_FALLBACK_MIN_TEXT = 500;
+
+const noscriptFallbackLength = (body: string): number => {
+	let length = 0;
+	for (const match of body.matchAll(NOSCRIPT_PATTERN)) {
+		length += visibleTextOf(match[1] ?? "").length;
+	}
+	return length;
+};
+
 const noscriptMentionsJavascript = (html: string): boolean => {
 	for (const match of html.matchAll(NOSCRIPT_PATTERN)) {
 		if (/javascript/i.test(match[1] ?? "")) {
@@ -76,6 +94,10 @@ export const detectClientShell = (html: string): ClientShellVerdict => {
 
 	if (visibleTextLength >= SHELL_SUSPICION_THRESHOLD) {
 		return { isShell: false, visibleTextLength };
+	}
+	const fallbackLength = noscriptFallbackLength(body);
+	if (fallbackLength >= NOSCRIPT_FALLBACK_MIN_TEXT && fallbackLength >= 2 * visibleTextLength) {
+		return { isShell: false, visibleTextLength: fallbackLength };
 	}
 	if (CHALLENGE_PATTERN.test(html)) {
 		return { isShell: true, reason: "anti-bot-challenge", visibleTextLength };

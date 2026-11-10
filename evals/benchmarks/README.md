@@ -2,6 +2,9 @@
 
 - `compare-summary.json` — the aggregate `bench:compare` writes; the site's Benchmarks page
   quotes it.
+- `preference/results.json` — the summary `prefer --save-results` writes: for each judge,
+  opponent and set, how often webforai's output was preferred, with the rubric the judges were
+  given. Aggregates only; the verdicts and the page outputs stay in the gitignored cache.
 - `related-hops/`, `related-hops-2/` — next-link tasks for agent mode, described below.
 
 ## related-hops and related-hops-2

@@ -18,7 +18,7 @@ import { WaysToUse } from "../components/WaysToUse";
           Any HTML to the cleanest Markdown, for humans and AI agents.
         </div>
         <div className="font-regular text-base max-md:text-center">
-          <b>Reader mode</b> extracts the main content of a page, like Mozilla Readability, with the best quality of the converters we benchmarked. <b>Agent mode</b> adds only the links an AI agent needs to explore the site, for about half the tokens of the whole page. <a href="#benchmarks">Benchmarks ↓</a>
+          <b>Reader mode</b> extracts the main content of a page, like Mozilla Readability, and loses the page about half as often as the extractors we compared it with. <b>Agent mode</b> adds only the links an AI agent needs to explore the site, for about half the tokens of the whole page. <a href="#benchmarks">Benchmarks ↓</a>
         </div>
         <div className="flex justify-center space-x-2">
           <HomePage.Button href="/getting-started" variant="accent">Get started</HomePage.Button>
@@ -107,12 +107,21 @@ Paste any URL and see the Markdown webforai produces — converted live by the h
 #
 # Benchmarks
 
-**Reader mode: main content.** F1 on [WCEB](https://github.com/chatnoir-eu/web-content-extraction-benchmark),
-3,985 pages: webforai **0.923** (keeping reader comments, as Trafilatura does), Trafilatura 0.900,
-Readability + Turndown 0.880, Defuddle 0.820. webforai keeps 98% of code blocks; Readability + Turndown
-keeps 46%. It converts 60 pages in 4.0 s where Readability + Turndown takes 13.7 s.
+<img src="/images/benchmark-light.svg" alt="On 511 held-out WCXB pages, F1: webforai 0.877, Trafilatura 0.860, Defuddle 0.855, Readability + Turndown 0.831. Pages that lose half their content on WebMainBench: webforai 5.1%, Trafilatura 10.2%, Defuddle 11.5%, Readability + Turndown 12.6%. Code blocks kept on 60 pages: webforai 98%, Trafilatura 41%, Defuddle 90%, Readability + Turndown 45%" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
 
-<img src="/images/benchmark-light.svg" alt="WCEB F1: webforai 0.923 with the comments preset (0.891 default), Trafilatura 0.900, Readability + Turndown 0.880, Defuddle 0.820, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: webforai 98%, Readability + Turndown 46%, Defuddle 89%, Trafilatura 41%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
+**Reader mode: is the page kept?** Every extractor returns most pages well; they differ in how
+many they get wrong. On [WebMainBench](https://arxiv.org/abs/2511.23119) (7,809 annotated pages)
+webforai loses half of the content on **5.1%** of pages; Trafilatura, Defuddle and Readability +
+Turndown on 10–13%. On the 511 held-out pages of [WCXB](https://arxiv.org/abs/2605.21097) its F1
+is **0.877** against 0.860, 0.855 and 0.831. On
+[WCEB](https://github.com/chatnoir-eu/web-content-extraction-benchmark), 3,985 older news pages,
+it scores 0.896, level with Trafilatura's 0.900, and 0.924 when reader comments are kept.
+
+**Reader mode: is the Markdown good to read?** webforai keeps **98%** of code blocks as code
+blocks; Readability + Turndown keeps 45%. Shown two conversions of the same page with the names
+hidden, on 105 held-out pages, two models both prefer webforai's Markdown to Readability +
+Turndown's on seven pages in ten (72% to 20%, and 71% to 22%). Against Defuddle neither has a
+clear preference (51% to 38%, and 51% to 41%). Converting is about three times faster than either.
 
 **Agent mode: following links.** On 290 tasks that ask a model to follow a related or next article,
 Haiku 5.5 and Sonnet 5.5 pick the right link from agent mode's output 93.8% and 94.1% of the time,
@@ -148,7 +157,7 @@ const url = "https://www.npmjs.com/package/webforai";
 const html = await loadHtml(url); // [!code hl]
 
 // Convert html to markdown
-const markdown = htmlToMarkdown(html, { baseUrl: url }); // [!code hl]
+const markdown = htmlToMarkdown(html, { url }); // [!code hl]
 ```
 
 #

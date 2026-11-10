@@ -1,5 +1,7 @@
 import type { Element, ElementContent, Nodes as Hast, Parent } from "hast";
 
+import { classList } from "./hast-fast";
+
 /**
  * Elements that start and end a line when they appear inside preformatted text.
  *
@@ -49,6 +51,31 @@ const LINE_BLOCK_TAGS = new Set([
  */
 const INLINE_CONTEXT_TAGS = new Set(["span", "a", "b", "i", "em", "strong", "mark", "small", "u", "s", "label"]);
 
+const isLineSpan = (node: ElementContent | Hast): node is Element =>
+	node.type === "element" &&
+	node.tagName === "span" &&
+	(node.properties?.dataLine !== undefined || classList(node).includes("line"));
+
+/**
+ * True when `parent` holds one `span.line` per line of code with nothing between them.
+ *
+ * Shiki wraps every line in `<span class="line">` (rehype-pretty-code in `<span data-line>`). Its
+ * own output separates them with a newline, but sites that style the spans as blocks drop it
+ * (tailwindcss.com), and the text alone then reads `my-projectcd my-project`. Each span is a line
+ * there, an empty one included. Chroma (Hugo) writes the newline inside each span instead.
+ */
+const hasBareLineSpans = (parent: Parent): boolean => {
+	let lines = 0;
+	for (const child of parent.children) {
+		if (isLineSpan(child)) {
+			lines += 1;
+		} else if (child.type !== "comment") {
+			return false;
+		}
+	}
+	return lines > 1;
+};
+
 /**
  * The text of a code block, line structure included.
  *
@@ -57,7 +84,8 @@ const INLINE_CONTEXT_TAGS = new Set(["span", "a", "b", "i", "em", "strong", "mar
  * block, but a generic `innerText` adds a block break after it, which put a blank line after every
  * line of code. Here a block boundary only ensures the text is at a line start, so the two cannot
  * double up. Block elements inside an inline token wrapper do not break lines at all. Table cells
- * are separated by a tab, as `innerText` does.
+ * are separated by a tab, as `innerText` does. Line spans with nothing between them
+ * ({@link hasBareLineSpans}) each end with a newline.
  */
 export const preText = (node: Hast): string => {
 	let out = "";
@@ -68,7 +96,26 @@ export const preText = (node: Hast): string => {
 		}
 	};
 
+	const visitLineSpans = (parent: Parent): void => {
+		for (const child of parent.children) {
+			if (child.type === "element") {
+				const before = out.length;
+				visitChildren(child, true);
+				// Chroma keeps the newline inside the span; an empty span is an empty line.
+				if (out.length === before) {
+					out += "\n";
+				} else {
+					ensureLineStart();
+				}
+			}
+		}
+	};
+
 	const visitChildren = (parent: Parent, inline: boolean): void => {
+		if (!inline && hasBareLineSpans(parent)) {
+			visitLineSpans(parent);
+			return;
+		}
 		let cells = 0;
 		for (const child of parent.children) {
 			const isCell = child.type === "element" && (child.tagName === "td" || child.tagName === "th");

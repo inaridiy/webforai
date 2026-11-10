@@ -106,3 +106,74 @@ describe("code inside the content", () => {
 		expect(markdown).toContain('import * as React from "react"');
 	});
 });
+
+describe("collapsed listings", () => {
+	const items = Array.from(
+		{ length: 10 },
+		(_, index) =>
+			`<div class="card"><h2>Story ${index} about rental cars</h2><p>A teaser for story ${index}, with a sentence of summary text.</p></div>`,
+	).join("");
+	const html = `<html><body><nav><a href="/">Home</a><a href="/news">News</a><a href="/sport">Sport</a></nav><main><h1>Vehicle rental news</h1>${items}</main></body></html>`;
+	/** The page heading is sure, every other block uncertain (as the models score teasers). */
+	const scoreTeasers = (sure: number, teaser: number) =>
+		createKiwameExtractor({
+			probabilities: (blocks) =>
+				Float32Array.from(blocks, (block) => (block.owner.tagName === "h1" ? sure : block.text ? teaser : 0)),
+		});
+
+	it("keeps the uncertain items when only the title was kept", () => {
+		const markdown = htmlToMarkdown(html, { extractors: scoreTeasers(0.9, 0.35) });
+		expect(markdown).toContain("Story 0 about rental cars");
+		expect(markdown).toContain("A teaser for story 9");
+		expect(markdown).not.toContain("[Sport]");
+	});
+
+	it("leaves blocks below the rescue floor dropped", () => {
+		const markdown = htmlToMarkdown(html, { extractors: scoreTeasers(0.9, 0.1) });
+		expect(markdown).toContain("Vehicle rental news");
+		expect(markdown).not.toContain("Story 0 about rental cars");
+	});
+});
+
+describe("structure inside the content", () => {
+	const prose = "<p>A paragraph of reference prose, with commas, that the model keeps as content.</p>";
+	/** Scores every block by its element: prose is kept, the rest is as unsure as on a reference page. */
+	const scoreByTag = (scores: Record<string, number>) =>
+		createKiwameExtractor({
+			probabilities: (blocks) => Float32Array.from(blocks, (block) => scores[block.owner.tagName] ?? 0.9),
+		});
+
+	it("keeps the term of a definition whose description is kept", () => {
+		const html = `<html><body><main>${prose}<dl>
+			<dt><code>resource</code></dt><dd><p>This defines the resource that you wish to fetch.</p></dd>
+			<dt><code>options</code></dt><dt><code>init</code></dt><dd><p>An object holding the settings of the request.</p></dd>
+		</dl>${prose}</main></body></html>`;
+		const markdown = htmlToMarkdown(html, { extractors: scoreByTag({ dt: 0.4 }) });
+		expect(markdown).toContain("`resource`");
+		expect(markdown).toContain("`options`");
+		expect(markdown).toContain("`init`");
+	});
+
+	it("stays linear on a list of thousands of terms", () => {
+		const html = `<html><body><main>${prose}</main><nav><dl>${"<dt>x</dt>".repeat(8000)}</dl></nav></body></html>`;
+		const extractors = scoreByTag({ dt: 0.4 });
+		htmlToMarkdown(html, { extractors });
+		const started = performance.now();
+		htmlToMarkdown(html, { extractors });
+		expect(performance.now() - started).toBeLessThan(3000);
+	});
+
+	it("does not keep a term whose description was dropped", () => {
+		const html = `<html><body><main>${prose}<dl><dt>Sponsor</dt><dd>Buy our product today.</dd></dl>${prose}</main></body></html>`;
+		const markdown = htmlToMarkdown(html, { extractors: scoreByTag({ dt: 0.4, dd: 0.1 }) });
+		expect(markdown).not.toContain("Sponsor");
+	});
+
+	it("keeps a code block separated from the content by a list the models are sure is furniture", () => {
+		const toc = `<aside><ul>${"<li>Section</li>".repeat(9)}</ul></aside>`;
+		const html = `<html><body><main>${prose}${toc}<h2>Syntax</h2><pre>fetch(resource)</pre><h3>Parameters</h3>${prose}</main></body></html>`;
+		const markdown = htmlToMarkdown(html, { extractors: scoreByTag({ li: 0, h2: 0.3, h3: 0.3, pre: 0.45 }) });
+		expect(markdown).toContain("## Syntax\n\n```\nfetch(resource)\n```");
+		expect(markdown).not.toContain("Section");
+	});
+});

@@ -115,7 +115,7 @@ describe("lazily-loaded images via data-srcset", () => {
 	});
 });
 
-describe("noscript image fallbacks", () => {
+describe("noscript fallbacks", () => {
 	// The standard lazy-loading pattern is a placeholder followed by the real image in
 	// <noscript>. Removing <noscript> as non-content discards the real one.
 	const lazyFigure =
@@ -127,6 +127,19 @@ describe("noscript image fallbacks", () => {
 
 	it("drops the placeholder the noscript was compensating for", () => {
 		expect(htmlToMarkdown(article(lazyFigure))).not.toContain("![Ph]");
+	});
+
+	it("converts the noscript fallback that holds the whole page", () => {
+		// Discourse and Flarum ship the thread inside <noscript> next to an empty app shell.
+		const posts = Array.from(
+			{ length: 8 },
+			(_, index) =>
+				`<div class="crawler-post"><p>Reply ${index} in the thread, with enough words to read as a post.</p></div>`,
+		).join("");
+		const html = `<html lang="en"><body><header><a href="/">Docker Community Forums</a></header><noscript><div id="main-outlet"><h1>Confusing resolver structure</h1>${posts}</div></noscript><section id="main"></section></body></html>`;
+		const markdown = htmlToMarkdown(html);
+		expect(markdown).toContain("Reply 0 in the thread");
+		expect(markdown).toContain("Reply 7 in the thread");
 	});
 
 	it("leaves noscript without images alone", () => {
@@ -254,6 +267,43 @@ describe("document boundary climbing", () => {
 		const markdown = htmlToMarkdown(html);
 		expect(markdown).toContain("# COMMAND");
 		expect(markdown).toContain("Lead description");
+	});
+
+	it("looks through a section wrapper to its sibling sections", () => {
+		// Asciidoctor's shape (Gradle's compatibility matrix): each `div.sect1` holds a heading and
+		// a `div.sectionbody`, so the densest section body's parent adds only its heading.
+		const section = (title: string, prose: string, rows: number) =>
+			`<div class="sect1"><h2>${title}</h2><div class="sectionbody"><p>${prose}</p><table><tr><th>Version</th><th>Minimum</th></tr>${Array.from(
+				{ length: rows },
+				(_, index) => `<tr><td>${title} 1.${index}</td><td>${index}.0</td></tr>`,
+			).join("")}</table></div></div>`;
+		const html = `<html lang="en"><body><div id="content">${section(
+			"Java",
+			"Gradle runs on the JVM, which is provided by a JDK or JRE, and supports several versions. ".repeat(10),
+			20,
+		)}${section("Kotlin", "Gradle is tested with Kotlin, from early releases to the latest ones.", 30)}${section(
+			"Groovy",
+			"Gradle is tested with Groovy, and plugins must use a compatible version.",
+			30,
+		)}</div></body></html>`;
+
+		const markdown = htmlToMarkdown(html, { extractors: [takumiExtractor] });
+		expect(markdown).toContain("## Kotlin");
+		expect(markdown).toContain("Groovy 1.29");
+	});
+
+	it("does not look through a wrapper whose siblings are built differently", () => {
+		const comments = `<div id="comments"><h3>Comments</h3><ul>${"<li><p>A long reader comment, with commas, opinions and more words to score well. </p></li>".repeat(
+			30,
+		)}</ul></div>`;
+		const aside = `<div class="promo"><p>${"Unrelated promotional copy with plenty of words in it. ".repeat(
+			20,
+		)}</p></div>`;
+		const html = `<html lang="en"><body><div id="main">${aside}${comments}</div></body></html>`;
+
+		const markdown = htmlToMarkdown(html, { extractors: [takumiExtractor] });
+		expect(markdown).toContain("A long reader comment");
+		expect(markdown).not.toContain("Unrelated promotional copy");
 	});
 
 	it("does not climb into link-heavy chrome", () => {

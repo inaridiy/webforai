@@ -129,6 +129,33 @@ describe("htmlToMarkdown", () => {
 		);
 	});
 
+	it("keeps the lines of Shiki blocks whose line spans have no newline between them", () => {
+		const convert = (html: string) => htmlToMarkdown(html, { extractors: false });
+		// tailwindcss.com: the spans are styled as blocks and the newline text is gone.
+		expect(
+			convert(
+				'<pre class="shiki"><code><span class="line"><span>npm</span><span> create</span></span><span class="line"></span><span class="line"><span>cd</span><span> my-project</span></span></code></pre>',
+			),
+		).toBe("```\nnpm create\n\ncd my-project\n```\n");
+		// Shiki's own output keeps the newline; nothing is doubled.
+		expect(
+			convert(
+				'<pre class="shiki"><code><span class="line">a()</span>\n<span class="line"></span>\n<span class="line">b()</span></code></pre>',
+			),
+		).toBe("```\na()\n\nb()\n```\n");
+		expect(convert('<pre><code><span data-line="">a()</span><span data-line="">b()</span></code></pre>')).toBe(
+			"```\na()\nb()\n```\n",
+		);
+		// Chroma (Hugo) keeps the newline inside each line span.
+		expect(
+			convert(
+				'<pre><code><span class="line"><span class="cl">a:\n</span></span><span class="line"><span class="cl">\n</span></span><span class="line"><span class="cl">  b: 1\n</span></span></code></pre>',
+			),
+		).toBe("```\na:\n\n  b: 1\n```\n");
+		// One highlighted line is a token, not a line structure.
+		expect(convert('<pre><code>x = <span class="line">1</span></code></pre>')).toBe("```\nx = 1\n```\n");
+	});
+
 	it("reads SyntaxHighlighter's brush class (MDN)", () => {
 		const convert = (html: string) => htmlToMarkdown(html, { extractors: false });
 		expect(convert('<pre class="brush: js example-bad notranslate"><code>let a = 1;</code></pre>')).toBe(
@@ -299,6 +326,61 @@ describe("htmlToMarkdown", () => {
 // Conversion quality on real pages is measured by the recorded-corpus suite in `evals/`
 // (see evals/src/corpus.test.ts). The old "Converting for good" test here compared two live
 // sites by edit distance, which drifted red whenever either site shipped a redesign.
+
+describe("links and image sources", () => {
+	const html = '<p><a href="guide/intro?a=1&amp;b=2">Intro</a> <img src="/logo.png" alt="logo"></p>';
+
+	it("resolves them against the page URL without a baseUrl", () => {
+		expect(htmlToMarkdown(html, { url: "https://example.com/docs/", extractors: false })).toBe(
+			"[Intro](https://example.com/docs/guide/intro?a=1&b=2) ![logo](https://example.com/logo.png)\n",
+		);
+	});
+
+	it("prefers an explicit baseUrl, and keeps them as written for an empty one", () => {
+		const url = "https://example.com/docs/";
+		expect(htmlToMarkdown(html, { url, baseUrl: "https://mirror.test/", extractors: false })).toContain(
+			"(https://mirror.test/guide/intro?a=1&b=2)",
+		);
+		expect(htmlToMarkdown(html, { url, baseUrl: "", extractors: false })).toContain("(guide/intro?a=1&b=2)");
+	});
+
+	it("escapes an ampersand only where it would start a character reference", () => {
+		const convert = (source: string) => htmlToMarkdown(source, { extractors: false });
+		expect(convert("<p>AT&amp;T, R&amp;D and Q&amp;A</p>")).toBe("AT&T, R&D and Q&A\n");
+		expect(convert("<p>write &amp;copy; or &amp;#169; or &amp;#xA9;</p>")).toBe(
+			"write \\&copy; or \\&#169; or \\&#xA9;\n",
+		);
+		// A literal backslash before the ampersand stays a literal backslash.
+		expect(convert("<p>tex \\&amp; cell</p>")).toBe("tex \\\\& cell\n");
+		expect(convert("<p><code>a &amp;b</code></p>")).toBe("`a &b`\n");
+	});
+
+	it("leaves code inside a link exactly as written", () => {
+		const convert = (source: string) => htmlToMarkdown(source, { extractors: false });
+		expect(convert('<p><a href="/ref?a=1&amp;b=2"><code>\\&amp;mut T</code> &amp;more</a></p>')).toBe(
+			"[`\\&mut T` &more](/ref?a=1&b=2)\n",
+		);
+	});
+
+	it("handles a long run of backslashes in linear time", () => {
+		const started = performance.now();
+		htmlToMarkdown(`<p>${"\\".repeat(100_000)} end</p>`, { extractors: false });
+		expect(performance.now() - started).toBeLessThan(2000);
+	});
+});
+
+describe("a heading printed twice", () => {
+	it("keeps one of two identical headings in a row", () => {
+		const convert = (html: string) => htmlToMarkdown(html, { extractors: false, title: false });
+		expect(convert('<h1 class="print">Pods</h1><h1>Pods</h1><p>Text</p>')).toBe("# Pods\n\nText\n");
+		expect(convert("<h2>Usage</h2><p>a</p><h2>Usage</h2><p>b</p>")).toBe("## Usage\n\na\n\n## Usage\n\nb\n");
+		expect(convert("<h1>Pods</h1><h2>Pods</h2>")).toBe("# Pods\n\n## Pods\n");
+		// Headings without text repeat nothing.
+		expect(convert('<h2><img src="/a.png" alt="A"></h2><h2><img src="/b.png" alt="B"></h2>')).toBe(
+			"## ![A](/a.png)\n\n## ![B](/b.png)\n",
+		);
+	});
+});
 
 describe("tables with block content", () => {
 	const convert = (html: string) => htmlToMarkdown(html, { extractors: false });

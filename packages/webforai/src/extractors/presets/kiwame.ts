@@ -14,7 +14,13 @@
 import type { Element, ElementContent, Nodes as Hast, Root, RootContent } from "hast";
 
 import { MetricsCollector, cloneHast, findElement, isElement, walk } from "../../utils/hast-fast";
-import { FEATURE_COUNT, STACKED_FEATURE_COUNT, blockFeatures, stackedFeatures } from "../lib/block-features";
+import {
+	FEATURE_COUNT,
+	FEATURE_NAMES,
+	STACKED_FEATURE_COUNT,
+	blockFeatures,
+	stackedFeatures,
+} from "../lib/block-features";
 import { type BlockModel, isUsableModel, scoreBlocks } from "../lib/block-model";
 import { BLOCK_MODEL, BLOCK_STACK_MODEL } from "../lib/block-model.generated";
 import { BLOCK_TAGS, type BlockFrame, type TextBlock, segmentBlocks } from "../lib/blocks";
@@ -172,6 +178,12 @@ const CODE_IN_CONTENT_THRESHOLD = 0.2;
 /** How far (in blocks) kept content must be on both sides of a code block. */
 const CODE_CONTEXT = 6;
 
+/** Below this probability a block is furniture for certain and is not counted in that distance... */
+const SURE_FURNITURE = 0.05;
+
+/** ...up to this many blocks away in all. */
+const CODE_CONTEXT_SPAN = 24;
+
 /**
  * Keeps code blocks that sit inside the kept content.
  *
@@ -181,14 +193,22 @@ const CODE_CONTEXT = 6;
  */
 const keepCodeInContent = (kept: Set<Element>, blocks: TextBlock[], probabilities: Float32Array): void => {
 	const keptIndex = blocks.map((block) => kept.has(block.owner));
+	// Blocks the models are sure are furniture do not count towards the distance: MDN puts its
+	// "In this article" list between the introduction and the Syntax block in document order.
 	const near = (from: number, step: number): boolean => {
-		for (let distance = 1; distance <= CODE_CONTEXT; distance++) {
-			const index = from + step * distance;
-			if (index < 0 || index >= blocks.length) {
-				return false;
-			}
+		let distance = 0;
+		for (let index = from + step; index >= 0 && index < blocks.length; index += step) {
 			if (keptIndex[index]) {
 				return true;
+			}
+			if (Math.abs(index - from) > CODE_CONTEXT_SPAN) {
+				return false;
+			}
+			if (probabilities[index] >= SURE_FURNITURE) {
+				distance += 1;
+				if (distance >= CODE_CONTEXT) {
+					return false;
+				}
 			}
 		}
 		return false;
@@ -204,6 +224,83 @@ const keepCodeInContent = (kept: Set<Element>, blocks: TextBlock[], probabilitie
 			kept.add(block.owner);
 		}
 	}
+};
+
+/** The nearest `dl` above each frame, looked up once per frame however many blocks share it. */
+const definitionLists = (): ((block: TextBlock) => Element | undefined) => {
+	const known = new Map<BlockFrame, Element | undefined>();
+	return (block) => {
+		const path: BlockFrame[] = [];
+		let list: Element | undefined;
+		for (let frame: BlockFrame | undefined = block.frame; frame; frame = frame.parent) {
+			if (known.has(frame)) {
+				list = known.get(frame);
+				break;
+			}
+			if (frame.element.tagName === "dl") {
+				list = frame.element;
+				known.set(frame, list);
+				break;
+			}
+			path.push(frame);
+		}
+		for (const frame of path) {
+			known.set(frame, list);
+		}
+		return list;
+	};
+};
+
+/**
+ * Keeps the term of a definition whose description is kept.
+ *
+ * A reference page lists parameters as `<dt><code>resource</code></dt><dd>This defines…</dd>`. The
+ * term is one word, which the models score below a sentence (0.36–0.45 on MDN's `fetch()`), and
+ * without it the description says "this" about nothing. A term goes with the description that
+ * follows it; several terms in a row share one. One pass: a run of terms, then the blocks of the
+ * same list up to its next term.
+ */
+const keepDefinitionTerms = (kept: Set<Element>, blocks: TextBlock[]): void => {
+	const listOf = definitionLists();
+	let index = 0;
+	while (index < blocks.length) {
+		const list = blocks[index].owner.tagName === "dt" ? listOf(blocks[index]) : undefined;
+		if (!list) {
+			index += 1;
+			continue;
+		}
+		let termsEnd = index;
+		while (termsEnd < blocks.length && blocks[termsEnd].owner.tagName === "dt" && listOf(blocks[termsEnd]) === list) {
+			termsEnd += 1;
+		}
+		let described = false;
+		let end = termsEnd;
+		// The description: blocks under the same list — or under a list nested in it — up to its next term.
+		while (
+			end < blocks.length &&
+			isWithin(blocks[end], list) &&
+			!(blocks[end].owner.tagName === "dt" && listOf(blocks[end]) === list)
+		) {
+			described ||= kept.has(blocks[end].owner);
+			end += 1;
+		}
+		if (described) {
+			for (let term = index; term < termsEnd; term++) {
+				kept.add(blocks[term].owner);
+			}
+		}
+		index = Math.max(end, termsEnd);
+	}
+};
+
+/** Whether `element` is on the block's path to the root. */
+const isWithin = (block: TextBlock, element: Element): boolean => {
+	for (let frame: BlockFrame | undefined = block.frame; frame; frame = frame.parent) {
+		if (frame.element === element) {
+			return true;
+		}
+	}
+	return false;
 };
 
 /** The `ul`/`ol` a list-item block belongs to, if any. */
@@ -278,6 +375,68 @@ const pruneToBlocks = (element: Element | Root, kept: Set<Element>, ownerKept: b
 	return selfKept || keepChildren;
 };
 
+/** The kept content has collapsed when the uncertain blocks hold this many times its text... */
+const COLLAPSE_RATIO = 5;
+
+/** ...and at least this share of the page's block text. */
+const RESCUE_SHARE = 0.3;
+
+/** Lowest probability a block can be rescued at. */
+const RESCUE_FLOOR = 0.2;
+
+/** Feature columns marking a block inside page chrome (`nav`, `aside`, `header`, `footer`). */
+const CHROME_FEATURES = ["in_nav", "in_aside", "in_header", "in_footer"].map((name) =>
+	FEATURE_NAMES.indexOf(name as (typeof FEATURE_NAMES)[number]),
+);
+
+/**
+ * Lifts the blocks the models were unsure of to the threshold when the kept content has collapsed
+ * to a title.
+ *
+ * On listings and collections (a news tag page, a shop category) every item looks like a teaser
+ * of content elsewhere, so the models score each one 0.2–0.45 and keep only the page heading,
+ * although the items are the page. When the uncertain blocks (at least {@link RESCUE_FLOOR}, not
+ * in page chrome) hold several times the kept text and a large share of the page, they are kept
+ * too. Lifting the probabilities, rather than adding to the kept set, keeps every later reader of
+ * the scores — the keep rules, the agent's link sections — in agreement about what was kept.
+ */
+const liftCollapsed = (
+	blocks: TextBlock[],
+	features: Float32Array,
+	probabilities: Float32Array,
+	threshold: number,
+	enabled: boolean,
+): Float32Array => {
+	if (!enabled) {
+		return probabilities;
+	}
+	const inChrome = (block: TextBlock): boolean =>
+		CHROME_FEATURES.some((feature) => features[block.index * FEATURE_COUNT + feature] > 0);
+	const uncertainBlocks: TextBlock[] = [];
+	let total = 0;
+	let kept = 0;
+	let uncertain = 0;
+	for (const block of blocks) {
+		const length = block.text.length;
+		total += length;
+		const probability = probabilities[block.index];
+		if (probability >= threshold) {
+			kept += length;
+		} else if (probability >= RESCUE_FLOOR && !inChrome(block)) {
+			uncertain += length;
+			uncertainBlocks.push(block);
+		}
+	}
+	if (kept === 0 || uncertain < kept * COLLAPSE_RATIO || uncertain < total * RESCUE_SHARE) {
+		return probabilities;
+	}
+	const lifted = probabilities.slice();
+	for (const block of uncertainBlocks) {
+		lifted[block.index] = threshold;
+	}
+	return lifted;
+};
+
 /** Weight of the sequence model when averaged with the GBDT, chosen with the threshold. */
 export const NEURAL_WEIGHT = 0.6;
 
@@ -333,6 +492,7 @@ const applyKeepRules = (
 		return;
 	}
 	keepCodeInContent(kept, blocks, probabilities);
+	keepDefinitionTerms(kept, blocks);
 	keepSectionHeadings(kept, blocks);
 	keepAuthoredLists(kept, blocks);
 	completeTables(kept, blocks);
@@ -430,9 +590,10 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 		const collector = new MetricsCollector();
 		const takumiKept = takumiSelection(body, lang, params.url);
 		const features = blockFeatures({ root: body, blocks, collector, lang, takumiKept, title });
-		const probabilities =
+		const scored =
 			options.probabilities?.(blocks) ??
 			blend(blocks, features, scoreTwoStage(blocks, features, model, stage2), neural, neuralWeight);
+		const probabilities = liftCollapsed(blocks, features, scored, threshold, postRules);
 
 		const kept = new Set<Element>();
 		for (const block of blocks) {
@@ -442,7 +603,7 @@ export const createKiwameExtractor = (options: KiwameExtractorOptions = {}): Ext
 		}
 		options.onScored?.({ blocks, features, probabilities, threshold });
 		const fellBack = kept.size === 0;
-		params.report?.(report({ blocks, probabilities, threshold, takumiKept, fellBack }, confidenceModel));
+		params.report?.(report({ blocks, probabilities: scored, threshold, takumiKept, fellBack }, confidenceModel));
 		if (fellBack) {
 			return takumiExtractor({ hast: body, lang, url: params.url, owned: true });
 		}

@@ -348,8 +348,52 @@ const isAriaHiddenDuplicate = (element: Element, parent: Parent, cache: SiblingT
 	return text.length > 0 && visibleSiblingText(parent, cache).has(text);
 };
 
+/** A page's `<noscript>` fallbacks must hold at least this much text... */
+const NOSCRIPT_PAGE_MIN_TEXT = 500;
+
+/** ...and this many times the text outside them for the fallback to be the page. */
+const NOSCRIPT_PAGE_RATIO = 2;
+
+/** A fallback holding less than this share of the noscript text (a scripting notice) stays removed. */
+const NOSCRIPT_PAGE_MIN_SHARE = 0.1;
+
+/**
+ * Turns the `<noscript>` fallback of a client-rendered page into an ordinary container.
+ *
+ * Discourse and Flarum render a topic with JavaScript and ship the whole thread inside
+ * `<noscript>` for crawlers, so a plain fetch sees an empty app shell next to that fallback, and
+ * removing `<noscript>` as non-content leaves only the site name. When the noscript text dwarfs
+ * everything else on the page, the fallback is the page.
+ */
+const unwrapNoscriptPage = (tree: Hast): void => {
+	const noscripts: Element[] = [];
+	walk(tree, (node) => {
+		if (isElement(node) && node.tagName === "noscript") {
+			noscripts.push(node);
+			return false;
+		}
+	});
+	if (noscripts.length === 0) {
+		return;
+	}
+	const collector = new MetricsCollectorCtor();
+	const texts = noscripts.map((noscript) =>
+		noscript.children.reduce((sum, child) => sum + collector.metrics(child).text, 0),
+	);
+	const inside = texts.reduce((sum, text) => sum + text, 0);
+	if (inside < NOSCRIPT_PAGE_MIN_TEXT || inside < collector.metrics(tree).text * NOSCRIPT_PAGE_RATIO) {
+		return;
+	}
+	noscripts.forEach((noscript, index) => {
+		if (texts[index] >= inside * NOSCRIPT_PAGE_MIN_SHARE) {
+			noscript.tagName = "div";
+		}
+	});
+};
+
 /** Removes comments, metadata elements and anything the browser did not display. */
 export const stripNonContent = (tree: Hast): Hast => {
+	unwrapNoscriptPage(tree);
 	// Tab strips are chrome and disappear in later passes, so their labels are read now, in the
 	// traversal the noscript pass makes anyway. Screen-reader duplicates are found in the same
 	// traversal, while every sibling is still in place.

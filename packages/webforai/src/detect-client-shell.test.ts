@@ -87,6 +87,13 @@ describe("detectClientShell", () => {
 		expect(detectClientShell(nextShell)).toMatchObject({ isShell: true, reason: "spa-shell" });
 	});
 
+	it("does not flag a forum whose thread is its noscript fallback", () => {
+		// Discourse: an Ember mount point and the whole topic inside <noscript> for crawlers.
+		const posts = "<p>A reply in the thread with enough words to read as a real post, and more.</p>".repeat(12);
+		const html = `<html><body><header><a href="/">Forum</a></header><noscript><div id="main-outlet"><h1>Topic</h1>${posts}<footer>Powered by Discourse, best viewed with JavaScript enabled</footer></div></noscript><section id="main"></section></body></html>`;
+		expect(detectClientShell(html)).toMatchObject({ isShell: false });
+	});
+
 	it("flags a noscript-only page without a known mount point", () => {
 		const html = `<html><body><noscript>Please enable JavaScript to continue.</noscript><div class="loader"></div></body></html>`;
 		expect(detectClientShell(html)).toMatchObject({ isShell: true, reason: "noscript-only" });

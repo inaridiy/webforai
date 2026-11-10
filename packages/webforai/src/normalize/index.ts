@@ -131,6 +131,70 @@ export const resolveImageSources = (tree: Hast): void => {
 	});
 };
 
+/** Alt text long enough to describe one picture, rather than name the product or person in several. */
+const DESCRIPTIVE_ALT_LENGTH = 20;
+
+/** Where a run of images ends even without text: the next cell of a table is another value. */
+const IMAGE_RUN_BREAKS = new Set(["td", "th"]);
+
+/**
+ * Drops an image that repeats the one before it with no text in between: the same descriptive
+ * alt text, or the same source shown exactly twice.
+ *
+ * Pages ship one picture several times — a light and a dark variant (react.dev), two crops for
+ * two layouts (news front pages), a copy for no-script readers — and show one of them. Converted,
+ * each is a line of its own saying the same thing. Only the first is kept. A short alt text does
+ * not count, since a gallery names every shot after the product. The same source three times or
+ * more is a pattern the page draws on purpose (rating stars), and a table cell starts over (a
+ * check mark in each column), so those are left alone.
+ */
+export const dropRepeatedImages = (tree: Hast): void => {
+	let previous: { src: string | undefined; alt: string } | undefined;
+	let sameSource: Element[] = [];
+	const repeats = new Set<Hast>();
+	const endRun = (): void => {
+		if (sameSource.length === 2) {
+			repeats.add(sameSource[1]);
+		}
+		sameSource = [];
+	};
+	walk(tree, (node) => {
+		if (node.type === "text") {
+			if (node.value.trim() !== "") {
+				endRun();
+				previous = undefined;
+			}
+			return;
+		}
+		if (!isElement(node)) {
+			return;
+		}
+		if (IMAGE_RUN_BREAKS.has(node.tagName)) {
+			endRun();
+			previous = undefined;
+			return;
+		}
+		if (node.tagName !== "img") {
+			return;
+		}
+		const src = stringProperty(node, "src");
+		const alt = (stringProperty(node, "alt") ?? "").trim();
+		if (previous && src !== previous.src && alt.length >= DESCRIPTIVE_ALT_LENGTH && alt === previous.alt) {
+			repeats.add(node);
+		} else if (previous && src !== undefined && src !== "" && src === previous.src) {
+			sameSource.push(node);
+		} else {
+			endRun();
+			previous = { src, alt };
+			sameSource = [node];
+		}
+	});
+	endRun();
+	if (repeats.size > 0) {
+		pruneInPlace(tree, (node) => !repeats.has(node));
+	}
+};
+
 /** KaTeX renders the formula twice; the styled HTML copy is the redundant one. */
 const katexDuplicates = (node: Element): Element[] => {
 	const classes = classList(node);
@@ -255,17 +319,29 @@ export const removeIconFonts = (tree: Hast): void => {
 const textOfNode = (node: Hast): string =>
 	node.type === "text" ? node.value : "children" in node ? node.children.map(textOfNode).join("") : "";
 
+/** What a permalink shows beside the title: a pilcrow, hash, section or link sign — or nothing, for an icon. */
+const PERMALINK_GLYPH = /^(?:¶|#|§|🔗|⚓|\uFE0E|\uFE0F|\u200B)*$/u;
+
 /**
  * Unwraps a heading's permalink: `<h2 id="x"><a href="#x">Title</a></h2>` (MDN, docsify's
  * `#/page?id=x`) is an affordance for copying the section's URL, not a link to follow, and
  * converts to `## [Title](#x)`. Only an in-page (`#…`) link that covers the heading's entire
  * text qualifies: a heading that links to another page, or one with a link inside a longer
- * title, keeps its link.
+ * title, keeps its link. An in-page link beside the title that shows only a sign or an icon
+ * (Sphinx's `¶`, GitHub's chain icon) is the same affordance and is removed.
  */
 export const unwrapHeadingAnchors = (tree: Hast): void => {
 	walk(tree, (node) => {
 		if (!(isElement(node) && /^h[1-6]$/.test(node.tagName))) {
 			return;
+		}
+		const isSignAnchor = (child: Hast): boolean =>
+			isElement(child) &&
+			child.tagName === "a" &&
+			Boolean(stringProperty(child, "href")?.startsWith("#")) &&
+			PERMALINK_GLYPH.test(textOfNode(child).trim());
+		if (node.children.some(isSignAnchor)) {
+			node.children = node.children.filter((child) => !isSignAnchor(child));
 		}
 		const title = textOfNode(node).trim();
 		if (title === "") {
@@ -319,6 +395,47 @@ const LABEL_LANGUAGES = new Set([
 	"markdown",
 	"diff",
 ]);
+
+/** Sphinx names a block's language on a wrapper: `<div class="highlight-python notranslate">`. */
+const WRAPPER_LANGUAGE = /^highlight-([A-Za-z][\w+#.-]*)$/;
+
+/** `highlight-default` is the project's default lexer; these name no language. */
+const NOT_A_LANGUAGE = new Set(["default", "text", "none"]);
+
+const hasClass = (node: Hast, name: string): boolean => isElement(node) && classList(node).includes(name);
+
+/**
+ * Copies the language a wrapper declares onto the code block inside it.
+ *
+ * Sphinx (Python, Flask, Django and most Read the Docs sites) writes
+ * `<div class="highlight-python notranslate"><div class="highlight"><pre>…`: the `pre` and its
+ * tokens carry no language, so the fence came out bare. The name is set as `data-language`, which
+ * the code handler reads after a `language-*` class of the block's own. Only that shape counts —
+ * a wrapper that is not itself `.highlight` and holds a `div.highlight` — because other sites use
+ * `highlight-*` classes for other things (GitHub's `highlight highlight-text-html-basic`).
+ */
+export const readWrapperLanguages = (tree: Hast): void => {
+	walk(tree, (node) => {
+		if (!isElement(node) || node.tagName !== "div") {
+			return;
+		}
+		const classes = classList(node);
+		const language = classes
+			.map((name) => name.match(WRAPPER_LANGUAGE)?.[1])
+			.find((name) => name !== undefined && !NOT_A_LANGUAGE.has(name));
+		const inner = node.children.find(
+			(child) => isElement(child) && child.tagName === "div" && hasClass(child, "highlight"),
+		);
+		if (!(language && inner && !classes.includes("highlight"))) {
+			return;
+		}
+		const pre = findElement(inner, (element) => element.tagName === "pre");
+		if (pre && pre.properties.dataLanguage === undefined) {
+			pre.properties.dataLanguage = language;
+		}
+		return false;
+	});
+};
 
 /** Labels that name no language: the label goes, the fence stays without an info string. */
 const LABEL_NO_LANGUAGE = new Set(["plain", "plaintext", "text"]);
@@ -421,8 +538,52 @@ export const separateAdjacentInlines = (tree: Hast): void => {
 	visit(tree);
 };
 
+/** The class a documentation theme gives the title line of a note, tip or warning box. */
+const ADMONITION_TITLE =
+	/admonition-?title|admonitionheading|alert-heading|markdown-alert-title|custom-block-title|aside__title|callout-title/i;
+
+const ADMONITION_CONTAINERS = new Set(["div", "aside", "section"]);
+
+/**
+ * Turns a note, tip or warning box into a block quote that opens with its title in bold.
+ *
+ * Sphinx and MkDocs (`.admonition-title`), Docusaurus, Docsy (`.alert-heading`), GitHub
+ * (`.markdown-alert-title`), VitePress and Starlight all mark the box's title line with a class
+ * and draw the box with CSS. Converted as plain elements the title became a paragraph or a
+ * heading of its own ("#### Note:") and the box's text ran on as body text. A box is recognised
+ * by its title's class only, so banners and alerts without one are left alone.
+ */
+export const quoteAdmonitions = (tree: Hast): void => {
+	walk(tree, (node) => {
+		if (!(isElement(node) && ADMONITION_CONTAINERS.has(node.tagName))) {
+			return;
+		}
+		const titleAt = node.children.findIndex(
+			(child) => isElement(child) && classList(child).some((name) => ADMONITION_TITLE.test(name)),
+		);
+		if (titleAt < 0) {
+			return;
+		}
+		const text = textOfNode(node.children[titleAt]).trim();
+		const title: Element[] = text
+			? [
+					{
+						type: "element",
+						tagName: "p",
+						properties: {},
+						children: [
+							{ type: "element", tagName: "strong", properties: {}, children: [{ type: "text", value: text }] },
+						],
+					},
+				]
+			: [];
+		node.tagName = "blockquote";
+		node.children.splice(titleAt, 1, ...title);
+	});
+};
+
 export interface NormalizeOptions {
-	/** Resolve lazily-loaded image URLs. Default `true`. */
+	/** Resolve lazily-loaded image URLs and drop an image that repeats the one before it. Default `true`. */
 	images?: boolean;
 	/** Drop the duplicated half of KaTeX/MathJax output. Default `true`. */
 	math?: boolean;
@@ -432,10 +593,12 @@ export interface NormalizeOptions {
 	iconFonts?: boolean;
 	/** Unwrap in-page permalink anchors that cover a heading's whole text. Default `true`. */
 	headingAnchors?: boolean;
-	/** Fold a language label printed beside a code block into the block. Default `true`. */
+	/** Fold a language label printed beside a code block, or named on its wrapper, into the block. Default `true`. */
 	codeLabels?: boolean;
 	/** Separate adjacent inline elements laid out side by side. Default `true`. */
 	inlineSpacing?: boolean;
+	/** Convert note, tip and warning boxes to block quotes with a bold title. Default `true`. */
+	admonitions?: boolean;
 }
 
 /**
@@ -453,10 +616,12 @@ export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast 
 		headingAnchors = true,
 		codeLabels = true,
 		inlineSpacing = true,
+		admonitions = true,
 	} = options;
 
 	if (images) {
 		resolveImageSources(tree);
+		dropRepeatedImages(tree);
 	}
 	if (math) {
 		dedupeRenderedMath(tree);
@@ -472,6 +637,10 @@ export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast 
 	}
 	if (codeLabels) {
 		foldCodeLabels(tree);
+		readWrapperLanguages(tree);
+	}
+	if (admonitions) {
+		quoteAdmonitions(tree);
 	}
 	if (inlineSpacing) {
 		separateAdjacentInlines(tree);

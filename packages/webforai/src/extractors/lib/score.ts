@@ -326,6 +326,32 @@ export const collectArticleNodes = (
 	return selected.length > 0 ? selected : [top.element];
 };
 
+/** Share of the added text that must come from sibling sections built like the wrapper. */
+const REPEATED_SECTION_SHARE = 0.5;
+
+/**
+ * Whether `wrapper` is one of a run of sibling sections: it opens with a heading, and most of the
+ * text its parent holds besides it sits in siblings with the same tag and classes (Asciidoctor's
+ * `div.sect1`, Sphinx's `section`). A comment box or a lead `div` next to a differently built
+ * article body is not.
+ */
+const isRepeatedSection = (wrapper: Element, parent: Element, collector: MetricsCollector): boolean => {
+	const first = wrapper.children.find(isElement);
+	if (!(first && /^h[1-6]$/.test(first.tagName))) {
+		return false;
+	}
+	const signature = (element: Element): string => `${element.tagName}.${classList(element).join(".")}`;
+	const own = signature(wrapper);
+	let alike = 0;
+	for (const child of parent.children) {
+		if (child !== wrapper && isElement(child) && signature(child) === own) {
+			alike += collector.metrics(child).text;
+		}
+	}
+	const added = collector.metrics(parent).text - collector.metrics(wrapper).text;
+	return added > 0 && alike >= added * REPEATED_SECTION_SHARE;
+};
+
 /** How many ancestor levels the boundary climb may traverse. */
 const MAX_CLIMB_HOPS = 5;
 
@@ -349,10 +375,13 @@ const CLIMB_SCORE_FLOOR = 1 / 3;
  * section above the `refentry` that also holds the title, synopsis and description, and the
  * output opened mid-document. Readability climbs from its top candidate for the same reason.
  *
- * A hop is taken only when the parent adds a substantial amount of low-link text and itself
- * scored within a factor of the winner; the first parent that fails either test ends the climb.
- * Wrapper parents that add nothing fail the gain test, which is what keeps the climb from
- * drifting up into page chrome one harmless-looking level at a time.
+ * A hop is taken only when the ancestor adds a substantial amount of low-link text and itself
+ * scored within a factor of the winner. A parent that adds too little text is a wrapper: the
+ * section of an Asciidoctor or Sphinx page (`div.sect1` = heading + `div.sectionbody`) adds only
+ * its heading, while the sibling sections sit one level up. Such a wrapper is looked through, and
+ * the ancestor above it judged on everything it adds over the current node; any other failure, or
+ * an ancestor that fails both ways, ends the climb. This keeps the climb from drifting up into
+ * page chrome one harmless-looking level at a time.
  */
 export const climbToArticleBoundary = (
 	top: ScoredCandidate,
@@ -363,33 +392,53 @@ export const climbToArticleBoundary = (
 	const scoreOf = new Map(candidates.map((candidate) => [candidate.element, candidate.score]));
 	const scoreFloor = top.score * CLIMB_SCORE_FLOOR;
 
-	let current = top.element;
+	/**
+	 * "thin" when `ancestor` adds too little text over `from` (a wrapper, whatever it scored),
+	 * "climb" when it adds enough low-link text and scored within the floor, "stop" otherwise.
+	 */
+	const judge = (from: Element, ancestor: Element): "climb" | "thin" | "stop" => {
+		const fromMetrics = collector.metrics(from);
+		const ancestorMetrics = collector.metrics(ancestor);
+		const gainedText = ancestorMetrics.text - fromMetrics.text;
+		if (gainedText < Math.max(MIN_CLIMB_ABSOLUTE_GAIN, fromMetrics.text * MIN_CLIMB_RELATIVE_GAIN)) {
+			return "thin";
+		}
+		const score = scoreOf.get(ancestor);
+		if (score === undefined || score < scoreFloor) {
+			return "stop";
+		}
+		const gainedLink = ancestorMetrics.link - fromMetrics.link;
+		return gainedLink / gainedText > MAX_CLIMB_GAIN_LINK_DENSITY ? "stop" : "climb";
+	};
 
-	for (let hop = 0; hop < MAX_CLIMB_HOPS; hop++) {
+	let current = top.element;
+	let hops = 0;
+	while (hops < MAX_CLIMB_HOPS) {
 		const parent = parents.get(current);
 		if (!(parent && isElement(parent))) {
 			break;
 		}
-
-		const parentScore = scoreOf.get(parent);
-		if (parentScore === undefined || parentScore < scoreFloor) {
-			break;
+		const verdict = judge(current, parent);
+		if (verdict === "climb") {
+			current = parent;
+			hops++;
+			continue;
 		}
-
-		const currentMetrics = collector.metrics(current);
-		const parentMetrics = collector.metrics(parent);
-		const gainedText = parentMetrics.text - currentMetrics.text;
-
-		if (gainedText < Math.max(MIN_CLIMB_ABSOLUTE_GAIN, currentMetrics.text * MIN_CLIMB_RELATIVE_GAIN)) {
-			break;
+		const grandparent = parents.get(parent);
+		if (
+			verdict === "thin" &&
+			hops + 2 <= MAX_CLIMB_HOPS &&
+			grandparent &&
+			isElement(grandparent) &&
+			isRepeatedSection(parent, grandparent, collector)
+		) {
+			if (judge(current, grandparent) === "climb") {
+				current = grandparent;
+				hops += 2;
+				continue;
+			}
 		}
-
-		const gainedLink = parentMetrics.link - currentMetrics.link;
-		if (gainedLink / gainedText > MAX_CLIMB_GAIN_LINK_DENSITY) {
-			break;
-		}
-
-		current = parent;
+		break;
 	}
 
 	return current;

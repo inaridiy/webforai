@@ -4,6 +4,7 @@ import { fromParse5 } from "hast-util-from-parse5";
 import { type DefaultTreeAdapterMap, parse, parseFragment } from "parse5";
 import { PLAYER_RESPONSE_VARIABLE } from "../adapters/sites/youtube";
 import { CHALLENGE_PATTERN } from "../detect-client-shell";
+import { isStreamingInstruction } from "./react-streaming";
 
 type Parse5Node = DefaultTreeAdapterMap["node"];
 type Parse5Parent = DefaultTreeAdapterMap["parentNode"];
@@ -144,11 +145,15 @@ const startTagEnd = (html: string, from: number): number => {
 	return -1;
 };
 
-/** Script bodies something downstream reads: the YouTube adapter's player response, and bot-challenge fingerprints. */
+/**
+ * Script bodies something downstream reads: the YouTube adapter's player response, bot-challenge
+ * fingerprints, and React's streaming instructions (which say where streamed content belongs).
+ */
 const isReadScript = (attributes: string, element: string): boolean =>
 	/application\/ld\+json/i.test(attributes) ||
 	element.includes(PLAYER_RESPONSE_VARIABLE) ||
-	CHALLENGE_PATTERN.test(element);
+	CHALLENGE_PATTERN.test(element) ||
+	(element.length < 200 && isStreamingInstruction(element));
 
 /** Documents larger than this have their script and style bodies emptied before parsing. */
 export const LARGE_DOCUMENT_CHARS = 2_000_000;
@@ -157,8 +162,9 @@ export const LARGE_DOCUMENT_CHARS = 2_000_000;
  * Empties the script and style bodies conversion never reads, keeping the elements and their
  * attributes.
  *
- * Kept whole: JSON-LD (page metadata), YouTube's player response (its site adapter) and
- * bot-challenge scripts (`detectClientShell`'s fingerprints). Extraction skips script and style
+ * Kept whole: JSON-LD (page metadata), YouTube's player response (its site adapter),
+ * bot-challenge scripts (`detectClientShell`'s fingerprints) and React's one-line streaming
+ * instructions. Extraction skips script and style
  * content, so the converted Markdown is the same with or without this; what changes is the size
  * of the HTML — a bundled application ships megabytes of inline script. Use it before sending
  * HTML across a process boundary or holding it under a size cap.
