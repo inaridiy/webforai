@@ -99,6 +99,25 @@ describe("alertCronFailure / alertUsageBacklog", () => {
 		expect(sent[0]?.text).toContain("stripe down");
 	});
 
+	it("includes the cause chain in the email and the log", async () => {
+		const { deps, sent, log } = harness();
+		const d1 = new Error("D1_ERROR: Network connection lost.");
+		const error = new Error('Failed query: update "usage_events" ...', { cause: d1 });
+		expect(await alertCronFailure(deps, error)).toBe("sent");
+		expect(sent[0]?.text).toContain("Caused by: D1_ERROR: Network connection lost.");
+		expect(log.error).toHaveBeenCalledWith("cron_pass_failed", {
+			message: expect.stringContaining("Caused by: D1_ERROR"),
+		});
+	});
+
+	it("bounds a cyclic cause chain", async () => {
+		const { deps, sent } = harness();
+		const error = new Error("loop");
+		error.cause = error;
+		expect(await alertCronFailure(deps, error)).toBe("sent");
+		expect(sent[0]?.text?.match(/loop/g)).toHaveLength(5);
+	});
+
 	it("emails a usage backlog at most once per day", async () => {
 		const { deps, sent } = harness();
 		const params = { count: 12, oldest: new Date("2026-10-01T07:00:00.000Z") };
