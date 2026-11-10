@@ -2,6 +2,7 @@ import type { Nodes as Hast } from "hast";
 import { toMdast } from "hast-util-to-mdast";
 import type { Nodes as Mdast } from "mdast";
 import { parseHtml } from "./utils/parse-html";
+import { resolveStreamedContent } from "./utils/react-streaming";
 
 import { extractMdast } from "./extract-mdast";
 import { type ExtractionReport, type ExtractorSelectors, pipeExtractors } from "./extractors";
@@ -83,8 +84,12 @@ export const htmlToMdast = (htmlOrHast: string | Hast, options?: HtmlToMdastOpti
 
 	// Own the tree before extraction: disabled or custom extractors may return their input,
 	// and normalization plus conversion handlers mutate it regardless of extractor choice.
+	const ownedHast = isOwned ? hast : cloneHast(hast);
+	// Content a React server streamed after the shell goes where the browser would put it, before
+	// any extractor sees it as a hidden element at the end of the page.
+	resolveStreamedContent(ownedHast);
 	const extractedHast = pipeExtractors(
-		{ hast: isOwned ? hast : cloneHast(hast), lang, url, owned: true, report: options?.onExtraction },
+		{ hast: ownedHast, lang, url, owned: true, report: options?.onExtraction },
 		extractors,
 	);
 
