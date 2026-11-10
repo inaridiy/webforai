@@ -68,6 +68,7 @@ Run each as `pnpm --filter @webforai/evals <command>` (pass flags after `--`).
 | `firecrawl-oss` | Run a self-hosted Firecrawl over the corpus and WCEB and cache its Markdown for the `firecrawl-oss` pipeline (see below) |
 | `cf-tomarkdown` | Run Cloudflare Workers AI `toMarkdown` over the corpus and WCEB through a local helper Worker and cache its Markdown for the `cf-tomarkdown` pipeline (see below) |
 | `trafilatura` | Run Trafilatura (Python, via `uv`) over the corpus and the reference sets and cache its Markdown for the `trafilatura` pipeline (see below) |
+| `prefer` | Blinded pairwise preference between webforai's output and another pipeline's, judged by a model (see below) |
 | `stress` | Adversarial and very large pages, each in a child process with a 128 MB heap (a Worker's budget). `--case=` |
 
 The accuracy suite runs under the repository's vitest:
@@ -94,6 +95,7 @@ model or LLM is involved in scoring.
 | --- | --- |
 | `gold:eval` | Token precision/recall/F1 against a set's reference text. `--sets=`, `--pipelines=webforai,webforai-kiwame,readability-turndown`, `--impl=<path>` to measure another checkout, `--threshold=`, `--limit=`, `--name=` (report file prefix), `--save-outputs` (also write each page's Markdown) |
 | `gold:eval -- --compare=<a>,<b>` | Paired difference of two saved runs (`.reports/gold/<a>.jsonl`, e.g. `current-webforai-comments`): mean F1 over pages and over datasets, with 95% intervals from a bootstrap stratified by dataset |
+| `gold:eval -- --lost=<run>,<run>,…` | How often each saved run loses the page, over the pages all of them scored (`--only=<id prefix>` for one set): the share with F1 under 0.2 and with recall under 0.5 and 0.8. A mean hides these: two pipelines 0.05 apart in mean F1 can differ by a factor of two in pages lost |
 | `gold:rouge-webmainbench` | WebMainBench's published metric (ROUGE-5 F1 over jieba tokens, MD mode) for outputs saved with `--sets=webmainbench --save-outputs`; needs `uv` |
 
 The two WebMainBench numbers differ on purpose. The token F1 ignores formatting, like the WCEB
@@ -119,6 +121,34 @@ The learned block classifier's weights (`packages/webforai/src/extractors/lib/bl
 are generated outside this repository; WCEB, WCXB and WebMainBench are used to measure them,
 never to train them. Treat `wcxb-test` as held out: measure a release on it, do not iterate
 against it. WebMainBench was held out too until its misses led to the unpadded tables of v5.
+
+## Preference
+
+Token F1 counts which words were kept. It cannot tell a fenced code block from the same code run
+into one line, a table from its cells as paragraphs, or a clean article from one with a link list
+in the middle. `prefer` asks a model which of two conversions of a page it would rather be given:
+
+```bash
+pnpm --filter @webforai/evals prefer -- --sets=corpus,wcxb-test --judges=sonnet,codex
+pnpm --filter @webforai/evals prefer -- --sets=corpus,wcxb-test --judges=sonnet,codex --report --save-results
+```
+
+webforai's default output is compared with each opponent's (`--opponents=`, default Readability +
+Turndown and Defuddle) as A and B, once in each order, with nothing saying which pipeline wrote
+which. The judge answers with a winner, a 0–100 score for each side and the defects it saw; the
+rubric (content first, then noise, then structure; length alone is no reason) is in
+`src/cli/prefer.ts`. Outputs over 15,000 characters are cut to their first 12,000 and last 3,000
+on both sides. Judges run through the `claude` and `codex` CLIs, which must be logged in, from an
+empty directory without tools.
+
+Two sets, reported apart: `corpus` (one capture per site) is what webforai is developed on, so it
+flatters webforai; `wcxb-test` is the first `--per-type` pages (default 15) of each page type in
+WCXB's held-out split. Verdicts are cached in `.cache/prefer/` by prompt, so a run resumes and
+only changed outputs are asked again. `--save-results` writes
+`benchmarks/preference/results.json`.
+
+The verdicts' issue lists are the useful part during development: they name what a reader
+notices (a dropped section, escaped characters in a URL, a repeated image), page by page.
 
 ## Cross-tool comparison
 

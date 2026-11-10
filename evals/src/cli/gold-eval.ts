@@ -9,6 +9,7 @@
  *   pnpm --filter @webforai/evals gold:eval -- --sets=wcxb-test --pipelines=webforai,trafilatura
  *   pnpm --filter @webforai/evals gold:eval -- --sets=webmainbench --save-outputs
  *   pnpm --filter @webforai/evals gold:eval -- --compare=current-webforai-comments,current-trafilatura
+ *   pnpm --filter @webforai/evals gold:eval -- --lost=current-webforai,current-defuddle --only=webmainbench
  *
  * Sets: `wceb` (default), `wcxb-test`, `wcxb-dev`, `webmainbench`; fetch each once with its
  * `gold:fetch-*` script. `--impl` swaps the webforai module, so another checkout can be measured
@@ -19,6 +20,10 @@
  * `--compare=<a>,<b>` converts nothing: it reads two saved runs and prints the paired difference
  * a − b in mean F1, over pages and over datasets, each with a 95% interval from a bootstrap
  * stratified by dataset (pages resampled within their dataset; 2,000 draws, fixed seed).
+ *
+ * `--lost=<run>,<run>,…` converts nothing either: over the pages every listed run scored
+ * (`--only=<id prefix>` narrows them to one set), it prints how often each run loses the page —
+ * F1 under 0.2, recall under 0.5, recall under 0.8.
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -129,6 +134,37 @@ const comparePaired = async (a: string, b: string): Promise<void> => {
 	console.log(`  over pages:    ${f(overPages(datasets))} ${interval(draws[0])}`);
 	console.log(`  over datasets: ${f(overDatasets(datasets))} ${interval(draws[1])}`);
 };
+
+/**
+ * How often each saved run loses the page: over the pages all the runs scored, the share with
+ * F1 under 0.2 (the output is not the page's content) and with recall under 0.5 and under 0.8
+ * (half, or a fifth, of the reference text is missing). A crash counts as an empty output.
+ */
+const reportLost = async (runs: string[], only: string | undefined): Promise<void> => {
+	const loaded = await Promise.all(runs.map(loadRun));
+	const ids = [...(loaded[0]?.keys() ?? [])].filter(
+		(id) => (!only || id.startsWith(only)) && loaded.every((run) => run.has(id)),
+	);
+	const percent = (value: number): string => `${(value * 100).toFixed(1)}%`;
+	console.log(`${ids.length} pages scored by every run${only ? ` (ids starting with ${only})` : ""}\n`);
+	console.log("| run | mean F1 | F1 < 0.2 | recall < 0.5 | recall < 0.8 | crashes |");
+	console.log("| --- | ---: | ---: | ---: | ---: | ---: |");
+	runs.forEach((run, index) => {
+		const rows = ids.map((id) => loaded[index]?.get(id) as PageResult);
+		const share = (test: (row: PageResult) => boolean): string => percent(mean(rows.map((row) => Number(test(row)))));
+		console.log(
+			`| ${run} | ${mean(rows.map((row) => row.f1)).toFixed(3)} | ${share((row) => row.f1 < 0.2)} | ${share(
+				(row) => row.recall < 0.5,
+			)} | ${share((row) => row.recall < 0.8)} | ${rows.filter((row) => row.crashed).length} |`,
+		);
+	});
+};
+
+const lost = arg("lost");
+if (lost) {
+	await reportLost(lost.split(","), arg("only"));
+	process.exit(0);
+}
 
 const compare = arg("compare");
 if (compare) {
