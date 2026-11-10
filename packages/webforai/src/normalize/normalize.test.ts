@@ -231,3 +231,41 @@ describe("code block language labels", () => {
 		expect(markdown).toContain("A note.");
 	});
 });
+
+describe("repeated images", () => {
+	const alt = "Diagram of a tree of three components, MyApp and two MyButton";
+
+	it("keeps one of a light and a dark variant with the same descriptive alt", () => {
+		const markdown = convert(
+			`<div><img class="light" src="/a-light.png" alt="${alt}"><img class="dark" src="/a-dark.png" alt="${alt}"></div>`,
+		);
+		expect(markdown).toBe(`![${alt}](/a-light.png)\n`);
+	});
+
+	it("keeps one of two copies of the same source, whatever the alt", () => {
+		const markdown = convert('<p><img src="/a.png" alt="A"></p><noscript></noscript><p><img src="/a.png" alt=""></p>');
+		expect(markdown.match(/a\.png/g)).toHaveLength(1);
+	});
+
+	it("keeps images that share a short alt, and repeats separated by text", () => {
+		expect(convert('<ul><li><img src="/1.jpg" alt="Shoe"></li><li><img src="/2.jpg" alt="Shoe"></li></ul>')).toContain(
+			"2.jpg",
+		);
+		const markdown = convert('<p><img src="/a.png" alt="A"> first</p><p><img src="/a.png" alt="A"> second</p>');
+		expect(markdown.match(/a\.png/g)).toHaveLength(2);
+	});
+});
+
+describe("heading sign anchors", () => {
+	it("removes an in-page anchor that shows only a sign or an icon", () => {
+		expect(
+			convert('<h2 id="q">Quickstart<a class="headerlink" href="#q" title="Link to this heading">¶</a></h2>'),
+		).toBe("## Quickstart\n");
+		expect(convert('<h3><a class="anchor" href="#x"><svg></svg></a>Usage</h3>')).toBe("### Usage\n");
+	});
+
+	it("keeps a heading's link to another page and a worded in-page link", () => {
+		expect(convert('<h2>See <a href="/other">#</a></h2>')).toBe("## See [#](/other)\n");
+		expect(convert('<h2>Usage <a href="#details">details</a></h2>')).toBe("## Usage [details](#details)\n");
+	});
+});

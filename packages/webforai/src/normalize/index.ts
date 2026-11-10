@@ -131,6 +131,48 @@ export const resolveImageSources = (tree: Hast): void => {
 	});
 };
 
+/** Alt text long enough to describe one picture, rather than name the product or person in several. */
+const DESCRIPTIVE_ALT_LENGTH = 20;
+
+/**
+ * Drops an image that repeats the one before it with no text in between: the same source, or the
+ * same descriptive alt text.
+ *
+ * Pages ship one picture several times — a light and a dark variant (react.dev), two crops for
+ * two layouts (news front pages), a copy for no-script readers — and show one of them. Converted,
+ * each is a line of its own saying the same thing. Only the first is kept. A short alt text does
+ * not count, since a gallery names every shot after the product.
+ */
+export const dropRepeatedImages = (tree: Hast): void => {
+	let previous: { src: string | undefined; alt: string } | undefined;
+	const repeats = new Set<Hast>();
+	walk(tree, (node) => {
+		if (node.type === "text") {
+			if (node.value.trim() !== "") {
+				previous = undefined;
+			}
+			return;
+		}
+		if (!isElement(node) || node.tagName !== "img") {
+			return;
+		}
+		const src = stringProperty(node, "src");
+		const alt = (stringProperty(node, "alt") ?? "").trim();
+		const repeated =
+			previous !== undefined &&
+			((src !== undefined && src !== "" && src === previous.src) ||
+				(alt.length >= DESCRIPTIVE_ALT_LENGTH && alt === previous.alt));
+		if (repeated) {
+			repeats.add(node);
+		} else {
+			previous = { src, alt };
+		}
+	});
+	if (repeats.size > 0) {
+		pruneInPlace(tree, (node) => !repeats.has(node));
+	}
+};
+
 /** KaTeX renders the formula twice; the styled HTML copy is the redundant one. */
 const katexDuplicates = (node: Element): Element[] => {
 	const classes = classList(node);
@@ -255,17 +297,29 @@ export const removeIconFonts = (tree: Hast): void => {
 const textOfNode = (node: Hast): string =>
 	node.type === "text" ? node.value : "children" in node ? node.children.map(textOfNode).join("") : "";
 
+/** What a permalink shows beside the title: a pilcrow, hash, section or link sign — or nothing, for an icon. */
+const PERMALINK_GLYPH = /^(?:¶|#|§|🔗|⚓|\uFE0E|\uFE0F|\u200B)*$/u;
+
 /**
  * Unwraps a heading's permalink: `<h2 id="x"><a href="#x">Title</a></h2>` (MDN, docsify's
  * `#/page?id=x`) is an affordance for copying the section's URL, not a link to follow, and
  * converts to `## [Title](#x)`. Only an in-page (`#…`) link that covers the heading's entire
  * text qualifies: a heading that links to another page, or one with a link inside a longer
- * title, keeps its link.
+ * title, keeps its link. An in-page link beside the title that shows only a sign or an icon
+ * (Sphinx's `¶`, GitHub's chain icon) is the same affordance and is removed.
  */
 export const unwrapHeadingAnchors = (tree: Hast): void => {
 	walk(tree, (node) => {
 		if (!(isElement(node) && /^h[1-6]$/.test(node.tagName))) {
 			return;
+		}
+		const isSignAnchor = (child: Hast): boolean =>
+			isElement(child) &&
+			child.tagName === "a" &&
+			Boolean(stringProperty(child, "href")?.startsWith("#")) &&
+			PERMALINK_GLYPH.test(textOfNode(child).trim());
+		if (node.children.some(isSignAnchor)) {
+			node.children = node.children.filter((child) => !isSignAnchor(child));
 		}
 		const title = textOfNode(node).trim();
 		if (title === "") {
@@ -422,7 +476,7 @@ export const separateAdjacentInlines = (tree: Hast): void => {
 };
 
 export interface NormalizeOptions {
-	/** Resolve lazily-loaded image URLs. Default `true`. */
+	/** Resolve lazily-loaded image URLs and drop an image that repeats the one before it. Default `true`. */
 	images?: boolean;
 	/** Drop the duplicated half of KaTeX/MathJax output. Default `true`. */
 	math?: boolean;
@@ -457,6 +511,7 @@ export const normalizeHast = (tree: Hast, options: NormalizeOptions = {}): Hast 
 
 	if (images) {
 		resolveImageSources(tree);
+		dropRepeatedImages(tree);
 	}
 	if (math) {
 		dedupeRenderedMath(tree);
