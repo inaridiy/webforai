@@ -1,60 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="928" height="394" viewBox="0 0 928 394" role="img" aria-labelledby="t d" font-family='-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif'>
+<svg xmlns="http://www.w3.org/2000/svg" width="928" height="318" viewBox="0 0 928 318" role="img" aria-labelledby="t d" font-family='-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif'>
 <title id="t">webforai compared with other HTML-to-Markdown pipelines</title>
-<desc id="d">webforai: WCEB F1 0.891 (0.923 with comments), code blocks kept 98.0%, 4.04 s; Readability + Turndown: WCEB F1 0.880, code blocks kept 45.9%, 13.69 s; Defuddle: WCEB F1 0.820, code blocks kept 89.2%, 13.76 s; Trafilatura: WCEB F1 0.900, code blocks kept 40.6%, 2.94 s; Firecrawl OSS: WCEB F1 0.743, code blocks kept 51.9%; Cloudflare toMarkdown: WCEB F1 0.713, code blocks kept 53.6%</desc>
-<rect x="0.5" y="0.5" width="927" height="393" rx="10" fill="#ffffff" stroke="#d1d9e0"/>
+<desc id="d">webforai: F1 0.877, loses half the content on 5.1% of pages, keeps 98.1% of code blocks; Trafilatura: F1 0.860, loses half the content on 10.2% of pages, keeps 40.5% of code blocks; Defuddle: F1 0.855, loses half the content on 11.5% of pages, keeps 89.7% of code blocks; Readability + Turndown: F1 0.831, loses half the content on 12.6% of pages, keeps 45.2% of code blocks</desc>
+<rect x="0.5" y="0.5" width="927" height="317" rx="10" fill="#ffffff" stroke="#d1d9e0"/>
 <g transform="translate(24 22)">
 <text x="196" y="20" font-size="14" fill="#1f2328" font-weight="600">Accuracy<tspan font-size="11.5" font-weight="400" fill="#59636e">  higher is better</tspan></text>
-<text x="196" y="38" font-size="11.5" fill="#59636e">WCEB F1 · 3,985 pages · axis from 0.5</text>
-<line x1="195.5" y1="50" x2="195.5" y2="274" stroke="#d1d9e0" stroke-width="1"/>
-<path d="M196 58h114.44a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-114.44z" fill="#9ccbff"/>
-<rect x="196" y="58" width="109.48" height="20" fill="#1f8fff"/>
-<text x="322.44" y="73" font-size="13" fill="#1f2328" font-weight="600" style="font-variant-numeric:tabular-nums">0.923* (0.891)</text>
-<path d="M196 96h102.40a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-102.40z" fill="#8c8b85"/>
-<text x="310.40" y="111" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">0.880</text>
-<path d="M196 134h85.60a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-85.60z" fill="#8c8b85"/>
-<text x="293.60" y="149" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">0.820</text>
-<path d="M196 172h108.00a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-108.00z" fill="#8c8b85"/>
-<text x="316.00" y="187" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">0.900</text>
-<path d="M196 210h64.04a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-64.04z" fill="#8c8b85"/>
-<text x="272.04" y="225" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">0.743</text>
-<path d="M196 248h55.64a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-55.64z" fill="#8c8b85"/>
-<text x="263.64" y="263" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">0.713</text>
-<text x="424" y="20" font-size="14" fill="#1f2328" font-weight="600">Code blocks kept<tspan font-size="11.5" font-weight="400" fill="#59636e">  higher is better</tspan></text>
-<text x="424" y="38" font-size="11.5" fill="#59636e">748 blocks · 60 pages</text>
-<line x1="423.5" y1="50" x2="423.5" y2="274" stroke="#d1d9e0" stroke-width="1"/>
-<path d="M424 58h133.19a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-133.19z" fill="#1f8fff"/>
-<text x="569.19" y="73" font-size="13" fill="#1f2328" font-weight="600" style="font-variant-numeric:tabular-nums">98%</text>
-<path d="M424 96h60.20a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-60.20z" fill="#8c8b85"/>
-<text x="496.20" y="111" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">46%</text>
-<path d="M424 134h120.84a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-120.84z" fill="#8c8b85"/>
-<text x="556.84" y="149" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">89%</text>
-<path d="M424 172h52.90a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-52.90z" fill="#8c8b85"/>
-<text x="488.90" y="187" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">41%</text>
-<path d="M424 210h68.62a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-68.62z" fill="#8c8b85"/>
-<text x="504.62" y="225" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">52%</text>
-<path d="M424 248h71.05a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-71.05z" fill="#8c8b85"/>
-<text x="507.05" y="263" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">54%</text>
-<text x="652" y="20" font-size="14" fill="#1f2328" font-weight="600">Time<tspan font-size="11.5" font-weight="400" fill="#59636e">  lower is better</tspan></text>
-<text x="652" y="38" font-size="11.5" fill="#59636e">60 pages · 24 MiB of HTML</text>
-<line x1="651.5" y1="50" x2="651.5" y2="274" stroke="#d1d9e0" stroke-width="1"/>
-<path d="M652 58h37.11a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-37.11z" fill="#1f8fff"/>
-<text x="701.11" y="73" font-size="13" fill="#1f2328" font-weight="600" style="font-variant-numeric:tabular-nums">4.0 s</text>
-<path d="M652 96h135.29a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-135.29z" fill="#8c8b85"/>
-<text x="799.29" y="111" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">13.7 s</text>
-<path d="M652 134h136.00a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-136.00z" fill="#8c8b85"/>
-<text x="800.00" y="149" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">13.8 s</text>
-<path d="M652 172h25.89a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-25.89z" fill="#8c8b85"/>
-<text x="689.89" y="187" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">2.9 s (Python)</text>
-<text x="660" y="225" font-size="12" fill="#59636e">runs as a service</text>
-<text x="660" y="263" font-size="12" fill="#59636e">runs as a service</text>
+<text x="196" y="38" font-size="11.5" fill="#59636e">F1 · 511 held-out pages · axis from 0.5</text>
+<line x1="195.5" y1="50" x2="195.5" y2="198" stroke="#d1d9e0" stroke-width="1"/>
+<path d="M196 58h101.56a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-101.56z" fill="#1f8fff"/>
+<text x="309.56" y="73" font-size="13" fill="#1f2328" font-weight="600" style="font-variant-numeric:tabular-nums">0.877</text>
+<path d="M196 96h96.80a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-96.80z" fill="#8c8b85"/>
+<text x="304.80" y="111" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">0.860</text>
+<path d="M196 134h95.40a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-95.40z" fill="#8c8b85"/>
+<text x="303.40" y="149" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">0.855</text>
+<path d="M196 172h88.68a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-88.68z" fill="#8c8b85"/>
+<text x="296.68" y="187" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">0.831</text>
+<text x="424" y="20" font-size="14" fill="#1f2328" font-weight="600">Pages lost<tspan font-size="11.5" font-weight="400" fill="#59636e">  lower is better</tspan></text>
+<text x="424" y="38" font-size="11.5" fill="#59636e">half the content missing · 7,809 pages</text>
+<line x1="423.5" y1="50" x2="423.5" y2="198" stroke="#d1d9e0" stroke-width="1"/>
+<path d="M424 58h43.60a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-43.60z" fill="#1f8fff"/>
+<text x="479.60" y="73" font-size="13" fill="#1f2328" font-weight="600" style="font-variant-numeric:tabular-nums">5.1%</text>
+<path d="M424 96h91.20a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-91.20z" fill="#8c8b85"/>
+<text x="527.20" y="111" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">10.2%</text>
+<path d="M424 134h103.33a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-103.33z" fill="#8c8b85"/>
+<text x="539.33" y="149" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">11.5%</text>
+<path d="M424 172h113.60a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-113.60z" fill="#8c8b85"/>
+<text x="549.60" y="187" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">12.6%</text>
+<text x="652" y="20" font-size="14" fill="#1f2328" font-weight="600">Code blocks kept<tspan font-size="11.5" font-weight="400" fill="#59636e">  higher is better</tspan></text>
+<text x="652" y="38" font-size="11.5" fill="#59636e">750 blocks · 60 pages</text>
+<line x1="651.5" y1="50" x2="651.5" y2="198" stroke="#d1d9e0" stroke-width="1"/>
+<path d="M652 58h133.38a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-133.38z" fill="#1f8fff"/>
+<text x="797.38" y="73" font-size="13" fill="#1f2328" font-weight="600" style="font-variant-numeric:tabular-nums">98%</text>
+<path d="M652 96h52.74a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-52.74z" fill="#8c8b85"/>
+<text x="716.74" y="111" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">41%</text>
+<path d="M652 134h121.62a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-121.62z" fill="#8c8b85"/>
+<text x="785.62" y="149" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">90%</text>
+<path d="M652 172h59.28a4 4 0 0 1 4 4v12a4 4 0 0 1 -4 4h-59.28z" fill="#8c8b85"/>
+<text x="723.28" y="187" font-size="13" fill="#424a53" style="font-variant-numeric:tabular-nums">45%</text>
 <text x="0" y="73" font-size="14" fill="#1f2328" font-weight="600">webforai</text>
-<text x="0" y="111" font-size="14" fill="#424a53">Readability + Turndown</text>
+<text x="0" y="111" font-size="14" fill="#424a53">Trafilatura</text>
 <text x="0" y="149" font-size="14" fill="#424a53">Defuddle</text>
-<text x="0" y="187" font-size="14" fill="#424a53">Trafilatura</text>
-<text x="0" y="225" font-size="14" fill="#424a53">Firecrawl OSS</text>
-<text x="0" y="263" font-size="14" fill="#424a53">Cloudflare toMarkdown</text>
-<text x="0" y="312" font-size="11.5" fill="#59636e">WCEB: an independent benchmark. Code and time: 60 of webforai's own test pages.</text>
-<text x="0" y="328" font-size="11.5" fill="#59636e">* webforai's comments preset, which keeps reader comments as Trafilatura does by default; the default preset in brackets.</text>
-<text x="0" y="344" font-size="11.5" fill="#59636e">Node 24.15.0, 2026-10-09. Method and limitations: webforai.dev/benchmarks</text>
+<text x="0" y="187" font-size="14" fill="#424a53">Readability + Turndown</text>
+<text x="0" y="236" font-size="11.5" fill="#59636e">Accuracy: WCXB's test split, seven page types, not used to develop webforai. Pages lost: WebMainBench, recall under 0.5.</text>
+<text x="0" y="252" font-size="11.5" fill="#59636e">Code blocks: 60 of webforai's own test pages. Every pipeline with its defaults.</text>
+<text x="0" y="268" font-size="11.5" fill="#59636e">Node 24.15.0, 2026-11-10. Method and limitations: webforai.dev/benchmarks</text>
 </g>
 </svg>

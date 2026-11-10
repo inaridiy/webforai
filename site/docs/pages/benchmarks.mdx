@@ -1,6 +1,6 @@
 ---
 title: Benchmarks
-description: A reproducible comparison of webforai with Readability + Turndown, Defuddle, Trafilatura, plain Turndown, node-html-markdown, Firecrawl OSS and Cloudflare's toMarkdown on cached real pages, plus a link-following benchmark for agent mode — method, results and limitations.
+description: A reproducible comparison of webforai with Readability + Turndown, Defuddle, Trafilatura, plain Turndown, node-html-markdown, Firecrawl OSS and Cloudflare's toMarkdown — scores against reference text, how often each loses the page, a blinded preference between outputs, and a link-following benchmark for agent mode. Method, results and limitations.
 ---
 
 # Benchmarks
@@ -9,9 +9,10 @@ This page compares webforai with common open-source HTML→Markdown pipelines, i
 [Defuddle](https://github.com/kepano/defuddle) and [Trafilatura](https://github.com/adbar/trafilatura), with a self-hosted Firecrawl and with Cloudflare's
 [toMarkdown](https://developers.cloudflare.com/workers-ai/features/markdown-conversion/), on the same
 cached pages. The main-content comparison runs locally from the repository's
-evaluation harness, with no network access and no API keys at measure time; the link-following
-benchmark for agent mode renders live pages and asks models, as described in its section. The
-corpus numbers below are from the run on 2026-10-09 at commit `297b7df`; the raw summary is
+evaluation harness, with no network access and no API keys at measure time; the preference
+comparison asks models to judge the outputs, and the link-following benchmark for agent mode
+renders live pages and asks models, as described in their sections. The
+corpus numbers below are from the run on 2026-11-10 at commit `a5831e6`; the raw summary is
 [`evals/benchmarks/compare-summary.json`](https://github.com/inaridiy/webforai/blob/main/evals/benchmarks/compare-summary.json).
 
 **Read the limitations first.** The corpus is small (60 captures of 46 sites) and was assembled
@@ -19,11 +20,13 @@ while developing webforai. Its quality assertions were written against webforai'
 failures. The results are therefore likely to favour webforai, and they are not a general measure
 of extraction quality.
 
-<img src="/images/benchmark-light.svg" alt="WCEB F1: webforai 0.891 (0.923 with the comments preset), Readability + Turndown 0.880, Defuddle 0.820, Trafilatura 0.900, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: 98%, 46%, 89%, 41%, 52%, 54%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
+<img src="/images/benchmark-light.svg" alt="On 511 held-out WCXB pages, F1: webforai 0.877, Trafilatura 0.860, Defuddle 0.855, Readability + Turndown 0.831. Pages that lose half their content on WebMainBench: webforai 5.1%, Trafilatura 10.2%, Defuddle 11.5%, Readability + Turndown 12.6%. Code blocks kept on 60 pages: webforai 98%, Trafilatura 41%, Defuddle 90%, Readability + Turndown 45%" style={{ width: "100%", height: "auto", margin: "1.5rem 0" }} />
 
-The chart summarises three columns of the tables below; its F1 axis starts at 0.5, and webforai's bar runs on in a lighter shade from the default preset's score to the `comments` preset's. After a new run, regenerate it (for the
-README and this page) with `pnpm --filter site benchmark-chart`; the WCEB scores are constants in
-`site/scripts/benchmark-chart.mjs`, the rest is read from the committed summary.
+The chart summarises three figures from the tables below: F1 on WCXB's held-out pages (its axis
+starts at 0.5), the share of WebMainBench pages that lose half their content, and code blocks kept
+on the corpus. After a new run, regenerate it (for the README and this page) with
+`pnpm --filter site benchmark-chart`; the first two are constants in
+`site/scripts/benchmark-chart.mjs`, the third is read from the committed summary.
 
 ## Pipelines
 
@@ -31,7 +34,7 @@ README and this page) with `pnpm --filter site benchmark-chart`; the WCEB scores
 | --- | --- | --- |
 | webforai (at that commit) | `htmlToMarkdown(html, { baseUrl: url, url })` with the default extractors (site adapters, then the learned block classifier) | yes |
 | Readability + Turndown | jsdom 30.0.1 → `@mozilla/readability` 0.6.0 `parse()` → Turndown 7.2.4 with `turndown-plugin-gfm` 1.0.2 on `article.content`; the article title is prepended as an h1 | yes |
-| Defuddle | linkedom 0.18.13 document → `defuddle/node` 0.19.4 `Defuddle(document, url, { markdown: true, useAsync: false })`, as its README shows for Node; the title is prepended as an h1 | yes |
+| Defuddle | linkedom 0.18.13 document → `defuddle/node` 0.19.6 `Defuddle(document, url, { markdown: true, useAsync: false })`, as its README shows for Node; the title is prepended as an h1 | yes |
 | Turndown (full page) | Turndown 7.2.4 + GFM plugin on the whole document; `head`, `script`, `style`, `noscript` and `template` removed | no |
 | node-html-markdown (full page) | `NodeHtmlMarkdown.translate(html)` 2.0.0 on the whole document, default options | no |
 | Trafilatura | Python [Trafilatura](https://github.com/adbar/trafilatura) 2.3.1 `extract(html, url=url, output_format="markdown")` with its defaults (reader comments and tables kept, links and images dropped), run with `uv` | yes |
@@ -63,7 +66,19 @@ lines inside code as headings, and credited tables whose rows a Markdown parser 
 (Turndown's output for Sphinx tables). Every pipeline is measured with the new definitions; the
 Python-docs heading floor was corrected from 20 to its 19 real content headings.
 
-Revision note (2026-10-11, latest): the block classifier, the page-confidence model and the agent
+Revision note (2026-11-10, latest): every table was measured again at this release, with Defuddle
+0.19.6 (was 0.19.4; its scores did not move). webforai keeps more of the pages it used to lose
+— forum threads shipped in `<noscript>`, content React streams after the shell, listings — and
+writes cleaner Markdown (code lines, absolute links, no needless escapes, notes as quotes); WCEB
+moved from 0.891 to 0.896 with the default extraction and from 0.923 to 0.924 with `comments`, and
+its empty corpus outputs fell from 4 to 2. Three sections are new: [the newer reference
+sets](#newer-pages-wcxb-and-webmainbench), [pages lost](#pages-lost) and [a blinded preference
+between outputs](#which-markdown-reads-better). One measurement bug was fixed for every pipeline:
+the code probe read Shiki's `<span class="line">` lines as one joined line when the page had no
+newline between them (tailwindcss.com), so a pipeline that kept the lines apart failed the probe
+and one that ran them together passed. The probes rose from 748 to 750.
+
+Revision note (2026-10-11): the block classifier, the page-confidence model and the agent
 extractor's role models were retrained on labels made with Codex (none from WCEB); the role models
 also cover more pages and gained a model that decides which links to keep. WCEB over pages moved
 from 0.892 to 0.891 with the default extraction and from 0.918 to 0.923 with the `comments`
@@ -107,7 +122,7 @@ from the 2026-10-01 run. The other pipelines' versions and the captures are unch
   content", "privacy policy", "cookie preferences", "all rights reserved", …; the full list is in
   the summary JSON). These phrases can occur in real content, so this is a signal, not proof.
 - **Code fenced** — for each `<pre>` in the source, its longest line of 12–200 characters must
-  appear as a line inside a code block of the output (fenced or indented). Pooled over all 748 such blocks. It
+  appear as a line inside a code block of the output (fenced or indented). Pooled over all 750 such blocks. It
   measures recall only: keeping code from page chrome is not penalized.
 - **Tables** — source tables with a `<th>` and no nested table, against tables a GFM parser finds
   in the output (capped per capture). Pooled over 64 tables. Recall only.
@@ -122,17 +137,21 @@ from the 2026-10-01 run. The other pipelines' versions and the captures are unch
 
 | Pipeline | Checks passed | Crashes | Empty | Nav leak | Boilerplate | Code fenced | Tables | Median output (chars) | Total time |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| webforai | 75/75 | 0 | 4 | 5 | 1 | 98.0% (733/748) | 39.1% (25/64) | 8,207 | 4.04 s |
-| Readability + Turndown | 64/75 | 0 | 2 | 8 | 3 | 45.9% (343/748) | 29.7% (19/64) | 9,139 | 13.69 s |
-| Defuddle | 73/75 | 0 | 3 | 8 | 2 | 89.2% (667/748) | 54.7% (35/64) | 7,874 | 13.76 s |
-| Trafilatura | 64/75 | 0 | 2 | 0 | 2 | 40.6% (304/748) | 40.6% (26/64) | 5,630 | 2.94 s (Python) |
-| Turndown (full page) | 51/75 | 1 | 1 | 30 | 31 | 52.8% (395/748) | 31.3% (20/64) | 16,956 | 1.63 s |
-| node-html-markdown (full page) | 51/75 | 0 | 1 | 37 | 32 | 52.5% (393/748) | 57.8% (37/64) | 18,140 | 15.69 s |
-| Firecrawl OSS | 53/75 | 1 | 0 | 15 | 22 | 51.9% (388/748) | 95.3% (61/64) | 11,975 | 16.55 s (service) |
-| Cloudflare toMarkdown | 62/75 | 0 | 1 | 13 | 22 | 53.6% (401/748) | 57.8% (37/64) | 10,611 | 50.80 s (service) |
+| webforai | 75/75 | 0 | 2 | 5 | 1 | 98.1% (736/750) | 39.1% (25/64) | 8,207 | 8.22 s |
+| Readability + Turndown | 64/75 | 0 | 2 | 8 | 3 | 45.2% (339/750) | 29.7% (19/64) | 9,139 | 25.33 s |
+| Defuddle | 73/75 | 0 | 3 | 8 | 2 | 89.7% (673/750) | 54.7% (35/64) | 7,874 | 28.80 s |
+| Trafilatura | 64/75 | 0 | 2 | 0 | 2 | 40.5% (304/750) | 40.6% (26/64) | 5,630 | 2.94 s (Python) |
+| Turndown (full page) | 51/75 | 1 | 1 | 30 | 31 | 52.1% (391/750) | 31.3% (20/64) | 16,956 | 2.82 s |
+| node-html-markdown (full page) | 51/75 | 0 | 1 | 37 | 32 | 51.9% (389/750) | 57.8% (37/64) | 18,140 | 26.13 s |
+| Firecrawl OSS | 53/75 | 1 | 0 | 15 | 22 | 51.2% (384/750) | 95.3% (61/64) | 11,975 | 16.55 s (service) |
+| Cloudflare toMarkdown | 62/75 | 0 | 1 | 13 | 22 | 52.9% (397/750) | 57.8% (37/64) | 10,611 | 50.80 s (service) |
 
-60 captures, 24.17 MiB of HTML. Nav leak, boilerplate and empty count captures out of 60. Times
-were measured with a load average of about 3 (recorded in the summary); Trafilatura's is the sum of
+60 captures, 24.17 MiB of HTML. Nav leak, boilerplate and empty count captures out of 60. The
+machine was busy during this run (load average 31 on 16 logical CPUs, recorded in the summary),
+so every in-process time is about twice what the 2026-10-09 run measured on a quiet machine
+(webforai 4.04 s, Readability + Turndown 13.69 s, Defuddle 13.76 s, full-page Turndown 1.63 s);
+the ratios between pipelines are what to read. Interleaved with the previous release over the
+same captures, this release takes 0.96 times as long — no change within the noise. Trafilatura's is the sum of
 each page's median over 5 timed `extract` calls in Python, run alone, one page at a time; pipelines are interleaved
 per capture, so compare them as ratios. Firecrawl's figure is unchanged from the 2026-10-01 run,
 because its outputs are read from the cache that run produced. Cloudflare toMarkdown's is the sum
@@ -141,7 +160,7 @@ Cloudflare; like Firecrawl's, it is a service latency.
 
 ### What the numbers show
 
-- **Where webforai is behind.** Full-page Turndown is about 2.5× faster, because it does no
+- **Where webforai is behind.** Full-page Turndown is 2.5–3× faster, because it does no
   extraction, and Trafilatura, timed in Python in a separate run, is faster too. Firecrawl and node-html-markdown keep the most tables: they remove little or nothing,
   so Wikipedia's navboxes and sidebars (navigation tables built from `<th>` cells; 30 on the Japanese
   capture) count as kept. Most of the tables webforai drops are those, plus a PostgreSQL navigation
@@ -163,7 +182,7 @@ Cloudflare; like Firecrawl's, it is a service latency.
   its median output is the shortest (5,630 characters). Its 11 failed checks are mostly content it
   leaves out: code blocks on Tailwind, the TypeScript handbook and Overreacted, headings on
   Tailwind and Kubernetes, most of the shadcn/ui page and of Japanese Wikipedia, and the page
-  title as an `#` heading on YouTube and Hacker News. It fences 40.6% of the code probes, the
+  title as an `#` heading on YouTube and Hacker News. It fences 40.5% of the code probes, the
   fewest of the extracting pipelines; links and images are dropped by default.
 - **Firecrawl OSS.** Its main-content step removes a fixed list of selectors (`header`, `nav`,
   `.sidebar`, `.ad`, …), so pages whose chrome uses other names keep it: navigation leaks on 15
@@ -178,7 +197,7 @@ Cloudflare; like Firecrawl's, it is a service latency.
   ("Jump to content", `[edit]`, "Retrieved from"), 3 are missing headings on YouTube and Hacker
   News (the page title goes into the front matter, not an `#` heading) and 1 is the TypeScript
   handbook's code-block count. It fences code about as often as
-  the Turndown pipelines (53.6%) and keeps the same share of tables as node-html-markdown,
+  the Turndown pipelines (52.9%) and keeps the same share of tables as node-html-markdown,
   navboxes included. Every page starts with front matter built from the `<meta>` tags and ends
   with the page's JSON-LD, if any.
 - **Checks.** Readability + Turndown misses on Wikipedia (heading count, `[edit]` links), on
@@ -198,8 +217,7 @@ Cloudflare; like Firecrawl's, it is a service latency.
 - **Robustness.** Turndown threw on one capture (Amazon, rendered). Every pipeline produced empty
   output for the Reddit capture, which is a client-rendered shell; Readability and Defuddle also
   returned nothing for the YouTube watch page (Defuddle's YouTube extractor needs the network,
-  which is off here). webforai's other two empty outputs are the Medium capture, a 404 page,
-  which it reduces to the page's 188-character not-found message.
+  which is off here). Those two Reddit captures are webforai's only empty outputs.
 - **Speed.** Readability's time includes building a jsdom document, Defuddle's a linkedom one.
   node-html-markdown is slow on the largest pages (about 5 s for Japanese Wikipedia alone).
 
@@ -212,11 +230,11 @@ trained on WCEB.
 
 | Pipeline | WCEB F1 (mean over pages / over the 8 datasets) | Precision / recall (pages) |
 | --- | ---: | ---: |
-| webforai | 0.891 / 0.910 | 0.923 / 0.907 |
-| webforai, `comments` preset (reader comments kept) | 0.923 / 0.919 | 0.913 / 0.958 |
+| webforai | 0.896 / 0.912 | 0.923 / 0.912 |
+| webforai, `comments` preset (reader comments kept) | 0.924 / 0.920 | 0.913 / 0.959 |
 | webforai with the heuristic extractor (`takumiExtractor`) | 0.874 / 0.892 | 0.911 / 0.890 |
 | Readability + Turndown | 0.880 / 0.901 | 0.917 / 0.892 |
-| Defuddle | 0.820 / 0.850 | 0.869 / 0.856 |
+| Defuddle | 0.820 / 0.850 | 0.868 / 0.856 |
 | Trafilatura | 0.900 / 0.902 | 0.916 / 0.915 |
 | Firecrawl OSS | 0.743 / 0.760 | 0.668 / 0.939 |
 | Cloudflare toMarkdown | 0.713 / 0.702 | 0.604 / 0.985 |
@@ -226,24 +244,24 @@ Readability + Turndown is ahead on three of the eight WCEB datasets — its own 
 against webforai's 0.95), Scrapinghub and L3S-GN1 — and webforai on the other five. Of the
 pipelines that extract main content, Firecrawl recovers the most of the reference text but keeps
 the most besides it: its precision is the lowest of them on every dataset. Defuddle is level with webforai on Scrapinghub (0.920 against 0.920) and behind
-it on the other seven, by most on L3S-GN1 (0.716 against 0.923) and CleanEval (0.784 against
-0.914). It scores more than 0.2 above webforai on 89 pages and more than 0.2 below on 430. Of the
-89, most are wins on recall and 46 are Dragnet pages; the ones inspected are pages where Defuddle
+it on the other seven, by most on L3S-GN1 (0.715 against 0.923) and CleanEval (0.783 against
+0.917). It scores more than 0.2 above webforai on 86 pages and more than 0.2 below on 459. Of the
+86, most are wins on recall and about half are Dragnet pages; the ones inspected are pages where Defuddle
 keeps the whole page and the reference counts more than the article as content — reader comments,
 which Dragnet's references include, or a page that is mostly a list of links. Defuddle is designed
 for a browser, where it also reads the page's mobile stylesheet to find clutter; under linkedom
 there are no stylesheets, so that signal is absent here.
 
 Trafilatura is the strongest of the other pipelines on WCEB, and with webforai's default extraction
-the comparison is split: Trafilatura is ahead on the mean over pages (0.900 against 0.891; paired
-bootstrap, stratified by dataset, webforai − Trafilatura −0.009 [−0.015, −0.003]) and behind on the
-mean over datasets (0.902 against 0.910; +0.007 [+0.001, +0.013]). The difference over pages is
+the two are level over pages (0.900 against 0.896; paired bootstrap, stratified by dataset,
+webforai − Trafilatura −0.004 [−0.009, +0.001]) while webforai leads on the mean over datasets
+(0.912 against 0.902; +0.010 [+0.004, +0.016]). What separates them over pages is
 Dragnet, the largest dataset (1,379 pages), whose references include reader comments: Trafilatura
-keeps comments by default, webforai's default does not. On the 227 Dragnet pages where Trafilatura
-scores more than 0.2 higher, webforai's recall is 0.32 against Trafilatura's 0.88, and nearly all of
+keeps comments by default, webforai's default does not. On the 212 Dragnet pages where Trafilatura
+scores more than 0.2 higher, webforai's recall is 0.36 against Trafilatura's 0.88, and nearly all of
 their references contain comment text. With the `comments` preset webforai keeps them too and leads
-on both means: 0.923 against 0.900 over pages (+0.023 [+0.019, +0.027]) and 0.919 against 0.902
-over datasets (+0.016 [+0.011, +0.022]). It also gains on CETD (0.918 → 0.952), whose references
+on both means: 0.924 against 0.900 over pages (+0.024 [+0.020, +0.028]) and 0.920 against 0.902
+over datasets (+0.017 [+0.012, +0.023]). It also gains on CETD (0.919 → 0.952), whose references
 keep comments too, and gives up a little where they do not (L3S-GN1 0.923 → 0.916, Readability's
 set 0.950 → 0.943). With the preset webforai is ahead of Trafilatura on seven datasets and behind
 on Scrapinghub (0.911 against 0.948).
@@ -251,9 +269,109 @@ on Scrapinghub (0.911 against 0.948).
 Cloudflare toMarkdown converts nearly all of the page, so it has the highest recall in the table
 (0.985) and, after full-page Turndown, the lowest precision (0.604). It removes the header and footer, which puts it above
 full-page Turndown on every dataset, but below Firecrawl OSS on every dataset and below webforai on
-all eight; it scores more than 0.2 above webforai on 230 pages and more than 0.2 below on 1,765.
+all eight; it scores more than 0.2 above webforai on 208 pages and more than 0.2 below on 1,767.
 Its output also starts with the page metadata as front matter and ends with any JSON-LD, which the
 reference text does not contain. Full-page Turndown threw on 84 WCEB pages, scored as empty.
+
+### Newer pages: WCXB and WebMainBench
+
+WCEB's pages are mostly news from 2007–2017. Two newer sets cover what the web looks like now:
+**WCXB** (Foley, 2026), 2,008 pages in seven page types (article, forum, product, collection,
+listing, documentation, service), and **WebMainBench** (OpenDataLab, 2025), 7,809 human-annotated
+pages in 46 languages. No model in webforai is trained on either. WCXB's development split and
+WebMainBench are used to check changes; WCXB's test split (511 pages) is held out — it is measured
+once per release, and nothing is chosen on it. Firecrawl OSS and Cloudflare toMarkdown were not
+run on these sets.
+
+| Pipeline | WCXB test F1 (511 pages) | WebMainBench F1 (7,809 pages) |
+| --- | ---: | ---: |
+| webforai | 0.877 | 0.860 |
+| webforai, `comments` preset | 0.870 | 0.863 |
+| Trafilatura | 0.860 | 0.814 |
+| Defuddle | 0.855 | 0.778 |
+| Readability + Turndown | 0.831 | 0.810 |
+| Turndown (full page) | 0.710 | 0.643 |
+
+On the held-out WCXB pages webforai is ahead of each of the others (paired bootstrap, webforai
+minus the other): Defuddle +0.022 [+0.007, +0.038], Trafilatura +0.018 [+0.001, +0.035],
+Readability + Turndown +0.046 [+0.026, +0.067]. By page type it is level with Defuddle on
+articles (0.948 against 0.942), documentation (0.946 against 0.947), forums (0.796 against 0.798)
+and products (0.784 against 0.773), and ahead on collections (0.735 against 0.654), listings (0.724
+against 0.644) and service pages (0.821 against 0.762); Trafilatura is ahead of it on listings
+(0.746). On WebMainBench the differences are larger: Defuddle +0.082 [+0.076, +0.088], Trafilatura
++0.045 [+0.041, +0.050], Readability + Turndown +0.050 [+0.045, +0.055].
+
+## Pages lost
+
+A mean hides how a pipeline fails. Every extractor here returns most pages well; what differs is
+how many it gets wrong altogether. Two counts from the same per-page scores (`gold:eval --lost`):
+pages whose **F1 is under 0.2** — the output is not the page's content — and pages whose **recall
+is under 0.5** — half of the reference text is missing.
+
+| Pipeline | WCXB test: F1 < 0.2 | recall < 0.5 | WebMainBench: F1 < 0.2 | recall < 0.5 |
+| --- | ---: | ---: | ---: | ---: |
+| webforai | 2.3% | 4.9% | 2.8% | 5.1% |
+| Trafilatura | 3.5% | 8.0% | 5.4% | 10.2% |
+| Defuddle | 3.9% | 7.8% | 9.5% | 11.5% |
+| Readability + Turndown | 5.5% | 12.7% | 6.4% | 12.6% |
+| Turndown (full page) | 4.7% | 1.6% | 10.3% | 2.5% |
+
+- **The other extractors lose half of a page about twice as often.** On WebMainBench one page in
+  eight to ten against one in twenty; on the held-out WCXB pages 8–13% against 4.9%. Their mean
+  F1 is only 0.02–0.08 lower: the difference is concentrated in these pages.
+- **Converting the whole page is the safe choice for recall and nothing else.** Full-page
+  Turndown rarely misses text — its misses are mostly the pages it throws on (166 of 7,809 on
+  WebMainBench, 1 on WCXB test) — but on one page in ten the content is such a small part of
+  its output that F1 falls under 0.2.
+- **On WCEB the counts follow reader comments.** F1 < 0.2: webforai 1.5%, Trafilatura 1.9%,
+  Readability + Turndown 2.8%, Defuddle 7.5%. Recall < 0.5: Trafilatura 3.3%, webforai 6.4%,
+  Readability + Turndown 8.2%, Defuddle 12.0% — and 1.7% for webforai with the `comments`
+  preset, since the missing half is usually the comment thread.
+
+The pages webforai itself used to lose were of a few kinds, fixed at this release: forum threads
+that Discourse and Flarum ship only inside `<noscript>`, content a React server streams after the
+page's shell (Next.js, GitBook), and listings whose items the models scored just under the
+threshold. On WCXB's development split the share of forum pages under F1 0.2 fell from 23.9% to
+7.1%.
+
+## Which Markdown reads better
+
+Token F1 counts which words were kept. It cannot tell a fenced code block from the same code run
+into one line, a table from its cells as loose paragraphs, or a clean article from one with a
+link list in the middle. `prefer` asks a model instead: it is shown two conversions of a page as
+A and B — webforai's default output and another pipeline's, with nothing saying which is which —
+and answers which serves a reader better, with a 0–100 score for each and the defects it saw.
+Every pair is judged in both orders. The rubric puts complete and faithful content first, noise
+second and structure third, and says that length alone is no reason. Two model families judge:
+Claude Sonnet 5.5 and gpt-6.1-sol, through their CLIs without tools.
+
+The pages are the first 15 of each of the seven page types in WCXB's **held-out test split** (105
+pages), on which no change to webforai was chosen.
+
+| webforai against | Judge | webforai preferred | Other preferred | Tie | Net preference [95%] | Mean score |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Readability + Turndown | Sonnet 5.5 | 72% | 20% | 9% | +52 [+38, +66] | 71.0 vs 50.9 |
+| Readability + Turndown | gpt-6.1-sol | 71% | 22% | 6% | +49 [+33, +64] | 82.1 vs 64.8 |
+| Defuddle | Sonnet 5.5 | 51% | 38% | 12% | +13 [−4, +29] | 65.5 vs 63.4 |
+| Defuddle | gpt-6.1-sol | 51% | 41% | 8% | +10 [−8, +28] | 78.3 vs 77.3 |
+
+Net preference is wins minus losses in points, with an interval bootstrapped over pages.
+
+- **Against Readability + Turndown both judges prefer webforai's output on seven pages in ten.**
+  The margin is widest on documentation and forums (87% against 13% for Sonnet) and narrowest on
+  collections (53% against 43%).
+- **Against Defuddle there is no clear preference.** webforai is chosen more often by both
+  judges (51% against 38% and 41%), but the intervals include zero and the mean scores are a
+  point or two apart. Defuddle's Markdown is good. In the 36 verdicts Sonnet gave
+  to Defuddle, the defects it named in webforai's output were mostly missing content (29 — a
+  section of a product page, the last paragraph, a price) and noise that was kept (22 — store
+  boilerplate, a related-articles block, image lists).
+- **On the corpus the same comparison flatters webforai**, because its pages are the ones
+  webforai is developed on: Sonnet prefers webforai on 90% of the 46 sites against Readability +
+  Turndown (7% the other way) and on 67% against Defuddle (25%). These are not held-out numbers.
+
+The summary is committed as
+[`evals/benchmarks/preference/results.json`](https://github.com/inaridiy/webforai/blob/main/evals/benchmarks/preference/results.json).
 
 ## Following links (agent mode)
 
@@ -338,11 +456,14 @@ with intervals reaching zero.
   results.
 - **Small sample.** 46 sites; static and rendered captures of the same site are correlated, not
   independent. Pooled code and table figures are dominated by a few large pages (Effective Go
-  alone has 151 of the 748 code blocks).
-- **Proxies, not ground truth.** None of the metrics compares against a reference document, and
-  there is no human or model judgement. Recall metrics reward keeping everything; leak metrics
-  reward removing things. Output length is reported, not scored: shorter is not automatically
-  better.
+  alone has 151 of the 750 code blocks).
+- **Proxies, not ground truth.** None of the corpus metrics compares against a reference
+  document. Recall metrics reward keeping everything; leak metrics reward removing things. Output
+  length is reported, not scored: shorter is not automatically better.
+- **Model judges.** The preference comparison is judged by two models, not by people, on 105
+  held-out pages; a model's taste in Markdown is not a reader's, and with this many pages only
+  large differences are distinguishable (the Defuddle comparison is not). Outputs longer than
+  15,000 characters are judged from their first 12,000 and last 3,000.
 - **Configuration.** Each competitor runs with a typical, untuned configuration. Different
   Turndown rules (for example a rule for bare `<pre>`), a different DOM implementation or a
   Readability fallback would change their numbers. Defuddle on jsdom instead of linkedom scored
@@ -375,6 +496,16 @@ self-hosted Firecrawl (`firecrawl-oss`, see `evals/README.md`); Cloudflare toMar
 ```bash
 pnpm --filter platform exec wrangler dev --config ../../evals/workers/cf-tomarkdown/wrangler.jsonc --port 8799
 CF_TOMARKDOWN_URL=http://localhost:8799 pnpm --filter @webforai/evals cf-tomarkdown -- --sets=corpus,wceb
+```
+
+The reference sets, the lost-page counts and the preference comparison (the judges need the
+`claude` and `codex` CLIs logged in):
+
+```bash
+pnpm --filter @webforai/evals gold:fetch-wceb && pnpm --filter @webforai/evals gold:fetch-wcxb
+pnpm --filter @webforai/evals gold:eval -- --sets=wcxb-test --pipelines=webforai,defuddle,trafilatura,readability-turndown
+pnpm --filter @webforai/evals gold:eval -- --lost=current-webforai,current-defuddle,current-trafilatura,current-readability-turndown
+pnpm --filter @webforai/evals prefer -- --sets=wcxb-test --judges=sonnet,codex
 ```
 
 The link benchmark renders the task list's start pages again (through the proxy pool configured

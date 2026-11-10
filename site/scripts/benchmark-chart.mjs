@@ -1,5 +1,6 @@
 // Renders the README / docs benchmark chart (site/docs/public/images/benchmark-{light,dark}.svg)
-// from the committed benchmark summary. Rerun after `bench:compare` or a new WCEB run:
+// from the committed benchmark summary and the constants below. Rerun after `bench:compare` or a
+// new `gold:eval` run:
 //   pnpm --filter site benchmark-chart
 import fs from "node:fs";
 import path from "node:path";
@@ -9,38 +10,31 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const summary = JSON.parse(fs.readFileSync(path.join(repoRoot, "evals/benchmarks/compare-summary.json"), "utf8"));
 const outDir = path.join(repoRoot, "site/docs/public/images");
 
-// Mean page F1 on WCEB (3,985 pages) from `gold:eval`, 2026-10-09. Not part of
-// compare-summary.json; the same figures are in site/docs/pages/benchmarks.mdx.
-const WCEB_F1 = {
-	webforai: 0.891,
-	"readability-turndown": 0.88,
-	defuddle: 0.82,
-	trafilatura: 0.9,
-	"firecrawl-oss": 0.743,
-	"cf-tomarkdown": 0.713,
+// From `gold:eval`, 2026-11-10 (the same figures are in site/docs/pages/benchmarks.mdx; neither
+// is part of compare-summary.json):
+// mean page F1 on WCXB's held-out test split, 511 pages in seven page types;
+const WCXB_TEST_F1 = {
+	webforai: 0.877,
+	trafilatura: 0.86,
+	defuddle: 0.855,
+	"readability-turndown": 0.831,
 };
-// webforai with the `comments` preset, which keeps reader comments as Trafilatura does by default
-// (WCEB's Dragnet references include them). Shown next to the default score, marked with *.
-const WCEB_F1_COMMENTS = 0.923;
-const PIPELINES = Object.keys(WCEB_F1);
-// Timed in Python around its `extract` call, not interleaved with the Node pipelines.
-const PYTHON = new Set(["trafilatura"]);
-// Pipelines that run as a service: their time includes queueing and network, so it is not
-// drawn next to in-process conversion.
-const SERVICES = new Set(["firecrawl-oss", "cf-tomarkdown"]);
+// and the share of WebMainBench's 7,809 pages on which half of the reference text is missing
+// (recall under 0.5, `gold:eval --lost`).
+const LOST_HALF = {
+	webforai: 0.051,
+	trafilatura: 0.102,
+	defuddle: 0.115,
+	"readability-turndown": 0.126,
+};
+const PIPELINES = Object.keys(WCXB_TEST_F1);
 
 const rows = PIPELINES.map((id) => {
 	const result = summary.results.find((r) => r.id === id);
 	if (!result) {
 		throw new Error(`pipeline ${id} missing from compare-summary.json`);
 	}
-	return {
-		id,
-		label: result.label,
-		f1: WCEB_F1[id],
-		code: result.codeFenceRecall,
-		seconds: SERVICES.has(id) ? undefined : result.totalMedianMs / 1000,
-	};
+	return { id, label: result.label, f1: WCXB_TEST_F1[id], lost: LOST_HALF[id], code: result.codeFenceRecall };
 });
 
 const corpus = summary.corpus;
@@ -49,13 +43,19 @@ const columns = [
 	{
 		title: "Accuracy",
 		better: "higher is better",
-		note: `WCEB F1 · ${(3985).toLocaleString("en-US")} pages · axis from 0.5`,
+		note: "F1 · 511 held-out pages · axis from 0.5",
 		value: (r) => r.f1,
-		// webforai's bar runs on to its comments-preset score, in a lighter shade.
-		extend: (r) => (r.id === "webforai" ? WCEB_F1_COMMENTS : undefined),
 		min: 0.5,
 		max: 1,
-		format: (v, r) => (r.id === "webforai" ? `${WCEB_F1_COMMENTS.toFixed(3)}* (${v.toFixed(3)})` : v.toFixed(3)),
+		format: (v) => v.toFixed(3),
+	},
+	{
+		title: "Pages lost",
+		better: "lower is better",
+		note: `half the content missing · ${(7809).toLocaleString("en-US")} pages`,
+		value: (r) => r.lost,
+		max: 0.15,
+		format: (v) => `${(v * 100).toFixed(1)}%`,
 	},
 	{
 		title: "Code blocks kept",
@@ -64,14 +64,6 @@ const columns = [
 		value: (r) => r.code,
 		max: 1,
 		format: (v) => `${(v * 100).toFixed(0)}%`,
-	},
-	{
-		title: "Time",
-		better: "lower is better",
-		note: `${corpus.captures} pages · ${corpus.mebibytes.toFixed(0)} MiB of HTML`,
-		value: (r) => r.seconds,
-		max: Math.max(...rows.map((r) => r.seconds ?? 0)),
-		format: (v, r) => `${v.toFixed(1)} s${PYTHON.has(r.id) ? " (Python)" : ""}`,
 	},
 ];
 
@@ -82,7 +74,6 @@ const THEMES = {
 		bg: "#ffffff",
 		border: "#d1d9e0",
 		accent: "#1f8fff",
-		accent2: "#9ccbff",
 		rest: "#8c8b85",
 		ink: "#1f2328",
 		ink2: "#424a53",
@@ -93,7 +84,6 @@ const THEMES = {
 		bg: "#0d1117",
 		border: "#3d444d",
 		accent: "#2f8ff0",
-		accent2: "#8cc4ff",
 		rest: "#6e6d66",
 		ink: "#f0f6fc",
 		ink2: "#c9d1d9",
@@ -127,29 +117,16 @@ const bar = (x, y, w, h, fill) => {
 const text = (x, y, size, fill, content, extra = "") =>
 	`<text x="${x}" y="${y}" font-size="${size}" fill="${fill}"${extra}>${content}</text>`;
 
-/** One bar and its value label; a column's `extend` draws the bar on, in a lighter shade. */
+/** One bar and its value label. */
 const cell = (col, row, x0, y, t) => {
 	const v = col.value(row);
-	if (v === undefined) {
-		return [text(x0 + 8, y + 15, 12, t.muted, "runs as a service")];
-	}
 	const min = col.min ?? 0;
-	const scale = (value) => Math.max(2, ((value - min) / (col.max - min)) * BAR_MAX);
-	const w = scale(v);
-	const extended = col.extend?.(row);
-	const end = extended === undefined ? w : scale(extended);
+	const w = Math.max(2, ((v - min) / (col.max - min)) * BAR_MAX);
 	const isUs = row.id === "webforai";
-	const bars =
-		extended === undefined
-			? [bar(x0, y, w, BAR_H, isUs ? t.accent : t.rest)]
-			: [
-					bar(x0, y, end, BAR_H, t.accent2),
-					`<rect x="${x0}" y="${y}" width="${w.toFixed(2)}" height="${BAR_H}" fill="${t.accent}"/>`,
-				];
 	return [
-		...bars,
+		bar(x0, y, w, BAR_H, isUs ? t.accent : t.rest),
 		text(
-			(x0 + end + 8).toFixed(2),
+			(x0 + w + 8).toFixed(2),
 			y + 15,
 			13,
 			isUs ? t.ink : t.ink2,
@@ -196,14 +173,14 @@ const render = (theme) => {
 			height - 38,
 			11.5,
 			t.muted,
-			`WCEB: an independent benchmark. Code and time: ${corpus.captures} of webforai's own test pages.`,
+			"Accuracy: WCXB's test split, seven page types, not used to develop webforai. Pages lost: WebMainBench, recall under 0.5.",
 		),
 		text(
 			0,
 			height - 22,
 			11.5,
 			t.muted,
-			"* webforai's comments preset, which keeps reader comments as Trafilatura does by default; the default preset in brackets.",
+			`Code blocks: ${corpus.captures} of webforai's own test pages. Every pipeline with its defaults.`,
 		),
 		text(
 			0,
@@ -217,12 +194,12 @@ const render = (theme) => {
 	);
 
 	const desc = rows
-		.map((r) => {
-			const time = r.seconds === undefined ? "" : `, ${r.seconds.toFixed(2)} s`;
-			const f1 =
-				r.id === "webforai" ? `${r.f1.toFixed(3)} (${WCEB_F1_COMMENTS.toFixed(3)} with comments)` : r.f1.toFixed(3);
-			return `${r.label}: WCEB F1 ${f1}, code blocks kept ${(r.code * 100).toFixed(1)}%${time}`;
-		})
+		.map(
+			(r) =>
+				`${r.label}: F1 ${r.f1.toFixed(3)}, loses half the content on ${(r.lost * 100).toFixed(1)}% of pages, keeps ${(
+					r.code * 100
+				).toFixed(1)}% of code blocks`,
+		)
 		.join("; ");
 	const w = WIDTH + 2 * PAD_X;
 	const h = height + 2 * PAD_Y;

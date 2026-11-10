@@ -44,10 +44,25 @@ Conversion (what a reader of the Markdown sees):
 - [x] 2026-11-10 Keep rules (`a7a48c1`): 192 of 13,291 pages change (118 better, 74 worse), mean
       F1 ±0.000 on WCEB, WCXB-dev and WebMainBench.
 - [x] 2026-11-10 Evals: `gold:eval --lost`, `prefer`, Defuddle 0.19.4 → 0.19.6.
-- [ ] Release run: `gold:eval` on WCEB, WebMainBench, WCXB-dev and WCXB-test; `bench:compare`;
-      `prefer` on the corpus and WCXB-test with two judges; `stress`.
-- [ ] Benchmarks page, READMEs and chart rewritten around the three questions (is the page kept,
-      is the Markdown good to read, what does it cost).
+- [x] 2026-11-10 Release run at `a5831e6` (library code final at `2b376fe`). `gold:eval` page F1:
+      WCEB 0.896 (comments 0.924), WebMainBench 0.860, WCXB-dev 0.844, WCXB-test 0.877 — ahead of
+      Defuddle 0.19.6 (+0.022 [+0.007, +0.038]), Trafilatura (+0.018 [+0.001, +0.035]) and
+      Readability + Turndown (+0.046 [+0.026, +0.067]) on the held-out split. Pages with recall
+      under 0.5 on WebMainBench: 5.1% against 10.2–12.6%. `bench:compare`: checks 75/75, code
+      736/750, empty outputs 4 → 2; the machine was busy (load average 31), so times are read as
+      ratios, and an interleaved run against the previous release measured 0.96×. `stress`: every
+      case within the 128 MB heap.
+- [x] 2026-11-10 `prefer`, WCXB-test, 105 pages, both orders: against Readability + Turndown
+      Sonnet 5.5 72% / 20% and gpt-6.1-sol 71% / 22%; against Defuddle 51% / 38% and 51% / 41%
+      (net +13 [−4, +29] and +10 [−8, +28]: no clear preference). Corpus (46 sites, Sonnet):
+      90% / 7% and 67% / 25%. Summary in `evals/benchmarks/preference/results.json`.
+- [x] 2026-11-10 Code probe fixed for every pipeline: Shiki's `span.line` lines were read as one
+      joined line when the page has no newline between them, so the broken output passed and the
+      correct one failed (probes 748 → 750).
+- [x] 2026-11-10 Benchmarks page (newer sets, pages lost, preference; WCEB and corpus tables
+      re-measured), READMEs and docs home rebuilt around three questions — is the page kept, is
+      the Markdown good to read, what does agent mode cost — and the chart redrawn to match
+      (held-out F1, pages lost, code blocks kept).
 
 ## Decision log
 
@@ -58,5 +73,10 @@ Conversion (what a reader of the Markdown sees):
   pages worse than better. Structure-specific keep rules were added instead.
 - 2026-11-10 `prefer` reports WCXB-test (held out; no change was chosen on it) apart from the
   corpus, whose pages the fixes were developed on and whose result therefore flatters webforai.
+- 2026-11-10 The README no longer says "best quality". What was measured supports narrower
+  statements — fewer lost pages and a higher F1 than the other extractors on held-out pages,
+  preferred to Readability + Turndown — and does not support a preference over Defuddle.
+- 2026-11-10 WCXB-test was measured once, at the release commit. The judges' reasons on its
+  pages were read to describe the result on the benchmarks page; no change was made from them.
 - 2026-11-10 `baseUrl` defaulting to `url` changes output for callers that passed only `url`
   (relative links become absolute): a minor version, with `baseUrl: ""` as the way back.

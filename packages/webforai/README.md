@@ -12,14 +12,14 @@
 <h3 align="center">Any HTML to the cleanest Markdown, for humans and AI agents.</h3>
 
 <p align="center">
-  <b>Best quality</b> · <b>Most token-efficient</b> · <b>Near-top speed</b> · <b>Pure TypeScript</b>
+  <b>Half as many lost pages</b> · <b>98% of code blocks kept</b> · <b>Half the tokens for agents</b> · <b>Pure TypeScript</b>
 </p>
 
 <p align="center">
-  <b>Reader mode</b> extracts the main content of a page, like Mozilla Readability, with the best
-  quality of the converters we benchmarked. <b>Agent mode</b> adds only the links an AI agent needs
-  to explore the site, for about half the tokens of converting the whole page. Both are measured
-  against other converters <a href="#benchmarks">below</a>.
+  <b>Reader mode</b> extracts the main content of a page, like Mozilla Readability, and loses the
+  page about half as often as the extractors we compared it with. <b>Agent mode</b> adds only the
+  links an AI agent needs to explore the site, for about half the tokens of converting the whole
+  page. Both are measured against other converters <a href="#benchmarks">below</a>.
 </p>
 
 <p align="center">
@@ -98,9 +98,13 @@ if (import.meta.env.DEV) {
   RAG and embeddings.
 - **Agent mode** adds the `## Links` section — related, pagination, section and site navigation,
   breadcrumbs — so an agent can decide which page to open next.
-- Code blocks keep their language, tables stay GFM tables, KaTeX and MathJax become LaTeX, and
-  lazy-loaded images come through. Page metadata (title, author, published, …) comes from
-  `htmlToMarkdownWithMetadata` or as YAML front matter with `frontmatter: true`.
+- The Markdown reads as the page does: code blocks keep their lines and language, tables stay GFM
+  tables, notes and warnings become block quotes, links are absolute, KaTeX and MathJax become
+  LaTeX, and lazy-loaded images come through.
+- Pages that hide their content from a plain fetch still convert: forum threads shipped inside
+  `<noscript>`, and the parts Next.js or GitBook stream after the page's shell.
+- Page metadata (title, author, published, …) comes from `htmlToMarkdownWithMetadata` or as YAML
+  front matter with `frontmatter: true`.
 - The snippet runs as-is in Node.js, Cloudflare Workers and browsers: the library uses no Node.js
   built-ins and fetches nothing itself. Browser loaders (Playwright, Puppeteer) are optional.
 
@@ -112,18 +116,33 @@ as Markdown (a rate-limited demo without a key).
 
 ## Benchmarks
 
-### Reader mode: main content
+Measured against other converters on the same pages.
+[Method, configurations and limitations →](https://webforai.dev/benchmarks)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-dark.svg">
-  <img alt="WCEB F1: webforai 0.923 with the comments preset (0.891 default), Trafilatura 0.900, Readability + Turndown 0.880, Defuddle 0.820, Firecrawl OSS 0.743, Cloudflare toMarkdown 0.713. Code blocks kept: webforai 98%, Readability + Turndown 46%, Defuddle 89%, Trafilatura 41%. Time for 60 pages: webforai 4.0 s, Readability + Turndown 13.7 s, Defuddle 13.8 s, Trafilatura 2.9 s (Python)" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
+  <img alt="On 511 held-out WCXB pages, F1: webforai 0.877, Trafilatura 0.860, Defuddle 0.855, Readability + Turndown 0.831. Pages that lose half their content on WebMainBench: webforai 5.1%, Trafilatura 10.2%, Defuddle 11.5%, Readability + Turndown 12.6%. Code blocks kept on 60 pages: webforai 98%, Trafilatura 41%, Defuddle 90%, Readability + Turndown 45%" src="https://raw.githubusercontent.com/inaridiy/webforai/main/site/docs/public/images/benchmark-light.svg" width="100%">
 </picture>
 
-F1 on [WCEB](https://github.com/chatnoir-eu/web-content-extraction-benchmark), 3,985 pages:
-webforai **0.923** (keeping reader comments, as Trafilatura does), Trafilatura 0.900,
-Readability + Turndown 0.880, Defuddle 0.820. webforai keeps 98% of code blocks;
-Readability + Turndown keeps 46%. It converts 60 pages in 4.0 s where Readability + Turndown
-takes 13.7 s. [Method and configurations →](https://webforai.dev/benchmarks)
+### Reader mode: is the page kept?
+
+Every extractor returns most pages well; they differ in how many they get wrong. On
+[WebMainBench](https://arxiv.org/abs/2511.23119) (7,809 annotated pages) webforai
+loses half of the content on **5.1%** of pages; Trafilatura, Defuddle and Readability + Turndown
+on 10–13%. On the 511 held-out pages of [WCXB](https://arxiv.org/abs/2605.21097) — articles,
+forums, products, listings, documentation — its F1 is **0.877** against 0.860, 0.855 and 0.831.
+On [WCEB](https://github.com/chatnoir-eu/web-content-extraction-benchmark), 3,985 older news
+pages, it scores 0.896, level with Trafilatura's 0.900, and 0.924 when reader comments are kept
+as Trafilatura keeps them.
+
+### Reader mode: is the Markdown good to read?
+
+Scores against reference text only count words. webforai keeps **98%** of code blocks as code
+blocks; Readability + Turndown keeps 45%. Shown two conversions of the same page with the names
+hidden, on 105 held-out pages, two models both prefer webforai's Markdown to Readability +
+Turndown's on seven pages in ten (72% to 20%, and 71% to 22%). Against Defuddle neither has a
+clear preference (51% to 38%, and 51% to 41%). Converting is about three times faster than
+either.
 
 ### Agent mode: following links
 
